@@ -93,9 +93,9 @@ def G16_get_last_geom(lines):
                 x = l.split()[3]
                 y = l.split()[4]
                 z = l.split()[5]
-                tmp.append(x)
-                tmp.append(y)
-                tmp.append(z)
+                tmp.append(float(x))
+                tmp.append(float(y))
+                tmp.append(float(z))
                 coord.append(tmp)
     return coord
         

@@ -9,7 +9,7 @@ def search_string(string: str, lines: list, typ: str='all'):
         if typ.lower() == 'all': return list(list_of_results), True
         elif typ.lower() == 'first': return list_of_results[0], True
         elif typ.lower() == 'last': return list_of_results[-1], True
-        else: print("Inorrect variable 'typ' in search_string call")
+        else: print("Incorrect variable 'typ' in search_string call")
     else: return [], False
 
 #def search_string(string: str, lines: list, typ: str='all'):
