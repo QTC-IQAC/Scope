@@ -1,76 +1,88 @@
 def get_vibS(freqs: list, temp: float, freq_units: str='au', outunits: str='au', typ: str='default', FR_cutoff: int=100, FR_alpha: int=4, nmol: int=1):
-    # temperature most be provided in K   
-    #bav=float((1.0000E-44*(1/4.359748E-18)))                # From Kg*m**2 to Hartree*S**2
-    bav=1/(1.0000E-44/Constants.planck_Js)                   # From Kg*m**2 to s-1
+    
+    ## Temperature must be provided in K
+    ## Function works with freqs in au, except the free-rotor part, which works in s-1 units
 
+    bav=1.0000E-44 # Kg*m**2
+    
     if typ.lower() == 'free-rotor' or typ.lower() == 'fr':              
-        if freq_units.lower() == 'cm': FR_cutoff=FR_cutoff*Constants.cm2har
-        elif freq_units.lower() == 'ev': FR_cutoff=FR_cutoff*Constants.eV2har
+        if freq_units.lower() == 'cm': FR_cutoff=FR_cutoff*Constants.cm2s_1
+        elif freq_units.lower() == 'ev': FR_cutoff=FR_cutoff*Constants.eV2s_1
+        elif freq_units.lower() == 'au' : FR_cutoff=FR_cutoff*Constants.har2s_1
+        elif freq_units.lower() == 's_1': pass
+        else: 
+            print("vibS: can't understand input units of frequencies")
+            sys.exit()
         
     if temp == 10: print("temp, idx, f, Svib_FR, Svib_HO, total, weight_HO")
-
+    
+    # Converts Frequencies to s-1
     freqs_adapted = []
-    if freq_units.lower() != 'au':
-        for f in freqs:
-            if freq_units.lower() == 'cm': freqs_adapted.append(f*Constants.cm2har)
-            elif freq_units.lower() == 'ev': freqs_adapted.append(f*Constants.eV2har)
-            else: print("vibS: can't understand input units of frequencies")
-    else: freqs_adapted = freqs.copy()
-
+    for f in freqs:
+        if freq_units.lower() == 'cm': freqs_adapted.append(f*Constants.cm2s_1)
+        elif freq_units.lower() == 'ev': freqs_adapted.append(f*Constants.eV2s_1)
+        elif freq_units.lower() == 'au' : freqs_adapted.append(f*Constants.har2s_1)
+        elif freq_units.lower() == 's_1': freqs_adapted.append(f)
+        else: 
+            print("vibS: can't understand input units of frequencies")
+            sys.exit()
+        
     total=0.0
-    for idx, f in enumerate(freqs_adapted):
+    for idx, f in enumerate(freqs_adapted):   # Freqs in s-1
         if f > 0: 
             ## Free Rotor Term
             if typ.lower() == 'free-rotor' or typ.lower() == 'fr':
-                mu=Constants.planck_hs/(8*(np.pi)**2*f)                                      # s-1
-                mu_prime=(mu*bav)/(mu+bav)                                                   # s-1
-                a=(8*(np.pi)**3)*mu_prime*Constants.boltz*temp/(Constants.planck_hs**2)      # Dimensionless
+                mu=Constants.planck_Js/(8*(np.pi)**2*f)                                      # Kg·m2
+                mu_prime=(mu*bav)/(mu+bav)                                                   # Kg·m2
+                a=(8*(np.pi)**3)*mu_prime*Constants.boltz_J*temp/(Constants.planck_Js**2)   # Dimensionless
                 b=np.sqrt(a)                                                                 # Dimensionless
                 c=np.log(b)                                                                  # Dimensionless
-                Svib_FR=Constants.boltz*(c+0.5)                                              # Hartree/molecule*K
+                Svib_FR=Constants.boltz_au*(c+0.5)                                           # Hartree/molecule*K
                 #print(f, FR_cutoff, FR_alpha)
                 weight=(1/(1+(FR_cutoff/f)**FR_alpha))                                       # Dimensionless
-                Svib_FR=(1-weight)*Svib_FR                                                   # Hartree/molecule*K
+                Svib_FR=(1-weight)*Svib_FR/nmol                                              # Hartree/molecule*K
             else: 
                 Svib_FR=0.0
                 weight=0.0
 
             ## Harmonic Oscillator Term
-            exponential_pos=np.exp(f/(Constants.boltz*temp))
-            exponential_neg=np.exp(-f/(Constants.boltz*temp))
-            fstterm=f/(temp*(exponential_pos-1))
-            scnterm=-Constants.boltz*np.log(1-exponential_neg)
-
+            f = f/Constants.har2s_1  # Now frequency in har
+            exponential_pos=np.exp(f/(Constants.boltz_au*temp))      # Dimensionless
+            exponential_neg=np.exp(-f/(Constants.boltz_au*temp))     # Dimensionless
+            fstterm=f/(temp*(exponential_pos-1))                     # Hartree/molecule*K
+            scnterm=-Constants.boltz_au*np.log(1-exponential_neg)    # Hartree/molecule*K
+            
             if typ.lower() == 'free-rotor' or typ.lower() == 'fr':
                 weight=1/(1+(FR_cutoff/f)**FR_alpha)
             else:
                 weight=1.0
-            Svib_HO = (fstterm+scnterm)*weight
+            Svib_HO = (fstterm+scnterm)*weight/nmol
 
             ## Sums both Contributions
-            total += (Svib_FR + Svib_HO) #*Constants.Avogadro/nmol
-            #if temp == 10: print(f"{temp} {idx} {freqs[idx]} {Svib_FR:.3e} {Svib_HO:.3e} {total:.3e} {weight}")
+            total += (Svib_FR + Svib_HO)
+            if temp == 10: print(f"{temp} {idx} {freqs[idx]} {Svib_FR:.3e} {Svib_HO:.3e} {total:.3e} {weight}")
     
     ## Arranges units
     if outunits.lower() == 'kj': total = total*Constants.har2kJmol
     return total
 
-##########################
-def get_vibH(freqs: list, temp: float, freq_units: str='au', outunits: str='au'):
-    # temperature in K   
+def get_vibH(freqs: list, temp: float, freq_units: str='au', outunits: str='au', nmol: int=1):
+    # temperature in K
+    # function works with freqs in au
     freqs_adapted = []
     if freq_units.lower() != 'au':
         for f in freqs:
             if freq_units.lower() == 'cm': freqs_adapted.append(f*Constants.cm2har)
             elif freq_units.lower() == 'ev': freqs_adapted.append(f*Constants.eV2har)
+            elif freq_units.lower() == 's_1': freqs_adapted.append(f*Constants/har2s_1)
+            elif freq_units.lower() == 'au' : freqs_adapted.append(f)
             else: print("vibS: can't understand input units of frequencies")
-    else: freqs_adapted = freqs.copy()
     
     total=0.0
     for f in freqs_adapted:        
-        exponential = np.exp(-f/(Constants.boltz*temp))
-        fstterm = f/2.
-        scnterm = (f*exponential)/(1-exponential)
-        total += (fstterm+scnterm)
-    if outunits.lower() == 'kj': total = total*Constants.har2kJmol
+        exponential = np.exp(-f/(Constants.boltz_au*temp))       # Dimensionless
+        fstterm = f/2.                                           # hartree/molecule
+        scnterm = (f*exponential)/(1-exponential)                # hartree/molecule
+        total += (fstterm+scnterm)/nmol
+    if outunits.lower() == 'kj': total = total*Constants.har2kJmol    # kJ/mol
     return total
