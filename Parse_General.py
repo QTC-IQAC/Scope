@@ -1,10 +1,15 @@
 import numpy as np
 
-def search_string(string: str, lines: list, typ: str='all'):
+def search_string(string: str, lines: list, typ: str='all', lowlim: int=None, uplim: int=None):
     list_of_results = []
     for lx, line in enumerate(lines):
         if string in line:
-            list_of_results.append(lx)  
+            if lowlim and uplim:
+                if lx >= lowlim and lx <= uplim: list_of_results.append(lx)  
+            elif lowlim and not uplim:
+                if lx >= lowlim: list_of_results.append(lx)  
+            elif not lowlim and not uplim:
+                list_of_results.append(lx)  
     if len(list_of_results) > 0:
         if typ.lower() == 'all': return list(list_of_results), True
         elif typ.lower() == 'first': return list_of_results[0], True

@@ -86,12 +86,13 @@ def G16_get_last_geom(lines):
     ldx, found2 = search_string("Distance matrix", lines, typ='last') 
     if not found2: ldx, found2 = search_string("Rotational constants (GHZ)", lines, typ='last')
     #### Overall, this block searches the first ----- line after the init_geom.
-    if not found2:  
-        tmp, tmp_bool = search_string("---------------------------------------------------------------------",lines,typ='all')
+    if not found2:
+        tmp, tmp_bool = search_string("--------------------------------------",lines,typ='all')
+        found2 = False
         for l in tmp:
-            if l > init_geom_line and not tmp_bool: 
-                ldx = l
-                tmp_bool = True
+            if l > init_geom_line and not found2:
+                ldx = l + 1
+                found2 = True
     ####
     if found2:
         end_geom_line = ldx - 1
@@ -149,6 +150,9 @@ def G16_get_VNM(lines: list, witheigen: str=False):
             force_cnt.append(fo1)
             ir1 = float(lines[l+3].split()[3])
             IR_int.append(ir1)
+
+            if witheigen:
+                
 
             new_vnm = VNM(index, f1, r1, fo1, ir1)
             vnms.append(new_vnm)
