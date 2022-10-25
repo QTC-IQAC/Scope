@@ -84,6 +84,15 @@ def G16_get_last_geom(lines):
     if found1:
         init_geom_line = ldx + 2
     ldx, found2 = search_string("Distance matrix", lines, typ='last') 
+    if not found2: ldx, found2 = search_string("Rotational constants (GHZ)", lines, typ='last')
+    #### Overall, this block searches the first ----- line after the init_geom.
+    if not found2:  
+        tmp, tmp_bool = search_string("---------------------------------------------------------------------",lines,typ='all')
+        for l in tmp:
+            if l > init_geom_line and not tmp_bool: 
+                ldx = l
+                tmp_bool = True
+    ####
     if found2:
         end_geom_line = ldx - 1
     if found1 and found2:
