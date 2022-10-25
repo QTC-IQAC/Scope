@@ -11,16 +11,20 @@ from Parse_General import search_string, read_lines_file
 import unit_cell_tools 
 from unit_cell_tools import get_unit_cell_volume #, cellvec_2_cellparam 
 
+import Constants
+
 ######################
 ##### QC Objects #####
 ######################
 class VNM(object):
-    def __init__(self, index: int, freq: float, red_mass: float, force_cnt: float, IR_int: float):
+    def __init__(self, index: int, freq: float, red_mass: float, force_cnt: float, IR_int: float, sym: str='A'):
         self.index = index 
-        self.freq = freq              ## It must be in atomic units 
+        self.freq_cm = freq                            ## It must be in cm-1
+        self.freq = freq*Constants.cm2har              ## It must be in atomic units 
         self.red_mass = red_mass
         self.force_cnt = force_cnt
         self.IR_int = IR_int
+        self.sym = sym
 
     def eigenvec(self, atomidxs: list, atnums: list, xs: list, ys: list, zs: list):
         self.atomidxs = atomidxs
