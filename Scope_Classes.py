@@ -6,6 +6,8 @@ scopepath = '/home/g4vela/SCOPE/Database_SCO/Scripts'
 sys.path.append(scopepath)
 
 from cell2mol.tmcharge_common import labels2formula
+from cell2mol.elementdata import ElementData
+elemdatabase = ElementData()
 
 import Parse_General
 from Parse_General import search_string, read_lines_file
@@ -31,6 +33,7 @@ class VNM(object):
     def eigenvec(self, atomidxs: list, atnums: list, xs: list, ys: list, zs: list):
         self.atomidxs = atomidxs
         self.atnums = atnums
+        self.labels = [elemdatabase.elementsym[atnum] for atnum in atnums]
         self.xs = xs
         self.ys = ys
         self.zs = zs
