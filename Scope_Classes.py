@@ -1,4 +1,6 @@
 import sys
+import copy
+from copy import deepcopy
 
 scopepath = '/home/g4vela/SCOPE/Database_SCO/Scripts'
 sys.path.append(scopepath)
@@ -86,7 +88,6 @@ class sco_system(object):
     def add_iso_calcs_path(self, iso_calcs_path: str='Unk'):
         self.iso_calcs_path = iso_calcs_path
 
-    #def add_reference_molecs(self, list_of_crystals):
     def add_reference_molecs(self, debug: int=0):
         self.hasLS = False
         self.hasHS = False
@@ -104,18 +105,20 @@ class sco_system(object):
                 if tmc.scope_guess_spin == 'LS' and not self.hasLS:
                     self.hasLS = True
                     self.LSid = jdx
-                    self.LSref = tmc
+                    self.LSref = deepcopy(tmc)
                 elif tmc.scope_guess_spin == 'HS' and not self.hasHS:
                     self.hasHS = True
                     self.HSid = jdx
-                    self.HSref = tmc
+                    self.HSref = deepcopy(tmc)
             ### If it hasn't found any molecule that can be classified as HS and LS... then takes anything
             if not self.hasLS:
                 self.LSid = 0 
-                self.LSref = pool[0] 
+                self.LSref = deepcopy(pool[0])
+                self.LSref.scope_guess_spin == 'LS'
             if not self.hasHS:
                 self.HSid = 0 
-                self.HSref = pool[0]
+                self.HSref = deepcopy(pool[0])
+                self.HSref.scope_guess_spin == 'HS'
         else: print("Empty pool or reference molecules")
 
 class crystal(object):

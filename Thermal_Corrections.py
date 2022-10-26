@@ -1,3 +1,7 @@
+import numpy as np
+import Constants
+
+###########
 def get_vibS(freqs: list, temp: float, freq_units: str='au', outunits: str='au', typ: str='default', FR_cutoff: int=100, FR_alpha: int=4, nmol: int=1):
     
     ## Temperature must be provided in K
@@ -66,6 +70,7 @@ def get_vibS(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     if outunits.lower() == 'kj': total = total*Constants.har2kJmol
     return total
 
+###########
 def get_vibH(freqs: list, temp: float, freq_units: str='au', outunits: str='au', nmol: int=1):
     # temperature in K
     # function works with freqs in au
