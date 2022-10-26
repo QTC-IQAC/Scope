@@ -18,7 +18,7 @@ def get_vibS(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
             print("vibS: can't understand input units of frequencies")
             sys.exit()
         
-    if temp == 10: print("temp, idx, f, Svib_FR, Svib_HO, total, weight_HO")
+    #if temp == 10: print("temp, idx, f, Svib_FR, Svib_HO, total, weight_HO")
     
     # Converts Frequencies to s-1
     freqs_adapted = []
@@ -64,7 +64,7 @@ def get_vibS(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
 
             ## Sums both Contributions
             total += (Svib_FR + Svib_HO)
-            if temp == 10: print(f"{temp} {idx} {freqs[idx]} {Svib_FR:.3e} {Svib_HO:.3e} {total:.3e} {weight}")
+            #if temp == 10: print(f"{temp} {idx} {freqs[idx]} {Svib_FR:.3e} {Svib_HO:.3e} {total:.3e} {weight}")
     
     ## Arranges units
     if outunits.lower() == 'kj': total = total*Constants.har2kJmol
@@ -85,9 +85,10 @@ def get_vibH(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     
     total=0.0
     for f in freqs_adapted:        
-        exponential = np.exp(-f/(Constants.boltz_au*temp))       # Dimensionless
-        fstterm = f/2.                                           # hartree/molecule
-        scnterm = (f*exponential)/(1-exponential)                # hartree/molecule
-        total += (fstterm+scnterm)/nmol
+        if f > 0.0:
+            exponential = np.exp(-f/(Constants.boltz_au*temp))       # Dimensionless
+            fstterm = f/2.                                           # hartree/molecule
+            scnterm = (f*exponential)/(1-exponential)                # hartree/molecule
+            total += (fstterm+scnterm)/nmol
     if outunits.lower() == 'kj': total = total*Constants.har2kJmol    # kJ/mol
     return total
