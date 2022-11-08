@@ -10,7 +10,7 @@ from cell2mol.elementdata import ElementData
 elemdatabase = ElementData()
 
 #######################
-def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extension: str="", jobtype: str="scf", functional: str="B3LYP*", basis: str='def2SVP', spin: str='gmol', isGrimme: bool=True, nproc: int=1, useconnec: bool=False, append: bool=False):
+def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extension: str="", jobtype: str="scf", functional: str="B3LYP*", basis: str='def2SVP', spin: str='gmol', isGrimme: bool=True, loose_opt: bool=False, nproc: int=1, useconnec: bool=False, append: bool=False):
  
 ## useconnec is not implemented. It is meant to call the generation of the connectivity section for G16
 ## append is not implemented. Will be used to append a computation to an existing input file
@@ -66,7 +66,9 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
         elif basis.lower() == "def2tzvpp": commandline.append(" def2TZVPP")
 
         ## Jobtype
-        if jobtype.lower() == "opt" or jobtype.lower() == "opth" or jobtype.lower() == "opt&freq": commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,loose)")
+        if jobtype.lower() == "opt" or jobtype.lower() == "opth" or jobtype.lower() == "opt&freq": 
+            if loose_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,loose)")
+            else: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral)")
         if jobtype.lower() == "opt&freq" or jobtype.lower() == "freq": commandline.append(" freq")
         if isGrimme: commandline.append(" EmpiricalDispersion=GD3BJ")
 

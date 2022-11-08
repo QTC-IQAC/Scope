@@ -193,3 +193,27 @@ def QE_input(mol, folder, name, extension, PP_Library, cubeside, typ="scf", isHu
         print("K_POINTS gamma", file=inp)
 
 
+## SETUP BY RUBEN AND YURI
+
+#! B3LYP/G D3BJ RIJCOSX def2-SVP def2/J def2-SVP/C Opt
+#%method
+#ScalHFX = 0.15
+#end
+#%PAL NPROCS 12 END
+#% geom
+#optimizehydrogens true
+#TolMaxD= 0.01
+#TolMaxG = 0.01
+#maxiter = 100
+#end
+#*xyzfile 1 2 PIVXAT_1_opt.xyz
+#18:16
+#y esto para SPEs
+#18:16
+#! B3LYP/G D3BJ RIJCOSX def2-TZVP def2/J
+#%method
+#ScalHFX = 0.15
+#end
+#%PAL NPROCS 12 END
+#*xyzfile 1 2 PIVXAT_2_opt.xyz
+
