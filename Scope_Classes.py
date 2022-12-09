@@ -2,18 +2,17 @@ import sys
 import copy
 from copy import deepcopy
 
-scopepath = '/home/g4vela/SCOPE/Database_SCO/Scripts'
+scopepath = '/home/g4vela/SCOPE/Database_SCO/Scripts/Scope'
 sys.path.append(scopepath)
 
 from cell2mol.tmcharge_common import labels2formula
 from cell2mol.elementdata import ElementData
 elemdatabase = ElementData()
 
-import Parse_General
 from Parse_General import search_string, read_lines_file
-
-import unit_cell_tools 
+from Parse_Cif import *
 from unit_cell_tools import get_unit_cell_volume #, cellvec_2_cellparam 
+from Geom_SCO_V1 import *
 
 import Constants
 
@@ -91,27 +90,56 @@ class sco_system(object):
     def add_iso_calcs_path(self, iso_calcs_path: str='Unk'):
         self.iso_calcs_path = iso_calcs_path
 
-    def add_reference_molecs(self, debug: int=0):
+    ####
+    def set_reference_molecs(self, debug: int=0):
+
+        self.list_of_refmolecs = []
         self.hasLS = False
         self.hasHS = False
-        
-        # Creates temporary pool of tmc molecules
-        pool = []
-        if debug > 0: print(f"Finding Ref Molecules for {self.refcode} among {len(self.list_of_crystals)} crystals")
-        for idx, crys in enumerate(self.list_of_crystals):
-            for jdx, tmc in enumerate(crys.list_of_refmolecs):
-                pool.append(tmc)
+        for crys in self.list_of_crystals:
+            done = False
+            while not done:
+                for idx, mol in enumerate(crys.cell.moleclist):
+                    if debug > 0: print(len(crys.cell.moleclist), "molecules in crystal", crys.name, "of", self.refcode)
+                    if mol.type == "Complex":
+    
+                        # Checks it is an Fe-N6
+                        keepit = False
+                        for met in mol.metalist:
+                            if hasattr(met, "coord_sphere"):
+                                formula = labels2formula(met.coord_sphere)
+                                if formula == "N6": keepit = True
+                            else: print("No coord_sphere variable in metal object")
+    
+                        # If so...
+                        if keepit:
+                            ox_state = mol.metalist[0].totcharge
+                            dist, angle = geom_sco_from_xyz(mol.labels, mol.coord)
+                            guess_spin = guess_spin_state(int(ox_state), dist[0])
+                            crys.add_spin_data(guess_spin)
+    
+                            mol.scope_FeNdist = dist
+                            mol.scope_FeNangle = angle
+                            mol.scope_guess_spin = guess_spin
+                            #mol.scope_cell2mol_path = crys.cell2mol_path+'/'+gmolname+'.sco'
+                            #mol.scope_job_story = job_story(mol.scope_gmol_path)
+    
+                            self.list_of_refmolecs.append(mol)
+                            if debug > 0: print(f"appended reference molecule")
+                            done = True
+
+        pool = self.list_of_refmolecs.copy()
 
         if debug > 0: print(f"{len(pool)} tmcs in pool")
         if len(pool) > 0:
-            for tmc in pool:
+            for idx, tmc in enumerate(pool):
                 if tmc.scope_guess_spin == 'LS' and not self.hasLS:
                     self.hasLS = True
-                    self.LSid = jdx
+                    self.LSid = idx
                     self.LSref = deepcopy(tmc)
                 elif tmc.scope_guess_spin == 'HS' and not self.hasHS:
                     self.hasHS = True
-                    self.HSid = jdx
+                    self.HSid = idx
                     self.HSref = deepcopy(tmc)
             ### If it hasn't found any molecule that can be classified as HS and LS... then takes anything
             if not self.hasLS:
@@ -122,26 +150,24 @@ class sco_system(object):
                 self.HSid = 0 
                 self.HSref = deepcopy(pool[0])
                 self.HSref.scope_guess_spin == 'HS'
-        else: print("Empty pool or reference molecules")
+        else: print("Empty pool of reference molecules")
 
 class crystal(object):
-    def __init__(self, refcode: str, crystal_name: str, cell2mol_path: str) -> None:
+    def __init__(self, refcode: str, name: str, cell2mol_path: str, cell: object) -> None:
         self.type = "crystal" 
         self.version = "0.1" 
         self.refcode = refcode
-        self.crystal_name = crystal_name
+        self.name = name
+        self.cell = cell 
         self.cell2mol_path = cell2mol_path
-        self.list_of_refmolecs = []
 
-    def add_cif_data(self, diff_temp: int=0, ) -> None:
-        self.diff_temp = diff_temp
-
-    def add_publication_data(self, authors: str='', journal_year: str='-', journal_name: str='-', journal_volume: str='-', journal_page: str='-') -> None:
-        self.authors = authors
-        self.journal_year = journal_year
-        self.journal_name = journal_name
-        self.journal_volume = journal_volume
-        self.journal_page = journal_page
+    def read_cif_data(self, cifpath: str) -> None:
+        self.diff_temp = get_cif_diffraction_data(cifpath) 
+        self.authors = get_cif_authors(cifpath)
+        self.journal_year =   get_cif_journal(cifpath)[0]
+        self.journal_name =   get_cif_journal(cifpath)[1] 
+        self.journal_volume = get_cif_journal(cifpath)[2]
+        self.journal_page =   get_cif_journal(cifpath)[3]
 
     def add_spin_data(self, guess_spin_state: str='Unk'):
         self.guess_spin_state = guess_spin_state

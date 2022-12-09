@@ -2,7 +2,7 @@ import os
 import numpy as np
 import sys
 
-scopepath = '/home/g4vela/SCOPE/Database_SCO/Scripts'
+scopepath = '/home/g4vela/SCOPE/Database_SCO/Scripts/Scope'
 sys.path.append(scopepath)
 
 import Parse_General
@@ -78,38 +78,6 @@ def G16_time_to_sec(time_list: list):
         total += z[0]*multiplier
     return total
 
-#def G16_get_last_geom(lines):
-#    coord = []
-#    ldx, found1 = search_string("Coordinates (Angstroms)", lines, typ='last') 
-#    if found1:
-#        init_geom_line = ldx + 2
-#    #ldx, found2 = search_string("Distance matrix", lines, typ='last') 
-#    #if not found2: ldx, found2 = search_string("Rotational constants (GHZ)", lines, typ='last')
-#    ##### Overall, this block searches the first ----- line after the init_geom.
-#    #if not found2:
-#        ldx, found2 = search_string("--------------------------------------",lines,typ='first',lowlim=init_geom_line)
-#        ldx += 1
-#        #found2 = False
-#        #for l in tmp:
-#        #    if l > init_geom_line and not found2:
-#        #        ldx = l + 1
-#        #        found2 = True
-#    ####
-#    if found2:
-#        end_geom_line = ldx - 1
-#    if found1 and found2:
-#        for l in lines[init_geom_line:end_geom_line]:
-#            if len(l.split()) == 6:
-#                tmp = []
-#                x = l.split()[3]
-#                y = l.split()[4]
-#                z = l.split()[5]
-#                tmp.append(float(x))
-#                tmp.append(float(y))
-#                tmp.append(float(z))
-#                coord.append(tmp)
-#    return coord
-
 def G16_get_last_geom(lines):
     coord = []
     ldx, found1 = search_string("Coordinates (Angstroms)", lines, typ='last')
@@ -131,7 +99,13 @@ def G16_get_last_geom(lines):
                 tmp.append(float(z))
                 coord.append(tmp)
     return coord
-        
+
+def G16_get_last_energy(lines):
+    ldx, found = search_string("SCF Done", lines, typ='last')        
+    if found: ener = float(lines[ldx].split()[4])
+    else: ener = float(0.0)
+    return ener
+
 def G16_get_freqs(lines):
     freqs = []
     ldx, found = search_string("Frequencies --", lines, typ='all')
@@ -147,69 +121,6 @@ def G16_get_freqs(lines):
                 f3 = float(lines[l].split()[4])
                 freqs.append(f3)
     return freqs
-
-#def G16_get_VNM(lines: list, witheigen: str=False):
-#    vnms = []
-#    freqs = []
-#    red_masses = []
-#    force_cnt = [] 
-#    IR_int = [] 
-#    atomidxs = [] 
-#    atnums = [] 
-#    xs = []
-#    ys = []
-#    zs = [] 
-#
-#    ldx, found = search_string("Frequencies --", lines, typ='all')
-#    if found:
-#        index = 1
-#        for l in ldx:
-#            length = len(lines[l].split())
-#            f1 = float(lines[l].split()[2])
-#            freqs.append(f1*Constants.cm2har)
-#            r1 = float(lines[l+1].split()[3])
-#            red_masses.append(r1)
-#            fo1 = float(lines[l+2].split()[3])
-#            force_cnt.append(fo1)
-#            ir1 = float(lines[l+3].split()[3])
-#            IR_int.append(ir1)
-#
-#            #if witheigen:
-#                
-#
-#            new_vnm = VNM(index, f1, r1, fo1, ir1)
-#            vnms.append(new_vnm)
-#            index += 1
-#
-#            if length > 3:
-#                f2 = float(lines[l].split()[3])
-#                freqs.append(f2*Constants.cm2har)
-#                r2 = float(lines[l+1].split()[4])
-#                red_masses.append(r2)
-#                fo2 = float(lines[l+2].split()[4])
-#                force_cnt.append(fo2)
-#                ir2 = float(lines[l+3].split()[4])
-#                IR_int.append(ir2)
-#
-#                new_vnm = VNM(index, f2, r2, fo2, ir2)
-#                vnms.append(new_vnm)
-#                index += 1
-#
-#            if length > 4:
-#                f3 = float(lines[l].split()[4])
-#                freqs.append(f3*Constants.cm2har)
-#                r3 = float(lines[l+1].split()[5])
-#                red_masses.append(r3)
-#                fo3 = float(lines[l+2].split()[5])
-#                force_cnt.append(fo3)
-#                ir3 = float(lines[l+3].split()[5])
-#                IR_int.append(ir3)
-#
-#                new_vnm = VNM(index, f3, r3, fo3, ir3)
-#                vnms.append(new_vnm)
-#                index += 1
-#
-#    return vnms
 
 def G16_get_VNM(lines: list, witheigen: bool=False):
     vnms = []

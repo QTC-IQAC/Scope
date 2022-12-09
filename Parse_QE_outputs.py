@@ -50,7 +50,7 @@ def parse_final_geoopt_step(lines: str):
     last_step_last_line, dummy = search_string(last_step_last, lines, typ="last")
     return last_step_init_line, last_step_last_line 
 
-def check_job_requirements(lines: str, key_str: list=["JOB DONE", "Begin final coordinates", "End final coordinates"])
+def check_job_requirements(lines: str, key_str: list=["JOB DONE", "Begin final coordinates", "End final coordinates"]):
     item = []
     found = []
     for sx, string in enumerate(str):
@@ -92,43 +92,43 @@ def parse_final_geometry(lines: str):
                 labels.append(label)
     return labels, pos
 
-def parse_final_energy(lines: str)
+def parse_final_energy(lines: str):
     string="Final energy   ="
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
     return val 
 
-def parse_hubbard_energy(lines: str)
+def parse_hubbard_energy(lines: str):
     string = "Hubbard energy            ="
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
     return val 
 
-def parse_grimme_energy(lines: str)
+def parse_grimme_energy(lines: str):
     string = "DFT-D3 Dispersion         ="
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
     return val 
 
-def parse_total_energy(lines: str)
+def parse_total_energy(lines: str):
     string = "!    total energy"
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
     return val
 
-
-        new_periodic_xyz.add_energy(energy)
-
-
-
-
-        new_periodic_xyz = periodic_xyz(name, index, labels, pos, cellparam)
-        cellvec, celldim, cellparam = get_cell_vectors(lines)
-
-        #### Creates object of class "periodic_xyz"
-        new_periodic_xyz.add_cellvec(cellvec, celldim)
-        return new_periodic_xyz, warning 
-    else: 
-        new_periodic_xyz = periodic_xyz("Empty", 0, [], [], np.zeros((6)))
-        return new_periodic_xyz, warning
-       
+#
+#        new_periodic_xyz.add_energy(energy)
+#
+#
+#
+#
+#        new_periodic_xyz = periodic_xyz(name, index, labels, pos, cellparam)
+#        cellvec, celldim, cellparam = get_cell_vectors(lines)
+#
+#        #### Creates object of class "periodic_xyz"
+#        new_periodic_xyz.add_cellvec(cellvec, celldim)
+#        return new_periodic_xyz, warning 
+#    else: 
+#        new_periodic_xyz = periodic_xyz("Empty", 0, [], [], np.zeros((6)))
+#        return new_periodic_xyz, warning
+#       
