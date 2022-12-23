@@ -1,9 +1,6 @@
 import sys
 
-scopepath = '/home/g4vela/SCOPE/Database_SCO/Scripts/Scope'
-sys.path.append(scopepath)
-
-from Parse_General import search_string, read_lines_file 
+from Scope.Parse_General import search_string, read_lines_file 
 
 def get_cif_diffraction_data(cifpath: str):
     diff_temp = " "

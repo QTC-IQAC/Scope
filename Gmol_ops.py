@@ -1,4 +1,4 @@
-
+from cell2mol.tmcharge_common import *
 
 def gmol_update_geom(mol: object, new_coord: list):
     mol.old_coord = mol.coord

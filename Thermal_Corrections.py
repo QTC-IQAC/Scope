@@ -1,5 +1,5 @@
 import numpy as np
-import Constants
+from Scope.Constants import *
 
 ###########
 def get_vibS(freqs: list, temp: float, freq_units: str='au', outunits: str='au', typ: str='default', FR_cutoff: int=100, FR_alpha: int=4, nmol: int=1):

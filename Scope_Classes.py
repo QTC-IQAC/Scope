@@ -1,20 +1,16 @@
 import sys
 import copy
 from copy import deepcopy
+import os
 
-scopepath = '/home/g4vela/SCOPE/Database_SCO/Scripts/Scope'
-sys.path.append(scopepath)
+from Scope.Parse_Cif import get_cif_diffraction_data, get_cif_authors, get_cif_journal 
+from Scope.Parse_General import search_string, read_lines_file 
+from Scope.Geom_SCO_V1 import geom_sco_from_xyz, guess_spin_state
+#from Scope.Parse_G16_outputs.py import G16_time_to_sec
 
 from cell2mol.tmcharge_common import labels2formula
 from cell2mol.elementdata import ElementData
 elemdatabase = ElementData()
-
-from Parse_General import search_string, read_lines_file
-from Parse_Cif import *
-from unit_cell_tools import get_unit_cell_volume #, cellvec_2_cellparam 
-from Geom_SCO_V1 import *
-
-import Constants
 
 ######################
 ##### QC Objects #####
@@ -75,72 +71,72 @@ class periodic_xyz(object):
         self.cellvec = cellvec
         self.celldim = celldim
 
+################
+##### JOBS #####
+################
+class recipe(object):
+    def __init__(self, obj: object, path: str, keyword: str) -> None:
+        self.object = obj
+        self.path = path
+        self.keyword = keyword
+        self.jobs = []
+
+class job(object):
+    def __init__(self, input_path: str, output_path: str, subfile_path: str, software: str, code: str='') -> None:
+        self.input_path = input_path
+        self.output_path = output_path
+        self.subfile_path = subfile_path
+        self.software = software
+        self.code = code
+        self.requisites = []
+
+    def add_requisite(self, requisite) -> None:
+        self.requisites.append(requisite)
+
+    def add_submission_init(self, nprocs: str='Unk', queue: str='Unk', issubmitted: bool=False) -> None:
+        self.nprocs = nprocs
+        self.queue = queue
+        self.issubmitted = issubmitted
+
 ############################
 ##### SYSTEM & CRYSTAL #####
 ############################
 class sco_system(object):
-    def __init__(self, refcode: str, cell2mol_path: str) -> None:
+    def __init__(self, refcode: str, cell2mol_path: str, scope_path: str) -> None:
         self.type = "sco_system" 
-        self.version = "0.1" 
+        self.version = "0.2" 
         self.refcode = refcode
         self.refcode_wo_digits = ''.join([i for i in refcode if not i.isdigit()])
         self.cell2mol_path = cell2mol_path
+        self.scope_path = scope_path
         self.list_of_crystals = []
-
-    def add_iso_calcs_path(self, iso_calcs_path: str='Unk'):
-        self.iso_calcs_path = iso_calcs_path
-
-    ####
+        self.list_of_recipes = []
+    
+    ##########
     def set_reference_molecs(self, debug: int=0):
-
-        self.list_of_refmolecs = []
         self.hasLS = False
         self.hasHS = False
+
+        pool = []
+        ##### All these below could go somewhere else #####
+        ### Colects reference molecules from all crystals
         for crys in self.list_of_crystals:
-            done = False
-            while not done:
-                for idx, mol in enumerate(crys.cell.moleclist):
-                    if debug > 0: print(len(crys.cell.moleclist), "molecules in crystal", crys.name, "of", self.refcode)
-                    if mol.type == "Complex":
-    
-                        # Checks it is an Fe-N6
-                        keepit = False
-                        for met in mol.metalist:
-                            if hasattr(met, "coord_sphere"):
-                                formula = labels2formula(met.coord_sphere)
-                                if formula == "N6": keepit = True
-                            else: print("No coord_sphere variable in metal object")
-    
-                        # If so...
-                        if keepit:
-                            ox_state = mol.metalist[0].totcharge
-                            dist, angle = geom_sco_from_xyz(mol.labels, mol.coord)
-                            guess_spin = guess_spin_state(int(ox_state), dist[0])
-                            crys.add_spin_data(guess_spin)
-    
-                            mol.scope_FeNdist = dist
-                            mol.scope_FeNangle = angle
-                            mol.scope_guess_spin = guess_spin
-                            #mol.scope_cell2mol_path = crys.cell2mol_path+'/'+gmolname+'.sco'
-                            #mol.scope_job_story = job_story(mol.scope_gmol_path)
-    
-                            self.list_of_refmolecs.append(mol)
-                            if debug > 0: print(f"appended reference molecule")
-                            done = True
-
-        pool = self.list_of_refmolecs.copy()
-
+            if len(crys.list_of_molecules) == 0: crys.get_FeN6_molecules(debug=debug)
+            for mol in crys.list_of_molecules:
+                pool.append(mol) 
+            
+        ### Selects reference molecules
         if debug > 0: print(f"{len(pool)} tmcs in pool")
         if len(pool) > 0:
-            for idx, tmc in enumerate(pool):
-                if tmc.scope_guess_spin == 'LS' and not self.hasLS:
+            for idx, mol in enumerate(pool):
+                if mol.scope_guess_spin == 'LS' and not self.hasLS:
                     self.hasLS = True
                     self.LSid = idx
-                    self.LSref = deepcopy(tmc)
-                elif tmc.scope_guess_spin == 'HS' and not self.hasHS:
+                    self.LSref = deepcopy(mol)
+                elif mol.scope_guess_spin == 'HS' and not self.hasHS:
                     self.hasHS = True
                     self.HSid = idx
-                    self.HSref = deepcopy(tmc)
+                    self.HSref = deepcopy(mol)
             ### If it hasn't found any molecule that can be classified as HS and LS... then takes anything
             if not self.hasLS:
                 self.LSid = 0 
@@ -152,14 +148,69 @@ class sco_system(object):
                 self.HSref.scope_guess_spin == 'HS'
         else: print("Empty pool of reference molecules")
 
+    ##########
+    def set_reference_crystals(self, debug: int=0):
+        self.has_HS_ref_crys = False
+        self.has_LS_ref_crys = False
+
+        #### Selects reference crystals:
+        HS_ref_crys_temp = 1000
+        LS_ref_crys_temp = 1000
+        for idx, crys in enumerate(self.list_of_crystals):
+  
+            if crys.phase == '': crys.get_spin_and_phase_data(debug=debug)
+
+            ### This try/except block is to skip cases in which the diffraction temperature is not known
+            try: crys.diff_temp = float(crys.diff_temp)
+            except: continue
+
+            if crys.phase == "HS" and crys.diff_temp < HS_ref_crys_temp: 
+                self.HS_ref_crys = deepcopy(crys)
+                self.HS_ref_crys_id = idx
+                self.HS_ref_crys_temp = crys.diff_temp                
+                self.hasHScrys = True
+            elif crys.phase == "LS" and crys.diff_temp < LS_ref_crys_temp: 
+                self.LS_ref_crys = deepcopy(crys)
+                self.LS_ref_crys_id = idx
+                self.LS_ref_crys_temp = crys.diff_temp                
+                self.has_LS_ref_crys = True
+            elif crys.phase == "IS":
+                pass
+
+        if not self.has_HS_ref_crys:
+            self.HS_ref_crys = deepcopy(self.list_of_crystals[0])
+            self.HS_ref_crys_id = 0
+            self.HS_ref_crys.phase == 'HS'
+        if not self.has_LS_ref_crys:
+            self.LS_ref_crys = deepcopy(self.list_of_crystals[0])
+            self.LS_ref_crys_id = 0
+            self.LS_ref_crys.phase == 'LS'
+
+    ##########
+    def get_recipe(self, obj, keyword, debug: int=0):
+        ## obj is the actual object that will be computed. For instance, a molecule, or the cell.
+        recipe_exists = False
+        for idx, rec in enumerate(self.list_of_recipes):
+            if rec.keyword == keyword and rec.object == obj and os.path.isdir(rec.path):
+                recipe_exists = True
+                current_recipe = rec
+
+        ## If such entry doesn't exist. Then we create it
+        if not recipe_exists:
+            current_recipe = recipe(obj, self.scope_path+'/'+keyword, keyword)
+            self.list_of_recipes.append(current_recipe)
+            if not os.path.isdir(self.scope_path+'/'+keyword): os.makedirs(self.scope_path+'/'+keyword)
+        return recipe_exists, current_recipe
+
 class crystal(object):
     def __init__(self, refcode: str, name: str, cell2mol_path: str, cell: object) -> None:
         self.type = "crystal" 
-        self.version = "0.1" 
+        self.version = "0.2" 
         self.refcode = refcode
         self.name = name
         self.cell = cell 
         self.cell2mol_path = cell2mol_path
+        self.list_of_molecules = []
 
     def read_cif_data(self, cifpath: str) -> None:
         self.diff_temp = get_cif_diffraction_data(cifpath) 
@@ -169,38 +220,39 @@ class crystal(object):
         self.journal_volume = get_cif_journal(cifpath)[2]
         self.journal_page =   get_cif_journal(cifpath)[3]
 
-    def add_spin_data(self, guess_spin_state: str='Unk'):
-        self.guess_spin_state = guess_spin_state
-
     def add_iso_calcs_path(self, iso_calcs_path: str='Unk'):
         self.iso_calcs_path = iso_calcs_path
 
-################
-##### JOBS #####
-################
-class job_story(object):
-    def __init__(self, gmol_path: str) -> None:
-        self.gmol_path = gmol_path
-        self.job_list = []
+    def get_spin_and_phase_data(self, debug: int=0):
+        self.guess_spins = [] 
+        self.phase = ''
+        self.HSmolarfraction = 0.0
+        for idx, mol in enumerate(self.list_of_molecules):
+            self.guess_spins.append(mol.scope_guess_spin)
 
-    def add_iso_calcs_path(self, iso_calcs_path: str='Unk'):
-        self.iso_calcs_path = iso_calcs_path
+        if all(sp == "HS" for sp in self.guess_spins): 
+            self.phase = "HS"
+            self.HSmolarfraction = 1.0
+        elif all(sp == "LS" for sp in self.guess_spins): 
+            self.phase = "LS"
+            self.HSmolarfraction = 0.0
+        elif "HS" in self.guess_spins and "LS" in self.guess_spins: 
+            self.phase = "IS"
+            self.HSmolarfraction = float(self.guess_spins.count("HS")/len(self.guess_spins))
 
-class job_class(object):
-    def __init__(self, input_path: str, output_path: str, subfile_path: str, code: str, summary: str='') -> None:
-        self.input_path = input_path
-        self.output_path = output_path
-        self.subfile_path = subfile_path
-        self.code = code
-        self.summary = summary
+    def get_FeN6_molecules(self, debug: int=0):
+        for idx, mol in enumerate(self.cell.moleclist):
+            if mol.type == "Complex":
+                keepit = False
+                for met in mol.metalist:
+                    if hasattr(met, "coord_sphere"):
+                        formula = labels2formula(met.coord_sphere)
+                        if formula == "N6": keepit = True
+                    else: print("No coord_sphere variable in metal object")
+                if keepit:
+                    ox_state = mol.metalist[0].totcharge
+                    mol.scope_FeNdist, mol.scope_FeNangle = geom_sco_from_xyz(mol.labels, mol.coord)
+                    mol.scope_guess_spin = guess_spin_state(int(ox_state), mol.scope_FeNdist[0])
+                    self.list_of_molecules.append(mol)
+       
 
-    def add_submission_init(self, nprocs: str='Unk', queue: str='Unk', issubmitted: bool=False) -> None:
-        self.nprocs = nprocs
-        self.queue = queue
-        self.issubmitted = issubmitted
-
-    def add_submission_end(self, isfinished: bool=False, isgood: bool=False, isregistered: bool=False, elapsed_time: float=float(0)) -> None:
-        self.isfinished = isfinished 
-        self.isgood = isgood
-        self.isregistered = isregistered
-        self.elapsed_time = elapsed_time 

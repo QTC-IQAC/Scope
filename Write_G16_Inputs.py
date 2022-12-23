@@ -57,6 +57,7 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
         if functional.lower() == "pbe": commandline.append(" UPBEPBE")
         elif functional.lower() == "b3lyp": commandline.append(" UB3LYP")
         elif functional.lower() == "b3lyp*": commandline.append(" UB3LYP IOp(3/76=1000002000) IOp(3/77=0720008000) IOp(3/78=0810010000)")
+        elif functional.lower() == "b3lyp**": commandline.append(" UB3LYP IOp(3/76=1000001500) IOp(3/77=0720008500) IOp(3/78=0810010000)")
 
         ## Basis
         if basis.lower() == "def2sv": commandline.append(" def2SV")
@@ -86,11 +87,11 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
         print("", file=inp) 
 
 ###################################################
-def gen_G16_subfile(path, name, suffix, extension="", cores=1, queue="iqtc09"):
+def gen_G16_subfile(path, name, suffix, extension="", procs=1, queue="iqtc09"):
     with open(path+name+suffix+extension, 'w+') as sub:
         print(f"#!/bin/bash", file=sub)
         print(f"#$ -N {name}{suffix}", file=sub) 
-        print(f"#$ -pe smp {cores}", file=sub)
+        print(f"#$ -pe smp {procs}", file=sub)
         print(f"#$ -cwd", file=sub)
         print(f"#$ -o /home/g4vela/x-stds/{name}{suffix}.stdout", file=sub)
         print(f"#$ -e /home/g4vela/x-stds/{name}{suffix}.stderr", file=sub)

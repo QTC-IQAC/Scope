@@ -1,10 +1,26 @@
 import pickle
 import numpy as np
+import os
+import shutil
 
-def save_binary(variable, pathfile):
-    file = open(pathfile,'wb')
-    pickle.dump(variable,file)
-    file.close()
+def save_binary(variable, pathfile, backup: bool=False):
+    if not backup:
+        file = open(pathfile,'wb')
+        pickle.dump(variable,file)
+        file.close()
+    if backup:
+        print("Backup not implemented, file not saved")
+#        if os.path.isfile(pathfile):
+#            saved = False
+#            idx = 1
+#            while not saved and idx < 11:
+#                new_pathfile = pathfile+"_backup"+str(idx)
+#                if not os.path.isfile(new_pathfile): 
+#                    shutil.copy(pathfile, new_pathfile) 
+#                    file = open(pathfile,'wb')
+#                    pickle.dump(variable,file)
+#                    file.close()
+#                    saved = True 
 
 def load_binary(pathfile):
     with open(pathfile, "rb") as pickle_file:

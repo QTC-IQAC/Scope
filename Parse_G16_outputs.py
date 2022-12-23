@@ -2,16 +2,9 @@ import os
 import numpy as np
 import sys
 
-scopepath = '/home/g4vela/SCOPE/Database_SCO/Scripts/Scope'
-sys.path.append(scopepath)
-
-import Parse_General
-from Parse_General import search_string, read_lines_file
-
-import Scope_Classes
-from Scope_Classes import orbital_set, orbital, VNM 
-
-import Constants
+from Scope.Parse_General import search_string, read_lines_file
+from Scope.Scope_Classes import orbital_set, orbital, VNM 
+from Scope import Constants
 
 def search_G16_last_geom_lines(filepath: str):
     warning = False
