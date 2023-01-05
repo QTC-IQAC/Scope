@@ -1,5 +1,5 @@
 import numpy as np
-from Scope.Constants import *
+from Scope import Constants
 
 ###########
 def get_vibS(freqs: list, temp: float, freq_units: str='au', outunits: str='au', typ: str='default', FR_cutoff: int=100, FR_alpha: int=4, nmol: int=1):
@@ -93,7 +93,7 @@ def get_vibH(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     if outunits.lower() == 'kj': total = total*Constants.har2kJmol    # kJ/mol
     return total
 
-def get_dG(templist, dHelec, freqs_HS, freqs_LS, freq_units='cm', outunits='kj'):
+def get_dG(templist, dHelec, freqs_HS, freqs_LS, freq_units='cm', outunits='kj', typ='default'):
 
     assert len(freqs_HS) == len(freqs_LS)
     ## HS ##
@@ -101,14 +101,14 @@ def get_dG(templist, dHelec, freqs_HS, freqs_LS, freq_units='cm', outunits='kj')
     Svib_HS = []
     for t in templist:
         Hvib_HS.append(get_vibH(freqs_HS, t, freq_units=freq_units, outunits=outunits))
-        Svib_HS.append(get_vibS(freqs_HS, t, freq_units=freq_units, outunits=outunits, typ='fr'))
+        Svib_HS.append(get_vibS(freqs_HS, t, freq_units=freq_units, outunits=outunits, typ=typ))
 
     ## LS ##
     Hvib_LS = []
     Svib_LS = []
     for t in templist:
         Hvib_LS.append(get_vibH(freqs_LS, t, freq_units=freq_units, outunits=outunits))
-        Svib_LS.append(get_vibS(freqs_LS, t, freq_units=freq_units, outunits=outunits, typ='fr'))
+        Svib_LS.append(get_vibS(freqs_LS, t, freq_units=freq_units, outunits=outunits, typ=typ))
 
     dS = []
     for z in zip(Svib_HS,Svib_LS):
@@ -124,5 +124,7 @@ def get_dG(templist, dHelec, freqs_HS, freqs_LS, freq_units='cm', outunits='kj')
 
 def find_t12(templist: list, dGlist: list):
     assert len(templist) == len(dGlist)
-    for idx, g in enumerate(dGlist):
-        if g < 0.0: return templist[idx]
+    if dGlist[0] < 0.0: return None 
+    else:
+        for idx, g in enumerate(dGlist):
+            if g < 0.0: return templist[idx]

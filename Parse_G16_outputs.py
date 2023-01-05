@@ -3,7 +3,7 @@ import numpy as np
 import sys
 
 from Scope.Parse_General import search_string, read_lines_file
-from Scope.Scope_Classes import orbital_set, orbital, VNM 
+from Scope.Classes_QC import orbital_set, orbital, VNM 
 from Scope import Constants
 
 def search_G16_last_geom_lines(filepath: str):

@@ -6,3 +6,4 @@ def gmol_update_geom(mol: object, new_coord: list):
     for idx, a in enumerate(mol.atoms):
         a.old_coord = a.coord
         a.coord = new_coord[idx]
+

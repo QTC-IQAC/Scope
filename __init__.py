@@ -14,8 +14,9 @@ from .Gmol_ops import *
 from .Parse_G16_outputs import * 
 from .Parse_QE_outputs import *
 from .Read_Write import *
-from .Scope_Classes import *
-from .Scope_Logistics import *
+from .Classes_QC import *
+from .Classes_Job import *
+from .Classes_SCO import *
 from .Thermal_Corrections import *
 from .unit_cell_tools import *
 from .VNM_tools import *

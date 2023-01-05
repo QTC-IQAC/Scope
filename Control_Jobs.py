@@ -4,9 +4,6 @@ import os
 import subprocess
 import numpy as np
 
-from Scope.Scope_Classes import job, recipe
-from Scope.Other import where_in_array
-from Scope.Parse_G16_outputs import G16_time_to_sec
 from Scope.Parse_General import read_lines_file, search_string 
 
 def set_queues(queues: str='all'):
@@ -70,35 +67,6 @@ def check_queue_availability(queues: str='all'):
         except: print(q, "does not exist")
     return list_q_worked, list_empty_cpus, list_total_empty
 
-### DOESNT WORK BECAUSE "NAME" part of qstat is too narrow
-#def check_running_job(name: str, queues: str='all', debug: int=0):
-#    list_q = set_queues(queues)
-#    if debug >= 1: print(list_q)
-#    for q in list_q:
-#        raw = subprocess.check_output(['bash','-c', "qstat -q "+q+".q" ]) 
-#        dec = raw.decode("utf-8") 
-#        if debug >= 1: print("for q=", q, "dec is:")
-#        if debug >= 1: print(dec)
-#        text = dec.rstrip().split("\n")[2::] 
-#
-#        list_jobID = []
-#        list_jobnames = []
-#        list_user = []
-#        list_status = []
-#        list_nodes = []
-#        list_procs = []
-#        for job in text:
-#            blocks = job.split()
-#            queue_check = blocks[7].split('@')[0][0:6]
-#            list_jobID.append(int(blocks[0]))
-#            list_jobnames.append(blocks[2])
-#            list_user.append(blocks[3])
-#            list_status.append(blocks[4])
-#            list_nodes.append(blocks[7].split("@")[1])
-#            list_procs.append(int(blocks[8]))
-#        if name in list_jobnames: isrunning = True
-#        else: isrunning = False
-#    return isrunning
 
 def check_submitted_job_xml(name: str, queues: str='all', debug: int=0):
     list_q = set_queues(queues)
@@ -151,7 +119,7 @@ def check_fairsharing(user):
     if usage < limit: return True
     else: return False
 
-def get_computer_time(max_jobs: int=90, max_procs: int=300, queues: str='All', debug: int=0):
+def get_computer_time(resources: str="light", max_jobs: int=90, max_procs: int=300, queues: str='All', debug: int=0):
     sent_procs, sent_jobs = check_usage(queues)
     if sent_jobs <= max_jobs and sent_procs <= max_procs: cancontinue = True
     else: cancontinue = False
@@ -159,74 +127,15 @@ def get_computer_time(max_jobs: int=90, max_procs: int=300, queues: str='All', d
     if cancontinue:
         #### Finds best number of processors and queue
         askqueue = set_best_queue('8,9,10')
-        if askqueue == 'iqtc08': askprocs = 7
-        else: askprocs = 8
+        if resources.lower() == "light": mult = 1 
+        elif resources.lower() == "medium": mult = 2 
+        elif resources.lower() == "heavy": mult = 4 
+        else: mult = 1 
+
+        if askqueue == 'iqtc08': askprocs = 7*mult
+        else: askprocs = 8*mult
     else:
         askqueue = ''
         askprocs = 0
     return cancontinue, askqueue, askprocs
 
-def check_recipe_requisites(recipe: object, code: str, requisites: list=[], constrains: list=[]) -> bool:
-
-    requisites_fulfilled = np.zeros((len(requisites)))  ## To be able to continue, all must be 1
-    constrains_fulfilled = np.zeros((len(constrains)))  ## To be able to continue, all must be 0
-    for idx, job in enumerate(recipe.jobs):
-        if hasattr(job,"isfinished") and hasattr(job,"isregistered"):
-            if job.code in requisites and job.isfinished and job.isgood: requisites_fulfilled[where_in_array(requisites,job.code)[0]] = 1
-            elif job.code in constrains and job.isfinished and job.isgood: constrains_fulfilled[where_in_array(constrains,job.code)[0]] = 1
-            elif job.code == code and 'self' in constrains and job.isfinished and job.isgood: constrains_fulfilled[where_in_array(constrains,'self')[0]] = 1
-
-    if all(a == 1 for a in requisites_fulfilled) or len(requisites) == 0: 
-        can_continue = True 
-        if all(b == 0 for b in constrains_fulfilled) or len(constrains) == 0: can_continue = True
-        else: can_continue = False
-    else: can_continue = False
-
-    return can_continue
-
-def find_same_job(recipe: object, code: str):
-    found_job = False
-    for idx, jb in enumerate(recipe.jobs):
-        if jb.code == code and not found_job:
-            this_job = jb
-            found_job = True
-    if found_job: return found_job, this_job
-    else: return found_job, None
-
-
-def register_job(this_job, lines: str, software='G16', print_output: bool=True):
-    isfinished = False
-    isgood = False
-    if os.path.isfile(this_job.output_path): isfinished = True
-    if isfinished:
-
-        ###################
-        ### Gaussian 16 ###
-        ###################
-        if software == 'G16':
-            line_num, found_good = search_string("Normal termination", lines, typ='all')
-            line_num, found_time = search_string("Elapsed time:", lines, typ='last')
-            if found_time:
-                elapsed_time_list = lines[line_num].split()[2:]
-                elapsed_time = G16_time_to_sec(elapsed_time_list)
-            else: elapsed_time = float(0)
-        else:
-            found_good = False
-            print(f"Registry of this software is not implemented. See register_jobs in Scope Classes")
-        ###################
-
-        if found_good: isgood = True
-        else: isgood = False
-
-    this_job.isregistered = True
-    this_job.isfinished = isfinished
-    this_job.isgood = isgood
-    this_job.elapsed_time = elapsed_time
-
-    if print_output:
-        print(f"    REGISTERED for Job: {this_job.code}. LOG:{this_job.output_path}")
-        if this_job.issubmitted: print(f"     -> Submitted")
-        if this_job.isfinished:  print(f"     -> Finished")
-        if this_job.isgood:      print(f"     -> Good")
-        else:               print(f"     -> BAD !! ")
-        if this_job.isfinished:  print(f"     -> Elapsed Time: {this_job.elapsed_time}")

@@ -4,7 +4,7 @@ import sys
 
 from Scope.Parse_General import search_string, read_lines_file
 from Scope.unit_cell_tools import cellvec_2_cellparam, get_unit_cell_volume
-from Scope.Scope_Classes import periodic_xyz
+from Scope.Classes_QC import periodic_xyz
 
 bohr2angs = 0.529177
 
