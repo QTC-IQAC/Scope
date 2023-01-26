@@ -10,13 +10,13 @@ def set_queues(queues: str='all'):
     list_q = []
     if queues == 'all':
         for i in range(1,11): 
-            if i == 3: pass
+            if i == 3 or i == 1: pass
             elif i < 10: list_q.append(str("iqtc0"+str(i)))
             else: list_q.append(str("iqtc"+str(i)))
     else:
         digested = queues.rstrip(" ").lstrip(" ").split(',')
         for i in range(1,11): 
-            if i == 3: pass
+            if i == 3 or i == 1: pass
             elif i != 3 and str(i) in digested: 
                 if i < 10: list_q.append(str("iqtc0"+str(i)))
                 else: list_q.append(str("iqtc"+str(i)))
@@ -69,6 +69,7 @@ def check_queue_availability(queues: str='all'):
 
 
 def check_submitted_job_xml(name: str, queues: str='all', debug: int=0):
+    issubmitted = False
     list_q = set_queues(queues)
     if debug >= 1: print("QUEUES:", list_q)
     for q in list_q:

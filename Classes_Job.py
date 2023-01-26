@@ -94,7 +94,7 @@ class job(object):
             if self.isfinished:  print(f"     -> Finished")
             if self.isgood:      print(f"     -> Good")
             else:                    print(f"     -> BAD !! ")
-            if self.isfinished:  print(f"     -> Elapsed Time: {self.elapsed_time}")
+            if self.isfinished and hasattr(self, "elapsed_time"): print(f"     -> Elapsed Time: {self.elapsed_time}")
 
 
 ################################

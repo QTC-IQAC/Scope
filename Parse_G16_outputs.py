@@ -78,8 +78,8 @@ def G16_get_last_geom(lines):
         init_geom_line = ldx + 3
         ldx, found2 = search_string("--------------------------------------",lines,typ='first',lowlim=init_geom_line)
         ldx += 1
-    if found2:
-        end_geom_line = ldx - 1
+        if found2:
+            end_geom_line = ldx - 1
     if found1 and found2:
         for l in lines[init_geom_line:end_geom_line]:
             if len(l.split()) == 6:
