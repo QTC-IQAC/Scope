@@ -172,6 +172,31 @@ def check_submitted_job(name: str, cluster: str=set_cluster(), debug: int=0):
 
     return issubmitted
 
+def get_queue_and_procs(resources: str="light", cluster: str=set_cluster(), debug: int=0):
+        #### Finds best number of processors and queue
+    if "portal" in cluster:
+        if resources.lower() == "light": mult = 1
+        elif resources.lower() == "medium": mult = 2
+        elif resources.lower() == "heavy": mult = 4
+        else: mult = 1
+
+        askqueue = set_best_queue('8,9,10')
+        if askqueue == 'iqtc08': askprocs = 7*mult
+        else: askprocs = 8*mult
+
+    elif "login" in cluster or "csuc" in cluster:
+
+        askqueue = "std"
+        if resources.lower() == "light": mult = 1
+        elif resources.lower() == "medium": mult = 2
+        elif resources.lower() == "heavy": mult = 4
+
+        askprocs = 8*mult
+    else:
+        askqueue = ''
+        askprocs = 0
+
+    return askqueue, askprocs
 #####################################
 ##### Portal Specific Functions #####
 #####################################
@@ -200,24 +225,4 @@ def check_fairsharing(user: str=set_user()):
             usage = l.split()[2].split("/")[0]
     if usage < limit: return True
     else: return False
-
-def get_computer_time(resources: str="light", max_jobs: int=90, max_procs: int=300, queues: str='All', debug: int=0):
-    sent_procs, sent_jobs = check_usage(queues)
-    if sent_jobs <= max_jobs and sent_procs <= max_procs: cancontinue = True
-    else: cancontinue = False
-
-    if cancontinue:
-        #### Finds best number of processors and queue
-        askqueue = set_best_queue('8,9,10')
-        if resources.lower() == "light": mult = 1 
-        elif resources.lower() == "medium": mult = 2 
-        elif resources.lower() == "heavy": mult = 4 
-        else: mult = 1 
-
-        if askqueue == 'iqtc08': askprocs = 7*mult
-        else: askprocs = 8*mult
-    else:
-        askqueue = ''
-        askprocs = 0
-    return cancontinue, askqueue, askprocs
 
