@@ -130,6 +130,6 @@ def find_job(recipe: object, code: str, run_number: int):
 def get_last_run_number(recipe: object, code: str) -> int:
     run_number = 0
     for idx, jb in enumerate(recipe.jobs):
-        if jb.code == code and hasattr(jb,"isregistered"):
+        if jb.code == code and hasattr(jb,"isfinished") and hasattr(jb,"run_number"):
             if jb.isfinished and jb.run_number > run_number: run_number = jb.run_number
     return int(run_number)

@@ -53,8 +53,11 @@ def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str
     if system_type == "cell": natoms = len(gmol.labels) 
     if system_type == "molecule": natoms = gmol.natoms
 
-    if debug > 0 : print(system_type)
-    if debug > 0 : print("Creating input in path:", path+name+suffix+extension)
+    if debug >= 1 : print(system_type)
+    if debug >= 1 : print("Creating input in path:", path+name+suffix+extension)
+
+    # Corrects PP_Library path if necessary
+    if PP_Library[-1] != '/': PP_Library += '/'
 
     ######################################
     ### NECESSARY TO DETERMINE SPECIES ###
@@ -230,9 +233,9 @@ def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str
         print("K_POINTS gamma", file=inp)
 
 ###################################################
-def gen_QE_subfile(path: str, name: str, suffix: str, extension: str="", procs: int=1, queue: str="iqtc09", exe: str="pw.x", version: str="6.4.1", cluster: str=set_cluster()):
+def gen_QE_subfile(path: str, name: str, suffix: str, sub_extension: str="sub", inp_extension: str="input", procs: int=1, queue: str="iqtc09", exe: str="pw.x", version: str="6.4.1", cluster: str=set_cluster()):
     if 'portal' in cluster:
-        with open(path+name+suffix+extension, 'w+') as sub:
+        with open(path+name+suffix+sub_extension, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
             print(f"#$ -N {name}{suffix}", file=sub) 
             print(f"#$ -pe smp {procs}", file=sub)
@@ -252,14 +255,15 @@ def gen_QE_subfile(path: str, name: str, suffix: str, extension: str="", procs: 
             print(f"set OMP_NUM_THREADS=1", file=sub)
             print(f"ulimit -l unlimited", file=sub)
             print(f"", file=sub)
-            print(f"mpirun -np {procs} {exe} < {name}{suffix}.inp > {name}{suffix}.out", file=sub)
-    os.chmod(path+name+suffix+extension, 0o777)
+            print(f"mpirun -np {procs} {exe} < {name}{suffix}{inp_extension} > {name}{suffix}.out", file=sub)
+    os.chmod(path+name+suffix+sub_extension, 0o777)
         
 ###################################################
 
-def get_spin_config(cell: object, metal_spins: list=[], debug: int=0):
+def get_spin_config(cell: object, metal_spins, debug: int=0):
 
     assert hasattr(cell,"cellparam"), f"GET_SPIN_CONFIG got object without cell parameters. Assuming it is not a cell"
+    if debug >= 1: print("Received metal_spins", metal_spins)
 
     #########################
     ### IDENTIFIES METALS ###
@@ -272,10 +276,19 @@ def get_spin_config(cell: object, metal_spins: list=[], debug: int=0):
     if debug >= 1 : print(len(metal_indices), "metals with indices:")
     if debug >= 1 : print(metal_indices)
 
-#    assert len(metal_indices) == len(metal_spins), f"GET_SPIN_CONFIG: len(metal_indices) != len(metal_spins), {len(metal_indices)} != {len(metal_spins)}"
-    is_abbr = False
-    if len(metal_indices) != len(metal_spins) and len(metal_spins) == 1:   # user abbreviated
+    ## if the user provides an abbreviated list of spin states. For instance, metal_spins="HS"
+    if type(metal_spins) == list:
+        if len(metal_spins) == 1:   # user abbreviated
+            tmp = metal_spins[0]
+            is_abbr = True 
+    elif type(metal_spins) == str: 
         is_abbr = True 
+        tmp = metal_spins
+
+    if is_abbr:
+        metal_spins = []
+        for i in range(len(metal_indices)):
+            metal_spins.append(tmp)
 
     spin_config = []
     pointer = 0
@@ -289,7 +302,7 @@ def get_spin_config(cell: object, metal_spins: list=[], debug: int=0):
             else: print("GET_SPIN_CONFIG: unknown desired_spin or metal label", l, desired_spin)
  
             tupl = tuple([l, magnetization])
-            if not is_abbr: pointer += 1
+            pointer += 1
         else:
             tupl = tuple([l, int(0)])
         spin_config.append(tupl)

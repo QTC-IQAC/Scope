@@ -16,7 +16,7 @@ def set_cluster():
 def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(), user: str=set_user(), queue: str='', debug: int=0):
     if 'portal' in cluster:
         if commandtype == "qstat": raw = subprocess.check_output(['bash','-c', "qstat"])
-        elif commandtype == "queue_stat": raw = subprocess.check_output(['bash','-c', 'qstat -f | grep'+queue])
+        elif commandtype == "queue_stat": raw = subprocess.check_output(['bash','-c', 'qstat -f | grep '+queue])
         elif commandtype == "check_job":  raw = subprocess.check_output(['bash','-c', "qstat -xml"]) #-q "+queue+".q" ]) 
         elif commandtype == "submit":     subprocess.run(['bash','-c', 'qsub '+filename]) 
     elif 'login' in cluster or 'csuc' in cluster:
@@ -25,7 +25,7 @@ def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(
             try:    raw = subprocess.check_output(['bash','-c', tmp])
             except: raw = ""
         elif commandtype == "queue_stat":
-            try:    raw = subprocess.check_output(['bash','-c', 'sinfo | grep '+queue+' grep idle'])
+            try:    raw = subprocess.check_output(['bash','-c', 'sinfo | grep '+queue+' | grep idle'])
             except: raw = ""
         elif commandtype == "check_job":
             tmp = 'squeue -o "%.60j %.12u"'
@@ -36,7 +36,7 @@ def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(
     if commandtype == "qstat" or commandtype == "queue_stat" or commandtype == "check_job": return raw
 
 
-def set_queues(cluster: str=set_cluster(), queues: str='all'):
+def set_queues(cluster: str=set_cluster(), queues: str='all', debug: int=0):
     list_q = []
     if 'login' in cluster or 'csuc' in cluster:
         list_q.append("std")
@@ -79,7 +79,7 @@ def check_usage(cluster: str=set_cluster(), user: str=set_user(), queues: str='a
     elif 'portal' in cluster:
         dec = raw.decode("utf-8")
         text = dec.rstrip().split("\n")
-        list_q = set_queues(cluster, queues)
+        list_q = set_queues(cluster=cluster, queues=queues, debug=debug)
         for q in list_q:
             try:
                 for line in text:
@@ -91,8 +91,8 @@ def check_usage(cluster: str=set_cluster(), user: str=set_user(), queues: str='a
                 print("Exception checking usage:", exc)
     return cpus, jobs
 
-def check_queue_availability(cluster: str=set_cluster(), queues: str='all', debug: int=0):
-    list_q = set_queues(cluster, queues)
+def check_queue_availability(queues: str='all', cluster: str=set_cluster(), debug: int=0):
+    list_q = set_queues(cluster=cluster, queues=queues, debug=debug)
     list_q_worked = []
     list_empty_cpus = []
     list_total_empty = []
@@ -130,7 +130,7 @@ def check_queue_availability(cluster: str=set_cluster(), queues: str='all', debu
 
 #def check_submitted_job_xml(name: str, queues: str='all', debug: int=0):
 #    issubmitted = False
-#    list_q = set_queues(queues)
+#    list_q = set_queues(cluster,queues,debug=debug)
 #    if debug >= 1: print("QUEUES:", list_q)
 #    for q in list_q:
 #        raw = subprocess.check_output(['bash','-c', "qstat -xml -q "+q+".q" ])
@@ -180,7 +180,7 @@ def get_queue_and_procs(resources: str="light", cluster: str=set_cluster(), debu
         elif resources.lower() == "heavy": mult = 4
         else: mult = 1
 
-        askqueue = set_best_queue('8,9,10')
+        askqueue = set_best_queue(queues='8,9,10', debug=debug)
         if askqueue == 'iqtc08': askprocs = 7*mult
         else: askprocs = 8*mult
 
@@ -200,8 +200,8 @@ def get_queue_and_procs(resources: str="light", cluster: str=set_cluster(), debu
 #####################################
 ##### Portal Specific Functions #####
 #####################################
-def set_best_queue(queues):
-    list_q, list_empty_cpus, list_total_empty = check_queue_availability(queues)
+def set_best_queue(queues: str='all', debug: int=0):
+    list_q, list_empty_cpus, list_total_empty = check_queue_availability(queues=queues, debug=debug)
 
     maxempty = np.argmax(list_total_empty)
     found = False
