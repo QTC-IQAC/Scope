@@ -27,6 +27,11 @@ def load_binary(pathfile):
         binary = pickle.load(pickle_file)
     return binary
 
+def save_list_as_text(inplist: list, pathfile: str=os.getcwd()+"outfile.txt"):
+    with open(pathfile, "w") as fil:
+        for l in inplist:
+            print(l, file=fil)
+
 def writexyz(fdir, fname, labels, pos, charge: int=0, spin: int=1):
     if fdir[-1] != "/":
         fdir = fdir + "/"

@@ -1,99 +1,180 @@
 #!/usr/bin/env python3
 import sys
 import os
+import pwd
 import subprocess
 import numpy as np
 
 from Scope.Parse_General import read_lines_file, search_string 
 
-def set_queues(queues: str='all'):
+def set_user():
+    return pwd.getpwuid( os.getuid() ).pw_name
+
+def set_cluster():
+    return os.uname()[1]
+
+def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(), user: str=set_user(), queue: str='', debug: int=0):
+    if 'portal' in cluster:
+        if commandtype == "qstat": raw = subprocess.check_output(['bash','-c', "qstat"])
+        elif commandtype == "queue_stat": raw = subprocess.check_output(['bash','-c', 'qstat -f | grep'+queue])
+        elif commandtype == "check_job":  raw = subprocess.check_output(['bash','-c', "qstat -xml"]) #-q "+queue+".q" ]) 
+        elif commandtype == "submit":     subprocess.run(['bash','-c', 'qsub '+filename]) 
+    elif 'login' in cluster or 'csuc' in cluster:
+        if commandtype == "qstat":
+            tmp = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+str(user)
+            try:    raw = subprocess.check_output(['bash','-c', tmp])
+            except: raw = ""
+        elif commandtype == "queue_stat":
+            try:    raw = subprocess.check_output(['bash','-c', 'sinfo | grep '+queue+' grep idle'])
+            except: raw = ""
+        elif commandtype == "check_job":
+            tmp = 'squeue -o "%.60j %.12u"'
+            try:    raw = subprocess.check_output(['bash','-c', tmp ]) 
+            except: raw = ""
+        elif commandtype == "submit":     subprocess.run(['bash','-c', 'sbatch '+filename]) 
+    else: print("Error in send_command function. Cluster not recognizsed")
+    if commandtype == "qstat" or commandtype == "queue_stat" or commandtype == "check_job": return raw
+
+
+def set_queues(cluster: str=set_cluster(), queues: str='all'):
     list_q = []
-    if queues == 'all':
-        for i in range(1,11): 
-            if i == 3 or i == 1: pass
-            elif i < 10: list_q.append(str("iqtc0"+str(i)))
-            else: list_q.append(str("iqtc"+str(i)))
-    else:
-        digested = queues.rstrip(" ").lstrip(" ").split(',')
-        for i in range(1,11): 
-            if i == 3 or i == 1: pass
-            elif i != 3 and str(i) in digested: 
-                if i < 10: list_q.append(str("iqtc0"+str(i)))
-                else: list_q.append(str("iqtc"+str(i)))
+    if 'login' in cluster or 'csuc' in cluster:
+        list_q.append("std")
+    elif 'portal' in cluster:
+        if queues == 'all':
+                for i in range(1,11): 
+                    if i == 3 or i == 1: pass
+                    elif i < 10: list_q.append(str("iqtc0"+str(i)))
+                    else: list_q.append(str("iqtc"+str(i)))
+        else:
+            digested = queues.rstrip(" ").lstrip(" ").split(',')
+            for i in range(1,11): 
+                if i == 3 or i == 1: pass
+                elif i != 3 and str(i) in digested: 
+                    if i < 10: list_q.append(str("iqtc0"+str(i)))
+                    else: list_q.append(str("iqtc"+str(i)))
     return list_q     
 
-def check_usage(queues: str='all'):
-    list_q = set_queues(queues)
+def check_usage(cluster: str=set_cluster(), user: str=set_user(), queues: str='all', debug: int=0):
     cpus = 0
     jobs = 0
-    raw = subprocess.check_output(['bash','-c', "qstat"])
-    dec = raw.decode("utf-8")
-    text = dec.rstrip().split("\n")
-    for q in list_q:
-        try:
+    #raw = subprocess.check_output(['bash','-c', "qstat"])
+    raw = send_command("qstat", cluster=cluster,user=user,debug=debug)
+
+    if 'login' in cluster or 'csuc' in cluster:
+        try: 
+            #print("Raw:", raw)
+            #text = raw.rstrip().split("\n")
+            dec = raw.decode("utf-8")
+            text = dec.rstrip().split("\n")
+            #print("text:", text)
             for line in text:
-                if q in line:                 
-                    blocks = line.split()
-                    cpus += int(blocks[8])
-                    jobs += 1 
-        except Exception as exc:
-            print("Exception checking usage:", exc)
+                blocks = line.split()
+                cpus += int(blocks[5])
+                jobs += 1 
+        except: 
+            cpus = int(0)
+            jobs = int(0)
+
+    elif 'portal' in cluster:
+        dec = raw.decode("utf-8")
+        text = dec.rstrip().split("\n")
+        list_q = set_queues(cluster, queues)
+        for q in list_q:
+            try:
+                for line in text:
+                    if q in line:                 
+                        blocks = line.split()
+                        cpus += int(blocks[8])
+                        jobs += 1 
+            except Exception as exc:
+                print("Exception checking usage:", exc)
     return cpus, jobs
 
-def check_queue_availability(queues: str='all'):
-    list_q = set_queues(queues)
+def check_queue_availability(cluster: str=set_cluster(), queues: str='all', debug: int=0):
+    list_q = set_queues(cluster, queues)
     list_q_worked = []
     list_empty_cpus = []
     list_total_empty = []
     for q in list_q:
         try:
-            raw = subprocess.check_output(['bash','-c', "qstat -f | grep "+q ]) 
+            raw = send_command("queue_stat",cluster,queue=q, debug=debug) 
             dec = raw.decode("utf-8") 
-            text = dec.rstrip().split("\n")
             empty_cpus = []
-            for node in text:
-                blocks = node.split()
-                queue = blocks[0].split('@')[0]
-                queue_check = blocks[0].split('@')[0][0:6]
-                node = blocks[0].split('@')[1]
-                if queue_check == q:
-                    reserved, used, total = blocks[2].split('/')
-                    if queue == q+".q": empty_cpus.append(int(total)-int(reserved)-int(used)) 
-                else: print("queue_check not passed for", queue_check, q)
-      
-            list_q_worked.append(q)
-            list_empty_cpus.append(empty_cpus)
-            list_total_empty.append(np.sum(empty_cpus))
+
+            #if 'login' in cluster or 'csuc' in cluster:
+            #    text = dec.rstrip().split("\n")
+            #    if len(text) > 0: list_total_empty = int(1) 
+
+            if 'portal' in cluster:
+                text = dec.rstrip().split("\n")
+                for node in text:
+                    blocks = node.split()
+                    queue = blocks[0].split('@')[0]
+                    queue_check = blocks[0].split('@')[0][0:6]
+                    node = blocks[0].split('@')[1]
+                    if queue_check == q:
+                        reserved, used, total = blocks[2].split('/')
+                        if queue == q+".q": empty_cpus.append(int(total)-int(reserved)-int(used)) 
+                    else: print("queue_check not passed for", queue_check, q)
+                list_q_worked.append(q)
+                list_empty_cpus.append(empty_cpus)
+                list_total_empty.append(np.sum(empty_cpus))
+
         except: print(q, "does not exist")
     return list_q_worked, list_empty_cpus, list_total_empty
 
+##########################################
+### Keeping the old version, pre CSUC: ###
+##########################################
 
-def check_submitted_job_xml(name: str, queues: str='all', debug: int=0):
+#def check_submitted_job_xml(name: str, queues: str='all', debug: int=0):
+#    issubmitted = False
+#    list_q = set_queues(queues)
+#    if debug >= 1: print("QUEUES:", list_q)
+#    for q in list_q:
+#        raw = subprocess.check_output(['bash','-c', "qstat -xml -q "+q+".q" ])
+#        dec = raw.decode("utf-8")
+#        flat = dec.replace("\n", "")
+#        code = str("<JB_name>"+name+"</JB_name>")
+#        if debug >= 1: print("code:", code)
+#        if debug >= 1: print("flat:", flat)
+#        if code in flat:
+#            issubmitted = True
+#            return issubmitted
+#        else: issubmitted = False
+#    ## Checks Pending Jobs in all queues
+#    if not issubmitted:
+#       raw = subprocess.check_output(['bash','-c', "qstat -xml" ])
+#       dec = raw.decode("utf-8")
+#       flat = dec.replace("\n", "")
+#       code = str("<JB_name>"+name+"</JB_name>")
+#       if code in flat:
+#           issubmitted = True
+#           return issubmitted
+#    return issubmitted
+
+def check_submitted_job(name: str, cluster: str=set_cluster(), debug: int=0):
     issubmitted = False
-    list_q = set_queues(queues)
-    if debug >= 1: print("QUEUES:", list_q)
-    for q in list_q:
-        raw = subprocess.check_output(['bash','-c', "qstat -xml -q "+q+".q" ]) 
-        dec = raw.decode("utf-8") 
-        flat = dec.replace("\n", "")
+
+    raw = send_command("check_job", cluster, debug=debug)
+    dec = raw.decode("utf-8") 
+    flat = dec.replace("\n", "")
+
+    if 'login' in cluster or 'csuc' in cluster:
+        if name in flat: issubmitted = True 
+        else:            issubmitted = False
+
+    elif 'portal' in cluster:
         code = str("<JB_name>"+name+"</JB_name>") 
-        if debug >= 1: print("code:", code)
-        if debug >= 1: print("flat:", flat)
-        if code in flat: 
-            issubmitted = True 
-            return issubmitted
-        else: issubmitted = False
-    ## Checks Pending Jobs in all queues 
-    if not issubmitted:
-       raw = subprocess.check_output(['bash','-c', "qstat -xml" ]) 
-       dec = raw.decode("utf-8") 
-       flat = dec.replace("\n", "")
-       code = str("<JB_name>"+name+"</JB_name>") 
-       if code in flat: 
-           issubmitted = True 
-           return issubmitted
+        if code in flat: issubmitted = True 
+        else:            issubmitted = False
+
     return issubmitted
 
+#####################################
+##### Portal Specific Functions #####
+#####################################
 def set_best_queue(queues):
     list_q, list_empty_cpus, list_total_empty = check_queue_availability(queues)
 
@@ -108,7 +189,7 @@ def set_best_queue(queues):
         maxempty = np.argmax(list_total_empty)
         if np.sum(list_total_empty) == 0: break
 
-def check_fairsharing(user):
+def check_fairsharing(user: str=set_user()):
     raw = subprocess.check_output(['bash','-c', "check_ocupacio" ])
     dec = raw.decode("utf-8") 
     lines = dec.split("\n")

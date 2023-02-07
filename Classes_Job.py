@@ -52,6 +52,7 @@ class job(object):
         self.software = software
         self.code = code
         self.requisites = []
+        self.isregistered = False
 
     def add_requisite(self, requisite) -> None:
         self.requisites.append(requisite)

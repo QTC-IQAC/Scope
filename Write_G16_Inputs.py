@@ -6,8 +6,9 @@ import pickle
 from collections import Counter
 from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 from cell2mol.elementdata import ElementData 
-
 elemdatabase = ElementData()
+
+from Scope.Control_Jobs import set_user, set_cluster
 
 #######################
 def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extension: str="", jobtype: str="scf", functional: str="B3LYP*", basis: str='def2SVP', spin: str='gmol', isGrimme: bool=True, loose_opt: bool=False, nproc: int=1, useconnec: bool=False, append: bool=False):
@@ -87,27 +88,50 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
         print("", file=inp) 
 
 ###################################################
-def gen_G16_subfile(path, name, suffix, extension="", procs=1, queue="iqtc09"):
-    with open(path+name+suffix+extension, 'w+') as sub:
-        print(f"#!/bin/bash", file=sub)
-        print(f"#$ -N {name}{suffix}", file=sub) 
-        print(f"#$ -pe smp {procs}", file=sub)
-        print(f"#$ -cwd", file=sub)
-        print(f"#$ -o /home/g4vela/x-stds/{name}{suffix}.stdout", file=sub)
-        print(f"#$ -e /home/g4vela/x-stds/{name}{suffix}.stderr", file=sub)
-        print(f"#$ -q {queue}.q" , file=sub)
-        print(f"", file=sub)
-        print(f"source /etc/profile.d/modules.csh", file=sub)
-        print(f"source $HOME/.bashrc", file=sub)
-        print(f". /etc/profile", file=sub)
-        print(f"module load gaussian/g16b01", file=sub)
-        print(f"", file=sub)
-        print(f"WORKDIR=$PWD", file=sub)
-        print(f"cd $TMPDIR", file=sub)
-        print(f"export GAUSS_SCRDIR $TMPDIR", file=sub)
-        print(f"cp $WORKDIR/{name}{suffix}.com .", file=sub)
-        print(f"g16 < {name}{suffix}.com > {name}{suffix}.log", file=sub)
-        print(f"cp -pr *.log $WORKDIR", file=sub)
+def gen_G16_subfile(path, name, suffix, extension="", procs=1, queue="iqtc09", cluster: str=set_cluster()):
+    if 'login' in cluster or 'csuc' in cluster:
+        with open(path+name+suffix+extension, 'w+') as sub:
+            print(f"#!/bin/bash", file=sub)
+            print(f"#SBATCH -J {name}{suffix}", file=sub)
+            print(f"#SBATCH -e /scratch/svela/std_files/{name}{suffix}.err", file=sub)
+            print(f"#SBATCH -o /scratch/svela/std_files/{name}{suffix}.out", file=sub)
+            print(f"#SBATCH -p {queue}", file=sub)
+            print(f"#SBATCH --nodes=1", file=sub)
+            print(f"#SBATCH --ntasks={procs}", file=sub)
+            print(f"#SBATCH --time=10-0", file=sub)
+            print(f"#SBATCH -x pirineus", file=sub)
+            print(f"", file=sub)
+            print(f"module load apps/gaussian/g16c2", file=sub)
+            print(f"", file=sub)
+            print(f"JOBDIR=$PWD", file=sub)
+            print(f"cd $TMPDIR", file=sub)
+            print(f"export GAUSS_SCRDIR $TMPDIR", file=sub)
+            print(f"cp $JOBDIR/{name}{suffix}.com .", file=sub)
+            print(f"g16 < {name}{suffix}.com > {name}{suffix}.log", file=sub)
+            print(f"cp -pr *.log $JOBDIR/", file=sub)
+
+    elif 'portal' in cluster:
+        with open(path+name+suffix+extension, 'w+') as sub:
+            print(f"#!/bin/bash", file=sub)
+            print(f"#$ -N {name}{suffix}", file=sub) 
+            print(f"#$ -pe smp {procs}", file=sub)
+            print(f"#$ -cwd", file=sub)
+            print(f"#$ -o /home/g4vela/x-stds/{name}{suffix}.stdout", file=sub)
+            print(f"#$ -e /home/g4vela/x-stds/{name}{suffix}.stderr", file=sub)
+            print(f"#$ -q {queue}.q" , file=sub)
+            print(f"", file=sub)
+            print(f"source /etc/profile.d/modules.csh", file=sub)
+            print(f"source $HOME/.bashrc", file=sub)
+            print(f". /etc/profile", file=sub)
+            print(f"module load gaussian/g16b01", file=sub)
+            print(f"", file=sub)
+            print(f"WORKDIR=$PWD", file=sub)
+            print(f"cd $TMPDIR", file=sub)
+            print(f"export GAUSS_SCRDIR $TMPDIR", file=sub)
+            print(f"cp $WORKDIR/{name}{suffix}.com .", file=sub)
+            print(f"g16 < {name}{suffix}.com > {name}{suffix}.log", file=sub)
+            print(f"cp -pr *.log $WORKDIR", file=sub)
+
     os.chmod(path+name+suffix+extension, 0o777)
         
 ###################################################
