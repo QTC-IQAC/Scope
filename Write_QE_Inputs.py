@@ -272,7 +272,10 @@ def get_spin_config(cell: object, metal_spins: list=[], debug: int=0):
     if debug >= 1 : print(len(metal_indices), "metals with indices:")
     if debug >= 1 : print(metal_indices)
 
-    assert len(metal_indices) == len(metal_spins), f"GET_SPIN_CONFIG: len(metal_indices) != len(metal_spins), {len(metal_indices)} != {len(metal_spins)}"
+#    assert len(metal_indices) == len(metal_spins), f"GET_SPIN_CONFIG: len(metal_indices) != len(metal_spins), {len(metal_indices)} != {len(metal_spins)}"
+    is_abbr = False
+    if len(metal_indices) != len(metal_spins) and len(metal_spins) == 1:   # user abbreviated
+        is_abbr = True 
 
     spin_config = []
     pointer = 0
@@ -283,10 +286,10 @@ def get_spin_config(cell: object, metal_spins: list=[], debug: int=0):
             if "Fe"   in l and desired_spin == "HS": magnetization = 4; l = l+str(magnetization)
             elif "Fe" in l and desired_spin == "IS": magnetization = 2; l = l+str(magnetization)
             elif "Fe" in l and desired_spin == "LS": magnetization = 0; l = l+str(magnetization)
-            else: print("GET_SPIN_CONFIG: unknown desired_spin or metal label")
+            else: print("GET_SPIN_CONFIG: unknown desired_spin or metal label", l, desired_spin)
  
             tupl = tuple([l, magnetization])
-            pointer += 1
+            if not is_abbr: pointer += 1
         else:
             tupl = tuple([l, int(0)])
         spin_config.append(tupl)
