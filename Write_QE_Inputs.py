@@ -9,6 +9,8 @@ from cell2mol.elementdata import ElementData
 
 elemdatabase = ElementData()
 
+from Scope.Control_Jobs import set_user, set_cluster
+
 #######################
 def get_pp(ppfolder, elem):
 
@@ -41,7 +43,9 @@ def get_pp(ppfolder, elem):
     return sendpp
 
 #######################
-def gen_QE_input(gmol: object, spin_config: list, path: str, name: str, suffix: str, extension: str, PP_Library: str, job_type: str="scf", isHubbard: bool=False, isGrimme: bool=True, U: str="2.27", cutoff: str="70", cubeside: str="70.0", debug: int=0):
+def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str, PP_Library: str, spin_config: list=[], job_type: str="scf", isHubbard: bool=False, isGrimme: bool=True, U: str="2.27", cutoff: str="70", cubeside: str="70.0", cluster: str=set_cluster(), debug: int=0):
+
+    ## spin_config is a list of tuples, with the label and the magnetization. for instance: [('Fe', 2), ('Fe2', 4), ('Fe2', 4), ('Fe', 2), ('S', 0), ('N', 0)] 
  
     if hasattr(gmol,"cellparam"): system_type = "cell"
     else: system_type = "molecule"
@@ -69,6 +73,20 @@ def gen_QE_input(gmol: object, spin_config: list, path: str, name: str, suffix: 
         if l[-1].isdigit(): label = l[:-1]
         else: label = l
         if (elemdatabase.elementblock[label] == 'd' or elemdatabase.elementblock[label] == 'f') and l not in metal_species: metal_species.append(l)
+    metal_indices = []
+    for idx, l in enumerate(gmol.labels):
+        if (elemdatabase.elementblock[l] == 'd' or elemdatabase.elementblock[l] == 'f'): metal_indices.append(idx)
+    
+    if debug >= 1: 
+        print("GEN_QE_INPUT: Received cell with this data:")
+        print(f"    elems: {elems}")
+        print(f"    nspecies: {nspecies}")
+        print(f"    metal_species: {metal_species}")
+        print(f"    metal_indices: {metal_indices}")
+        if len(spin_config) != 0: 
+            print("GEN_QE_INPUT: Also received spin configuration with this data:")
+            print(f"    uniques: {uniques}")
+            print(f"    nspecies: {nspecies}")
 
     #############################
     ### DECIDES MAGNETIZATION ###  It will be printed later
@@ -76,6 +94,7 @@ def gen_QE_input(gmol: object, spin_config: list, path: str, name: str, suffix: 
     # CASE 1: If no instructions are given, everything is LS
     if len(spin_config) == 0: 
         magnetization = 0
+        if debug >= 1: print(f"GEN_QE_INPUT: spin_config not provided, assuming all LS") 
 
     # CASE 2: If instructions are given. Note that only HS and LS is allowed. No IS possible yet
     elif len(spin_config) == len(gmol.labels): 
@@ -83,7 +102,7 @@ def gen_QE_input(gmol: object, spin_config: list, path: str, name: str, suffix: 
         for idx, tupl in enumerate(spin_config):
             magnetization += tupl[1]
             #gmol.labels[idx] = tupl[0]
-    else: print("QE_input: len(spin_config) must be 0, or equal to len(gmol.labels)")
+    else: print("GEN_QE_INPUT: ERROR!! len(spin_config) must be 0, or equal to len(gmol.labels)")
     
     ########################### 
     ### WRITES INPUT: PART 1 ##
@@ -94,8 +113,8 @@ def gen_QE_input(gmol: object, spin_config: list, path: str, name: str, suffix: 
         print("    restart_mode='from_scratch'", file=inp)
         print(f"    pseudo_dir ='{PP_Library}'", file=inp)
         print("    disk_io='low'", file=inp)
-        print(f"    outdir='./WFC'", file=inp)
-        #print(f"    outdir='/scratch/g4vela/QE_WFC/'", file=inp)
+        if 'portal' in cluster: print(f"    outdir='./WFC'", file=inp)
+        elif 'csuc' in cluster or 'login' in cluster: print(f"    outdir='/scratch/svela/QE_WFC/'", file=inp) 
         print(f"    prefix='{name}{suffix}'", file=inp)
 
         if job_type == "opt" or job_type == "relax" or job_type == "vc-relax":
@@ -121,12 +140,17 @@ def gen_QE_input(gmol: object, spin_config: list, path: str, name: str, suffix: 
         else:
             print("    tot_charge=0", file=inp)
         
+        ## Total Magnetization
+        tot_magn = 0      
+        if len(spin_config) != 0:
+            for t in spin_config:
+                tot_magn += t[1]
+        print(f"    tot_magnetization={tot_magn}", file=inp)
+  
         ## Starting Magnetization
-        if len(spin_config) == 0:
-            print(f"    tot_magnetization={magnetization}", file=inp)
-        else:
+        if len(spin_config) != 0:
             for idx, u in enumerate(uniques):
-                if t[1] != 0: print(f"    starting_magnetization({idx+1})={t[1]}", file=inp)
+                if u[1] != 0: print(f"    starting_magnetization({idx+1})={u[1]}", file=inp)
 
         ## Hubbard: Here it is assumed that the Hubbard U term will apply to all metals
         if isHubbard:
@@ -185,7 +209,8 @@ def gen_QE_input(gmol: object, spin_config: list, path: str, name: str, suffix: 
         #///////////////////
         #// Atom Species ///
         #///////////////////
-        elems = list(set(gmol.labels))   ## This list of elements must be updated to include the different magnetization labels (eg. Fe1, Fe2)
+        if len(spin_config) == 0: elems = list(set(gmol.labels))   ## This list of elements must be updated to include the different magnetization labels (eg. Fe1, Fe2)
+        else:                     elems = list(t[0] for t in uniques)
         print("ATOMIC_SPECIES", file=inp)
         for idx, elem in enumerate(elems):
             if elem[-1].isdigit(): label = elem[:-1]
@@ -198,52 +223,75 @@ def gen_QE_input(gmol: object, spin_config: list, path: str, name: str, suffix: 
         #// Atom Coords ///
         #//////////////////
         print("ATOMIC_POSITIONS angstrom", file=inp)
-        #    for a in gmol.atoms:
-        #        print("%s  %.6f  %.6f  %.6f" % (a.label, a.coord[0], a.coord[1], a.coord[2]), file=inp)
         for idx, l in enumerate(gmol.labels):
-            print(f"{l}        {gmol.pos[idx][0]:.6f}   {gmol.pos[idx][1]:.6f}   {gmol.pos[idx][2]:.6f}", file=inp)
+            if idx in metal_indices and len(spin_config) != 0: label = spin_config[idx][0]
+            else: label = l
+            print(f"{label:4}        {gmol.pos[idx][0]:.6f}   {gmol.pos[idx][1]:.6f}   {gmol.pos[idx][2]:.6f}", file=inp)
         print("K_POINTS gamma", file=inp)
 
 ###################################################
-def gen_QE_subfile(path: str, name: str, suffix: str, extension: str="", procs: int=1, queue: str="iqtc09", exe: str="pw.x", version: str="6.4.1"):
-    with open(path+name+suffix+extension, 'w+') as sub:
-        print(f"#!/bin/bash", file=sub)
-        print(f"#$ -N {name}{suffix}", file=sub) 
-        print(f"#$ -pe smp {procs}", file=sub)
-        print(f"#$ -cwd", file=sub)
-        print(f"#$ -o {name}{suffix}.stdout", file=sub)
-        print(f"#$ -e {name}{suffix}.stderr", file=sub)
-        print(f"#$ -S /bin/bash", file=sub)
-        print(f"#$ -q {queue}.q" , file=sub)
-        print(f"", file=sub)
-        print(f"source /etc/profile.d/modules.csh", file=sub)
+def gen_QE_subfile(path: str, name: str, suffix: str, extension: str="", procs: int=1, queue: str="iqtc09", exe: str="pw.x", version: str="6.4.1", cluster: str=set_cluster()):
+    if 'portal' in cluster:
+        with open(path+name+suffix+extension, 'w+') as sub:
+            print(f"#!/bin/bash", file=sub)
+            print(f"#$ -N {name}{suffix}", file=sub) 
+            print(f"#$ -pe smp {procs}", file=sub)
+            print(f"#$ -cwd", file=sub)
+            print(f"#$ -o {name}{suffix}.stdout", file=sub)
+            print(f"#$ -e {name}{suffix}.stderr", file=sub)
+            print(f"#$ -S /bin/bash", file=sub)
+            print(f"#$ -q {queue}.q" , file=sub)
+            print(f"", file=sub)
+            print(f"source /etc/profile.d/modules.csh", file=sub)
 
-        #if version == "6.4.1": print(f"module load espresso/6.4.1_ompi", file=sub)
-        ## Only one version implemented 
-        print(f"module load espresso/6.4.1_ompi", file=sub)
+            #if version == "6.4.1": print(f"module load espresso/6.4.1_ompi", file=sub)
+            ## Only one version implemented 
+            print(f"module load espresso/6.4.1_ompi", file=sub)
 
-        print(f"", file=sub)
-        print(f"set OMP_NUM_THREADS=1", file=sub)
-        print(f"ulimit -l unlimited", file=sub)
-        print(f"", file=sub)
-        print(f"mpirun -np {procs} {exe} < {name}{suffix}.inp > {name}{suffix}.out", file=sub)
+            print(f"", file=sub)
+            print(f"set OMP_NUM_THREADS=1", file=sub)
+            print(f"ulimit -l unlimited", file=sub)
+            print(f"", file=sub)
+            print(f"mpirun -np {procs} {exe} < {name}{suffix}.inp > {name}{suffix}.out", file=sub)
     os.chmod(path+name+suffix+extension, 0o777)
         
 ###################################################
 
-#def get_spin_config(cell, ):
+def get_spin_config(cell: object, metal_spins: list=[], debug: int=0):
 
-#    #########################
-#    ### IDENTIFIES METALS ###
-#    #########################
-#    elems = list(set(gmol.labels))
-#    metal_indices = []
-#    for idx, l in enumerate(gmol.labels):
-#        if (elemdatabase.elementblock[l] == 'd' or elemdatabase.elementblock[l] == 'f'): metal_indices.append(idx)
-#
-#    if debug > 0 : print(len(metal_indices), "metals")
-#    if debug > 0 : print(metal_indices)
+    assert hasattr(cell,"cellparam"), f"GET_SPIN_CONFIG got object without cell parameters. Assuming it is not a cell"
 
+    #########################
+    ### IDENTIFIES METALS ###
+    #########################
+    elems = list(set(cell.labels))
+    metal_indices = []
+    for idx, l in enumerate(cell.labels):
+        if (elemdatabase.elementblock[l] == 'd' or elemdatabase.elementblock[l] == 'f'): metal_indices.append(idx)
+  
+    if debug >= 1 : print(len(metal_indices), "metals with indices:")
+    if debug >= 1 : print(metal_indices)
+
+    assert len(metal_indices) == len(metal_spins), f"GET_SPIN_CONFIG: len(metal_indices) != len(metal_spins), {len(metal_indices)} != {len(metal_spins)}"
+
+    spin_config = []
+    pointer = 0
+    #for idx, mi in enumerate(metal_indices): 
+    for idx, l in enumerate(cell.labels):
+        if idx in metal_indices:
+            desired_spin = metal_spins[pointer]
+            if "Fe"   in l and desired_spin == "HS": magnetization = 4; l = l+str(magnetization)
+            elif "Fe" in l and desired_spin == "IS": magnetization = 2; l = l+str(magnetization)
+            elif "Fe" in l and desired_spin == "LS": magnetization = 0; l = l+str(magnetization)
+            else: print("GET_SPIN_CONFIG: unknown desired_spin or metal label")
+ 
+            tupl = tuple([l, magnetization])
+            pointer += 1
+        else:
+            tupl = tuple([l, int(0)])
+        spin_config.append(tupl)
+  
+    return spin_config
 
 #   CASE 3: GMOL is a molecule, and instructions are not
 #  elif typ == "molecule":
@@ -257,7 +305,6 @@ def gen_QE_subfile(path: str, name: str, suffix: str, extension: str="", procs: 
 #              else:
 #                  spin = 2             #Doublet
 #                  magnetization = 1    #Doublet
-
 
 #class specie(object):
 #    def __init__(self, label)
