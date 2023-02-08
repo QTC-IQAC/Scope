@@ -115,7 +115,7 @@ def G16_get_freqs(lines):
                 freqs.append(f3)
     return freqs
 
-def G16_get_VNM(lines: list, witheigen: bool=False):
+def G16_get_VNM(lines: list, witheigen: bool=False, debug: int=0):
     vnms = []
 
     ldx, found1 = search_string("Frequencies --", lines, typ='all')

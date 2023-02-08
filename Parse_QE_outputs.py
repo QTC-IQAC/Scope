@@ -35,14 +35,14 @@ def get_cell_vectors(lines, debug: int=0):
     cellparam = cellvec_2_cellparam(cellvec)
     return cellvec, celldim, cellparam
     
-def parse_final_geoopt_step(lines: str):
+def parse_final_geoopt_step(lines: str, debug: int=0):
     last_step_init = "Self-consistent Calculation"
     last_step_last = "End final coordinates"
     last_step_init_line, dummy = search_string(last_step_init, lines, typ="last")
     last_step_last_line, dummy = search_string(last_step_last, lines, typ="last")
     return last_step_init_line, last_step_last_line 
 
-def check_job_requirements(lines: str, key_str: list=["JOB DONE", "Begin final coordinates", "End final coordinates"]):
+def check_job_requirements(lines: str, key_str: list=["JOB DONE", "Begin final coordinates", "End final coordinates"], debug: int=0):
     item = []
     found = []
     for sx, string in enumerate(str):
@@ -51,7 +51,7 @@ def check_job_requirements(lines: str, key_str: list=["JOB DONE", "Begin final c
         found.append(found)
     return line, found
     
-def parse_final_geometry(lines: str):
+def parse_final_geometry(lines: str, debug: int=0):
     key_line, key_found = check_job_requirements(lines)
     last_step_init_line, last_step_last_line = parse_final_geoopt_step(lines)
     last_step_lines = lines[last_step_init_line:last_step_last_line]
@@ -84,29 +84,61 @@ def parse_final_geometry(lines: str):
                 labels.append(label)
     return labels, pos
 
-def parse_final_energy(lines: str):
+def parse_final_energy(lines: str, debug: int=0):
     string="Final energy   ="
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
     return val 
 
-def parse_hubbard_energy(lines: str):
+def parse_hubbard_energy(lines: str, debug: int=0):
     string = "Hubbard energy            ="
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
     return val 
 
-def parse_grimme_energy(lines: str):
+def parse_grimme_energy(lines: str, debug: int=0):
     string = "DFT-D3 Dispersion         ="
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
     return val 
 
-def parse_total_energy(lines: str):
+def parse_total_energy(lines: str, debug: int=0):
     string = "!    total energy"
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
     return val
+
+
+def QE_elapsed_time(eline: str, debug: int=0):
+    time = eline.split("WALL")[-2]
+    time2 = time.split("CPU")[1].rstrip().lstrip()
+
+    rest = time2
+    days = float(0)
+    hours = float(0)
+    minutes = float(0)
+    seconds = float(0)
+    total = float(0)
+    if len(rest) > 0:
+        if "d" in rest:
+            spl = rest.split("d")
+            days = float(spl[0])
+            rest = str(spl[1])
+        if "h" in rest:
+            spl = rest.split("h")
+            hours = float(spl[0])
+            rest = str(spl[1])
+        if "m" in rest:
+            spl = rest.split("m")
+            minutes = float(spl[0])
+            rest = str(spl[1])
+        if "s" in rest:
+            spl = rest.split("s")
+            seconds = float(spl[0])
+            rest = str(spl[1])
+
+    total = days*86400 + hours*3600 + minutes*60 + seconds
+    return total 
 
 #
 #        new_periodic_xyz.add_energy(energy)

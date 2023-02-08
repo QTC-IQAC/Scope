@@ -18,6 +18,7 @@ from .Gmol_ops import *
 from .Parse_G16_outputs import * 
 from .Parse_QE_outputs import *
 from .Read_Write import *
+from .Register_Data import *
 from .Thermal_Corrections import *
 from .unit_cell_tools import *
 from .VNM_tools import *

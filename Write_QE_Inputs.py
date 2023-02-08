@@ -117,7 +117,7 @@ def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str
         print("    restart_mode='from_scratch'", file=inp)
         print(f"    pseudo_dir ='{PP_Library}'", file=inp)
         print("    disk_io='low'", file=inp)
-        if 'portal' in cluster: print(f"    outdir='./WFC'", file=inp)
+        if 'portal' in cluster: print(f"    outdir='/scratch/g4vela/QE_WFC'", file=inp)
         elif 'csuc' in cluster or 'login' in cluster: print(f"    outdir='/scratch/svela/QE_WFC/'", file=inp) 
         print(f"    prefix='{name}{suffix}'", file=inp)
 
@@ -256,7 +256,11 @@ def gen_QE_subfile(path: str, name: str, suffix: str, sub_extension: str="sub", 
             print(f"set OMP_NUM_THREADS=1", file=sub)
             print(f"ulimit -l unlimited", file=sub)
             print(f"", file=sub)
-            print(f"mpirun -np {procs} {exe} < {name}{suffix}{inp_extension} > {name}{suffix}.out", file=sub)
+            print(f"WORKDIR=$PWD", file=sub)
+            print(f"cd $TMPDIR", file=sub)
+            print(f"cp $WORKDIR/ABITEM_relax_r1_LS.input .", file=sub)
+            print(f"mpirun -np 32 pw.x < ABITEM_relax_r1_LS.input > ABITEM_relax_r1_LS.out", file=sub)
+            print(f"cp -pr *.out $WORKDIR", file=sub)
     os.chmod(path+name+suffix+sub_extension, 0o777)
         
 ###################################################

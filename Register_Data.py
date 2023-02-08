@@ -1,0 +1,59 @@
+import sys
+import os
+import numpy as np
+from copy import deepcopy
+
+from Scope.Adapted_from_cell2mol import labels2formula, get_adjmatrix, get_radii, get_blocks, get_molecules, inv
+from Scope.Gmol_ops import gmol_update_geom, cell_update_geom
+from Scope.Parse_QE_outputs import * 
+from Scope.Parse_General import read_lines_file, search_string 
+from Scope.Parse_G16_outputs import *
+from Scope import Constants
+
+def reg_optimization(gmol: object, job: object, debug: int=0):
+    lines = read_lines_file(job.output_path, flat=True)
+
+    ###############
+    ## G09 & G16 ##
+    ###############
+    if job.software.lower() == "g16" or "g09":
+        new_coord = G16_get_last_geom(lines, debug=debug)
+        gmol_update_geom(gmol, new_coord, debug=debug)
+
+    ########
+    ## QE ##
+    ########
+    elif job.software.lower() == "qe" or job.software.lower() == "quantum_espresso" or job.software.lower() == "quantum espresso":
+        labels, pos = parse_final_geometry(lines, debug=debug)
+        try:    factor = gmol.moleclist[0].factor
+        except: factor = 1.3
+        warning, moleclist = get_molecules(labels, pos, factor=factor, debug=debug)
+        if not warning and debug >= 1: print(f"UPDATE_COORDINATES: found {len(moleclist)} molecules in cell")
+        cell_update_geom(gmol, moleclist, pos, debug=debug) 
+
+    else: print("REG_OPTIMIZATIONS: Software", job.software, " not considered")
+
+def reg_frequencies(gmol: object, job: object, debug: int=0):
+    lines = read_lines_file(job.output_path, flat=True)
+
+    ###############
+    ## G09 & G16 ##
+    ###############
+    if job.software.lower() == "g16" or "g09":
+        VNMs = G16_get_VNM(lines, witheigen=True, debug=debug)
+        minimum_found = False
+        if all(vnm.freq >= 0.0 for vnm in VNMs):
+            gmol.VNMs = [vnm for vnm in VNMs]
+            gmol.freqs_cm = [vnm.freq_cm for vnm in VNMs]
+            gmol.Helec = G16_get_last_energy(lines)
+            minimum_found = True
+            if debug >= 1: print(f"     -> Minimum Found")
+        else:
+            if debug >= 1: print(f"     -> Negative Freq Found")
+
+    ########
+    ## QE ##
+    ########
+    #elif job.software.lower() == "qe" or job.software.lower() == "quantum_espresso" or job.software.lower() == "quantum espresso":
+
+    #else: print("REG_OPTIMIZATIONS: Software", job.software, " not considered")

@@ -6,6 +6,7 @@ import numpy as np
 
 from Scope.Parse_General import search_string, read_lines_file 
 from Scope.Parse_G16_outputs import G16_get_last_geom, G16_time_to_sec
+from Scope.Parse_QE_outputs import *
 from Scope.Gmol_ops import gmol_update_geom
 from Scope.Other import where_in_array
 
@@ -71,16 +72,32 @@ class job(object):
             ###################
             ### Gaussian 16 ###
             ###################
-            if self.software == 'G16':
+            if self.software.lower() == 'g16' or self.software.lower() == 'g09':
                 line_num, found_good = search_string("Normal termination", lines, typ='all')
                 line_time, found_time = search_string("Elapsed time:", lines, typ='last')
                 if found_time:
                     elapsed_time_list = lines[line_time].split()[2:]
                     self.elapsed_time = G16_time_to_sec(elapsed_time_list)
-                else: elapsed_time = float(0)
+                else: self.elapsed_time = float(0)
+            #########################
+            ### Quantum Espresso ###
+            #########################
+            elif self.software.lower() == "qe" or self.software.lower() == "quantum_espresso" or self.software.lower() == "quantum espresso":
+                line_num, found_job = search_string("JOB DONE", lines, typ='last')
+                line_time_start, found_time_start = search_string("Program PWSCF", lines, typ='first')
+                line_time_end, found_time_end = search_string("This run was terminated", lines, typ='last')
+                line_elapsed, found_elapsed = search_string("PWSCF        :", lines, typ='last')
+                if found_job and found_time_end: found_good = True
+                else: found_good = False
+                if found_elapsed: 
+                    eline = lines[line_elapsed]
+                    time = eline.split("WALL")[-2]
+                    time2 = time.split("CPU")[1].rstrip().lstrip()
+                    self.elapsed_time = QE_elapsed_time(eline)
+                else: self.elapsed_time = float(0)
             else:
                 found_good = False
-                print(f"Registry of this software: {self.software} is not implemented. See register_jobs in Control_Jobs.py")
+                print(f"CLASSES_JOBS: Registry of this software: {self.software} is not implemented. See register_jobs in Control_Jobs.py")
             ###################
     
             if found_good: self.isgood = True
