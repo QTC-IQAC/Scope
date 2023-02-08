@@ -13,6 +13,7 @@ from .Geom_SCO_V1 import *
 from .Other import *
 from .Parse_Cif import *
 from .Parse_General import *
+from .Generate_Representations import *
 from .Gmol_ops import *
 from .Parse_G16_outputs import * 
 from .Parse_QE_outputs import *

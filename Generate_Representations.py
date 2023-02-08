@@ -5,7 +5,6 @@ import numpy as np
 import time
 
 import pickle
-import qml
 from collections import Counter
 from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 from cell2mol.elementdata import ElementData
@@ -13,6 +12,7 @@ from cell2mol.elementdata import ElementData
 ###########################################
 
 def get_aSlatm(mol, mbtypes, dens=0.4, cutoff=4.0, debug=0):
+    import qml
 
     if hasattr(mol, 'atnums') and hasattr(mol, 'coord') and hasattr(mol, 'atoms'):
         local = qml.representations.generate_slatm(mol.coord, mol.atnums, mbtypes=mbtypes, local=True, dgrids=[dens, dens], rcut=cutoff)
@@ -33,6 +33,7 @@ def get_aSlatm(mol, mbtypes, dens=0.4, cutoff=4.0, debug=0):
             print(f"mol is missing one or more of necessary properties")
 
 def get_aSlatm_ligands(mol, mbtypes, dens=0.4, cutoff=4.0, debug=0):
+    import qml
 
     if hasattr(mol, 'atnums') and hasattr(mol, 'coord') and hasattr(mol, 'atoms'):
         local = qml.representations.generate_slatm(mol.coord, mol.atnums, mbtypes=mbtypes, local=True, dgrids=[dens, dens], rcut=cutoff)

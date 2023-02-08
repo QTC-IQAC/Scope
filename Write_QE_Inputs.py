@@ -94,6 +94,7 @@ def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str
     #############################
     ### DECIDES MAGNETIZATION ###  It will be printed later
     #############################
+    ismagnetic = False
     # CASE 1: If no instructions are given, everything is LS
     if len(spin_config) == 0: 
         magnetization = 0
@@ -104,7 +105,7 @@ def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str
         magnetization = 0
         for idx, tupl in enumerate(spin_config):
             magnetization += tupl[1]
-            #gmol.labels[idx] = tupl[0]
+            if tupl[1] != 0: ismagnetic = True
     else: print("GEN_QE_INPUT: ERROR!! len(spin_config) must be 0, or equal to len(gmol.labels)")
     
     ########################### 
@@ -135,8 +136,8 @@ def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str
         if system_type == "molecule": print(f"    ibrav=1, celldm(1)={cubeside}", file=inp)
         elif system_type == "cell":   print(f"    ibrav=0,", file=inp)
         print(f"    nat={natoms}, ntyp={nspecies}, ecutwfc={int(cutoff)}, ecutrho={float(cutoff)*8}", file=inp)
-        if magnetization != 0: print(f"    nspin=2,", file=inp)
-        else:                  print(f"    nspin=1,", file=inp)
+        if ismagnetic: print(f"    nspin=2,", file=inp)
+        else:          print(f"    nspin=1,", file=inp)
         
         if system_type == "molecule" and hasattr(gmol, 'totcharge'):
             print(f"    tot_charge={gmol.totcharge}", file=inp)
@@ -144,11 +145,11 @@ def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str
             print("    tot_charge=0", file=inp)
         
         ## Total Magnetization
-        tot_magn = 0      
-        if len(spin_config) != 0:
-            for t in spin_config:
-                tot_magn += t[1]
-        print(f"    tot_magnetization={tot_magn}", file=inp)
+        #tot_magn = 0      
+        #if len(spin_config) != 0:
+        #    for t in spin_config:
+        #        tot_magn += t[1]
+        if ismagnetic: print(f"    tot_magnetization={magnetization}", file=inp)
   
         ## Starting Magnetization
         if len(spin_config) != 0:
@@ -212,8 +213,8 @@ def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str
         #///////////////////
         #// Atom Species ///
         #///////////////////
-        if len(spin_config) == 0: elems = list(set(gmol.labels))   ## This list of elements must be updated to include the different magnetization labels (eg. Fe1, Fe2)
-        else:                     elems = list(t[0] for t in uniques)
+        #if len(spin_config) == 0: elems = list(set(gmol.labels))   ## This list of elements must be updated to include the different magnetization labels (eg. Fe1, Fe2)
+        #else:                     elems = list(t[0] for t in uniques)
         print("ATOMIC_SPECIES", file=inp)
         for idx, elem in enumerate(elems):
             if elem[-1].isdigit(): label = elem[:-1]
