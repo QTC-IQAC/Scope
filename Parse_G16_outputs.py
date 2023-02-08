@@ -71,7 +71,7 @@ def G16_time_to_sec(time_list: list):
         total += z[0]*multiplier
     return total
 
-def G16_get_last_geom(lines):
+def G16_get_last_geom(lines, debug: int=0):
     coord = []
     ldx, found1 = search_string("Coordinates (Angstroms)", lines, typ='last')
     if found1:
@@ -93,7 +93,7 @@ def G16_get_last_geom(lines):
                 coord.append(tmp)
     return coord
 
-def G16_get_last_energy(lines):
+def G16_get_last_energy(lines, debug: int=0):
     ldx, found = search_string("SCF Done", lines, typ='last')        
     if found: ener = float(lines[ldx].split()[4])
     else: ener = float(0.0)
