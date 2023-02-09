@@ -59,7 +59,9 @@ def get_adjacency_types(label: list, conmat: np.ndarray) -> np.ndarray:
 def get_radii(labels: list) -> np.ndarray:
     radii = []
     for l in labels:
-        radii.append(elemdatabase.CovalentRadius2[l])
+        if l[-1].isdigit(): label = l[:-1]
+        else: label = l
+        radii.append(elemdatabase.CovalentRadius2[label])
     return np.array(radii)
 
 ####################################
