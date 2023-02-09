@@ -38,51 +38,63 @@ def get_cell_vectors(lines, debug: int=0):
 def parse_final_geoopt_step(lines: str, debug: int=0):
     last_step_init = "Self-consistent Calculation"
     last_step_last = "End final coordinates"
-    last_step_init_line, dummy = search_string(last_step_init, lines, typ="last")
-    last_step_last_line, dummy = search_string(last_step_last, lines, typ="last")
-    return last_step_init_line, last_step_last_line 
+    last_step_init_line, found1 = search_string(last_step_init, lines, typ="last")
+    last_step_last_line, found2 = search_string(last_step_last, lines, typ="last")
+    if found1 and found2: worked = True
+    else: worked = False
+    return worked, last_step_init_line, last_step_last_line 
+    
 
 def check_job_requirements(lines: str, key_str: list=["JOB DONE", "Begin final coordinates", "End final coordinates"], debug: int=0):
     item = []
-    found = []
-    for sx, string in enumerate(str):
+    bools = []
+    for sx, string in enumerate(key_str):
         search, found = search_string(string, lines, typ="last")
-        line.append(search)
-        found.append(found)
-    return line, found
+        item.append(search)
+        bools.append(found)
+    return item, bools
     
 def parse_final_geometry(lines: str, debug: int=0):
     key_line, key_found = check_job_requirements(lines)
-    last_step_init_line, last_step_last_line = parse_final_geoopt_step(lines)
-    last_step_lines = lines[last_step_init_line:last_step_last_line]
-
-    if all(f for f in key_found):  ## Everything worked
-        last_geo_init_string = "ATOMIC_POSITIONS"
-        last_geo_init_line = search_string(last_geo_init_string, last_step_lines, typ="last")[0] + 1
-        last_geo_last_line = last_step_end_line-1
-    elif key_found[0] and not key_found[3]:     ### Job ended but did not converge
-        last_geo_init_string = "ATOMIC_POSITIONS"
-        last_geo_last_string = "Writing output data"
-        last_geo_init_line = search_string(last_geo_init_string, last_step_lines, typ="last")[0] + 1
-        last_geo_last_line = search_string(last_geo_last_string, last_step_lines, typ="first")[0] - 4
+    worked, last_step_init_line, last_step_last_line = parse_final_geoopt_step(lines)
+    if worked: 
+        last_step_lines = lines[last_step_init_line:last_step_last_line]
+        if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: final step lines between {last_step_init_line} and {last_step_last_line}")
+    
+        warning = False
+        if all(f for f in key_found):  ## Everything worked
+            last_geo_init_string = "ATOMIC_POSITIONS"
+            last_geo_init_line = search_string(last_geo_init_string, last_step_lines, typ="last")[0] + 1
+            last_geo_last_line = last_step_last_line-1
+        elif key_found[0] and not key_found[3]:     ### Job ended but did not converge
+            last_geo_init_string = "ATOMIC_POSITIONS"
+            last_geo_last_string = "Writing output data"
+            last_geo_init_line = search_string(last_geo_init_string, last_step_lines, typ="last")[0] + 1
+            last_geo_last_line = search_string(last_geo_last_string, last_step_lines, typ="first")[0] - 4
+        else: 
+            warning = True
+     
+        if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: last geo lines between {last_step_init_line+last_geo_init_line} and {last_geo_last_line}")
+        last_geo_lines = lines[last_step_init_line+last_geo_init_line:last_geo_last_line]
+        if not warning:
+            ### Reads units of coordinates from the ATOMIC POSITIONS line
+            at_pos_line=lines[last_step_init_line+last_geo_init_line-1]
+            if "angstrom" in at_pos_line: units = 'angstrom'
+            elif "bohr" in at_pos_line: units = 'bohr'
+            else: print("ERROR:", at_pos_line) 
+            pos = []
+            labels = []
+            for idx, l in enumerate(last_geo_lines):
+                line_data = l.split()
+                if len(line_data) == 4:
+                    label, x, y, z = l.split()
+                    if units == "angstrom": pos.append([float(x), float(y), float(z)])
+                    elif units == "bohr": pos.append([float(x*bohr2angs), float(y*bohr2angs), float(z*bohr2angs)])
+                    labels.append(label)
+        return labels, pos
     else: 
-        warning = True
- 
-    last_geo_lines = last_step_lines[last_geo_init_line:last_geo_last_line]
-    if not warning:
-        ### Reads units of coordinates from the ATOMIC POSITIONS line
-        if "angstrom" in str(lines[last_geo_init_line - 1].lower()): units = 'angstrom'
-        elif "bohr" in str(lines[last_geo_init_line - 1].lower()): units = 'bohr'
-        pos = []
-        labels = []
-        for idx, l in enumerate(last_geo_lines):
-            line_data = l.split()
-            if len(line_data) == 4:
-                label, x, y, z = l.split()
-                if units == "angstrom": pos.append([float(x), float(y), float(z)])
-                elif units == "bohr": pos.append([float(x*bohr2angs), float(y*bohr2angs), float(z*bohr2angs)])
-                labels.append(label)
-    return labels, pos
+        print("PARSE_FINAL_GEOMETRY: final_geoopt_step didn't work. Retrieving empty labels and coordinates. It will fail")
+        return [], []
 
 def parse_final_energy(lines: str, debug: int=0):
     string="Final energy   ="
