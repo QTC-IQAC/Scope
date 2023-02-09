@@ -22,16 +22,19 @@ def save_binary(variable, pathfile, backup: bool=False):
 #                    file.close()
 #                    saved = True 
 
+#######################
 def load_binary(pathfile):
     with open(pathfile, "rb") as pickle_file:
         binary = pickle.load(pickle_file)
     return binary
 
+#######################
 def save_list_as_text(inplist: list, pathfile: str=os.getcwd()+"outfile.txt"):
     with open(pathfile, "w") as fil:
         for l in inplist:
             print(l, file=fil)
 
+#######################
 def writexyz(fdir, fname, labels, pos, charge: int=0, spin: int=1):
     if fdir[-1] != "/":
         fdir = fdir + "/"
@@ -42,3 +45,27 @@ def writexyz(fdir, fname, labels, pos, charge: int=0, spin: int=1):
         print(charge, spin, file=fil)
         for idx, l in enumerate(labels):
             print("%s  %.6f  %.6f  %.6f" % (l, pos[idx][0], pos[idx][1], pos[idx][2]),file=fil)
+
+#######################
+def read_xyz(xyz_file):
+    assert(xyz_file[-4:] == ".xyz")
+    
+    labels = []
+    pos = []
+    
+    try:    xyz = open(xyz_file, "r")
+    except: print("Could not read xyz file: {0}".format(xyz_file))
+
+    n_atoms = xyz.readline()
+    title = xyz.readline()
+    for line in xyz:
+        line_data = line.split()
+        if len(line_data) == 4:
+            label, x, y, z = line.split()
+            pos.append([float(x), float(y), float(z)])
+            labels.append(label)
+        else:
+            print("I can't read the xyz. It has =/ than 4 columns")
+
+    xyz.close()
+    return labels, pos
