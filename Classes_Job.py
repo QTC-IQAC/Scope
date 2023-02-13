@@ -114,8 +114,11 @@ class job(object):
                 found_good = False
                 print(f"CLASSES_JOBS: Registry of this software: {self.software} is not implemented. See register_jobs in Control_Jobs.py")
             ###################
-            if found_good: self.isgood = True
-            else: self.isgood = False
+            if found_good: 
+                self.isgood = True
+            else: 
+                self.isgood = False
+                print(f"    REGISTRY of Job: {self.code} didn't work, since LOG: {self.output_path} is not good")
 
             if self.isregistered:
                 self.registration_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
