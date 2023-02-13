@@ -17,7 +17,7 @@ def reg_optimization(gmol: object, job: object, debug: int=0):
     ## G09 & G16 ##
     ###############
     if job.software.lower() == "g16" or job.software.lower() == "g09":
-        if debug >= 1: print("REG_OPTIMIZATION received", job.software, "and identified it as G16 or G09")
+        if debug >= 1: print("    REG_OPTIMIZATION received", job.software, "and identified it as G16 or G09")
         new_coord = G16_get_last_geom(lines, debug=debug)
         gmol_update_geom(gmol, new_coord, debug=debug)
 
@@ -25,7 +25,7 @@ def reg_optimization(gmol: object, job: object, debug: int=0):
     ## QE ##
     ########
     elif job.software.lower() == "qe" or job.software.lower() == "quantum_espresso" or job.software.lower() == "quantum espresso":
-        if debug >= 1: print("REG_OPTIMIZATION received", job.software, "and identified it as QUANTUM ESPRESSO")
+        if debug >= 1: print("    REG_OPTIMIZATION received", job.software, "and identified it as QUANTUM ESPRESSO")
         labels, pos = parse_final_geometry(lines, debug=debug)
         if len(labels) > 0 and len(pos) > 0: 
             try:    factor = gmol.moleclist[0].factor
@@ -33,8 +33,8 @@ def reg_optimization(gmol: object, job: object, debug: int=0):
             warning, moleclist = get_molecules(labels, pos, factor=factor, debug=debug)
             if not warning and debug >= 1: print(f"UPDATE_COORDINATES: found {len(moleclist)} molecules in cell")
             cell_update_geom(gmol, moleclist, pos, debug=debug) 
-        else: print("REG_OPTIMIZATIONS: empty labels and positions received. Job could not be registered") 
-    else: print("REG_OPTIMIZATIONS: Software", job.software, " not considered")
+        else: print("    REG_OPTIMIZATIONS: empty labels and positions received. Job could not be registered") 
+    else: print("    REG_OPTIMIZATIONS: Software", job.software, " not considered")
 
 def reg_frequencies(gmol: object, job: object, debug: int=0):
     lines = read_lines_file(job.output_path, flat=True)
@@ -59,4 +59,4 @@ def reg_frequencies(gmol: object, job: object, debug: int=0):
     ########
     #elif job.software.lower() == "qe" or job.software.lower() == "quantum_espresso" or job.software.lower() == "quantum espresso":
 
-    #else: print("REG_OPTIMIZATIONS: Software", job.software, " not considered")
+    #else: print("    REG_OPTIMIZATIONS: Software", job.software, " not considered")

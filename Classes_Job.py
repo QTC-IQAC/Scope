@@ -3,12 +3,14 @@ import copy
 from copy import deepcopy
 import os
 import numpy as np
+from datetime import datetime
 
 from Scope.Parse_General import search_string, read_lines_file 
 from Scope.Parse_G16_outputs import G16_get_last_geom, G16_time_to_sec
 from Scope.Parse_QE_outputs import *
 from Scope.Gmol_ops import gmol_update_geom
 from Scope.Other import where_in_array
+from Scope.Control_Jobs import set_cluster, set_user 
 
 from cell2mol.tmcharge_common import labels2formula
 from cell2mol.elementdata import ElementData
@@ -24,23 +26,23 @@ class recipe(object):
         self.keyword = keyword
         self.jobs = []
 
-    def update_registry(self, code_restriction: str="None", debug: int=0):
-        last_run_number = 0
-        for idx, jb in enumerate(self.jobs):
-            if os.path.isfile(jb.output_path):
-                if not hasattr(jb,"isregistered"):
-                    if code_restriction == "None":
-                        lines = read_lines_file(jb.output_path, flat=True)
-                        jb.register_job(lines, print_output=False, debug=debug)
-                        if debug > 0: print(f"     Update_Registry: {jb.job_code} {jb.run_number} registered")
-                    if code_restriction != "None":
-                        if jb.code == code_restriction:
-                            lines = read_lines_file(jb.output_path, flat=True)
-                            jb.register_job(lines, print_output=False, debug=debug)
-                            if debug > 0: print(f"     Update_Registry: {jb.job_code} {jb.run_number} registered")
-            else:
-                if debug > 0: print(f"     Update_Registry: deleting job with: {jb.job_code} {jb.run_number}")
-                self.jobs.remove(jb)
+#    def update_registry(self, code_restriction: str="None", debug: int=0):
+#        last_run_number = 0
+#        for idx, jb in enumerate(self.jobs):
+#            if os.path.isfile(jb.output_path):
+#                if not hasattr(jb,"isregistered"):
+#                    if code_restriction == "None":
+#                        lines = read_lines_file(jb.output_path, flat=True)
+#                        jb.register_job(lines, print_output=False, debug=debug)
+#                        if debug > 0: print(f"     Update_Registry: {jb.job_code} {jb.run_number} registered")
+#                    if code_restriction != "None":
+#                        if jb.code == code_restriction:
+#                            lines = read_lines_file(jb.output_path, flat=True)
+#                            jb.register_job(lines, print_output=False, debug=debug)
+#                            if debug > 0: print(f"     Update_Registry: {jb.job_code} {jb.run_number} registered")
+#            else:
+#                if debug > 0: print(f"     Update_Registry: deleting job with: {jb.job_code} {jb.run_number}")
+#                self.jobs.remove(jb)
 
 
 class job(object):
@@ -62,10 +64,19 @@ class job(object):
         self.nprocs = nprocs
         self.queue = queue
         self.issubmitted = issubmitted
+        self.submission_cluster = set_cluster()
+        self.submission_user =  set_user()
 
     def register_job(self, lines: str, print_output: bool=True, debug: int=0):
-        if os.path.isfile(self.output_path): self.isfinished = True
-        else: self.isfinished = False
+
+        ## These might require tweaking
+        if os.path.isfile(self.output_path): 
+            self.isfinished = True
+            # Registration below
+        else: 
+            self.isfinished = False
+            self.isregistered = False
+        # up to here
 
         if not self.isfinished: print(f"    REGISTRY of Job: {self.code} is impossible, since LOG:{self.output_path} does not exist")
         else:
@@ -79,6 +90,7 @@ class job(object):
                     elapsed_time_list = lines[line_time].split()[2:]
                     self.elapsed_time = G16_time_to_sec(elapsed_time_list)
                 else: self.elapsed_time = float(0)
+                self.isregistered = True
             #########################
             ### Quantum Espresso ###
             #########################
@@ -91,29 +103,29 @@ class job(object):
                 else: found_good = False
                 if found_elapsed: 
                     eline = lines[line_elapsed]
-                    time = eline.split("WALL")[-2]
-                    time2 = time.split("CPU")[1].rstrip().lstrip()
                     self.elapsed_time = QE_elapsed_time(eline)
                 else: self.elapsed_time = float(0)
+                self.isregistered = True
             else:
                 found_good = False
                 print(f"CLASSES_JOBS: Registry of this software: {self.software} is not implemented. See register_jobs in Control_Jobs.py")
             ###################
-    
             if found_good: self.isgood = True
             else: self.isgood = False
-    
-        if self.isfinished: self.isregistered = True
-        if not self.isfinished: self.isregistered = False
+
+            if self.isregistered:
+                self.registration_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+                self.registration_cluster = set_cluster()
+                self.registration_user =  set_user()
     
         if print_output or debug > 0:
-            print(f"    REGISTERED for Job: {self.code}. LOG:{self.output_path}")
-            if self.issubmitted: print(f"     -> Submitted")
-            if self.isfinished:  print(f"     -> Finished")
-            if self.isgood:      print(f"     -> Good")
-            else:                    print(f"     -> BAD !! ")
-            if self.isfinished and hasattr(self, "elapsed_time"): print(f"     -> Elapsed Time: {self.elapsed_time}")
-
+            if self.isregistered: 
+                print(f"    REGISTERED for Job: {self.code}. LOG:{self.output_path}")
+                if self.issubmitted: print(f"     -> Submitted")
+                if self.isfinished:  print(f"     -> Finished")
+                if self.isgood:      print(f"     -> Good")
+                else:                    print(f"     -> BAD !! ")
+                if self.isfinished and hasattr(self, "elapsed_time"): print(f"     -> Elapsed Time: {self.elapsed_time}")
 
 ################################
 ##### ASSOCIATED FUNCTIONS #####
