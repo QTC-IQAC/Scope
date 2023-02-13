@@ -90,6 +90,10 @@ class job(object):
                     elapsed_time_list = lines[line_time].split()[2:]
                     self.elapsed_time = G16_time_to_sec(elapsed_time_list)
                 else: self.elapsed_time = float(0)
+
+                if found_good and found_time: found_good = True
+                else: found_good = False
+
                 self.isregistered = True
             #########################
             ### Quantum Espresso ###
