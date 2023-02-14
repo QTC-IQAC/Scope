@@ -48,7 +48,7 @@ class recipe(object):
 class job(object):
     def __init__(self, name: str, hierarchy_number: int, run_number: int, input_path: str, output_path: str, subfile_path: str, software: str, code: str='', debug: int=0) -> None:
 
-        self.name = ''
+        self.name = name
         self.code = code
         self.hierarchy_number = int(hierarchy_number)
         self.run_number = int(run_number)
@@ -76,6 +76,7 @@ class job(object):
         #else:                  self.output_lines = '' 
 
     def check_submission_status(self) -> None:
+        if self.name == '': self.set_name()
         self.isrunning = check_submitted_job(self.name)
 
     def add_registration_data(self, cluster: str=set_cluster(), user: str=set_user()) -> None:
@@ -85,7 +86,9 @@ class job(object):
 
     ## Shouldn't  be necessary in the future
     def set_name(self) -> None:
-        if hasattr(self,"output_path") and not hasattr(self,"name"): self.name = self.output_path.rstrip().lstrip().split("/")[-1].split(".")[0]
+        if hasattr(self,"output_path"):
+            if not hasattr(self,"name"): self.name = self.output_path.rstrip().lstrip().split("/")[-1].split(".")[0]
+            if self.name == '': self.name = self.output_path.rstrip().lstrip().split("/")[-1].split(".")[0]
 
 ################################
 ##### ASSOCIATED FUNCTIONS #####

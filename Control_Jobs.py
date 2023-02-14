@@ -22,18 +22,22 @@ def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(
     elif 'login' in cluster or 'csuc' in cluster:
         if commandtype == "qstat":
             tmp = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+str(user)
-            try:    raw = subprocess.check_output(['bash','-c', tmp])
-            except: raw = ""
+            raw = subprocess.check_output(['bash','-c', tmp])
+            #try:    raw = subprocess.check_output(['bash','-c', tmp])
+      #      except: raw = ""
         elif commandtype == "queue_stat":
-            try:    raw = subprocess.check_output(['bash','-c', 'sinfo | grep '+queue+' | grep idle'])
-            except: raw = ""
+            raw = subprocess.check_output(['bash','-c', 'sinfo | grep '+queue+' | grep idle'])
+            #try:    raw = subprocess.check_output(['bash','-c', 'sinfo | grep '+queue+' | grep idle'])
+     #       except: raw = ""
         elif commandtype == "check_job":
             tmp = 'squeue -o "%.60j %.12u"'
-            try:    raw = subprocess.check_output(['bash','-c', tmp ]) 
-            except: raw = ""
+            raw = subprocess.check_output(['bash','-c', tmp ]) 
+            #try:    raw = subprocess.check_output(['bash','-c', tmp ]) 
+    #        except: raw = ""
         elif commandtype == "submit":     subprocess.run(['bash','-c', 'sbatch '+filename]) 
     else: print("Error in send_command function. Cluster not recognizsed")
-    if commandtype == "qstat" or commandtype == "queue_stat" or commandtype == "check_job": return raw
+    if commandtype == "qstat" or commandtype == "queue_stat" or commandtype == "check_job": 
+        return raw
 
 
 def set_queues(cluster: str=set_cluster(), queues: str='all', debug: int=0):
