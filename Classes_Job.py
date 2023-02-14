@@ -10,7 +10,7 @@ from Scope.Parse_G16_outputs import G16_get_last_geom, G16_time_to_sec
 from Scope.Parse_QE_outputs import *
 from Scope.Gmol_ops import gmol_update_geom
 from Scope.Other import where_in_array
-from Scope.Control_Jobs import set_cluster, set_user 
+from Scope.Control_Jobs import set_cluster, set_user, check_submitted_job 
 
 from cell2mol.tmcharge_common import labels2formula
 from cell2mol.elementdata import ElementData
@@ -46,93 +46,46 @@ class recipe(object):
 
 
 class job(object):
-    def __init__(self, hierarchy_number: int, run_number: int, input_path: str, output_path: str, subfile_path: str, software: str, code: str='', debug: int=0) -> None:
+    def __init__(self, name: str, hierarchy_number: int, run_number: int, input_path: str, output_path: str, subfile_path: str, software: str, code: str='', debug: int=0) -> None:
+
+        self.name = ''
+        self.code = code
         self.hierarchy_number = int(hierarchy_number)
         self.run_number = int(run_number)
+
         self.input_path = input_path
         self.output_path = output_path
         self.subfile_path = subfile_path
         self.software = software
-        self.code = code
+
         self.requisites = []
         self.isregistered = False
 
     def add_requisite(self, requisite) -> None:
         self.requisites.append(requisite)
 
-    def add_submission_init(self, nprocs: str='Unk', queue: str='Unk', issubmitted: bool=False) -> None:
+    def add_submission_init(self, nprocs: str='Unk', queue: str='Unk', cluster: str=set_cluster(), user: str=set_user()) -> None:
         self.nprocs = nprocs
         self.queue = queue
-        self.issubmitted = issubmitted
-        self.submission_cluster = set_cluster()
-        self.submission_user =  set_user()
+        self.submission_cluster = cluster 
+        self.submission_user = user 
 
-    def register_job(self, lines: str, print_output: bool=True, debug: int=0):
+    def add_submission_end(self) -> None:
+        self.output_exists = os.path.isfile(self.output_path)
+        if self.output_exists: self.output_lines = read_lines_file(self.output_path, flat=True)
+        #else:                  self.output_lines = '' 
 
-        ## These might require tweaking
-        if os.path.isfile(self.output_path): 
-            self.isfinished = True
-            # Registration below
-        else: 
-            self.isfinished = False
-            self.isregistered = False
-        # up to here
+    def check_submission_status(self) -> None:
+        self.isrunning = check_submitted_job(self.name)
 
-        if not self.isfinished: print(f"    REGISTRY of Job: {self.code} is impossible, since LOG:{self.output_path} does not exist")
-        else:
-            ###################
-            ### Gaussian 16 ###
-            ###################
-            if self.software.lower() == 'g16' or self.software.lower() == 'g09':
-                line_num, found_good = search_string("Normal termination", lines, typ='all')
-                line_time, found_time = search_string("Elapsed time:", lines, typ='last')
-                if found_time:
-                    elapsed_time_list = lines[line_time].split()[2:]
-                    self.elapsed_time = G16_time_to_sec(elapsed_time_list)
-                else: self.elapsed_time = float(0)
+    def add_registration_data(self, cluster: str=set_cluster(), user: str=set_user()) -> None:
+        self.registration_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        self.registration_cluster = cluster 
+        self.registration_user = user 
 
-                if found_good and found_time: found_good = True
-                else: found_good = False
-
-                self.isregistered = True
-            #########################
-            ### Quantum Espresso ###
-            #########################
-            elif self.software.lower() == "qe" or self.software.lower() == "quantum_espresso" or self.software.lower() == "quantum espresso":
-                line_num, found_job = search_string("JOB DONE", lines, typ='last')
-                line_time_start, found_time_start = search_string("Program PWSCF", lines, typ='first')
-                line_time_end, found_time_end = search_string("This run was terminated", lines, typ='last')
-                line_elapsed, found_elapsed = search_string("PWSCF        :", lines, typ='last')
-                if found_job and found_time_end: found_good = True
-                else: found_good = False
-                if found_elapsed: 
-                    eline = lines[line_elapsed]
-                    self.elapsed_time = QE_elapsed_time(eline)
-                else: self.elapsed_time = float(0)
-                self.isregistered = True
-            else:
-                found_good = False
-                print(f"CLASSES_JOBS: Registry of this software: {self.software} is not implemented. See register_jobs in Control_Jobs.py")
-            ###################
-            if found_good: 
-                self.isgood = True
-            else: 
-                self.isgood = False
-                print(f"    REGISTRY of Job: {self.code} didn't work, since LOG: {self.output_path} is not good")
-
-            if self.isregistered:
-                self.registration_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-                self.registration_cluster = set_cluster()
-                self.registration_user =  set_user()
-    
-        if print_output or debug > 0:
-            if self.isregistered: 
-                print(f"    REGISTERED for Job: {self.code}. LOG:{self.output_path}")
-                if self.issubmitted: print(f"     -> Submitted")
-                if self.isfinished:  print(f"     -> Finished")
-                if self.isgood:      print(f"     -> Good")
-                else:                    print(f"     -> BAD !! ")
-                if self.isfinished and hasattr(self, "elapsed_time"): print(f"     -> Elapsed Time: {self.elapsed_time}")
+    ## Shouldn't  be necessary in the future
+    def set_name(self) -> None:
+        if hasattr(self,"output_path") and not hasattr(self,"name"): self.name = self.output_path.rstrip().lstrip().split("/")[-1].split(".")[0]
 
 ################################
 ##### ASSOCIATED FUNCTIONS #####
