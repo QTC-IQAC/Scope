@@ -80,8 +80,8 @@ def reg_optimization(gmol: object, job: object, debug: int=0):
         new_coord = G16_get_last_geom(lines, debug=debug)
 
         ### If the desired tag already exists, then it updates it
-        if hasattr(gmol,new_tag): gmol_update_geom(gmol, name=new_tag, new_coord, debug=debug)
-        else:                     gmol_create_geom(gmol, name=new_tag, new_coord, debug=debug)
+        if hasattr(gmol,new_tag): gmol_update_geom(gmol, new_coord, name=new_tag, debug=debug)
+        else:                     gmol_create_geom(gmol, new_coord, name=new_tag, debug=debug)
 
     ########
     ## QE ##
@@ -97,11 +97,11 @@ def reg_optimization(gmol: object, job: object, debug: int=0):
 
             ### Updates Molecule or cell, depending on the type of object
             if hasattr(gmol,"moleclist"): 
-                if hasattr(gmol,new_tag): cell_update_geom(gmol, moleclist, name=new_tag, new_coord, debug=debug)
-                else:                     cell_create_geom(gmol, moleclist, name=new_tag, new_coord, debug=debug)
+                if hasattr(gmol,new_tag): cell_update_geom(gmol, moleclist, new_coord, name=new_tag, debug=debug)
+                else:                     cell_create_geom(gmol, moleclist, new_coord, name=new_tag, debug=debug)
             else:                       
-                if hasattr(gmol,new_tag): gmol_update_geom(gmol,            name=new_tag, new_coord, debug=debug)
-                else:                     gmol_create_geom(gmol,            name=new_tag, new_coord, debug=debug)
+                if hasattr(gmol,new_tag): gmol_update_geom(gmol,            new_coord, name=new_tag, debug=debug)
+                else:                     gmol_create_geom(gmol,            new_coord, name=new_tag, debug=debug)
 
         else: print("    REG_OPTIMIZATIONS: empty labels and positions received. Job could not be registered") 
     else: print("    REG_OPTIMIZATIONS: Software", job.software, " not considered")
