@@ -11,6 +11,7 @@ from Scope.Parse_Cif import get_cif_diffraction_data, get_cif_authors, get_cif_j
 from Scope.Parse_General import search_string, read_lines_file 
 from Scope.Geom_SCO_V1 import geom_sco_from_xyz, guess_spin_state
 from Scope.Read_Write import save_binary, load_binary
+from Scope.Gmol_ops import cell_posttocoord
 
 from cell2mol.tmcharge_common import labels2formula
 from cell2mol.elementdata import ElementData
@@ -135,6 +136,10 @@ class crystal(object):
         self.refcode = refcode
         self.name = name
         self.cell = cell 
+
+        # Adds coord as variable
+        cell_posttocoord(self.cell)
+
         self.cell2mol_path = cell2mol_path
         self.list_of_molecules = []
 

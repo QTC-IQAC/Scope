@@ -68,13 +68,20 @@ def reg_optimization(gmol: object, job: object, debug: int=0):
     if hasattr(job,"output_lines"):  lines = job.output_lines
     else: lines = read_lines_file(job.output_path, flat=True) 
 
+    ### Defines tag for the new geometry. We avoid blanks
+    if ' ' in job.code: new_tag = job.code.replace(' ','_')
+    else:               new_tag = job.code
+
     ###############
     ## G09 & G16 ##
     ###############
     if job.software.lower() == "g16" or job.software.lower() == "g09":
         if debug >= 1: print("    REG_OPTIMIZATION received", job.software, "and identified it as G16 or G09")
         new_coord = G16_get_last_geom(lines, debug=debug)
-        gmol_update_geom(gmol, new_coord, debug=debug)
+
+        ### If the desired tag already exists, then it updates it
+        if hasattr(gmol,new_tag): gmol_update_geom(gmol, name=new_tag, new_coord, debug=debug)
+        else:                     gmol_create_geom(gmol, name=new_tag, new_coord, debug=debug)
 
     ########
     ## QE ##
@@ -87,7 +94,15 @@ def reg_optimization(gmol: object, job: object, debug: int=0):
             except: factor = 1.3
             warning, moleclist = get_molecules(labels, pos, factor=factor, debug=debug)
             if not warning and debug >= 1: print(f"UPDATE_COORDINATES: found {len(moleclist)} molecules in cell")
-            cell_update_geom(gmol, moleclist, pos, debug=debug) 
+
+            ### Updates Molecule or cell, depending on the type of object
+            if hasattr(gmol,"moleclist"): 
+                if hasattr(gmol,new_tag): cell_update_geom(gmol, moleclist, name=new_tag, new_coord, debug=debug)
+                else:                     cell_create_geom(gmol, moleclist, name=new_tag, new_coord, debug=debug)
+            else:                       
+                if hasattr(gmol,new_tag): gmol_update_geom(gmol,            name=new_tag, new_coord, debug=debug)
+                else:                     gmol_create_geom(gmol,            name=new_tag, new_coord, debug=debug)
+
         else: print("    REG_OPTIMIZATIONS: empty labels and positions received. Job could not be registered") 
     else: print("    REG_OPTIMIZATIONS: Software", job.software, " not considered")
 
@@ -101,15 +116,13 @@ def reg_frequencies(gmol: object, job: object, debug: int=0):
     ###############
     if job.software.lower() == "g16" or "g09":
         VNMs = G16_get_VNM(lines, witheigen=True, debug=debug)
-        minimum_found = False
         if all(vnm.freq >= 0.0 for vnm in VNMs):
             gmol.VNMs = [vnm for vnm in VNMs]
             gmol.freqs_cm = [vnm.freq_cm for vnm in VNMs]
             gmol.Helec = G16_get_last_energy(lines)
-            minimum_found = True
-            if debug >= 1: print(f"     -> Minimum Found")
+            gmol.isminimum = True
         else:
-            if debug >= 1: print(f"     -> Negative Freq Found")
+            gmol.isminimum = False
 
     ########
     ## QE ##

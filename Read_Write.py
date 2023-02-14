@@ -35,7 +35,7 @@ def save_list_as_text(inplist: list, pathfile: str=os.getcwd()+"outfile.txt"):
             print(l, file=fil)
 
 #######################
-def writexyz(fdir, fname, labels, pos, charge: int=0, spin: int=1):
+def writexyz(fdir, fname, labels, coord, charge: int=0, spin: int=1):
     if fdir[-1] != "/":
         fdir = fdir + "/"
     natoms = len(labels)
@@ -44,14 +44,14 @@ def writexyz(fdir, fname, labels, pos, charge: int=0, spin: int=1):
         print(natoms, file=fil)
         print(charge, spin, file=fil)
         for idx, l in enumerate(labels):
-            print("%s  %.6f  %.6f  %.6f" % (l, pos[idx][0], pos[idx][1], pos[idx][2]),file=fil)
+            print("%s  %.6f  %.6f  %.6f" % (l, coord[idx][0], coord[idx][1], coord[idx][2]),file=fil)
 
 #######################
 def read_xyz(xyz_file):
     assert(xyz_file[-4:] == ".xyz")
     
     labels = []
-    pos = []
+    coord = []
     
     try:    xyz = open(xyz_file, "r")
     except: print("Could not read xyz file: {0}".format(xyz_file))
@@ -62,10 +62,10 @@ def read_xyz(xyz_file):
         line_data = line.split()
         if len(line_data) == 4:
             label, x, y, z = line.split()
-            pos.append([float(x), float(y), float(z)])
+            coord.append([float(x), float(y), float(z)])
             labels.append(label)
         else:
             print("I can't read the xyz. It has =/ than 4 columns")
 
     xyz.close()
-    return labels, pos
+    return labels, coord

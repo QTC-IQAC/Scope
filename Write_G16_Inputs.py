@@ -11,10 +11,11 @@ elemdatabase = ElementData()
 from Scope.Control_Jobs import set_user, set_cluster
 
 #######################
-def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extension: str="", jobtype: str="scf", functional: str="B3LYP*", basis: str='def2SVP', spin: str='gmol', isGrimme: bool=True, loose_opt: bool=False, nproc: int=1, useconnec: bool=False, append: bool=False):
- 
+def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extension: str="", coord_tag: str="coord", jobtype: str="scf", functional: str="B3LYP*", basis: str='def2SVP', spin: str='gmol', isGrimme: bool=True, loose_opt: bool=False, nproc: int=1, useconnec: bool=False, append: bool=False):
 ## useconnec is not implemented. It is meant to call the generation of the connectivity section for G16
 ## append is not implemented. Will be used to append a computation to an existing input file
+
+    assert hasattr(gmol,coord_tag)  ## Asserts that the coordinates exist
 
     #IDENTIFIES METALS
     elems = list(set(mol.labels)) 
@@ -80,11 +81,18 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
         print(f"Title Card", file=inp) 
         print("", file=inp) 
         print(f"{mol.totcharge} {spinval}", file=inp) 
+
+        ### Retrieves the desired coordinates from mol object
         for a in mol.atoms:
-            if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (a.label, a.coord[0], a.coord[1], a.coord[2]), file=inp)
+            ta = getattr(a,coord_tag)
+            if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (a.label, ta[0], ta[1], ta[2]), file=inp)
             else: 
-                if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (a.label, "0", a.coord[0], a.coord[1], a.coord[2]), file=inp)
-                else:              print("%s $s %.6f  %.6f  %.6f" % (a.label, "-1", a.coord[0], a.coord[1], a.coord[2]), file=inp)
+                if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (a.label, " 0", ta[0], ta[1], ta[2]), file=inp)
+                else:              print("%s $s %.6f  %.6f  %.6f" % (a.label, "-1", ta[0], ta[1], ta[2]), file=inp)
+            #if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (a.label, a.coord[0], a.coord[1], a.coord[2]), file=inp)
+            #else: 
+            #    if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (a.label, "0", a.coord[0], a.coord[1], a.coord[2]), file=inp)
+            #    else:              print("%s $s %.6f  %.6f  %.6f" % (a.label, "-1", a.coord[0], a.coord[1], a.coord[2]), file=inp)
         print("", file=inp) 
 
 ###################################################
