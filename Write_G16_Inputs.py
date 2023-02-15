@@ -11,7 +11,7 @@ elemdatabase = ElementData()
 from Scope.Control_Jobs import set_user, set_cluster
 
 #######################
-def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extension: str="", coord_tag: str="coord", jobtype: str="scf", functional: str="B3LYP*", basis: str='def2SVP', spin: str='gmol', isGrimme: bool=True, loose_opt: bool=False, nproc: int=1, useconnec: bool=False, append: bool=False):
+def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extension: str="", coord_tag: str="coord", jobtype: str="scf", functional: str="B3LYP*", basis: str='def2SVP', spin: str='gmol', isGrimme: bool=True, loose_opt: bool=False, useconnec: bool=False, append: bool=False):
 ## useconnec is not implemented. It is meant to call the generation of the connectivity section for G16
 ## append is not implemented. Will be used to append a computation to an existing input file
 
@@ -43,10 +43,9 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
     
     ### Starts printing input 
     with open(path+name+suffix+extension, 'w') as inp:
-        print(f"%nprocs={nproc}", file=inp)
-        if nproc*float(1.5) >= float(8): print(f"%mem={int(nproc*1.5)}gb", file=inp)
-        else: print(f"%mem=4gb", file=inp)
-        #print(f"%chk={path+name+suffix}.chk", file=inp)
+        #print(f"%nprocs={nproc}", file=inp)
+        #if nproc*float(1.5) >= float(8): print(f"%mem={int(nproc*1.5)}gb", file=inp)
+        #else: print(f"%mem=4gb", file=inp)
         print(f"%chk={name+suffix}.chk", file=inp)
         
         ## General keywords
@@ -89,14 +88,14 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
             else: 
                 if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (a.label, " 0", ta[0], ta[1], ta[2]), file=inp)
                 else:              print("%s $s %.6f  %.6f  %.6f" % (a.label, "-1", ta[0], ta[1], ta[2]), file=inp)
-            #if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (a.label, a.coord[0], a.coord[1], a.coord[2]), file=inp)
-            #else: 
-            #    if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (a.label, "0", a.coord[0], a.coord[1], a.coord[2]), file=inp)
-            #    else:              print("%s $s %.6f  %.6f  %.6f" % (a.label, "-1", a.coord[0], a.coord[1], a.coord[2]), file=inp)
         print("", file=inp) 
 
 ###################################################
-def gen_G16_subfile(path, name, suffix, extension="", procs=1, queue="iqtc09", cluster: str=set_cluster()):
+def gen_G16_subfile(path, name, suffix, extension="", procs: int=1, queue: str="iqtc09", cluster: str=set_cluster()):
+
+    if    procs*float(1.5) >= float(8): mem=int(nproc*1.5)
+    else:                               mem=int(4)
+
     if 'login' in cluster or 'csuc' in cluster:
         with open(path+name+suffix+extension, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
@@ -115,6 +114,8 @@ def gen_G16_subfile(path, name, suffix, extension="", procs=1, queue="iqtc09", c
             print(f"cd $TMPDIR", file=sub)
             print(f"export GAUSS_SCRDIR $TMPDIR", file=sub)
             print(f"cp $JOBDIR/{name}{suffix}.com .", file=sub)
+            print(f"sed -i '1s/^/%mem={mem}gb\n' {name}{suffix}.com", file=inp)
+            print(f"sed -i '1s/^/%nprocs={nproc}\n' {name}{suffix}.com", file=inp)
             print(f"g16 < {name}{suffix}.com > {name}{suffix}.log", file=sub)
             print(f"cp -pr *.log $JOBDIR/", file=sub)
             os.chmod(path+name+suffix+extension, 0o777)
@@ -138,6 +139,8 @@ def gen_G16_subfile(path, name, suffix, extension="", procs=1, queue="iqtc09", c
             print(f"cd $TMPDIR", file=sub)
             print(f"export GAUSS_SCRDIR $TMPDIR", file=sub)
             print(f"cp $WORKDIR/{name}{suffix}.com .", file=sub)
+            print(f"sed -i '1s/^/%mem={mem}gb\n' {name}{suffix}.com", file=inp)
+            print(f"sed -i '1s/^/%nprocs={nproc}\n' {name}{suffix}.com", file=inp)
             print(f"g16 < {name}{suffix}.com > {name}{suffix}.log", file=sub)
             print(f"cp -pr *.log $WORKDIR", file=sub)
             os.chmod(path+name+suffix+extension, 0o777)
