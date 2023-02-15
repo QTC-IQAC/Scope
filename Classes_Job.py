@@ -65,6 +65,8 @@ class job(object):
         self.requisites.append(requisite)
 
     def add_submission_init(self, nprocs: str='Unk', queue: str='Unk', cluster: str=set_cluster(), user: str=set_user()) -> None:
+        self.input_exists   = os.path.isfile(self.input_path)
+        self.subfile_exists = os.path.isfile(self.subfile_path)
         self.nprocs = nprocs
         self.queue = queue
         self.submission_cluster = cluster 
@@ -109,7 +111,7 @@ def check_recipe_requisites(recipe: object, code: str, requisites: list=[], cons
     return correct
 
 
-def find_job(recipe: object, code: str, run_number: int):
+def find_job(recipe: object, code: str, run_number: int) -> bool, object:
     found_job = False
     for idx, jb in enumerate(recipe.jobs):
         if jb.code == code and jb.run_number == run_number and not found_job:
