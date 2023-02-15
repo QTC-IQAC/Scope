@@ -17,6 +17,10 @@ from cell2mol.tmcharge_common import labels2formula
 from cell2mol.elementdata import ElementData
 elemdatabase = ElementData()
 
+###########################
+def cell_postocoord(cell: object) -> None:
+    if not hasattr(cell,"coord") and hasattr(cell,"pos"): setattr(cell,"coord",cell.pos)
+
 ############################
 ##### SYSTEM & CRYSTAL #####
 ############################
@@ -137,9 +141,6 @@ class crystal(object):
         self.name = name
         self.cell = cell 
 
-        # Adds coord as variable
-        cell_posttocoord(self.cell)
-
         self.cell2mol_path = cell2mol_path
         self.list_of_molecules = []
 
@@ -259,6 +260,10 @@ def create_sco_system(name, cell2mol_path: str="default", scope_path: str="defau
     for idx, crys in enumerate(crystal_files):
         if debug > 0: print(idx, name, crystal_names[idx], crystal_paths[idx])
         newcrystal = crystal(name, crystal_names[idx], crystal_paths[idx], crystal_objects[idx])
+
+        # Adds coord as variable. Legacy at some point
+        cell_postocoord(newcrystal.cell)
+
         newcrystal.read_cif_data(cif_paths[idx])
         newcrystal.get_FeN6_molecules(debug=debug)
         newcrystal.get_spin_and_phase_data(debug=debug)
@@ -272,7 +277,3 @@ def create_sco_system(name, cell2mol_path: str="default", scope_path: str="defau
     newsystem.set_reference_crystals(debug=debug)
     return newsystem
 ##############################
-
-def cell_postocoord(cell: object) -> None:
-    if not hasattr(cell,"coord") and hasattr(cell,"pos"): setattr(cell,"coord",cell.pos)
-

@@ -23,18 +23,18 @@ def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(
         if commandtype == "qstat":
             tmp = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+str(user)
             raw = subprocess.check_output(['bash','-c', tmp])
-            #try:    raw = subprocess.check_output(['bash','-c', tmp])
-      #      except: raw = ""
         elif commandtype == "queue_stat":
-            raw = subprocess.check_output(['bash','-c', 'sinfo | grep '+queue+' | grep idle'])
-            #try:    raw = subprocess.check_output(['bash','-c', 'sinfo | grep '+queue+' | grep idle'])
-     #       except: raw = ""
+            tmp = 'sinfo | grep '+queue+' | grep idle' 
+            raw = subprocess.check_output(['bash','-c', tmp])
         elif commandtype == "check_job":
             tmp = 'squeue -o "%.60j %.12u"'
             raw = subprocess.check_output(['bash','-c', tmp ]) 
-            #try:    raw = subprocess.check_output(['bash','-c', tmp ]) 
-    #        except: raw = ""
         elif commandtype == "submit":     subprocess.run(['bash','-c', 'sbatch '+filename]) 
+    elif 'lemma' in cluster:
+        if commandtype == "qstat": raw = '' 
+        elif commandtype == "queue_stat": raw = ''
+        elif commandtype == "check_job": raw = '' 
+        elif commandtype == "submit": pass
     else: print("Error in send_command function. Cluster not recognizsed")
     if commandtype == "qstat" or commandtype == "queue_stat" or commandtype == "check_job": 
         return raw
@@ -161,19 +161,21 @@ def check_queue_availability(queues: str='all', cluster: str=set_cluster(), debu
 def check_submitted_job(name: str, cluster: str=set_cluster(), debug: int=0):
     issubmitted = False
 
-    raw = send_command("check_job", cluster, debug=debug)
-    dec = raw.decode("utf-8") 
-    flat = dec.replace("\n", "")
-
-    if 'login' in cluster or 'csuc' in cluster:
-        if name in flat: issubmitted = True 
-        else:            issubmitted = False
-
-    elif 'portal' in cluster:
-        code = str("<JB_name>"+name+"</JB_name>") 
-        if code in flat: issubmitted = True 
-        else:            issubmitted = False
-
+    if 'node' in cluster or 'lemma' in cluster: issubmitted = False
+    else: 
+        raw = send_command("check_job", cluster, debug=debug)
+        dec = raw.decode("utf-8") 
+        flat = dec.replace("\n", "")
+    
+        if 'login' in cluster or 'csuc' in cluster:
+            if name in flat: issubmitted = True 
+            else:            issubmitted = False
+        elif 'portal' in cluster:
+            code = str("<JB_name>"+name+"</JB_name>") 
+            if code in flat: issubmitted = True 
+            else:            issubmitted = False
+        else: print("    Check_Submitted_Job: Cluster not recognized")
+    
     return issubmitted
 
 def get_queue_and_procs(resources: str="light", cluster: str=set_cluster(), debug: int=0):
@@ -183,24 +185,23 @@ def get_queue_and_procs(resources: str="light", cluster: str=set_cluster(), debu
         elif resources.lower() == "medium": mult = 2
         elif resources.lower() == "heavy": mult = 4
         else: mult = 1
-
         askqueue = set_best_queue(queues='8,9,10', debug=debug)
         if askqueue == 'iqtc08': askprocs = 7*mult
         else: askprocs = 8*mult
 
     elif "login" in cluster or "csuc" in cluster:
-
         askqueue = "std"
         if resources.lower() == "light": mult = 1
         elif resources.lower() == "medium": mult = 2
         elif resources.lower() == "heavy": mult = 4
-
         askprocs = 8*mult
+
     else:
         askqueue = ''
         askprocs = 0
 
     return askqueue, askprocs
+
 #####################################
 ##### Portal Specific Functions #####
 #####################################

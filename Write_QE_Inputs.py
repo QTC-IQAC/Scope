@@ -261,7 +261,7 @@ def gen_QE_subfile(path: str, name: str, suffix: str, sub_extension: str="sub", 
             print(f"cp $WORKDIR/ABITEM_relax_r1_LS.input .", file=sub)
             print(f"mpirun -np 32 pw.x < ABITEM_relax_r1_LS.input > ABITEM_relax_r1_LS.out", file=sub)
             print(f"cp -pr *.out $WORKDIR", file=sub)
-    os.chmod(path+name+suffix+sub_extension, 0o777)
+            os.chmod(path+name+suffix+sub_extension, 0o777)
         
 ###################################################
 

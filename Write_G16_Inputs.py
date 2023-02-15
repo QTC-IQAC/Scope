@@ -15,7 +15,7 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
 ## useconnec is not implemented. It is meant to call the generation of the connectivity section for G16
 ## append is not implemented. Will be used to append a computation to an existing input file
 
-    assert hasattr(gmol,coord_tag)  ## Asserts that the coordinates exist
+    assert hasattr(mol,coord_tag)  ## Asserts that the coordinates exist
 
     #IDENTIFIES METALS
     elems = list(set(mol.labels)) 
@@ -117,6 +117,7 @@ def gen_G16_subfile(path, name, suffix, extension="", procs=1, queue="iqtc09", c
             print(f"cp $JOBDIR/{name}{suffix}.com .", file=sub)
             print(f"g16 < {name}{suffix}.com > {name}{suffix}.log", file=sub)
             print(f"cp -pr *.log $JOBDIR/", file=sub)
+            os.chmod(path+name+suffix+extension, 0o777)
 
     elif 'portal' in cluster:
         with open(path+name+suffix+extension, 'w+') as sub:
@@ -139,8 +140,7 @@ def gen_G16_subfile(path, name, suffix, extension="", procs=1, queue="iqtc09", c
             print(f"cp $WORKDIR/{name}{suffix}.com .", file=sub)
             print(f"g16 < {name}{suffix}.com > {name}{suffix}.log", file=sub)
             print(f"cp -pr *.log $WORKDIR", file=sub)
-
-    os.chmod(path+name+suffix+extension, 0o777)
+            os.chmod(path+name+suffix+extension, 0o777)
         
 ###################################################
 
