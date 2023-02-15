@@ -93,7 +93,7 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
 ###################################################
 def gen_G16_subfile(path, name, suffix, extension="", procs: int=1, queue: str="iqtc09", cluster: str=set_cluster()):
 
-    if    procs*float(1.5) >= float(8): mem=int(nproc*1.5)
+    if    procs*float(1.5) >= float(8): mem=int(procs*1.5)
     else:                               mem=int(4)
 
     if 'login' in cluster or 'csuc' in cluster:
@@ -114,8 +114,11 @@ def gen_G16_subfile(path, name, suffix, extension="", procs: int=1, queue: str="
             print(f"cd $TMPDIR", file=sub)
             print(f"export GAUSS_SCRDIR $TMPDIR", file=sub)
             print(f"cp $JOBDIR/{name}{suffix}.com .", file=sub)
-            print(f"sed -i '1s/^/%mem={mem}gb\n' {name}{suffix}.com", file=inp)
-            print(f"sed -i '1s/^/%nprocs={nproc}\n' {name}{suffix}.com", file=inp)
+            print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
+            print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
+            print(f"cat tmp1 {name}{suffix}.com > tmp2 | mv -f tmp2 {name}{suffix}.com", file=sub)
+            #print(f"sed -i '1s/^/%mem={mem}gb\n' {name}{suffix}.com", file=sub)
+            #print(f"sed -i '1s/^/%nprocs={procs}\n' {name}{suffix}.com", file=sub)
             print(f"g16 < {name}{suffix}.com > {name}{suffix}.log", file=sub)
             print(f"cp -pr *.log $JOBDIR/", file=sub)
             os.chmod(path+name+suffix+extension, 0o777)
@@ -139,8 +142,11 @@ def gen_G16_subfile(path, name, suffix, extension="", procs: int=1, queue: str="
             print(f"cd $TMPDIR", file=sub)
             print(f"export GAUSS_SCRDIR $TMPDIR", file=sub)
             print(f"cp $WORKDIR/{name}{suffix}.com .", file=sub)
-            print(f"sed -i '1s/^/%mem={mem}gb\n' {name}{suffix}.com", file=inp)
-            print(f"sed -i '1s/^/%nprocs={nproc}\n' {name}{suffix}.com", file=inp)
+            print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
+            print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
+            print(f"cat tmp1 {name}{suffix}.com > tmp2 | mv -f tmp2 {name}{suffix}.com", file=sub)
+#            print(f"sed -i '1s/^/%mem={mem}gb\n' {name}{suffix}.com", file=sub)
+#            print(f"sed -i '1s/^/%nprocs={procs}\n' {name}{suffix}.com", file=sub)
             print(f"g16 < {name}{suffix}.com > {name}{suffix}.log", file=sub)
             print(f"cp -pr *.log $WORKDIR", file=sub)
             os.chmod(path+name+suffix+extension, 0o777)

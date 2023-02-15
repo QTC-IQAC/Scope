@@ -111,7 +111,7 @@ def check_recipe_requisites(recipe: object, code: str, requisites: list=[], cons
     return correct
 
 
-def find_job(recipe: object, code: str, run_number: int) -> bool, object:
+def find_job(recipe: object, code: str, run_number: int):
     found_job = False
     for idx, jb in enumerate(recipe.jobs):
         if jb.code == code and jb.run_number == run_number and not found_job:
