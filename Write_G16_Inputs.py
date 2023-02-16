@@ -17,16 +17,6 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
 
     assert hasattr(mol,coord_tag)  ## Asserts that the coordinates exist
 
-    #IDENTIFIES METALS
-    elems = list(set(mol.labels)) 
-    thereismetal = []
-    for idx, l in enumerate(elems): 
-        if (elemdatabase.elementblock[l] == 'd' or elemdatabase.elementblock[l] == 'f'): thereismetal.append(True)
-        else: thereismetal.append(False)
-    if any(thereismetal):
-        nummetal = sum(thereismetal)
-        trues = [i for i, x in enumerate(thereismetal) if x]
-        
     ### Tries to find spin
     if spin.lower() == "gmol": 
         if hasattr(mol, 'spin'):
@@ -91,8 +81,9 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
         print("", file=inp) 
 
 ###################################################
-def gen_G16_subfile(path, name, suffix, extension="", procs: int=1, queue: str="iqtc09", cluster: str=set_cluster()):
-
+def gen_G16_subfile(path, name, suffix, extension="", procs: int=1, queue: str="iqtc09", cluster: str=set_cluster(), savechk: bool=False):
+    ## savechk must be tested
+   
     if    procs*float(1.5) >= float(8): mem=int(procs*1.5)
     else:                               mem=int(4)
 
@@ -121,6 +112,7 @@ def gen_G16_subfile(path, name, suffix, extension="", procs: int=1, queue: str="
             #print(f"sed -i '1s/^/%nprocs={procs}\n' {name}{suffix}.com", file=sub)
             print(f"g16 < {name}{suffix}.com > {name}{suffix}.log", file=sub)
             print(f"cp -pr *.log $JOBDIR/", file=sub)
+            if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)
             os.chmod(path+name+suffix+extension, 0o777)
 
     elif 'portal' in cluster:
@@ -149,7 +141,102 @@ def gen_G16_subfile(path, name, suffix, extension="", procs: int=1, queue: str="
 #            print(f"sed -i '1s/^/%nprocs={procs}\n' {name}{suffix}.com", file=sub)
             print(f"g16 < {name}{suffix}.com > {name}{suffix}.log", file=sub)
             print(f"cp -pr *.log $WORKDIR", file=sub)
+            if savechk: print(f"cp -pr *.chk $WORKDIR", file=sub)
             os.chmod(path+name+suffix+extension, 0o777)
         
 ###################################################
+def g16_from_inpt(inpt: object, mol: object, path: str, name: str, suffix: str="", extension: str="", spin: str='gmol'):
 
+    ### Tries to find spin
+    if spin.lower() == "gmol": 
+        if hasattr(mol, 'spin'):
+            spinval = mol.spin
+        else:
+            if ((mol.eleccount + mol.totcharge) % 2 == 0): spinval = 1         #Singlet
+            else:  spinval = 2                                                 #Doublet
+    elif spin.lower() == "hs" or spin.lower() == "ls":
+        spinval = 0
+        for met in mol.metalist:
+            ## I Should add Oxidation-State-dependent Rules
+            if met.label == "Fe" and spin.lower() == "ls": spinval = spinval + 1
+            elif met.label == "Fe" and spin.lower() == "hs": spinval = spinval + 5
+    
+    ### Starts printing input 
+    with open(path+name+suffix+extension, 'w') as inp:
+        print(f"%chk={name+suffix}.chk", file=inp)
+        
+        ## General keywords
+        commandline = []
+        commandline.append("#p")
+        commandline.append(" nosymm")
+        commandline.append(" scf=(maxconventionalcycles=200,xqc)")
+
+        ## Functional
+        if "functional" in inpt.keys(): functional = inpt['functional'].lower()
+        else:                           functional = "B3LYP**"
+        if functional == "pbe": commandline.append(" UPBEPBE")
+        elif functional == "b3lyp": commandline.append(" UB3LYP")
+        elif functional == "b3lyp*": commandline.append(" UB3LYP IOp(3/76=1000002000) IOp(3/77=0720008000) IOp(3/78=0810010000)")
+        elif functional == "b3lyp**": commandline.append(" UB3LYP IOp(3/76=1000001500) IOp(3/77=0720008500) IOp(3/78=0810010000)")
+        else: print("G16_INPUT: functional", functional, "not recognized")
+
+        ## Basis
+        if "basis" in inpt.keys(): basis = inpt['basis'].lower()
+        else:                      basis = "def2SVP"
+        if basis.lower() == "def2sv": commandline.append(" def2SV")
+        elif basis.lower() == "def2svp": commandline.append(" def2SVP")
+        elif basis.lower() == "def2tzv": commandline.append(" def2TZV")
+        elif basis.lower() == "def2tzvp": commandline.append(" def2TZVP")
+        elif basis.lower() == "def2tzvpp": commandline.append(" def2TZVPP")
+        else: print("G16_INPUT: basis", basis, "not recognized")
+
+        ## Jobtype
+        if "jobtype" in inpt.keys():   jobtype = inpt['jobtype'].lower()
+        else:                          jobtype = "scf"
+        if "loose_opt" in inpt.keys(): loose_opt = inpt['loose_opt']
+        else:                          loose_opt = False
+        if jobtype.lower() == "opt" or jobtype.lower() == "opth" or jobtype.lower() == "opt&freq": 
+            if loose_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,loose)")
+            else:         commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral)")
+        elif jobtype.lower() == "opt&freq" or jobtype.lower() == "freq": commandline.append(" freq")
+        else: print("G16_INPUT: jobtype", jobtype, "not recognized")
+
+        ## Grimme
+        if "isGrimme" in inpt.keys(): isGrimme = inpt['isGrimme']
+        else:                         isGrimme = False
+        if isGrimme: commandline.append(" EmpiricalDispersion=GD3BJ")
+
+        ## Commandline is put together
+        commandline = ''.join(commandline)
+        print(f"{commandline}", file=inp) 
+        print("", file=inp) 
+        print(f"Title Card", file=inp) 
+        print("", file=inp) 
+        print(f"{mol.totcharge} {spinval}", file=inp) 
+
+        ####################################################
+        ### Coordinates, which are taken from mol object ###
+        ####################################################
+        if "coord_tag" in inpt.keys(): coord_tag = inpt['coord_tag'].lower()
+        else:                          coord_tag = "coord"
+        assert hasattr(mol,coord_tag)
+        for a in mol.atoms:
+            ta = getattr(a,coord_tag)
+            if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (a.label, ta[0], ta[1], ta[2]), file=inp)
+            else: 
+                if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (a.label, " 0", ta[0], ta[1], ta[2]), file=inp)
+                else:              print("%s $s %.6f  %.6f  %.6f" % (a.label, "-1", ta[0], ta[1], ta[2]), file=inp)
+        print("", file=inp) 
+
+###################################################
+
+def identify_metals(labels: list):
+    elems = list(set(labels))
+    thereismetal = []
+    for idx, l in enumerate(elems):
+        if (elemdatabase.elementblock[l] == 'd' or elemdatabase.elementblock[l] == 'f'): thereismetal.append(True)
+        else: thereismetal.append(False)
+    if any(thereismetal):
+        nummetal = sum(thereismetal)
+        trues = [i for i, x in enumerate(thereismetal) if x]
+    return nummetal, trues

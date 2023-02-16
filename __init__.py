@@ -5,6 +5,7 @@
 
 from .Adapted_from_cell2mol import *
 from .Constants import *
+from .Classes_Input import *
 from .Classes_QC import *
 from .Classes_Job import *
 from .Classes_SCO import *

@@ -44,7 +44,8 @@ def cell_create_geom(cell: object, moleclist: list, new_coord: list, tag: str="n
         for jdx, at in enumerate(mol.atoms):
             setattr(at,tag,new_coord[mol.atlist[jdx]])
 
-def displace_neg_freqs(gmol: object, debug: int=0) -> list:
-    disp_coord = vnm_displacement(gmol.VNMs, gmol.coord)
+def displace_neg_freqs(gmol: object, ini_coord_tag: str="coord", debug: int=0) -> list:
+    ini_coord = getattr(gmol,ini_coord_tag)
+    disp_coord = vnm_displacement(gmol.VNMs, ini_coord)
     return disp_coord
 

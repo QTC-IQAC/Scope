@@ -13,7 +13,7 @@ def write_vnm_dyn(vnm: object, maxfactor: int=10, index: int=0, outfolder: str='
                 label = elemdatabase.elementsym[vnm.atnums[idx]]
                 print(f"{label}  {coord[0]:.5f}  {coord[1]:.5f}  {coord[2]:.5f}", file=output_file)
 
-def vnm_displacement(VNMs: list, initial_coord: list, which: list=[], which_side: str='positive', maxfactor: int=10, debug: int=0):
+def vnm_displacement(VNMs: list, initial_coord: list, which: list=[], which_side: str='positive', maxfactor: int=2, debug: int=0):
     # Applies a displacement from the initial geometry using either 'all negative normal modes whose index is in 'which'
     if len(which) == 0: which = [vnm.index for vnm in VNMs]
     new_coord = initial_coord.copy()    
