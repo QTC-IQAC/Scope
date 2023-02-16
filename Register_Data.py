@@ -120,10 +120,9 @@ def reg_frequencies(gmol: object, job: object, debug: int=0):
     ###############
     if job.software.lower() == "g16" or "g09":
         VNMs = G16_get_VNM(lines, witheigen=True, debug=debug)
+        gmol.VNMs = [vnm for vnm in VNMs]
+        gmol.freqs_cm = [vnm.freq_cm for vnm in VNMs]
         if all(vnm.freq >= 0.0 for vnm in VNMs):
-            gmol.VNMs = [vnm for vnm in VNMs]
-            gmol.freqs_cm = [vnm.freq_cm for vnm in VNMs]
-            gmol.Helec = G16_get_last_energy(lines)
             gmol.isminimum = True
         else:
             gmol.isminimum = False
