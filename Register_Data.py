@@ -127,6 +127,15 @@ def reg_frequencies(gmol: object, job: object, debug: int=0):
         else:
             gmol.isminimum = False
 
+    if gmol.isminimum:
+        ### Defines tag for the new geometry. We avoid blanks
+        new_tag = "minimum"  
+        ### If the desired tag already exists, then it updates it
+        if hasattr(gmol,new_tag): 
+            gmol_update_geom(gmol, new_coord, tag=new_tag, debug=debug)
+        else:                     
+            gmol_create_geom(gmol, new_coord, tag=new_tag, debug=debug)
+
     ########
     ## QE ##
     ########
