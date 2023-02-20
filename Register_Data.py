@@ -122,20 +122,21 @@ def reg_frequencies(gmol: object, job: object, debug: int=0):
         VNMs = G16_get_VNM(lines, witheigen=True, debug=debug)
         gmol.VNMs = [vnm for vnm in VNMs]
         gmol.freqs_cm = [vnm.freq_cm for vnm in VNMs]
+        gmol.Helec = G16_get_last_energy(lines)
         if all(vnm.freq >= 0.0 for vnm in VNMs):
             gmol.isminimum = True
         else:
             gmol.isminimum = False
 
-    if gmol.isminimum:
-        new_coord = G16_get_last_geom(lines, debug=debug)
-        ### Defines tag for the new geometry. We avoid blanks
-        new_tag = "min_coord"
-        ### If the desired tag already exists, then it updates it
-        if hasattr(gmol,new_tag): 
-            gmol_update_geom(gmol, new_coord, tag=new_tag, debug=debug)
-        else:                     
-            gmol_create_geom(gmol, new_coord, tag=new_tag, debug=debug)
+        if gmol.isminimum:
+            new_coord = G16_get_last_geom(lines, debug=debug)
+            ### Defines tag for the new geometry. We avoid blanks
+            new_tag = "min_coord"
+            ### If the desired tag already exists, then it updates it
+            if hasattr(gmol,new_tag): 
+                gmol_update_geom(gmol, new_coord, tag=new_tag, debug=debug)
+            else:                     
+                gmol_create_geom(gmol, new_coord, tag=new_tag, debug=debug)
 
     ########
     ## QE ##
