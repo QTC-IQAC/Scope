@@ -81,7 +81,7 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
         print("", file=inp) 
 
 ###################################################
-def gen_G16_subfile(path, name, suffix, extension="", procs: int=1, queue: str="iqtc09", cluster: str=set_cluster(), savechk: bool=False):
+def gen_G16_subfile(path, name, suffix, extension="", procs: int=1, queue: str="iqtc09", cluster: str=set_cluster(), user: str=set_user(), savechk: bool=False):
     ## savechk must be tested
    
     if    procs*float(1.5) >= float(8): mem=int(procs*1.5)
@@ -91,8 +91,8 @@ def gen_G16_subfile(path, name, suffix, extension="", procs: int=1, queue: str="
         with open(path+name+suffix+extension, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
             print(f"#SBATCH -J {name}{suffix}", file=sub)
-            print(f"#SBATCH -e /scratch/svela/std_files/{name}{suffix}.err", file=sub)
-            print(f"#SBATCH -o /scratch/svela/std_files/{name}{suffix}.out", file=sub)
+            print(f"#SBATCH -e /scratch/{user}/std_files/{name}{suffix}.err", file=sub)
+            print(f"#SBATCH -o /scratch/{user}/std_files/{name}{suffix}.out", file=sub)
             print(f"#SBATCH -p {queue}", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
@@ -121,8 +121,8 @@ def gen_G16_subfile(path, name, suffix, extension="", procs: int=1, queue: str="
             print(f"#$ -N {name}{suffix}", file=sub) 
             print(f"#$ -pe smp {procs}", file=sub)
             print(f"#$ -cwd", file=sub)
-            print(f"#$ -o /home/g4vela/x-stds/{name}{suffix}.stdout", file=sub)
-            print(f"#$ -e /home/g4vela/x-stds/{name}{suffix}.stderr", file=sub)
+            print(f"#$ -o /home/{user}/x-stds/{name}{suffix}.stdout", file=sub)
+            print(f"#$ -e /home/{user}/x-stds/{name}{suffix}.stderr", file=sub)
             print(f"#$ -q {queue}.q" , file=sub)
             print(f"", file=sub)
             print(f"source /etc/profile.d/modules.csh", file=sub)

@@ -178,15 +178,17 @@ def check_submitted_job(name: str, cluster: str=set_cluster(), debug: int=0):
     
     return issubmitted
 
-def get_queue_and_procs(resources: str="light", cluster: str=set_cluster(), debug: int=0):
+def get_queue_and_procs(resources: str="light", cluster: str=set_cluster(), queues: str='all', debug: int=0):
         #### Finds best number of processors and queue
     if "portal" in cluster:
         if resources.lower() == "light": mult = 1
         elif resources.lower() == "medium": mult = 2
         elif resources.lower() == "heavy": mult = 4
         else: mult = 1
-        askqueue = set_best_queue(queues='8,9,10', debug=debug)
+        askqueue = set_best_queue(queues=queues, debug=debug)
+        #askqueue = set_best_queue(queues='6,8,9,10', debug=debug)
         if askqueue == 'iqtc08': askprocs = 7*mult
+        elif askqueue == 'iqtc04': askprocs = 6*mult
         else: askprocs = 8*mult
 
     elif "login" in cluster or "csuc" in cluster:
