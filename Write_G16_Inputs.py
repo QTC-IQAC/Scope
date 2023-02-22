@@ -11,7 +11,7 @@ elemdatabase = ElementData()
 from Scope.Control_Jobs import set_user, set_cluster
 
 #######################
-def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extension: str="", coord_tag: str="coord", jobtype: str="scf", functional: str="B3LYP*", basis: str='def2SVP', spin: str='gmol', isGrimme: bool=True, loose_opt: bool=False, useconnec: bool=False, append: bool=False):
+def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extension: str="", coord_tag: str="coord", jobtype: str="scf", functional: str="B3LYP*", basis: str='def2SVP', spin: str='gmol', isGrimme: bool=True, loose_opt: bool=False, tight_opt: bool=False, useconnec: bool=False, append: bool=False):
 ## useconnec is not implemented. It is meant to call the generation of the connectivity section for G16
 ## append is not implemented. Will be used to append a computation to an existing input file
 
@@ -59,10 +59,12 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
 
         ## Jobtype
         if jobtype.lower() == "opt" or jobtype.lower() == "opth" or jobtype.lower() == "opt&freq": 
-            if loose_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,loose)")
+            if   loose_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,loose)")
+            elif tight_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,VeryTight)")
             else: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral)")
         if jobtype.lower() == "opt&freq" or jobtype.lower() == "freq": commandline.append(" freq")
         if isGrimme: commandline.append(" EmpiricalDispersion=GD3BJ")
+        if tight_opt: commandline.append(" Int=UltraFine")
 
         commandline = ''.join(commandline)
         print(f"{commandline}", file=inp) 
@@ -195,9 +197,12 @@ def g16_from_inpt(inpt: object, mol: object, path: str, name: str, suffix: str="
         else:                          jobtype = "scf"
         if "loose_opt" in inpt.keys(): loose_opt = inpt['loose_opt']
         else:                          loose_opt = False
+        if "tight_opt" in inpt.keys(): tight_opt = inpt['tight_opt']
+        else:                          tight_opt = False
         if jobtype.lower() == "opt" or jobtype.lower() == "opth" or jobtype.lower() == "opt&freq": 
-            if loose_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,loose)")
-            else:         commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral)")
+            if   loose_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,loose)")
+            elif tight_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,VeryTight)")
+            else:           commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral)")
         elif jobtype.lower() == "opt&freq" or jobtype.lower() == "freq": commandline.append(" freq")
         else: print("G16_INPUT: jobtype", jobtype, "not recognized")
 
@@ -205,6 +210,9 @@ def g16_from_inpt(inpt: object, mol: object, path: str, name: str, suffix: str="
         if "isGrimme" in inpt.keys(): isGrimme = inpt['isGrimme']
         else:                         isGrimme = False
         if isGrimme: commandline.append(" EmpiricalDispersion=GD3BJ")
+
+        ## Integral Grid
+        if tight_opt: commandline.append(" Int=UltraFine")
 
         ## Commandline is put together
         commandline = ''.join(commandline)

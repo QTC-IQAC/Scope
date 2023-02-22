@@ -13,6 +13,34 @@ def set_user():
 def set_cluster():
     return os.uname()[1]
 
+def set_paths(cluster: str=set_cluster(), user: str=set_user(), debug: int=0):
+    if 'login' in cluster or 'csuc' in cluster:
+        cell2mol_path = "/scratch/svela/SCOPE/Database_SCO/4-Merged"
+        scope_path = "/home/svela/SCOPE/Database_SCO/5-Complexes_Iso"
+    elif 'portal' in cluster or 'node' in cluster:
+        if 'g2vela' in user:
+            cell2mol_path = "/home/g4vela/SCOPE/Database_SCO/4-Merged"
+            scope_path = "/home/g2vela/SCOPE/Database_SCO/5-Complexes_Iso"
+        elif 'g4vela' in user:
+            cell2mol_path = "/home/g4vela/SCOPE/Database_SCO/4-Merged"
+            scope_path = "/home/g4vela/SCOPE/Database_SCO/5-Complexes_Iso"
+    elif 'lemma' in cluster:
+        cell2mol_path = "/Users/sergivela/Documents/SCOPE/Database_SCO/4-Merged"
+        scope_path = "/Users/sergivela/Documents/SCOPE/Database_SCO/5-Complexes_Iso"
+    else: print("Cluster not recognized")
+    return cell2mol_path, scope_path
+
+
+def get_status(scope_path: str, core: str, debug: int=0):
+    cancontinue = False
+    if not os.path.isfile(scope_path+'/'+core+'/'+core+".sys"):
+        if debug > 1: print(f"System file of {core} not found in {scope_path+'/'+core+'/'+core+'.sys'}")
+    else:
+        if os.path.isfile(scope_path+'/'+core+'/'+"TERMINATED") and debug > 0:     print("Terminated", core)
+        elif os.path.isfile(scope_path+'/'+core+'/'+"ISO_FINISHED") and debug > 0: print("Finished", core)
+        else: cancontinue = True
+    return cancontinue
+
 def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(), user: str=set_user(), queue: str='', debug: int=0):
     if user[2].isdigit(): group = user[0:3]
     else:               group = user[0:2]
