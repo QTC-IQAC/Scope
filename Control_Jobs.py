@@ -14,18 +14,24 @@ def set_cluster():
     return os.uname()[1]
 
 def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(), user: str=set_user(), queue: str='', debug: int=0):
+    if user[2].isdigit(): group = user[0:3]
+    else:               group = user[0:2]
+    if debug > 0: print("SEND_COMMAND: evaluating", commandtype, "for", cluster, "and group:", group)
     if 'portal' in cluster:
         if commandtype == "qstat": raw = subprocess.check_output(['bash','-c', "qstat"])
-        elif commandtype == "queue_stat": raw = subprocess.check_output(['bash','-c', 'qstat -f | grep '+queue])
+        elif commandtype == "queue_stat": 
+            tmp = str(f"qstat -f | grep {queue} | grep {group}")
+            if debug > 0: print("SEND_COMMAND: command=", tmp)
+            raw = subprocess.check_output(['bash','-c', tmp ])
         elif commandtype == "check_job":  raw = subprocess.check_output(['bash','-c', "qstat -xml"]) #-q "+queue+".q" ]) 
         elif commandtype == "submit":     subprocess.run(['bash','-c', 'qsub '+filename]) 
     elif 'login' in cluster or 'csuc' in cluster:
         if commandtype == "qstat":
             tmp = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+str(user)
-            raw = subprocess.check_output(['bash','-c', tmp])
+            raw = subprocess.check_output(['bash','-c', tmp ])
         elif commandtype == "queue_stat":
             tmp = 'sinfo | grep '+queue+' | grep idle' 
-            raw = subprocess.check_output(['bash','-c', tmp])
+            raw = subprocess.check_output(['bash','-c', tmp ])
         elif commandtype == "check_job":
             tmp = 'squeue -o "%.60j %.12u"'
             raw = subprocess.check_output(['bash','-c', tmp ]) 
@@ -42,12 +48,13 @@ def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(
 
 def set_queues(cluster: str=set_cluster(), queues: str='all', debug: int=0):
     list_q = []
+    list_of_exceptions = [1, 3, 5, 7]
     if 'login' in cluster or 'csuc' in cluster:
         list_q.append("std")
     elif 'portal' in cluster:
         if queues == 'all':
                 for i in range(1,11): 
-                    if i == 3 or i == 1: pass
+                    if i in list_of_exceptions: pass
                     elif i < 10: list_q.append(str("iqtc0"+str(i)))
                     else: list_q.append(str("iqtc"+str(i)))
         else:
@@ -100,15 +107,14 @@ def check_queue_availability(queues: str='all', cluster: str=set_cluster(), debu
     list_q_worked = []
     list_empty_cpus = []
     list_total_empty = []
+    list_ratio = []
     for q in list_q:
         try:
+            if debug > 0: print("CHECK_QUEUE_AVAIL: sending queue_stat for q=",q)
             raw = send_command("queue_stat",cluster,queue=q, debug=debug) 
             dec = raw.decode("utf-8") 
             empty_cpus = []
-
-            #if 'login' in cluster or 'csuc' in cluster:
-            #    text = dec.rstrip().split("\n")
-            #    if len(text) > 0: list_total_empty = int(1) 
+            total_nodes = int(0)
 
             if 'portal' in cluster:
                 text = dec.rstrip().split("\n")
@@ -117,16 +123,24 @@ def check_queue_availability(queues: str='all', cluster: str=set_cluster(), debu
                     queue = blocks[0].split('@')[0]
                     queue_check = blocks[0].split('@')[0][0:6]
                     node = blocks[0].split('@')[1]
+                    if debug > 1: print("CHECK_QUEUE_AVAIL: queue=", queue)
+                    if debug > 1: print("CHECK_QUEUE_AVAIL: queue_check=", queue_check)
+                    if debug > 1: print("CHECK_QUEUE_AVAIL: node=", node)
                     if queue_check == q:
                         reserved, used, total = blocks[2].split('/')
+                        if debug > 1: print("    reserved=", reserved)
+                        if debug > 1: print("    used=", used)
+                        if debug > 1: print("    total=", total)
+                        total_nodes += int(total)
                         if queue == q+".q": empty_cpus.append(int(total)-int(reserved)-int(used)) 
                     else: print("queue_check not passed for", queue_check, q)
                 list_q_worked.append(q)
                 list_empty_cpus.append(empty_cpus)
                 list_total_empty.append(np.sum(empty_cpus))
+                list_ratio.append(float(np.sum(empty_cpus))/float(total_nodes))
 
-        except: print(q, "does not exist")
-    return list_q_worked, list_empty_cpus, list_total_empty
+        except: print(f"CHECK_QUEUE_AVAIL: error evaluating queue {q}")
+    return list_q_worked, list_empty_cpus, list_total_empty, list_ratio
 
 ##########################################
 ### Keeping the old version, pre CSUC: ###
@@ -185,8 +199,8 @@ def get_queue_and_procs(resources: str="light", cluster: str=set_cluster(), queu
         elif resources.lower() == "medium": mult = 2
         elif resources.lower() == "heavy": mult = 4
         else: mult = 1
-        askqueue = set_best_queue(queues=queues, debug=debug)
-        #askqueue = set_best_queue(queues='6,8,9,10', debug=debug)
+        askqueue, maxprocs = set_best_queue(queues=queues, debug=debug)
+        #askqueue, maxprocs = set_best_queue(queues='6,8,9,10', debug=debug)
         if askqueue == 'iqtc08': askprocs = 7*mult
         elif askqueue == 'iqtc04': askprocs = 6*mult
         else: askprocs = 8*mult
@@ -208,17 +222,27 @@ def get_queue_and_procs(resources: str="light", cluster: str=set_cluster(), queu
 ##### Portal Specific Functions #####
 #####################################
 def set_best_queue(queues: str='all', debug: int=0):
-    list_q, list_empty_cpus, list_total_empty = check_queue_availability(queues=queues, debug=debug)
+    list_q, list_empty_cpus, list_total_empty, list_ratio = check_queue_availability(queues=queues, debug=debug)
 
-    maxempty = np.argmax(list_total_empty)
+    if debug > 0: print("SET_BEST_QUEUE: results of check_queue_availability:") 
+    if debug > 0: print(list_q)
+    if debug > 0: print(list_total_empty)
+    if debug > 0: print(list_ratio)
+
+    queue_with_most_empty = np.argmax(list_total_empty)
+    queue_with_best_ratio = np.argmax(list_ratio)
+    if debug > 0: print("SET_BEST_QUEUE: queue_with_most_empty:", list_q[queue_with_most_empty], np.max(list_total_empty))
+    if debug > 0: print("SET_BEST_QUEUE: queue_with_best_ratio:", list_q[queue_with_best_ratio], np.max(list_ratio))
     found = False
     while not found:
-        for idx, cp in enumerate(list_empty_cpus[maxempty]):
-            if cp >= 8: 
+        max_empty = np.max(list_empty_cpus[queue_with_most_empty]) 
+        if debug > 0: print("SET_BEST_QUEUE: max_empty:", max_empty) 
+        for idx, cp in enumerate(list_empty_cpus[queue_with_most_empty]):
+            if cp >= 1: 
                 found = True
-                return str(list_q[maxempty])
-        list_total_empty[maxempty] = 0
-        maxempty = np.argmax(list_total_empty)
+                return str(list_q[queue_with_most_empty]), max_empty
+        list_total_empty[queue_with_most_empty] = 0
+        queue_with_most_empty = np.argmax(list_total_empty)
         if np.sum(list_total_empty) == 0: break
 
 def check_fairsharing(user: str=set_user()):
