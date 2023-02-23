@@ -55,6 +55,12 @@ def reg_general(job: object, debug: int=0):
         if found_done and found_time_end: job.isgood = True
         else:                             job.isgood = False
 
+        if debug >= 1: print(    "REG_GEN: isgood:    ", job.isgood)
+        if debug >= 1: print(    "REG_GEN: isfinished:", job.isfinished)
+        if debug >= 1: print(    "REG_GEN: found_done:", found_done)
+        if debug >= 1: print(    "REG_GEN: found_time_start:", found_time_start)
+        if debug >= 1: print(    "REG_GEN: found_time_end:", found_time_end)
+        if debug >= 1: print(    "REG_GEN: found_elapsed:", found_elapsed)
     #############
     ### Other ###
     #############

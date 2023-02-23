@@ -30,14 +30,22 @@ def set_paths(cluster: str=set_cluster(), user: str=set_user(), debug: int=0):
     else: print("Cluster not recognized")
     return cell2mol_path, scope_path
 
+def set_PP_Library(cluster: str=set_cluster(), user: str=set_user(), debug: int=0):
+    if 'login' in cluster or 'csuc' in cluster:
+        PP_Library= "/home/svela/Programes/PP_Library"
+    elif 'portal' in cluster:
+        PP_Library= "/home/g4vela/Programes/PP_Library"
+    else: print("Cluster not recognized")
+    return PP_Library
 
-def get_status(scope_path: str, core: str, debug: int=0):
+def get_status(scope_path: str, core: str, recipe_code: str, debug: int=0):
     cancontinue = False
     if not os.path.isfile(scope_path+'/'+core+'/'+core+".sys"):
         if debug > 1: print(f"System file of {core} not found in {scope_path+'/'+core+'/'+core+'.sys'}")
     else:
         if os.path.isfile(scope_path+'/'+core+'/'+"TERMINATED") and debug > 0:     print("Terminated", core)
-        elif os.path.isfile(scope_path+'/'+core+'/'+"ISO_FINISHED") and debug > 0: print("Finished", core)
+        elif recipe_code.lower() == "isolated" and os.path.isfile(scope_path+'/'+core+'/'+"ISO_FINISHED") and debug > 0: print("Finished", core)
+        elif recipe_code.lower() == "solid" and os.path.isfile(scope_path+'/'+core+'/'+"SOLID_FINISHED") and debug > 0: print("Finished", core)
         else: cancontinue = True
     return cancontinue
 

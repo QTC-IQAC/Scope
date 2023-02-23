@@ -5,10 +5,10 @@ import os
 import numpy as np
 from datetime import datetime
 
-from Scope.Parse_General import search_string, read_lines_file 
-from Scope.Parse_G16_outputs import G16_get_last_geom, G16_time_to_sec
-from Scope.Parse_QE_outputs import *
-from Scope.Gmol_ops import gmol_update_geom
+#from Scope.Parse_General import search_string, read_lines_file 
+#from Scope.Parse_G16_outputs import G16_get_last_geom, G16_time_to_sec
+#from Scope.Parse_QE_outputs import *
+#from Scope.Gmol_ops import gmol_update_geom
 from Scope.Other import where_in_array
 from Scope.Control_Jobs import set_cluster, set_user, check_submitted_job 
 
@@ -21,29 +21,11 @@ elemdatabase = ElementData()
 ##################################
 class recipe(object):
     def __init__(self, obj: object, path: str, keyword: str, debug: int=0) -> None:
+        self.creation_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         self.object = obj
         self.path = path
         self.keyword = keyword
         self.jobs = []
-
-#    def update_registry(self, code_restriction: str="None", debug: int=0):
-#        last_run_number = 0
-#        for idx, jb in enumerate(self.jobs):
-#            if os.path.isfile(jb.output_path):
-#                if not hasattr(jb,"isregistered"):
-#                    if code_restriction == "None":
-#                        lines = read_lines_file(jb.output_path, flat=True)
-#                        jb.register_job(lines, print_output=False, debug=debug)
-#                        if debug > 0: print(f"     Update_Registry: {jb.job_code} {jb.run_number} registered")
-#                    if code_restriction != "None":
-#                        if jb.code == code_restriction:
-#                            lines = read_lines_file(jb.output_path, flat=True)
-#                            jb.register_job(lines, print_output=False, debug=debug)
-#                            if debug > 0: print(f"     Update_Registry: {jb.job_code} {jb.run_number} registered")
-#            else:
-#                if debug > 0: print(f"     Update_Registry: deleting job with: {jb.job_code} {jb.run_number}")
-#                self.jobs.remove(jb)
-
 
 class job(object):
     def __init__(self, name: str, hierarchy_number: int, run_number: int, input_path: str, output_path: str, subfile_path: str, software: str, code: str='', debug: int=0) -> None:

@@ -133,6 +133,27 @@ class sco_system(object):
             if not os.path.isdir(self.scope_path+'/'+keyword): os.makedirs(self.scope_path+'/'+keyword)
         return recipe_exists, current_recipe
 
+#    def delete_inactive_recipes(self, obj, keyword, debug: int=0):
+#        for idx, rec in enumerate(self.list_of_recipes):
+#            if debug >= 1: print("") 
+#            if debug >= 1: print("    DEL_INACTIVE_REC: idx:", idx)
+#            if debug >= 1: print("    DEL_INACTIVE_REC: recipe:", rec)
+#            if debug >= 1: print("    DEL_INACTIVE_REC: keyword:", rec.keyword)
+#            if hasattr(obj,"type") and debug >= 1:              print("    DEL_INACTIVE_REC: object type:", obj.type)
+#            elif not hasattr(obj,"type") and debug >= 1:              print("    DEL_INACTIVE_REC: object type UNKNOWN")
+#            if hasattr(rec.object,"type") and debug >= 1:       print("    DEL_INACTIVE_REC: rec.object type:", rec.object.type)
+#            elif not hasattr(rec.object,"type") and debug >= 1: print("    DEL_INACTIVE_REC: rec.object type: cell")
+#
+#            if   rec.keyword == 'Solid' and not hasattr(rec.object,"type"): print("would remove:", rec.keyword, rec) 
+#            elif rec.keyword == keyword and rec.object != obj: 
+#                if rec.keyword == 'Solid':
+#                    same_phase = rec.object.list_of_molecules[0].scope_guess_spin == obj.list_of_molecules[0].scope_guess_spin
+#                    if debug >= 1: print("    DEL_INACTIVE_REC: number of molecules:", len(rec.object.list_of_molecules))
+#                    if same_phase: print("would remove:", rec.keyword, rec)
+##                self.list_of_recipes.remove(rec)
+#                elif rec.keyword == 'Isolated':
+#                    if rec.object.coord[0] == obj.coord[0]: print("would remove:", rec.keyword, rec)
+
 class crystal(object):
     def __init__(self, refcode: str, name: str, cell2mol_path: str, cell: object) -> None:
         self.type = "crystal" 
@@ -155,6 +176,22 @@ class crystal(object):
     def add_iso_calcs_path(self, iso_calcs_path: str='Unk'):
         self.iso_calcs_path = iso_calcs_path
 
+    def get_FeN6_molecules(self, debug: int=0):
+        for idx, mol in enumerate(self.cell.moleclist):
+            if mol.type == "Complex":
+                keepit = False
+                for met in mol.metalist:
+                    if hasattr(met, "coord_sphere"):
+                        formula = labels2formula(met.coord_sphere)
+                        if formula == "N6": keepit = True
+                    else: print("No coord_sphere variable in metal object")
+                if keepit:
+                    ox_state = mol.metalist[0].totcharge
+                    mol.scope_FeNdist, mol.scope_FeNangle = geom_sco_from_xyz(mol.labels, mol.coord)
+                    mol.scope_guess_spin = guess_spin_state(int(ox_state), mol.scope_FeNdist[0])
+                    self.list_of_molecules.append(mol)
+                    if debug > 0: print(f"    GET_FeN6: found {mol.scope_guess_spin} molecule of OS: {ox_state}") 
+
     def get_spin_and_phase_data(self, debug: int=0):
         self.guess_spins = [] 
         self.phase = ''
@@ -173,21 +210,6 @@ class crystal(object):
             self.HSmolarfraction = float(self.guess_spins.count("HS")/len(self.guess_spins))
         if debug > 0: print(f"    Get_Spin&Phase: phase:{self.phase} and molar_frac: {self.HSmolarfraction}")
 
-    def get_FeN6_molecules(self, debug: int=0):
-        for idx, mol in enumerate(self.cell.moleclist):
-            if mol.type == "Complex":
-                keepit = False
-                for met in mol.metalist:
-                    if hasattr(met, "coord_sphere"):
-                        formula = labels2formula(met.coord_sphere)
-                        if formula == "N6": keepit = True
-                    else: print("No coord_sphere variable in metal object")
-                if keepit:
-                    ox_state = mol.metalist[0].totcharge
-                    mol.scope_FeNdist, mol.scope_FeNangle = geom_sco_from_xyz(mol.labels, mol.coord)
-                    mol.scope_guess_spin = guess_spin_state(int(ox_state), mol.scope_FeNdist[0])
-                    self.list_of_molecules.append(mol)
-                    if debug > 0: print(f"    GET_FeN6: found {mol.scope_guess_spin} molecule of OS: {ox_state}") 
        
 ################################
 ##### ASSOCIATED FUNCTIONS #####
