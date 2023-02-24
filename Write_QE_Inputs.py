@@ -43,10 +43,10 @@ def get_pp(ppfolder, elem):
     return sendpp
 
 #######################
-def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str, PP_Library: str, spin_config: list=[], job_type: str="scf", isHubbard: bool=False, isGrimme: bool=True, U: str="2.27", cutoff: str="70", cubeside: str="70.0", cluster: str=set_cluster(), debug: int=0):
+def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str, PP_Library: str, spin_config: list=[], coord_tag: str="coord", job_type: str="scf", isHubbard: bool=False, isGrimme: bool=True, U: str="2.27", cutoff: str="70", cubeside: str="70.0", cluster: str=set_cluster(), debug: int=0):
 
     ## spin_config is a list of tuples, with the label and the magnetization. for instance: [('Fe', 2), ('Fe2', 4), ('Fe2', 4), ('Fe', 2), ('S', 0), ('N', 0)] 
- 
+
     if hasattr(gmol,"cellparam"): system_type = "cell"
     else: system_type = "molecule"
 
@@ -223,14 +223,15 @@ def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str
             pp = get_pp(PP_Library, label)
             print(f"{elem} {weight:6.4f} {pp}", file=inp)
         
-        #//////////////////
-        #// Atom Coords ///
-        #//////////////////
+        #///////////////////////////////////////////////////////////////////////////
+        #// Atom Coords, taken from the mol object. Using the provided coord_tag ///
+        #///////////////////////////////////////////////////////////////////////////
         print("ATOMIC_POSITIONS angstrom", file=inp)
+        cor_tag = getattr(gmol,coord_tag)
         for idx, l in enumerate(gmol.labels):
             if idx in metal_indices and len(spin_config) != 0: label = spin_config[idx][0]
             else: label = l
-            print(f"{label:4}        {gmol.pos[idx][0]:.6f}   {gmol.pos[idx][1]:.6f}   {gmol.pos[idx][2]:.6f}", file=inp)
+            print(f"{label:4}        {cor_tag[idx][0]:12.6f}   {cor_tag[idx][1]:12.6f}   {cor_tag[idx][2]:12.6f}", file=inp)
         print("K_POINTS gamma", file=inp)
 
 ###################################################

@@ -5,7 +5,7 @@ import os
 import numpy as np
 from datetime import datetime
 
-#from Scope.Parse_General import search_string, read_lines_file 
+from Scope.Parse_General import search_string, read_lines_file 
 #from Scope.Parse_G16_outputs import G16_get_last_geom, G16_time_to_sec
 #from Scope.Parse_QE_outputs import *
 #from Scope.Gmol_ops import gmol_update_geom

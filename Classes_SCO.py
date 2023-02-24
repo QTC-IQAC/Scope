@@ -21,6 +21,15 @@ elemdatabase = ElementData()
 def cell_postocoord(cell: object) -> None:
     if not hasattr(cell,"coord") and hasattr(cell,"pos"): setattr(cell,"coord",cell.pos)
 
+def cell_reconstructed_coord(cell: object) -> None:
+    if not hasattr(cell,"original_coord"):  setattr(cell,"original_coord",cell.coord) 
+    if not hasattr(cell,"original_labels"): setattr(cell,"original_labels",cell.labels)
+    cell.coord = []
+    cell.labels = [] 
+    for mol in cell.moleclist: 
+        cell.coord.append(mol.coord)
+        cell.labels.append(mol.labels)
+
 ############################
 ##### SYSTEM & CRYSTAL #####
 ############################
@@ -285,6 +294,8 @@ def create_sco_system(name, cell2mol_path: str="default", scope_path: str="defau
 
         # Adds coord as variable. Legacy at some point
         cell_postocoord(newcrystal.cell)
+        # Stores reconstructed coordinates as a new coord and label variables. Original ones are stores separately
+        cell_reconstructed_coord(newcrystal.cell)
 
         newcrystal.read_cif_data(cif_paths[idx])
         newcrystal.get_FeN6_molecules(debug=debug)

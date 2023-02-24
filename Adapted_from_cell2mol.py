@@ -182,6 +182,7 @@ def get_molecules(labels: list, pos: list, factor: float=1.3, debug: int=0) -> T
                     labelist.append(labels[i])
                     poslist.append(pos[i])
                     atlist.append(i)
+            radiilist = get_radii(labelist)
 
-            moleclist.append(list([atlist, labelist, poslist]))
+            moleclist.append(list([atlist, labelist, poslist, radiilist]))
     return Warning, moleclist

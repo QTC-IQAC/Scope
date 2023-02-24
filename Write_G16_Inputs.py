@@ -76,10 +76,10 @@ def gen_G16_iso_input(mol: object, path: str, name: str, suffix: str="", extensi
         ### Retrieves the desired coordinates from mol object
         for a in mol.atoms:
             ta = getattr(a,coord_tag)
-            if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (a.label, ta[0], ta[1], ta[2]), file=inp)
+            if jobtype.lower() != "opth": print("%s  %12.6f  %12.6f  %12.6f" % (a.label, ta[0], ta[1], ta[2]), file=inp)
             else: 
-                if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (a.label, " 0", ta[0], ta[1], ta[2]), file=inp)
-                else:              print("%s $s %.6f  %.6f  %.6f" % (a.label, "-1", ta[0], ta[1], ta[2]), file=inp)
+                if a.label == 'H': print("%s %s %12.6f  %12.6f  %12.6f" % (a.label, " 0", ta[0], ta[1], ta[2]), file=inp)
+                else:              print("%s $s %12.6f  %12.6f  %12.6f" % (a.label, "-1", ta[0], ta[1], ta[2]), file=inp)
         print("", file=inp) 
 
 ###################################################
