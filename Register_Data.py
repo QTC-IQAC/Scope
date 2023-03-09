@@ -52,6 +52,7 @@ def reg_general(job: object, debug: int=0):
         if found_done and found_time_end: job.isfinished = True
         else:                             job.isfinished = False
 
+        ## Other conditions for "isgood" might appear when registering other items
         if found_done and found_time_end: job.isgood = True
         else:                             job.isgood = False
 
@@ -101,23 +102,30 @@ def reg_optimization(gmol: object, job: object, debug: int=0):
     ## QE ##
     ########
     elif job.software.lower() == "qe" or job.software.lower() == "quantum_espresso" or job.software.lower() == "quantum espresso":
+
+        ## This means that the optimization hasn't finished. 
+        ## Even in that case, It will still try to retrieve the last geometry 
+        line_BFGS, found_BFGS = search_string("End of BFGS Geometry Optimization", lines, typ='last')
+        if not found_BFGS: job.isgood = False    
+
         labels, new_coord = parse_final_geometry(lines, debug=debug)
         if len(labels) > 0 and len(new_coord) > 0: 
             try:    factor = gmol.moleclist[0].factor
             except: factor = 1.3
 
             ### Here we only receive basic information of the molecule
-            warning, basic_moleclist = get_molecules(labels, new_coord, factor=factor, debug=debug)
-            assert len(basic_moleclist) == len(gmol.moleclist)
+            ### Removed 'cos no molecule information is retained at this stage
+            #///////////////////////////
+            #///warning, basic_moleclist = get_molecules(labels, new_coord, factor=factor, debug=debug)
+            #///assert len(basic_moleclist) == len(gmol.moleclist)
+            #///
+            #///#### Here we recover the molecule class, but without any data from cell2mol
+            #///moleclist = []
+            #///for idx, bm in enumerate(basic_moleclist):
+            #///    new_molec = molecule(gmol.refcode+str(idx),bm[0], bm[1], bm[2], bm[3])
+            #///    moleclist.append(new_molec) 
+            #///////////////////////////
             
-            #### Here we recover the molecule class, but without any "charge" data 
-            #moleclist = []
-            #for idx, bm in enumerate(basic_moleclist):
-            #    new_molec = molecule(gmol.refcode+str(idx),bm[0], bm[1], bm[2], bm[3])
-            #    moleclist.append(new_molec) 
-            
-            #if not warning and debug >= 1: print(f"UPDATE_COORDINATES: found {len(moleclist)} molecules in cell")
-
             ### Updates Molecule or cell, depending on the type of object
             if hasattr(gmol,"moleclist"): 
 #                if hasattr(gmol,new_tag): cell_update_geom(gmol, moleclist, new_coord, tag=new_tag, debug=debug)

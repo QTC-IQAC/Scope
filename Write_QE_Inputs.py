@@ -235,7 +235,7 @@ def gen_QE_input(gmol: object, path: str, name: str, suffix: str, extension: str
         print("K_POINTS gamma", file=inp)
 
 ###################################################
-def gen_QE_subfile(path: str, name: str, suffix: str, sub_extension: str="sub", inp_extension: str="input", procs: int=1, queue: str="iqtc09", exe: str="pw.x", version: str="6.4.1", cluster: str=set_cluster()):
+def gen_QE_subfile(path: str, name: str, suffix: str, sub_extension: str=".sub", inp_extension: str=".input", procs: int=1, queue: str="iqtc09", exe: str="pw.x", version: str="6.4.1", cluster: str=set_cluster()):
     if 'portal' in cluster:
         with open(path+name+suffix+sub_extension, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
@@ -259,9 +259,9 @@ def gen_QE_subfile(path: str, name: str, suffix: str, sub_extension: str="sub", 
             print(f"", file=sub)
             print(f"WORKDIR=$PWD", file=sub)
             print(f"cd $TMPDIR", file=sub)
-            print(f"cp $WORKDIR/ABITEM_relax_r1_LS.input .", file=sub)
-            print(f"mpirun -np 32 pw.x < ABITEM_relax_r1_LS.input > ABITEM_relax_r1_LS.out", file=sub)
-            print(f"cp -pr *.out $WORKDIR", file=sub)
+            print(f"cp $WORKDIR/{name}{suffix}{inp_extension} .", file=sub)
+            print(f"mpirun -np {procs} pw.x < {name}{suffix}{inp_extension} > {name}{suffix}.out", file=sub)
+            print(f"cp -pr {name}{suffix}.out $WORKDIR", file=sub)
             os.chmod(path+name+suffix+sub_extension, 0o777)
         
 ###################################################
@@ -270,6 +270,7 @@ def get_spin_config(cell: object, metal_spins, debug: int=0):
 
     assert hasattr(cell,"cellparam"), f"GET_SPIN_CONFIG got object without cell parameters. Assuming it is not a cell"
     if debug >= 1: print("Received metal_spins", metal_spins)
+    assert hasattr(cell,"labels"), f"GET_SPIN_CONFIG got object without labels"
 
     #########################
     ### IDENTIFIES METALS ###
