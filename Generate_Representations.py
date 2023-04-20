@@ -7,7 +7,8 @@ import time
 import pickle
 from collections import Counter
 from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
-from cell2mol.elementdata import ElementData
+#from Test_V3.Elementdata import ElementData
+#elemdatabase = ElementData()
 
 ###########################################
 def atoms_for_representation(mol: object, target: list=['metal'], debug=0):

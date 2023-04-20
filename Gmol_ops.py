@@ -1,5 +1,5 @@
 from cell2mol.tmcharge_common import *
-from Scope.VNM_tools import vnm_displacement 
+from Test_V3.VNM_tools import vnm_displacement 
 #from copy import deepcopy
 
 def gmol_update_geom(mol: object, new_coord: list, tag: str="coord", debug: int=0) -> None:

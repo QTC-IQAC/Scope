@@ -2,9 +2,9 @@ import os
 import numpy as np
 import sys
 
-from Scope.Parse_General import search_string, read_lines_file
-from Scope.Classes_QC import orbital_set, orbital, VNM 
-from Scope import Constants
+from Test_V3.Parse_General import search_string, read_lines_file
+from Test_V3.Classes_QC import orbital_set, orbital, VNM 
+from Test_V3 import Constants
 
 def search_G16_last_geom_lines(filepath: str):
     warning = False
