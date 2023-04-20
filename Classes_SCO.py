@@ -1,0 +1,350 @@
+import pickle
+import sys
+import copy
+import os
+import shutil
+import csv
+from copy import deepcopy
+
+from Test_V3.Parse_Cif import get_cif_diffraction_data, get_cif_authors, get_cif_journal 
+from Test_V3.Parse_General import search_string, read_lines_file 
+from Test_V3.Geom_SCO_V1 import geom_sco_from_xyz, guess_spin_state
+from Test_V3.Read_Write import save_binary, load_binary
+#from Test_V3.Gmol_ops import cell_posttocoord
+
+from Test_V3.Workflow import Branch
+from Test_V3.Workflow.Branch import *
+
+from Test_V3.Adapted_from_cell2mol import labels2formula
+from Test_V3.Elementdata import ElementData
+elemdatabase = ElementData()
+
+###########################
+def cell_postocoord(cell: object) -> None:
+    if not hasattr(cell,"coord") and hasattr(cell,"pos"): setattr(cell,"coord",cell.pos)
+
+#def cell_reconstructed_coord(cell: object) -> None:
+#    if not hasattr(cell,"original_coord"):  setattr(cell,"original_coord",cell.coord) 
+#    if not hasattr(cell,"original_labels"): setattr(cell,"original_labels",cell.labels)
+#    cell.coord = []
+#    cell.labels = [] 
+#    for mol in cell.moleclist: 
+#        cell.coord.append(mol.coord)
+#        cell.labels.append(mol.labels)
+
+############################
+##### SYSTEM & CRYSTAL #####
+############################
+class sco_system(object):
+    def __init__(self, refcode: str, cell2mol_path: str, calcs_path: str, sys_path: str) -> None:
+        self.type                 = "sco_system" 
+        self.version              = "V3" 
+        self.refcode              = refcode
+        self.refcode_wo_digits    = ''.join([i for i in refcode if not i.isdigit()])
+        self.cell2mol_path        = cell2mol_path
+        self.calcs_path           = calcs_path
+        self.sys_path             = sys_path
+        self.crystals             = []
+        self.branches             = []
+        self.results              = dict()
+        self.status               = "active"
+
+    ##########
+    def find_branch(self, keyword: str, debug: int=0):
+        if debug > 0: print("finding branch with keyword:", keyword)
+        if debug > 0: print("there are", len(self.branches), "branches in system")
+        if len(self.branches) == 0: return False, None
+        for idx, br in enumerate(self.branches):
+            if br.keyword == keyword and os.path.isdir(br.path): return True, br
+        return False, None
+
+    ##########
+    def add_branch(self, keyword: str, target: str, debug: int=0):
+        new_branch = branch(self.calcs_path+keyword, keyword, self, debug=debug)
+        if not os.path.isdir(self.calcs_path+keyword): os.makedirs(self.calcs_path+keyword)
+
+        if   target.lower()  == "ref_mol"  and hasattr(self,"HS_ref_mol")  and hasattr(self,"LS_ref_mol"):   object_list = list([self.HS_ref_mol,self.LS_ref_mol])
+        elif target.lower()  == "ref_crys" and hasattr(self,"HS_ref_crys") and hasattr(self,"LS_ref_crys"):  object_list = list([self.HS_ref_crys.cell,self.LS_ref_crys.cell])
+        else: print("Get_Branch: target could not be identified. Recipes were not created")
+
+        for idx, gmol in enumerate(object_list):
+            new_recipe = new_branch.add_recipe(gmol)
+        self.branches.append(new_branch)
+        return new_branch
+
+    ##########
+    def set_reference_molecs(self, debug: int=0):
+        self.hasLS = False
+        self.hasHS = False
+
+        pool = []
+        ##### All these below could go somewhere else #####
+        ### Colects reference molecules from all crystals
+        for crys in self.crystals:
+            if len(crys.list_of_molecules) == 0: crys.get_FeN6_molecules(debug=debug)
+            for mol in crys.list_of_molecules:
+                pool.append(mol)
+
+        ### Selects reference molecules
+        if debug > 0: print(f"{len(pool)} tmcs in pool")
+        if len(pool) > 0:
+            for idx, mol in enumerate(pool):
+                if mol.scope_guess_spin == 'HS' and not self.hasHS:
+                    self.hasHS = True
+                    self.HS_ref_mol_id = idx
+                    self.HS_ref_mol = deepcopy(mol)
+                    self.HS_ref_mol.spin = 'HS'
+                    self.HS_ref_mol._sys = self
+                    if debug > 0: print(f"HS reference molecule found")
+                elif mol.scope_guess_spin == 'LS' and not self.hasLS:
+                    self.hasLS = True
+                    self.LS_ref_mol_id = idx
+                    self.LS_ref_mol = deepcopy(mol)
+                    self.LS_ref_mol.spin = 'LS'
+                    self.LS_ref_mol._sys = self
+                    if debug > 0: print(f"LS reference molecule found")
+            ### If it hasn't found any molecule that can be classified as HS and LS... then takes anything
+            if not self.hasHS:
+                self.HS_ref_mol_id = 0
+                self.HS_ref_mol = deepcopy(pool[0])
+                self.HS_ref_mol.spin = 'HS'
+                self.HS_ref_mol._sys = self
+                if debug > 0: print(f"HS reference molecule assumed")
+            if not self.hasLS:
+                self.LS_ref_mol_id = 0
+                self.LS_ref_mol = deepcopy(pool[0])
+                self.LS_ref_mol.spin = 'LS'
+                self.LS_ref_mol._sys = self
+                if debug > 0: print(f"LS reference molecule assumed")
+        else: print("Empty pool of reference molecules")
+
+    ##########
+    def set_reference_crystals(self, debug: int=0):
+        self.has_HS_ref_crys = False
+        self.has_LS_ref_crys = False
+
+        #### Selects reference crystals:
+        HS_ref_crys_temp = 1000
+        LS_ref_crys_temp = 1000
+        for idx, crys in enumerate(self.crystals):
+  
+            if not hasattr(crys,"phase"): crys.get_spin_and_phase_data(debug=debug)
+
+            ### This try/except block is to skip cases in which the diffraction temperature is not known
+            try: crys.diff_temp = float(crys.diff_temp)
+            except: continue
+
+            if crys.phase == "HS" and crys.diff_temp < HS_ref_crys_temp: 
+                self.HS_ref_crys = deepcopy(crys)
+                self.HS_ref_crys_id = idx
+                self.HS_ref_crys_temp = crys.diff_temp                
+                self.HS_ref_crys._sys  == self 
+                self.HS_ref_crys.type  == "crystal"
+                #self.HS_ref_crys.cell.type  == "cell"
+                setattr(self.HS_ref_crys.cell,"_sys",self)
+                setattr(self.HS_ref_crys.cell,"type","cell")
+                setattr(self.HS_ref_crys.cell,"spin","HS")
+                self.has_HS_ref_crys = True
+                if debug > 0: print(f"HS reference crystal found")
+            elif crys.phase == "LS" and crys.diff_temp < LS_ref_crys_temp: 
+                self.LS_ref_crys = deepcopy(crys)
+                self.LS_ref_crys_id = idx
+                self.LS_ref_crys_temp = crys.diff_temp                
+                self.LS_ref_crys._sys  == self 
+                self.LS_ref_crys.type  == "crystal"
+                setattr(self.LS_ref_crys.cell,"_sys",self)
+                setattr(self.LS_ref_crys.cell,"spin","LS")
+                setattr(self.LS_ref_crys.cell,"type","cell")
+                self.has_LS_ref_crys = True
+                if debug > 0: print(f"LS reference crystal found")
+            elif crys.phase == "IS":
+                if debug > 0: print(f"    Set_REF_Crystals: IS phase found but not implemented")
+
+        if not self.has_HS_ref_crys:
+            self.HS_ref_crys = deepcopy(self.crystals[0])
+            self.HS_ref_crys_id = 0
+            self.HS_ref_crys.phase == 'HS'
+            self.HS_ref_crys._sys  == self 
+            setattr(self.HS_ref_crys.cell,"type","cell")
+            setattr(self.HS_ref_crys.cell,"_sys",self)
+            setattr(self.HS_ref_crys.cell,"spin","HS")
+            if debug > 0: print(f"HS reference crystal assumed")
+        if not self.has_LS_ref_crys:
+            self.LS_ref_crys = deepcopy(self.crystals[0])
+            self.LS_ref_crys_id = 0
+            self.LS_ref_crys.phase == 'LS'
+            self.LS_ref_crys._sys  == self 
+            setattr(self.LS_ref_crys.cell,"type","cell")
+            setattr(self.LS_ref_crys.cell,"_sys",self)
+            setattr(self.LS_ref_crys.cell,"spin","LS")
+            if debug > 0: print(f"LS reference crystal assumed")
+
+
+###########################################
+    def get_info(self) -> None:
+        to_print  = f'---------------------------------------------------\n'
+        to_print += f' Formatted input interpretation of SCO System()\n'
+        to_print += f'---------------------------------------------------\n'
+        to_print += f' Refcode               = {self.refcode}\n'
+        to_print += f' Cell2mol Path         = {self.cell2mol_path}\n'
+        to_print += f' Scope Path            = {self.calcs_path}\n'
+        to_print += f' #Crystals             = {len(self.crystals)}\n'
+        to_print += f' #Branches             = {len(self.branches)}\n'
+        to_print += f'---------------------------------------------------\n'
+        print(to_print)
+
+###########################
+###### Class Crystal ######
+###########################
+class crystal(object):
+    def __init__(self, refcode: str, name: str, cell2mol_path: str, cell: object, sys: object) -> None:
+        self.type              = "crystal" 
+        self.version           = "V3" 
+        self.refcode           = refcode
+        self.name              = name
+        self.cell              = cell 
+        self._sys              = sys
+        self.cell2mol_path     = cell2mol_path
+        self.list_of_molecules = []
+
+    def read_cif_data(self, cifpath: str) -> None:
+        self.diff_temp         = get_cif_diffraction_data(cifpath) 
+        self.authors           = get_cif_authors(cifpath)
+        self.journal_year      = get_cif_journal(cifpath)[0]
+        self.journal_name      = get_cif_journal(cifpath)[1] 
+        self.journal_volume    = get_cif_journal(cifpath)[2]
+        self.journal_page      = get_cif_journal(cifpath)[3]
+
+    def get_FeN6_molecules(self, debug: int=0):
+        for idx, mol in enumerate(self.cell.moleclist):
+            if mol.type == "Complex":
+                keepit = False
+                for met in mol.metalist:
+                    if hasattr(met, "coord_sphere"):
+                        formula = labels2formula(met.coord_sphere)
+                        if formula == "N6": keepit = True
+                    else: print("No coord_sphere variable in metal object")
+                if keepit:
+                    ox_state = mol.metalist[0].totcharge
+                    mol.scope_FeNdist, mol.scope_FeNangle = geom_sco_from_xyz(mol.labels, mol.coord)
+                    mol.scope_guess_spin = guess_spin_state(int(ox_state), mol.scope_FeNdist[0])
+                    self.list_of_molecules.append(mol)
+                    if debug > 0: print(f"    GET_FeN6: found {mol.scope_guess_spin} molecule of OS: {ox_state}") 
+
+    def get_spin_and_phase_data(self, debug: int=0):
+        self.guess_spins = [] 
+        self.phase = ''
+        self.HSmolarfraction = 0.0
+        for idx, mol in enumerate(self.list_of_molecules):
+            self.guess_spins.append(mol.scope_guess_spin)
+
+        if all(sp == "HS" for sp in self.guess_spins): 
+            self.phase = "HS"
+            self.HSmolarfraction = 1.0
+        elif all(sp == "LS" for sp in self.guess_spins): 
+            self.phase = "LS"
+            self.HSmolarfraction = 0.0
+        elif "HS" in self.guess_spins and "LS" in self.guess_spins: 
+            self.phase = "IS"
+            self.HSmolarfraction = float(self.guess_spins.count("HS")/len(self.guess_spins))
+        if debug > 0: print(f"    Get_Spin&Phase: phase:{self.phase} and molar_frac: {self.HSmolarfraction}")
+
+    def get_info(self) -> None:
+        to_print  = f'---------------------------------------------------\n'
+        to_print += f' Formatted input interpretation of Crystal()\n'
+        to_print += f' Work in progress\n'
+        to_print += f'---------------------------------------------------\n'
+        print(to_print)
+       
+################################
+##### ASSOCIATED FUNCTIONS #####
+################################
+def find_crystals(name: str, corepath: str, debug: int=0):
+
+    if corepath[-1] != '/': corepath += '/'
+    ### Reads all directories in a folder, searches for those containing both a Cell ".gmol" object and a ".cif" file.
+    name_wo = ''.join([i for i in name if not i.isdigit()])
+
+    crystal_filenames = []
+    crystal_objects = []
+    paths_list = []
+    names_list = []
+    cif_paths = []
+    if debug > 0: print("FIND: Corepath:", corepath)
+    for crystal in sorted(os.listdir(corepath)):
+        if os.path.isdir(corepath+crystal):
+            crystal_path = corepath+crystal+'/'
+            cell_found = False
+            cell_loaded = False
+            cif_found = False
+
+            # A first loop over the list of files, to ensure that the data is there
+            for fil in sorted(os.listdir(crystal_path)):
+                if fil.endswith(".gmol") and fil.startswith("Cell") and name_wo in fil:
+                    cell_found = True
+                    try: 
+                        if debug > 0: print("Trying to load cell from", crystal_path+fil)
+                        cell = load_binary(crystal_path+fil)
+                        cell_loaded = True
+                    except: 
+                        if debug > 0: print("Cell could not be loaded from", crystal_path+fil)
+                        else: pass
+ 
+                if fil.endswith(".cif") and name_wo in fil:
+                    cif_found = True
+            if debug > 0: print("FIND: crystal_path", crystal_path, "results:", cell_found, cell_loaded, cif_found)
+
+            ## If the information could be properly retrieved, then it stores it. 
+            if cell_found and cell_loaded and cif_found: 
+                for fil in sorted(os.listdir(crystal_path)):
+                    if fil.endswith(".gmol") and fil.startswith("Cell") and name_wo in fil:
+                        crystal_filenames.append(fil)
+                        crystal_objects.append(load_binary(crystal_path+fil))
+                        paths_list.append(crystal_path)
+                        if crystal == "Original": crystal = name
+                        names_list.append(crystal)
+                    if fil.endswith(".cif") and name_wo in fil:
+                        cif_paths.append(crystal_path+fil)
+
+    return crystal_filenames, crystal_objects, paths_list, names_list, cif_paths
+
+##############################
+def create_sco_system(name, cell2mol_path: str, calcs_path: str, sys_path: str="default", debug: int=0) -> object:
+    ## Creates a system. To do so, it...
+    ## Reads all directories in cell2mol_path, searches for those containing both a Cell ".gmol" object and a ".cif" file.
+    ## Each pair of ".gmol" and ".cif" will be considered a "crystal" and associates them to the "system" 
+
+    ## calcs_path is the place where the analysis and computations will be done. 
+    if cell2mol_path[-1] != '/': cell2mol_path += '/'
+    if calcs_path[-1] != '/': calcs_path += '/'
+    if sys_path == "default": sys_path = calcs_path
+    if sys_path[-1] != '/':   sys_path += '/'
+ 
+    # finds the crystals with Cell and cif file
+    newsystem = sco_system(name, cell2mol_path, calcs_path, sys_path)
+    if debug > 0: print("Searching crystals in", cell2mol_path)
+    crystal_files, crystal_objects, crystal_paths, crystal_names, cif_paths  = find_crystals(name, cell2mol_path, debug=debug)
+    if debug > 0: print("Found", len(crystal_files),"crystals in",cell2mol_path,":")
+    # for each crystal:
+    for idx, crys in enumerate(crystal_files):
+        if debug > 0: print(idx, name, crystal_names[idx], crystal_paths[idx])
+        newcrystal = crystal(name, crystal_names[idx], crystal_paths[idx], crystal_objects[idx], sys=newsystem)
+
+        # Adds coord as variable. Legacy at some point
+        cell_postocoord(newcrystal.cell)
+        # Stores reconstructed coordinates as a new coord and label variables. Original ones are stored separately
+        #cell_reconstructed_coord(newcrystal.cell)
+
+        newcrystal.read_cif_data(cif_paths[idx])
+        newcrystal.get_FeN6_molecules(debug=debug)
+        newcrystal.get_spin_and_phase_data(debug=debug)
+                            
+        # At the end, it stores the data in the system object
+        newsystem.crystals.append(newcrystal)
+
+    # Determines Reference HS and LS molecules and crystals, if there are
+    if debug > 0: print(len(newsystem.crystals), "crystals in system. Setting reference molecules and crystals")
+    newsystem.set_reference_molecs(debug=debug)
+    newsystem.set_reference_crystals(debug=debug)
+    return newsystem
+##############################
