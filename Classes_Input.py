@@ -4,7 +4,7 @@ from ast import literal_eval
 #######################
 ##### INPUT CLASS #####
 #######################
-class Input(object):
+class QC_Input(object):
     def __init__(self, name: str, f_name = None):
         self.name = name
         if f_name is not None and isinstance(f_name, str):

@@ -17,6 +17,13 @@ def gmol_create_geom(mol: object, new_coord: list, tag: str="new_coord", debug: 
     for idx, at in enumerate(mol.atoms):
         setattr(at,tag,new_coord[idx])
 
+def gmol_remove_geom(mol: object, tag: str="new_coord", debug: int=0) -> None:
+    if hasattr(mol,tag):
+        delattr(mol,tag)
+        for idx, at in enumerate(mol.atoms):
+            if hasattr(at,tag):
+                delattr(at,tag)
+
 #def cell_update_geom(cell: object, moleclist: list, new_coord: list, tag: str="coord", debug: int=0) -> None:
 #    assert hasattr(cell,"cellparam")
 #    assert hasattr(cell,tag)

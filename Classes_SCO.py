@@ -65,22 +65,24 @@ class sco_system(object):
                     self.hasHS = True
                     self.HSid = idx
                     self.HSref = deepcopy(mol)
+                    self.HSref.spin = 'HS'
                     if debug > 0: print(f"HS reference molecule found")
                 elif mol.scope_guess_spin == 'LS' and not self.hasLS:
                     self.hasLS = True
                     self.LSid = idx
                     self.LSref = deepcopy(mol)
+                    self.LSref.spin = 'LS'
                     if debug > 0: print(f"LS reference molecule found")
             ### If it hasn't found any molecule that can be classified as HS and LS... then takes anything
             if not self.hasHS:
                 self.HSid = 0 
                 self.HSref = deepcopy(pool[0])
-                self.HSref.scope_guess_spin == 'HS'
+                self.HSref.spin = 'HS'
                 if debug > 0: print(f"HS reference molecule assumed")
             if not self.hasLS:
                 self.LSid = 0 
                 self.LSref = deepcopy(pool[0])
-                self.LSref.scope_guess_spin == 'LS'
+                self.LSref.spin = 'LS'
                 if debug > 0: print(f"LS reference molecule assumed")
         else: print("Empty pool of reference molecules")
 
