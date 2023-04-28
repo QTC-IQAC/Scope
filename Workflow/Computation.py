@@ -105,40 +105,41 @@ class computation(object):
             return None
 
         ## 1-Gets Resources
-        askqueue, askprocs = get_queue_and_procs(resources=self.resources)
-        ## 2-Adds Resources
-        self.add_submission_init(nprocs=askprocs, queue=askqueue)
-        ## 3-Creates Files
-        self.check_files()
-        if not self.input_exists or options.overwrite_inputs:
-            if self.software == 'g16':  gen_G16_input(self, debug=debug)
-            elif self.software == 'qe': gen_QE_input(self, debug=debug)
-        if not self.subfile_exists or options.overwrite_inputs:
-            if self.software == 'g16':  gen_G16_subfile(self, procs=askprocs, queue=askqueue)
-            elif self.software == 'qe': gen_QE_subfile(self, procs=askprocs, queue=askqueue)
+        if options.want_submit:
+            askqueue, askprocs = get_queue_and_procs(resources=self.resources)
+            ## 1.1-Adds Resources
+            self.add_submission_init(nprocs=askprocs, queue=askqueue)
+            ## 1.2-Creates Files
+            self.check_files()
+            if not self.input_exists or options.overwrite_inputs:
+                if self.software == 'g16':  gen_G16_input(self, debug=debug)
+                elif self.software == 'qe': gen_QE_input(self, debug=debug)
+            if not self.subfile_exists or options.overwrite_inputs:
+                if self.software == 'g16':  gen_G16_subfile(self, procs=askprocs, queue=askqueue)
+                elif self.software == 'qe': gen_QE_subfile(self, procs=askprocs, queue=askqueue)
 
-        ## 4-If output exists, prompts for registration
+        ## 2-If output exists, prompts for registration
         if self.output_exists and not self.isregistered:
             print(f"    Output file Found Pending to be REGISTERED")
             print(f"    {self.output_path}")
             print(f"    ")
 
-        ## 5-Evaluates Submission
+        ## 2-Evaluates Submission
         if options.want_submit:
             can_submit = True
-            ## 5.1-Evaluates if output exists
+            ## 2.1-Evaluates if output exists
             if self.output_exists and not options.overwrite_logs:
                 can_submit = False
                 if debug > 0: print("Output exists and not overwriting logs")
 
-            ## 5.2-Evaluates if output is running
+            ## 2.2-Evaluates if output is running
             if can_submit and not options.ignore_submitted:
                 self.check_submission_status()   ### retrieves self.isrunning
                 if self.isrunning:
                     can_submit = False
                     if debug > 0: print("Job already running")
 
-            ## 5.3-Submits if possible
+            ## 2.3-Submits if possible
             if can_submit:
                 os.chdir(self.path)
                 send_command("submit", filename=self.sub_name)
@@ -160,6 +161,7 @@ class computation(object):
         ## 3-Registration of Frequencies
         elif self.isgood and 'freq' in self._job.keyword:
             worked = reg_frequencies(self, debug=debug)
+        else:  print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}"); return False
 
         ## 4-Wraps Up
         if worked:

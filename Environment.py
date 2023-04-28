@@ -13,25 +13,33 @@ def set_user():
 
 def set_cluster():
     return os.uname()[1]
+    # import platform
+    #return platform.node()
 
 ########################
 def set_paths(cluster: str=set_cluster(), user: str=set_user(), debug: int=0):
     if 'login' in cluster or 'csuc' in cluster:
         cell2mol_path = "/scratch/svela/SCOPE/Database_SCO/4-Merged"
         calcs_path = "/home/svela/SCOPE/Database_SCO/5-Complexes_Iso"
+        if cell2mol_path[-1] != '/': cell2mol_path += '/'
+        if calcs_path[-1] != '/': calcs_path += '/'
     elif 'portal' in cluster or 'node' in cluster or 'visual' in cluster:
         if 'g2vela' in user:
             cell2mol_path = "/home/g4vela/SCOPE/Database_SCO/4-Merged"
             calcs_path = "/home/g2vela/SCOPE/Database_SCO/5-Complexes_Iso"
+            if cell2mol_path[-1] != '/': cell2mol_path += '/'
+            if calcs_path[-1] != '/': calcs_path += '/'
         elif 'g4vela' in user:
             cell2mol_path = "/home/g4vela/SCOPE/Database_SCO/4-Merged"
             calcs_path = "/home/g4vela/SCOPE/Database_SCO/5-Complexes_Iso"
+            if cell2mol_path[-1] != '/': cell2mol_path += '/'
+            if calcs_path[-1] != '/': calcs_path += '/'
     elif 'lemma' in cluster:
         cell2mol_path = "/Users/sergivela/Documents/SCOPE/Database_SCO/4-Merged"
         calcs_path = "/Users/sergivela/Documents/SCOPE/Database_SCO/5-Complexes_Iso"
-    else: print("Cluster not recognized")
-    if cell2mol_path[-1] != '/': cell2mol_path += '/'
-    if calcs_path[-1] != '/': calcs_path += '/'
+        if cell2mol_path[-1] != '/': cell2mol_path += '/'
+        if calcs_path[-1] != '/': calcs_path += '/'
+    else: print(f"Cluster {cluster} not recognized")
     return cell2mol_path, calcs_path
 
 ########################

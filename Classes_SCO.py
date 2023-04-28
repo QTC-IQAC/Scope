@@ -55,6 +55,7 @@ class sco_system(object):
         if debug > 0: print("there are", len(self.branches), "branches in system")
         if len(self.branches) == 0: return False, None
         for idx, br in enumerate(self.branches):
+            if debug > 0: print("evaluating branch with keyword:", br.keyword, "and path:", br.path)
             if br.keyword == keyword and os.path.isdir(br.path): return True, br
         return False, None
 

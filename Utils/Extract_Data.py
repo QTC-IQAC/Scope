@@ -14,7 +14,7 @@ def extract_thermal_data(sys: object, branch_keyword: str, Trange: range=range(1
     ### BRANCH ###
     ##############
     exists, this_branch = sys.find_branch(branch_keyword, debug=debug)
-    #print("Branch loaded with keyword", this_branch.keyword)
+    print("Branch loaded with keyword", this_branch.keyword)
     #print("Nrecipes:", len(this_branch.recipes))
     if not exists: return False
 
@@ -57,6 +57,7 @@ def extract_thermal_data(sys: object, branch_keyword: str, Trange: range=range(1
                 for temp in Trange:
                     Svib_collection.add_data(get_Svib(gmol.freqs_cm, temp, freq_units='cm', outunits='au'))
                 recipe.add_result(Svib_collection, overwrite=overwrite)
+                recipe.results["Svib"].format()
             ## Gtot ##
             if overwrite or not "Gtot" in recipe.results.keys():
                 Gtot_collection = collection("Gtot")
@@ -79,6 +80,7 @@ def extract_thermal_data(sys: object, branch_keyword: str, Trange: range=range(1
                     new_data.add_property("temp", temp, overwrite=overwrite)
                     Gtot_collection.add_data(new_data)
                 recipe.add_result(Gtot_collection, overwrite=overwrite)
+                recipe.results["Gtot"].format()
 
     #########################
     ### BRANCH PROPERTIES ###
@@ -126,12 +128,16 @@ def extract_thermal_data(sys: object, branch_keyword: str, Trange: range=range(1
             this_branch.results["dGtot"].format()
 
         ## T12
-            print(dGtot_collection.get_values)
+            print(f"Finding T12 between {Trange[0]}K and {Trange[-1]}K") 
+            dGdata = dGtot_collection.get_values()
+            print(f"dG between {dGdata[0]} and {dGdata[-1]}") 
             key = "T12"
-            value = find_t12(Trange, dGtot_collection.datas)
+            value = find_t12(Trange, dGdata)
+            print(f"T12 value= {value}")
+            #value = find_t12(Trange, dGtot_collection.datas)
             units = "K"
             function = "extract_thermal_data"
-            this_branch.add_result(data(key, value, units, function))
+            this_branch.add_result(data(key, value, units, function), overwrite=overwrite)
 
         if debug > 0:
             print("Printing RESULTS for branch")

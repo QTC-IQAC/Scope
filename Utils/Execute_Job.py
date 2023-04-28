@@ -56,7 +56,7 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
     if debug > 1 and not exists: print("Execute_JOB, step 4: creating branch")
     if not exists: this_branch = sys.add_branch(job_data.branch, job_data.target, debug=debug); updated = True 
     if debug > 1: print("Execute_JOB, step 4: branch loaded")
-    if debug > 0: this_branch.get_info()
+    #if debug > 0: this_branch.get_info()
 
     ############## 
     ### RECIPE ###
@@ -67,7 +67,7 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
         ### JOB ###
         ###########
         ## 5-Finds the job. If it does not exist, it is NOT created.
-        if debug > 0: recipe.get_info()
+        #if debug > 0: recipe.get_info()
         exists, this_job = recipe.find_job(job_data, debug=debug)
         if debug > 1 and not exists: print("Execute_JOB, step 5: job not found")
     
@@ -87,7 +87,7 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
         ## 7-Sets the computation(s), meaning that it will check if they exist, and if not, it creates them
         this_job.set_computations_from_setup(qc_data, debug=debug)
         if debug > 1: print("Execute_JOB, step 7: computations set")
-        if debug > 0: this_job.get_info()
+        #if debug > 0: this_job.get_info()
     
         for jdx, comp in enumerate(this_job.computations):
 
@@ -95,9 +95,13 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
             if debug > 1: print("Execute_JOB, step 7.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
             comp.check_files()
             ## 8.2-Evaluates Submission
-            if not comp.output_exists:
+            if not comp.output_exists: # and comp.input_exists:
                 comp.check_submission_status()
                 if not comp.isrunning:             comp.run(resources, options, debug=debug); updated = True
+            ### 8.3 If no input files, removes job                           #################################
+            #elif not comp.output_exists and not comp.input_exists:          ## This shouldn't be necessary ##
+            #    recipe.jobs.remove(this_job)                                #################################
+            #    updated = True  
             else:
                 ## 8.3-If output exists, and is not registered, it does it
                 if not comp.isregistered:          comp.register(debug=debug);                updated = True

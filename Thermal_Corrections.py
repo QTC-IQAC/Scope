@@ -110,8 +110,8 @@ def get_Selec(spin, outunits: str='au'):
     if   spin == "HS": multiplicity = int(5)
     elif spin == "IS": multiplicity = int(3)
     elif spin == "LS": multiplicity = int(1)
-    if outunits.lower()     == 'kj': value = float(8.314*np.log(multiplicity))
-    elif outunits.lower()   == 'au': value = float(8.314*np.log(multiplicity)/Constants.har2kJmol)
+    if outunits.lower()     == 'kj': value = float(8.314*np.log(multiplicity)/1000)
+    elif outunits.lower()   == 'au': value = float(8.314*np.log(multiplicity)/Constants.har2kJmol/1000)
     return data("Selec", value, outunits,  'get_Selec') 
 
 def get_Gibbs(Helec: float, Hvib: float, Selec: float, Svib: float, temp: float):
@@ -151,7 +151,7 @@ def get_Gibbs(Helec: float, Hvib: float, Selec: float, Svib: float, temp: float)
 def find_t12(templist, dGlist: list):
     if type(templist) == range: templist = range2list(templist) 
     #assert len(templist) == len(dGlist)
-    if dGlist[0].value < 0.0: return None 
+    if dGlist[0] < 0.0: return None 
     else:
         for idx, g in enumerate(dGlist):
-            if g.value < 0.0: return templist[idx]
+            if g < 0.0: return float(templist[idx])

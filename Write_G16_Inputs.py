@@ -78,7 +78,7 @@ def gen_G16_input(comp, debug: int=0):
         ####################################################
         if hasattr(comp.qc_data,"coord_tag"):  coord_tag = comp.qc_data.coord_tag.lower()
         else:                                  coord_tag = "coord"
-        assert hasattr(gmol,coord_tag)
+        assert hasattr(gmol,coord_tag), f"{coord_tag} = coord_tag not found in gmol"
         for a in gmol.atoms:
             ta = getattr(a,coord_tag)
             if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (a.label, ta[0], ta[1], ta[2]), file=inp)
