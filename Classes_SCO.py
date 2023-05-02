@@ -139,6 +139,7 @@ class sco_system(object):
                 self.HS_ref_crys = deepcopy(crys)
                 self.HS_ref_crys_id = idx
                 self.HS_ref_crys_temp = crys.diff_temp                
+                HS_ref_crys_temp = crys.diff_temp 
                 self.HS_ref_crys._sys  == self 
                 self.HS_ref_crys.type  == "crystal"
                 #self.HS_ref_crys.cell.type  == "cell"
@@ -146,18 +147,19 @@ class sco_system(object):
                 setattr(self.HS_ref_crys.cell,"type","cell")
                 setattr(self.HS_ref_crys.cell,"spin","HS")
                 self.has_HS_ref_crys = True
-                if debug > 0: print(f"HS reference crystal found")
+                if debug > 0: print(f"HS reference crystal found, new temperature is:", crys.diff_temp)
             elif crys.phase == "LS" and crys.diff_temp < LS_ref_crys_temp: 
                 self.LS_ref_crys = deepcopy(crys)
                 self.LS_ref_crys_id = idx
                 self.LS_ref_crys_temp = crys.diff_temp                
+                LS_ref_crys_temp = crys.diff_temp                
                 self.LS_ref_crys._sys  == self 
                 self.LS_ref_crys.type  == "crystal"
                 setattr(self.LS_ref_crys.cell,"_sys",self)
                 setattr(self.LS_ref_crys.cell,"spin","LS")
                 setattr(self.LS_ref_crys.cell,"type","cell")
                 self.has_LS_ref_crys = True
-                if debug > 0: print(f"LS reference crystal found")
+                if debug > 0: print(f"LS reference crystal found, new temperature is:", crys.diff_temp)
             elif crys.phase == "IS":
                 if debug > 0: print(f"    Set_REF_Crystals: IS phase found but not implemented")
 
