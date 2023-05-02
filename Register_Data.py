@@ -3,12 +3,12 @@ import os
 import numpy as np
 from copy import deepcopy
 
-from Test_V3.Adapted_from_cell2mol import labels2formula, get_adjmatrix, get_radii, get_blocks, get_molecules, inv
-from Test_V3.Gmol_ops import gmol_update_geom, cell_update_geom, gmol_create_geom, cell_create_geom
-from Test_V3.Parse_QE_outputs import * 
-from Test_V3.Parse_General import read_lines_file, search_string 
-from Test_V3.Parse_G16_outputs import *
-from Test_V3 import Constants
+from Scope.Adapted_from_cell2mol import labels2formula, get_adjmatrix, get_radii, get_blocks, get_molecules, inv
+from Scope.Gmol_ops import gmol_update_geom, cell_update_geom, gmol_create_geom, cell_create_geom
+from Scope.Parse_QE_outputs import * 
+from Scope.Parse_General import read_lines_file, search_string 
+from Scope.Parse_G16_outputs import *
+from Scope import Constants
 
 ###########################################
 def reg_general(comp: object, debug: int=0):

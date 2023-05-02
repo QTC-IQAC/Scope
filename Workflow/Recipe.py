@@ -5,10 +5,10 @@ import os
 import numpy as np
 from datetime import datetime
 
-from Test_V3.Adapted_from_cell2mol import labels2formula
+from Scope.Adapted_from_cell2mol import labels2formula
 
-from Test_V3.Workflow import Job
-from Test_V3.Workflow.Job import *
+from Scope.Workflow import Job
+from Scope.Workflow.Job import *
 
 ####################
 ###### RECIPE ######

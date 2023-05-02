@@ -4,7 +4,7 @@ from scipy import sparse
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import reverse_cuthill_mckee
 from typing import Tuple
-from Test_V3.Elementdata import ElementData  
+from Scope.Elementdata import ElementData  
 elemdatabase = ElementData()
 
 ################################

@@ -2,12 +2,12 @@ import os
 import numpy as np
 import sys
 
-from Test_V3.Parse_General import search_string, read_lines_file
-from Test_V3.Unit_cell_tools import cellvec_2_cellparam, get_unit_cell_volume
-from Test_V3.Classes_QC import periodic_xyz
-import Test_V3.Constants
+from Scope.Parse_General import search_string, read_lines_file
+from Scope.Unit_cell_tools import cellvec_2_cellparam, get_unit_cell_volume
+from Scope.Classes_QC import periodic_xyz
+import Scope.Constants
 
-bohr2angs = Test_V3.Constants.bohr2angs
+bohr2angs = Scope.Constants.bohr2angs
 
 def check_job_requirements(lines: str, key_str: list=["JOB DONE", "Begin final coordinates", "End final coordinates"], debug: int=0):
     item = []

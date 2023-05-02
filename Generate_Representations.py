@@ -7,7 +7,7 @@ import time
 import pickle
 from collections import Counter
 from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
-#from Test_V3.Elementdata import ElementData
+#from Scope.Elementdata import ElementData
 #elemdatabase = ElementData()
 
 ###########################################

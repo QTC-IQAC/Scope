@@ -6,9 +6,9 @@ import pickle
 from collections import Counter
 from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 
-from Test_V3.Environment import set_user, set_cluster
-from Test_V3.Elementdata import ElementData 
-from Test_V3.Other import get_metal_idxs, get_metal_species, where_in_array
+from Scope.Environment import set_user, set_cluster
+from Scope.Elementdata import ElementData 
+from Scope.Other import get_metal_idxs, get_metal_species, where_in_array
 elemdatabase = ElementData()
 
 #######################

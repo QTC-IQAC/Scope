@@ -26,7 +26,7 @@ def range2list(rang: range):
     return lst
 
 def get_metal_idxs(labels: list):
-    from Test_V3.Elementdata import ElementData
+    from Scope.Elementdata import ElementData
     elemdatabase = ElementData()
     metal_indices = []
     for idx, l in enumerate(labels):
@@ -34,7 +34,7 @@ def get_metal_idxs(labels: list):
     return metal_indices
 
 def get_metal_species(labels: list):
-    from Test_V3.Elementdata import ElementData
+    from Scope.Elementdata import ElementData
     elemdatabase = ElementData()
     metal_species = []
     elems = list(set(labels))

@@ -3,14 +3,14 @@ import sys
 import os
 import pwd
 
-from Test_V3.Classes_Input import *
-from Test_V3.Classes_SCO import sco_system, crystal
-from Test_V3.Workflow import Recipe, Job, Computation 
-from Test_V3.Workflow.Recipe import *
-from Test_V3.Workflow.Job import *
-from Test_V3.Workflow.Computation import *
-from Test_V3.Environment import check_usage, get_queue_and_procs, send_command, set_cluster, set_user
-from Test_V3.Read_Write import load_binary, save_binary 
+from Scope.Classes_Input import *
+from Scope.Classes_SCO import sco_system, crystal
+from Scope.Workflow import Recipe, Job, Computation 
+from Scope.Workflow.Recipe import *
+from Scope.Workflow.Job import *
+from Scope.Workflow.Computation import *
+from Scope.Environment import check_usage, get_queue_and_procs, send_command, set_cluster, set_user
+from Scope.Read_Write import load_binary, save_binary 
 
 ######################
 def execute_job(sys_path: str, job_path: str, debug: int=0):
@@ -95,8 +95,10 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
             if debug > 1: print("Execute_JOB, step 7.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
             comp.check_files()
             ## 8.2-Evaluates Submission
+            if debug > 1: print("Execute_JOB, step 7.2: checking files [inp, out, sub]:", comp.input_exists, comp.output_exists, comp.subfile_exists)
             if not comp.output_exists: # and comp.input_exists:
-                comp.check_submission_status()
+                comp.check_submission_status(debug=debug)
+                if debug > 1: print("Execute_JOB, step 7.3: checking submission status: isrunning=",comp.isrunning)
                 if not comp.isrunning:             comp.run(resources, options, debug=debug); updated = True
             ### 8.3 If no input files, removes job                           #################################
             #elif not comp.output_exists and not comp.input_exists:          ## This shouldn't be necessary ##

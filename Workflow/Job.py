@@ -5,10 +5,10 @@ import os
 import numpy as np
 from datetime import datetime
 
-from Test_V3.Classes_Input import interpret_software
-from Test_V3.Workflow import Computation
-from Test_V3.Workflow.Computation import *
-from Test_V3.Other import where_in_array
+from Scope.Classes_Input import interpret_software
+from Scope.Workflow import Computation
+from Scope.Workflow.Computation import *
+from Scope.Other import where_in_array
 
 ###################
 ######  JOB  ######
@@ -116,7 +116,7 @@ class job(object):
 
         ## Setup for finite Differences
         elif self.setup == "findiff": 
-            from Test_V3.Findiff import findiff_displacements
+            from Scope.Findiff import findiff_displacements
             backup_coord_tag = qc_data.coord_tag
             findiff_path = self.path+"findiff"
             geoms, names = findiff_displacements(qc_data.coord_tag, debug=debug)

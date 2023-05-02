@@ -1,12 +1,12 @@
 import sys
 import os
 
-from Test_V3.Parse_General import search_string, read_lines_file 
-from Test_V3.Unit_cell_tools import get_unit_cell_volume
-from Test_V3 import Constants
+from Scope.Parse_General import search_string, read_lines_file 
+from Scope.Unit_cell_tools import get_unit_cell_volume
+from Scope import Constants
 
-from Test_V3.Adapted_from_cell2mol import labels2formula
-from Test_V3.Elementdata import ElementData
+from Scope.Adapted_from_cell2mol import labels2formula
+from Scope.Elementdata import ElementData
 elemdatabase = ElementData()
 
 ######################

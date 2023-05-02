@@ -5,8 +5,8 @@ import pwd
 import subprocess
 import numpy as np
 
-from Test_V3.Parse_General import read_lines_file, search_string 
-#from Test_V3.Classes_Job import check_job_requisites, find_job
+from Scope.Parse_General import read_lines_file, search_string 
+#from Scope.Classes_Job import check_job_requisites, find_job
 
 def set_user():
     return pwd.getpwuid( os.getuid() ).pw_name
@@ -67,7 +67,10 @@ def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(
     elif 'login' in cluster or 'csuc' in cluster:
         if commandtype == "qstat":
             tmp = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+str(user)
-            raw = subprocess.check_output(['bash','-c', tmp ])
+            try:  
+                raw = subprocess.check_output(['bash','-c', tmp ])
+            except: 
+                raw = subprocess.check_output(['bash','-c', 'echo']) 
         elif commandtype == "queue_stat":
             tmp = 'sinfo | grep '+queue+' | grep idle' 
             raw = subprocess.check_output(['bash','-c', tmp ])
@@ -187,13 +190,16 @@ def check_queue_availability(queues: str='all', cluster: str=set_cluster(), debu
 def check_submitted(name: str, cluster: str=set_cluster(), debug: int=0):
     issubmitted = False
 
-    if 'node' in cluster or 'lemma' in cluster: issubmitted = False
+    if debug > 0: print("check_submitted: cluster is:", cluster)
+    if 'node' in cluster or 'lemma' in cluster: 
+        issubmitted = False
     else: 
         raw = send_command("check_job", cluster, debug=debug)
         dec = raw.decode("utf-8") 
         flat = dec.replace("\n", "")
     
         if 'login' in cluster or 'csuc' in cluster:
+            if debug > 0: print("Checking Submission of", name, "in CSUC")
             if name in flat: issubmitted = True 
             else:            issubmitted = False
         elif 'portal' in cluster:

@@ -6,17 +6,17 @@ import shutil
 import csv
 from copy import deepcopy
 
-from Test_V3.Parse_Cif import get_cif_diffraction_data, get_cif_authors, get_cif_journal 
-from Test_V3.Parse_General import search_string, read_lines_file 
-from Test_V3.Geom_SCO_V1 import geom_sco_from_xyz, guess_spin_state
-from Test_V3.Read_Write import save_binary, load_binary
-#from Test_V3.Gmol_ops import cell_posttocoord
+from Scope.Parse_Cif import get_cif_diffraction_data, get_cif_authors, get_cif_journal 
+from Scope.Parse_General import search_string, read_lines_file 
+from Scope.Geom_SCO_V1 import geom_sco_from_xyz, guess_spin_state
+from Scope.Read_Write import save_binary, load_binary
+#from Scope.Gmol_ops import cell_posttocoord
 
-from Test_V3.Workflow import Branch
-from Test_V3.Workflow.Branch import *
+from Scope.Workflow import Branch
+from Scope.Workflow.Branch import *
 
-from Test_V3.Adapted_from_cell2mol import labels2formula
-from Test_V3.Elementdata import ElementData
+from Scope.Adapted_from_cell2mol import labels2formula
+from Scope.Elementdata import ElementData
 elemdatabase = ElementData()
 
 ###########################

@@ -3,10 +3,10 @@ import sys
 import os
 import pwd
 
-from Test_V3.Classes_Data import *
-from Test_V3.Thermal_Corrections import *
-from Test_V3.Workflow import Branch
-#from Test_V3 import Constants
+from Scope.Classes_Data import *
+from Scope.Thermal_Corrections import *
+from Scope.Workflow import Branch
+#from Scope import Constants
 
 def extract_thermal_data(sys: object, branch_keyword: str, Trange: range=range(10,501,1), overwrite: bool=False, debug: int=0):
 

@@ -5,12 +5,12 @@ import os
 import numpy as np
 from datetime import datetime
 
-from Test_V3.Classes_Spin import *
-from Test_V3.Environment import * 
-#from Test_V3.Environment import set_cluster, set_user, check_submitted, check_usage, get_queue_and_procs, send_command
-from Test_V3.Register_Data import reg_general, reg_optimization, reg_frequencies
-from Test_V3.Write_G16_Inputs import *
-from Test_V3.Write_QE_Inputs import *
+from Scope.Classes_Spin import *
+from Scope.Environment import * 
+#from Scope.Environment import set_cluster, set_user, check_submitted, check_usage, get_queue_and_procs, send_command
+from Scope.Register_Data import reg_general, reg_optimization, reg_frequencies
+from Scope.Write_G16_Inputs import *
+from Scope.Write_QE_Inputs import *
 
 #########################
 ###### COMPUTATION ######
@@ -80,8 +80,9 @@ class computation(object):
         if self.output_exists: self.output_lines = read_lines_file(self.out_path, flat=flat)
         else:                  self.output_lines = ''
             
-    def check_submission_status(self) -> None:
-        self.isrunning = check_submitted(str(self.keyword))
+    def check_submission_status(self, debug: int=0) -> None:
+        key = str(self.refcode+self.suffix)
+        self.isrunning = check_submitted(key, debug=debug)
         
     def add_submission_init(self, nprocs: str='Unk', queue: str='Unk', cluster: str=set_cluster(), user: str=set_user()) -> None:
         self.nprocs = nprocs
