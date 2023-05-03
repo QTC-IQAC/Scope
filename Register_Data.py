@@ -81,8 +81,9 @@ def reg_optimization(comp: object, debug: int=0):
     lines = comp.output_lines
 
     ### Defines tag for the new geometry. We avoid blanks
-    if ' ' in comp.keyword: new_tag = comp._job.keyword.replace(' ','_')
-    else:                   new_tag = comp._job.keyword
+    print("REG_OPT: comp._job.keyword=", comp._job.keyword)
+    if ' ' in comp._job.keyword:      new_tag = comp._job.keyword.replace(' ','_')
+    else:                             new_tag = comp._job.keyword
 
     worked = False
     ###############
