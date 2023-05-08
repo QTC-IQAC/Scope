@@ -23,15 +23,6 @@ elemdatabase = ElementData()
 def cell_postocoord(cell: object) -> None:
     if not hasattr(cell,"coord") and hasattr(cell,"pos"): setattr(cell,"coord",cell.pos)
 
-#def cell_reconstructed_coord(cell: object) -> None:
-#    if not hasattr(cell,"original_coord"):  setattr(cell,"original_coord",cell.coord) 
-#    if not hasattr(cell,"original_labels"): setattr(cell,"original_labels",cell.labels)
-#    cell.coord = []
-#    cell.labels = [] 
-#    for mol in cell.moleclist: 
-#        cell.coord.append(mol.coord)
-#        cell.labels.append(mol.labels)
-
 ############################
 ##### SYSTEM & CRYSTAL #####
 ############################
@@ -50,6 +41,11 @@ class sco_system(object):
         self.status               = "active"
 
     ##########
+#    def add_crystal(self, )
+#        new_crystal = crystal(refcode, name, cell2mol_path, cell, sys, _system=self)
+#        self.crystals.append(new_crystal)
+#        return new_crystal
+
     def find_branch(self, keyword: str, debug: int=0):
         if debug > 0: print("finding branch with keyword:", keyword)
         if debug > 0: print("there are", len(self.branches), "branches in system")
@@ -66,8 +62,9 @@ class sco_system(object):
 
         if   target.lower()  == "ref_mol"  and hasattr(self,"HS_ref_mol")  and hasattr(self,"LS_ref_mol"):   object_list = list([self.HS_ref_mol,self.LS_ref_mol])
         elif target.lower()  == "ref_crys" and hasattr(self,"HS_ref_crys") and hasattr(self,"LS_ref_crys"):  object_list = list([self.HS_ref_crys.cell,self.LS_ref_crys.cell])
-        else: print("Get_Branch: target could not be identified. Recipes were not created")
+        else: print("Get_Branch: target could not be identified or not available. Recipes were not created")
 
+        ## Creates recipes for the branch. One for each object. 
         for idx, gmol in enumerate(object_list):
             new_recipe = new_branch.add_recipe(gmol)
         self.branches.append(new_branch)
