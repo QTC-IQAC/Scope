@@ -48,10 +48,13 @@ class job(object):
     #    if not self.job_data.must_be_good: self.run_number = 1
     #    return self.run_number
 
-    def find_computation(self, keyword: str=''):
+    def find_computation(self, keyword: str='', index=None):
         found = False
         for idx, comp in enumerate(self.computations):
-            if comp.keyword == keyword and not found: this_comp = comp; found = True
+            if index is None: 
+                if comp.keyword == keyword and not found: this_comp = comp; found = True
+            else:
+                if comp.keyword == keyword and comp.index == int(index) and not found: this_comp = comp; found = True
         if found:    return found, this_comp
         else:        return found, None
 
@@ -75,10 +78,10 @@ class job(object):
         if debug > 1: print("Checking Requisites", self.requisites)
         if debug > 1: print("Checking Constrains", self.constrains)
         for idx, job in enumerate(self._recipe.jobs):
+
             ## If necessary, it registers any related job
             if debug > 1: print("Evaluating Job with keyword:", job.keyword)
             if debug > 1: print("Evaluating Job, isregistered:", job.isregistered)
-
             if (job.keyword in self.requisites or job.keyword in self.constrains) and not job.isregistered: 
                 if debug > 1: print("Registering Previous Unregistered Job", job.keyword)
                 job.register(debug=debug)
@@ -112,8 +115,28 @@ class job(object):
         ## Setup for regular computations: "1 job=1 computation"
         if self.setup == "regular" or self.setup == "reg":
             exists, comp = self.find_computation()
-            if not exists: new_computation = self.add_computation(int(1), qc_data, self.path, debug=debug)
+            if not exists: new_computation = self.add_computation(int(1), qc_data, self.path, comp_keyword="", debug=debug)
 
+        ## Setup for finite Differences
+        elif self.setup == "displacement" or self.setup == "disp":
+
+            #### Only applies to geometries that are not minimum
+            gmol = self._recipe.subject
+            if hasattr(gmol,"isminimum"):
+                if not gmol.isminimum: 
+                    from Scope.Gmol_ops import displace_neg_freqs 
+                    exists, comp = self.find_computation()
+                    if not exists: new_computation = self.add_computation(int(1), qc_data, self.path, comp_keyword="", debug=debug)
+
+                    ## Displaces Coordinates Following Negative Freqs ###
+                    disp_coord = displace_neg_freqs(gmol,ini_coord_tag=qc_data.coord_tag,debug=debug)
+                    newtag = "disp_coord"
+                    if hasattr(gmol,newtag): gmol_update_geom(gmol, disp_coord, tag=newtag, debug=debug)
+                    else:                    gmol_create_geom(gmol, disp_coord, tag=newtag, debug=debug)
+                else: _recipe.remove_job(keyword=self.keyword)    # not sure if this is possible
+            else:     _recipe.remove_job(keyword=self.keyword)    # I'm trying to delete the job when it is not necessary
+
+        
         ## Setup for finite Differences
         elif self.setup == "findiff": 
             from Scope.Findiff import findiff_displacements
@@ -128,6 +151,7 @@ class job(object):
                 # Computations are only added if they do not exist
                 exists, comp = self.find_computation(keyword=names[idx])
                 if not exists: new_computation = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx])
+
         else: pass
                  
 ####################

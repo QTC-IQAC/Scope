@@ -49,6 +49,12 @@ class sco_system(object):
         self.results              = dict()
         self.status               = "active"
 
+    def reset_calculations(self) -> None:
+        if hasattr(self,"branches"): delattr(self,"branches"); setattr(self,"branches",[])
+
+    def reset_crystals(self) -> None:
+        if hasattr(self,"crystals"): delattr(self,"crystals"); setattr(self,"crystals",[])
+
     ##########
     def find_branch(self, keyword: str, debug: int=0):
         if debug > 0: print("finding branch with keyword:", keyword)

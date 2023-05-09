@@ -73,13 +73,15 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
     
         ## 5.1 If necessary, creates the job
         if not exists: this_job = recipe.add_job(job_data); updated = True
-        if debug > 1: print("Execute_JOB, step 5: job loaded")
+        if debug > 1: print("Execute_JOB, step 5: job loaded for spin", this_job._recipe.subject.spin)
            
         ## 6-Checks that all requisites and constrains of the job are fulfilled
         cancontinue = this_job.check_requisites(debug=debug)
-        if not cancontinue and debug > 1: print(f"    Requisites not met, or job already run!")
-        if not cancontinue: continue    # I know if might seem misleading. Here, continue means "skip this one"
-        if debug > 1: print("Execute_JOB, step 6: requisites evaluated")
+        if not cancontinue:
+            if debug > 1:   print(f"    Requisites not met, or job already run!")
+            continue        # I know if might seem misleading. Here, "continue" means "skip this one"
+        else:
+            if debug > 1:   print("Execute_JOB, step 6: requisites evaluated")
 
         ####################
         ### COMPUTATIONS ###
@@ -91,6 +93,8 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
     
         for jdx, comp in enumerate(this_job.computations):
 
+            if comp.has_update: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
+            if debug > 1: print(f"Execute_JOB, step 7.0: evaluating job, and computation with indices: {idx+1}/{len(recipe.jobs)}, {jdx+1}/{len(this_job.computations)}")
             ## 8.1-Checks files 
             if debug > 1: print("Execute_JOB, step 7.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
             comp.check_files()
@@ -98,7 +102,7 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
             if debug > 1: print("Execute_JOB, step 7.2: checking files [inp, out, sub]:", comp.input_exists, comp.output_exists, comp.subfile_exists)
             if not comp.output_exists: # and comp.input_exists:
                 comp.check_submission_status(debug=debug)
-                if debug > 1: print("Execute_JOB, step 7.3: checking submission status: isrunning=",comp.isrunning)
+                if debug > 1: print("Execute_JOB, step 7.3a: checking submission status: isrunning=",comp.isrunning)
                 if not comp.isrunning:             comp.run(resources, options, debug=debug); updated = True
             ### 8.3 If no input files, removes job                           #################################
             #elif not comp.output_exists and not comp.input_exists:          ## This shouldn't be necessary ##
@@ -109,9 +113,12 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
                 if not comp.isregistered:          comp.register(debug=debug);                updated = True
                 ## 8.4-If output exists, is registered, but is not good, and it must_be_good:
                 if comp.isregistered and not comp.isgood and this_job.must_be_good:
-                    new_comp = this_job.add_computation(comp.index+1, qc_data, path=comp.path, comp_keyword=comp.keyword, debug=debug)
-                    comp.has_update = True
-                    if debug > 1: print("Execute_JOB, step 7.3: added_new_computation to job:")
+                    # We make sure that the new_run does not exist:
+                    exists, new_comp = this_job.find_computation(keyword=comp.keyword, index=comp.index+1)
+                    if not exists:                     
+                        new_comp = this_job.add_computation(comp.index+1, qc_data, path=comp.path, comp_keyword=comp.keyword, debug=debug)
+                        comp.has_update = True
+                        if debug > 1: print("Execute_JOB, step 7.3b: added_new_computation to job:")
 
             if debug > 0: comp.get_info() 
 
