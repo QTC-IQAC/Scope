@@ -83,7 +83,7 @@ def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(
         elif commandtype == "queue_stat": raw = ''
         elif commandtype == "check_job": raw = '' 
         elif commandtype == "submit": pass
-    else: print("Error in send_command function. Cluster not recognizsed")
+    else: print("Error in send_command function. Cluster not recognised"); return ''
     if commandtype == "qstat" or commandtype == "queue_stat" or commandtype == "check_job": 
         return raw
 

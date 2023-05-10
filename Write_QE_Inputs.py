@@ -114,6 +114,11 @@ def gen_QE_input(comp, debug: int=0):
 
         print(f"    prefix='{comp.refcode}{comp.suffix}'", file=inp)
 
+        ## Print forces for finite differences computation.
+        if hasattr(comp.qc_data,"print_forces"):
+            if comp.qc_data.print_forces and comp.qc_data.jobtype == "scf": print(f"    tprnfor = .true.", file=inp)
+
+        ## Keywords for Optimization-related computations 
         if comp.qc_data.jobtype == "opt" or comp.qc_data.jobtype == "relax" or comp.qc_data.jobtype == "vc-relax":
             print(f"    wf_collect = .true.", file=inp)
             print(f"    tprnfor = .true.", file=inp)

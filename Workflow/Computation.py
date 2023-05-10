@@ -145,7 +145,7 @@ class computation(object):
             if can_submit:
                 os.chdir(self.path)
                 send_command("submit", filename=self.sub_name)
-                if debug > 0: print(f"Job {self.out_path} submitted")
+                #if debug > 0: print(f"Job {self.out_path} submitted")
 
 ###########################################
     def register(self, debug: int=0) -> None:

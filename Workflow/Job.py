@@ -167,7 +167,7 @@ class job(object):
                     if debug > 1: print("Registering Job: Evaluating computation with run_number:", comp.run_number)
                     comp.check_files()
                     if comp.output_exists:
-                        if debug > 1: print("Registering Job:", self.keyword, "output of:", comp.keyword, "exists")
+                        #if debug > 1: print("Registering Job:", self.keyword, "output of:", comp.keyword, "exists")
                         if not comp.isregistered:                     worked = comp.register(debug=debug)
                         else:                                         worked = True
                         if not worked or not comp.isgood:             allgood     = False

@@ -43,3 +43,10 @@ def get_metal_species(labels: list):
         else: label = l
         if (elemdatabase.elementblock[label] == 'd' or elemdatabase.elementblock[label] == 'f') and l not in metal_species: metal_species.append(l)
     return metal_species
+
+def pairwise(iterable):
+    from itertools import tee
+    a, b = tee(iterable)
+    next(b, None)
+    return zip(a, b)
+        

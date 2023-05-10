@@ -81,7 +81,6 @@ def reg_optimization(comp: object, debug: int=0):
     lines = comp.output_lines
 
     ### Defines tag for the new geometry. We avoid blanks
-    print("REG_OPT: comp._job.keyword=", comp._job.keyword)
     if ' ' in comp._job.keyword:      new_tag = comp._job.keyword.replace(' ','_')
     else:                             new_tag = comp._job.keyword
 
@@ -149,15 +148,15 @@ def reg_optimization(comp: object, debug: int=0):
 def reg_frequencies(comp: object, debug: int=0):
     gmol = comp._job._recipe.subject
 
-    ### Reads output
+    ### If not yet available, it reads the output lines
     if not hasattr(comp,'output_lines'): comp.read_lines()
     lines = comp.output_lines
 
     worked = False
-    ###############
-    ## G09 & G16 ##
-    ###############
     if comp.software == "g16": 
+        ###############
+        ## G09 & G16 ##
+        ###############
         VNMs = G16_get_VNM(lines, witheigen=True, debug=debug)
         gmol.VNMs = [vnm for vnm in VNMs]
         gmol.freqs_cm = [vnm.freq_cm for vnm in VNMs]
@@ -168,19 +167,24 @@ def reg_frequencies(comp: object, debug: int=0):
         worked = True
         if gmol.isminimum:
             new_coord = G16_get_last_geom(lines, debug=debug)
-            ### Defines tag for the new geometry. We avoid blanks
             new_tag = "min_coord"
-            ### If the desired tag already exists, then it updates it
-            if hasattr(gmol,new_tag): 
-                gmol_update_geom(gmol, new_coord, tag=new_tag, debug=debug)
-            else:                     
-                gmol_create_geom(gmol, new_coord, tag=new_tag, debug=debug)
-
-    ########
-    ## QE ##
-    ########
-    #elif comp.software.lower() == "qe" or comp.software.lower() == "quantum_espresso" or comp.software.lower() == "quantum espresso":
-
-    #else: print("    REG_OPTIMIZATIONS: Software", comp.software, " not considered")
-
+            if hasattr(gmol,new_tag): gmol_update_geom(gmol, new_coord, tag=new_tag, debug=debug)
+            else:                     gmol_create_geom(gmol, new_coord, tag=new_tag, debug=debug)
     return worked
+
+###########################################
+#def reg_forces(comp: object, debug: int=0):
+#    gmol = comp._job._recipe.subject
+#
+#    ### If not yet available, it reads the output lines
+#    if not hasattr(comp,'output_lines'): comp.read_lines()
+#    lines = comp.output_lines
+#
+#    worked = False
+#    if comp.software == "qe": forces = QE_get_forces(lines, debug=debug)
+#    # Maybe add an assert for the size of the forces vector
+#    if len(forces) == len(gmol.natoms): worked = True; gmol.forces = forces
+#    return worked
+
+
+
