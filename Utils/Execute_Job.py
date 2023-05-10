@@ -116,8 +116,14 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
                     # We make sure that the new_run does not exist:
                     exists, new_comp = this_job.find_computation(keyword=comp.keyword, index=comp.index+1)
                     if not exists:                     
-                        new_comp = this_job.add_computation(comp.index+1, qc_data, path=comp.path, comp_keyword=comp.keyword, debug=debug)
                         comp.has_update = True
+ 
+                        ## Creates new computation
+                        new_comp = this_job.add_computation(comp.index+1, qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
+                        ## Updates the geometry tag of the new run
+                        if ' ' in new_comp._job.keyword:  new_tag = new_comp._job.keyword.replace(' ','_')
+                        else:                             new_tag = new_comp._job.keyword
+                        new_comp.qc_data.coord_tag = new_tag 
                         if debug > 1: print("Execute_JOB, step 7.3b: added_new_computation to job:")
 
             if debug > 0: comp.get_info() 

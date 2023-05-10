@@ -58,9 +58,9 @@ class job(object):
         if found:    return found, this_comp
         else:        return found, None
 
-    def add_computation(self, index: int, qc_data: object, path: str='', comp_keyword: str='', debug: int=0):
+    def add_computation(self, index: int, qc_data: object, path: str='', comp_keyword: str='', is_update: bool=False, debug: int=0):
         if path == '': path == self.path
-        new_computation       = computation(index, comp_keyword, qc_data, path, _job=self, debug=debug)
+        new_computation       = computation(index, comp_keyword, qc_data, path, _job=self, is_update=is_update, debug=debug)
         self.computations.append(new_computation)
         return new_computation 
     
@@ -115,7 +115,7 @@ class job(object):
         ## Setup for regular computations: "1 job=1 computation"
         if self.setup == "regular" or self.setup == "reg":
             exists, comp = self.find_computation()
-            if not exists: new_computation = self.add_computation(int(1), qc_data, self.path, comp_keyword="", debug=debug)
+            if not exists: new_computation = self.add_computation(int(1), qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
 
         ## Setup for finite Differences
         elif self.setup == "displacement" or self.setup == "disp":
@@ -126,7 +126,7 @@ class job(object):
                 if not gmol.isminimum: 
                     from Scope.Gmol_ops import displace_neg_freqs 
                     exists, comp = self.find_computation()
-                    if not exists: new_computation = self.add_computation(int(1), qc_data, self.path, comp_keyword="", debug=debug)
+                    if not exists: new_computation = self.add_computation(int(1), qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
 
                     ## Displaces Coordinates Following Negative Freqs ###
                     disp_coord = displace_neg_freqs(gmol,ini_coord_tag=qc_data.coord_tag,debug=debug)
@@ -150,7 +150,7 @@ class job(object):
 
                 # Computations are only added if they do not exist
                 exists, comp = self.find_computation(keyword=names[idx])
-                if not exists: new_computation = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx])
+                if not exists: new_computation = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
 
         else: pass
                  

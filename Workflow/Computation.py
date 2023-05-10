@@ -16,7 +16,7 @@ from Scope.Write_QE_Inputs import *
 ###### COMPUTATION ######
 #########################
 class computation(object):
-    def __init__(self, index: int, keyword: str, qc_data: object, path: str, _job: object, debug: int=0):        
+    def __init__(self, index: int, keyword: str, qc_data: object, path: str, _job: object, is_update: bool=False, debug: int=0):        
         self.type             = "computation"
         self._job             = _job       
         self.index            = index      
@@ -29,6 +29,7 @@ class computation(object):
         self.run_number       = self.set_run_number()
         self.isregistered     = False
         self.has_update       = False
+        self.is_update        = is_update
 
         ############
         ### SPIN ###
