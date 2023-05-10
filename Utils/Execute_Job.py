@@ -15,6 +15,8 @@ from Scope.Read_Write import load_binary, save_binary
 ######################
 def execute_job(sys_path: str, job_path: str, debug: int=0):
 
+    report = ''
+
     if debug > 1: print("")
     if debug > 1: print("----------- NEW JOB ----------")
     if debug > 1: print("")
@@ -121,7 +123,10 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
             #    updated = True  
             else:
                 ## 8.3-If output exists, and is not registered, it does it
-                if not comp.isregistered:          comp.register(debug=debug);                updated = True
+                if not comp.isregistered:         
+                    worked = comp.register(debug=debug);   
+                    if not worked: report += 'Check Registration of comp.out_path \n' 
+                    updated = True
                 ## 8.4-If output exists, is registered, but is not good, and it must_be_good:
                 if comp.isregistered and not comp.isgood and this_job.must_be_good:
                     # We make sure that the new_run does not exist:
@@ -148,5 +153,5 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
     this_branch.register(debug=0)
 
     if updated: print("saving binary"); save_binary(sys, sys_path)
-    return None
+    return report
 

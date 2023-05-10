@@ -163,6 +163,7 @@ class computation(object):
         ## 3-Registration of Frequencies
         elif self.isgood and 'freq' in self._job.keyword:
             worked = reg_frequencies(self, debug=debug)
+
         else:  print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}"); return False
 
         ## 4-Wraps Up
