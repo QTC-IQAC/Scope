@@ -54,16 +54,61 @@ class recipe(object):
                     if jb.hierarchy == hierarchy and not found: found = True; found_idx = idx
         if found: del self.jobs[found_idx]
 
-    def find_job(self, job_data: object, debug: int=0):
+#########################
+    def find_job(self, keyword=None, hierarchy=None, job_data=None, debug: int=0):
         found_job = False
-        if debug > 1: print(f"Searching Job with keyword: '{job_data.keyword}' and hierarchy '{job_data.hierarchy}'")
-        for idx, jb in enumerate(self.jobs):
-            if jb.keyword == job_data.keyword and jb.hierarchy== job_data.hierarchy and not found_job:
-                this_job = jb
-                found_job = True
-                if debug > 1: print(f"Job found")
+
+        if keyword is None and hierarchy is None and job_data is not None:
+            #assert type(job_data) == object, f"{type(job_data)} = type(job_data)"
+            assert hasattr(job_data,"keyword") and hasattr(job_data,"hierarchy")
+            if debug > 1: print(f"Searching Job with keyword: '{job_data.keyword}' and hierarchy '{job_data.hierarchy}'")
+            for idx, jb in enumerate(self.jobs):
+                if jb.keyword == job_data.keyword and jb.hierarchy == job_data.hierarchy and not found_job:
+                    this_job = jb
+                    found_job = True
+                    if debug > 1: print(f"Job found")
+
+        elif keyword is None and hierarchy is not None and job_data is None:  
+            assert type(hierarchy) == int
+            if debug > 1: print(f"Searching Job with and hierarchy '{hierarchy}'")
+            for idx, jb in enumerate(self.jobs):
+                if jb.hierarchy == hierarchy and not found_job:
+                    this_job = jb
+                    found_job = True
+                    if debug > 1: print(f"Job found")
+
+        elif keyword is not None and hierarchy is None and job_data is None:  
+            assert type(keyword) == str
+            if debug > 1: print(f"Searching Job with and keyword '{keyword}'")
+            for idx, jb in enumerate(self.jobs):
+                if jb.keyword == keyword and not found_job:
+                    this_job = jb
+                    found_job = True
+                    if debug > 1: print(f"Job found")
+
+        elif keyword is not None and hierarchy is not None and job_data is None:  
+            assert type(keyword) == str and type(hierarchy) == int
+            if debug > 1: print(f"Searching Job with keyword: '{keyword}' and hierarchy '{hierarchy}'")
+            for idx, jb in enumerate(self.jobs):
+                if jb.keyword == keyword and jb.hierarchy == hierarchy and not found_job:
+                    this_job = jb
+                    found_job = True
+                    if debug > 1: print(f"Job found")
+
         if found_job: return found_job, this_job
         else: return found_job, None
+#########################
+
+#    def find_job(self, job_data: object, debug: int=0):
+#        found_job = False
+#        if debug > 1: print(f"Searching Job with keyword: '{job_data.keyword}' and hierarchy '{job_data.hierarchy}'")
+#        for idx, jb in enumerate(self.jobs):
+#            if jb.keyword == job_data.keyword and jb.hierarchy== job_data.hierarchy and not found_job:
+#                this_job = jb
+#                found_job = True
+#                if debug > 1: print(f"Job found")
+#        if found_job: return found_job, this_job
+#        else: return found_job, None
 
 ####################
 ### Registration ###

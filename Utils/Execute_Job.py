@@ -73,7 +73,7 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
         ###########
         ## 5-Finds the job. If it does not exist, it is NOT created.
         #if debug > 0: recipe.get_info()
-        exists, this_job = recipe.find_job(job_data, debug=debug)
+        exists, this_job = recipe.find_job(job_data=job_data, debug=debug)
         if debug > 1 and not exists: print("Execute_JOB, step 5: job does not exist")
     
         ## 5.1 If necessary, creates the job
@@ -100,7 +100,7 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
     
         for jdx, comp in enumerate(this_job.computations):
 
-            if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
+            #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
             if debug > 1: print("-----------------------------------------------------------------------------------")
             if debug > 1: print(f"Execute_JOB, step 7.0: evaluating job, and computation with indices: {recipe.jobs.index(this_job)+1}/{len(recipe.jobs)}, {jdx+1}/{len(this_job.computations)}")
             ## 8.1-Checks files 
@@ -112,6 +112,8 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
             if not comp.output_exists: # and comp.input_exists:
                 comp.check_submission_status(debug=debug)
                 if debug > 1: print("Execute_JOB, step 7.3a: checking submission status: isrunning=",comp.isrunning)
+                if debug > 1: print("Execute_JOB, step 7.3a: coord tag is", comp.qc_data.coord_tag)
+                if debug > 1: print("Execute_JOB, step 7.3a: is_update:", comp.is_update)
                 if not comp.isrunning:             comp.run(resources, options, debug=debug); updated = True
             ### 8.3 If no input files, removes job                           #################################
             #elif not comp.output_exists and not comp.input_exists:          ## This shouldn't be necessary ##
