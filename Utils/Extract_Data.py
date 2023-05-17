@@ -14,7 +14,7 @@ def extract_thermal_data(sys: object, branch_keyword: str, Trange: range=range(1
     ### BRANCH ###
     ##############
     exists, this_branch = sys.find_branch(branch_keyword, debug=debug)
-    print("Branch loaded with keyword", this_branch.keyword)
+    if exists: print("Branch loaded with keyword", this_branch.keyword)
     #print("Nrecipes:", len(this_branch.recipes))
     if not exists: return False
 
@@ -147,5 +147,9 @@ def extract_thermal_data(sys: object, branch_keyword: str, Trange: range=range(1
             this_branch.results["dSvib"].format()
             this_branch.results["dGtot"].format()
             this_branch.results["T12"].format()
+
+    # Set branch_status_finished
+    if minima and "T12" in this_branch.results.keys(): 
+        this_branch.set_status("finished", debug=debug)
 
     return True

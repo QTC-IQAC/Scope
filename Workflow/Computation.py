@@ -63,9 +63,11 @@ class computation(object):
         self.out_path = self.path+self.out_name
         self.sub_path = self.path+self.sub_name
 
-    def set_run_number(self) -> int:
+    def set_run_number(self, debug: int=1) -> int:
         run_number = 0
+        if debug > 0: print("SET_RUN_NUMBER: evaluating", self.keyword)
         for idx, comp in enumerate(self._job.computations):  ## Searches in the recipe it is contained
+            if debug > 0: print("SET_RUN_NUMBER: in job there is:", comp.keyword, comp.isfinished, comp.run_number)
             if comp.keyword == self.keyword and hasattr(comp,"isfinished") and hasattr(comp,"run_number"):
                 if comp.isfinished and comp.run_number > run_number: run_number = comp.run_number
         run_number += 1

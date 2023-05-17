@@ -28,6 +28,7 @@ class branch(object):
         self.isgood           = False
         self.isfinished       = False
         self.results          = dict()
+        self.status           = "active"
 
         ## Corrects self.path in case the user forgets to add '/' 
         if self.path[-1] != '/': self.path += '/'
@@ -56,6 +57,23 @@ class branch(object):
         if found: return found, this_rec
         else: return found, None
 
+    def set_status(self, status: str, debug: int=0):
+        status = status.lower()
+        if hasattr(self,"status"):
+            if self.status != status: self.status = status
+        elif not hasattr(self,"status"): 
+            setattr(self,"status",status)
+
+        ## Create file for get_status
+        if hasattr(self._sys,"sys_path"):  path = self._sys.sys_path
+        else: print("SET_INACTIVE: system doesnt have sys_path"); return None
+            
+        if   self.keyword.lower() == "isolated" and status == "finished": filename="ISO_FINISHED"
+        elif self.keyword.lower() == "solid" and status == "finished":    filename="SOLID_FINISHED"
+    
+        filepath = str(path+'/'+filename)
+        if not os.path.exists(filepath): open(filepath, "a").close() # Should create an empty file
+    
 ####################
 ### Registration ###
 ####################
@@ -87,6 +105,7 @@ class branch(object):
         to_print += f'---------------------------------------------------\n'
         to_print += f' System                = {self._sys.refcode}\n'
         to_print += f'---------------------------------------------------\n'
+        to_print += f' self.status           = {self.status}\n'
         to_print += f' self.creation_time    = {self.creation_time}\n'
         to_print += f' self.creation_cluster = {self.creation_cluster}\n'
         to_print += f' self.creation_user    = {self.creation_user}\n'

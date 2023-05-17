@@ -41,7 +41,7 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
     if 'lemma' in cluster or 'node' in cluster:
         options.dct['want_submit'] = False         ## I think I tried options.want_submit = False and didn't work
         options.dct['overwrite_inputs'] = False    ## " " same above
-        options.overwrite_logs   = False      ## " " same above
+        options.dct['overwrite_logs']   = False      ## " " same above
 
         options.want_submit      = False         ## I think I tried options.want_submit = False and didn't work
         options.overwrite_inputs = False    ## " " same above
@@ -107,6 +107,7 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
             if debug > 1: print(f"Execute_JOB, step 7.0: evaluating job, and computation with indices: {recipe.jobs.index(this_job)+1}/{len(recipe.jobs)}, {jdx+1}/{len(this_job.computations)}")
             ## 8.1-Checks files 
             if debug > 1: print("Execute_JOB, step 7.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
+            if debug > 1: print("Execute_JOB, step 7.1: out_file:", comp.out_path)
             if debug > 1: print("-----------------------------------------------------------------------------------")
             comp.check_files()
             ## 8.2-Evaluates Submission
@@ -121,11 +122,12 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
             #elif not comp.output_exists and not comp.input_exists:          ## This shouldn't be necessary ##
             #    recipe.jobs.remove(this_job)                                #################################
             #    updated = True  
+            elif comp.output_exists and not comp.input_exists:  report += f"Investigate {comp.out_path} \n"               
             else:
                 ## 8.3-If output exists, and is not registered, it does it
                 if not comp.isregistered:         
                     worked = comp.register(debug=debug);   
-                    if not worked: report += 'Check Registration of comp.out_path \n' 
+                    if not worked: report += f"Check Registration of {comp.out_path} \n"
                     updated = True
                 ## 8.4-If output exists, is registered, but is not good, and it must_be_good:
                 if comp.isregistered and not comp.isgood and this_job.must_be_good:
@@ -143,6 +145,7 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
                         else:                             new_tag = new_comp._job.keyword
                         new_comp.qc_data = deepcopy(qc_data)   ## I need to deepcopy, as it will use a modified version of the qc_data object
                         new_comp.qc_data.coord_tag = new_tag 
+                        new_comp.qc_data.dct['coord_tag'] = new_tag 
                         print("Execute_JOB, step 7.3b: coord tag of new computation is modified to", new_comp.qc_data.coord_tag)
 
             #if debug > 0: comp.get_info() 
