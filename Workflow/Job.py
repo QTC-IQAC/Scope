@@ -135,7 +135,6 @@ class job(object):
                     else:                    gmol_create_geom(gmol, disp_coord, tag=newtag, debug=debug)
                 else: _recipe.remove_job(keyword=self.keyword)    # not sure if this is possible
             else:     _recipe.remove_job(keyword=self.keyword)    # I'm trying to delete the job when it is not necessary
-
         
         ## Setup for finite Differences
         elif self.setup == "findiff": 
