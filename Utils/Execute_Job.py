@@ -39,13 +39,13 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
     #### 2-Fixes Some Data Depending on Cluster
     cluster = set_cluster()
     if 'lemma' in cluster or 'node' in cluster:
-        options.dct['want_submit'] = False         ## I think I tried options.want_submit = False and didn't work
-        options.dct['overwrite_inputs'] = False    ## " " same above
-        options.overwrite_logs   = False      ## " " same above
+        options.dct['want_submit'] = False       
+        options.dct['overwrite_inputs'] = False   
+        options.dct['overwrite_logs']   = False    
 
-        options.want_submit      = False         ## I think I tried options.want_submit = False and didn't work
-        options.overwrite_inputs = False    ## " " same above
-        options.overwrite_logs   = False      ## " " same above
+        options.want_submit      = False  
+        options.overwrite_inputs = False  
+        options.overwrite_logs   = False  
     
     ############## 
     ### SYSTEM ###
@@ -125,7 +125,7 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
                 ## 8.3-If output exists, and is not registered, it does it
                 if not comp.isregistered:         
                     worked = comp.register(debug=debug);   
-                    if not worked: report += 'Check Registration of comp.out_path \n' 
+                    if not worked: report += f"Check Registration of {comp.out_path} \n" 
                     updated = True
                 ## 8.4-If output exists, is registered, but is not good, and it must_be_good:
                 if comp.isregistered and not comp.isgood and this_job.must_be_good:
