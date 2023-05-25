@@ -3,7 +3,7 @@ import numpy as np
 import sys
 
 from Scope.Parse_General import search_string, read_lines_file
-from Scope.unit_cell_tools import cellvec_2_cellparam, get_unit_cell_volume
+from Scope.Unit_cell_tools import cellvec_2_cellparam, get_unit_cell_volume
 from Scope.Classes_QC import periodic_xyz
 import Scope.Constants
 
@@ -53,11 +53,18 @@ def parse_final_geoopt_step(lines: str, debug: int=0):
  
     ## In some cases, "End final coordinates" is not written. Probably because the geometry has not fished the optimization 
     ## Then, as an alternative, one can search for NEW-OLD 
+    if found1 and found2 and last_step_init_line > last_step_last_line: 
+        if debug >= 1: print(f"    PARSE_FINAL_GEOOPT_STEP: 'End final coordinates' is before 'Self-consistent'. It must be a vc-relax")
+        if debug >= 1: print(f"    PARSE_FINAL_GEOOPT_STEP: Going for the alternative. Limiting to uplim={last_step_last_line}")
+        last_step_init_line, found1 = search_string(last_step_init, lines, typ="last", uplim=last_step_last_line)
+        if debug >= 1: print(f"    PARSE_FINAL_GEOOPT_STEP: Results: {last_step_init_line}, {found1}") 
+
     if not found2: 
         if debug >= 1: print(f"    PARSE_FINAL_GEOOPT_STEP: 'End final coordinates' not found")
         if debug >= 1: print(f"    PARSE_FINAL_GEOOPT_STEP: Going for the alternative")
         last_step_last = "Writing output data"   
         last_step_last_line, found2 = search_string(last_step_last, lines, typ="last")
+
     if found1 and found2: worked = True
     else: worked = False
     return worked, last_step_init_line, last_step_last_line 
@@ -87,8 +94,10 @@ def parse_final_geometry(lines: str, debug: int=0):
         else: 
             warning = True
      
-        last_geo_lines = lines[last_step_init_line+last_geo_init_line:last_step_init_line+last_geo_last_line]
-        #print("bla",last_geo_lines[0], last_geo_lines[-1])
+        last_geo_lines = last_step_lines[last_geo_init_line:last_geo_last_line]
+        #last_geo_lines = lines[last_step_init_line+last_geo_init_line:last_step_init_line+last_geo_last_line]
+        if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: first last_geo_line: {last_geo_lines[0]}")
+        if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: last  last_geo_line: {last_geo_lines[-1]}")
         if not warning:
             ### Reads units of coordinates from the ATOMIC POSITIONS line
             at_pos_line=last_geo_lines[0].lower()
@@ -99,16 +108,20 @@ def parse_final_geometry(lines: str, debug: int=0):
 
             coord = []
             labels = []
-            for idx, l in enumerate(last_geo_lines):
+            for idx, l in enumerate(last_geo_lines[1:]):
                 line_data = l.split()
                 if len(line_data) == 4:
                     label, x, y, z = l.split()
-                    if units == "angstrom": coord.append([float(x), float(y), float(z)])
-                    elif units == "bohr": coord.append([float(x*bohr2angs), float(y*bohr2angs), float(z*bohr2angs)])
-                    labels.append(label)
-
-            print("coord[0]=",  coord[0])
-            print("coord[-1]=", coord[-1])
+                    try: 
+                        if units == "angstrom": coord.append([float(x), float(y), float(z)])
+                        elif units == "bohr": coord.append([float(x*bohr2angs), float(y*bohr2angs), float(z*bohr2angs)])
+                        labels.append(label)
+                    except exception as exc:
+                        if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: exception {exc} reading line: {l}")   
+                else: 
+                    if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: line discarded: {line_data}")
+            #print("coord[0]=",  coord[0])
+            #print("coord[-1]=", coord[-1])
         return labels, coord
 
 def parse_final_energy(lines: str, debug: int=0):

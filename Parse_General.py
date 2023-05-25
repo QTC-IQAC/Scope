@@ -1,13 +1,17 @@
 import numpy as np
 
-def search_string(string: str, lines: list, typ: str='all', lowlim: int=None, uplim: int=None):
+def search_string(string: str, lines: list, typ: str='all', lowlim: int=None, uplim: int=None, debug: int=0):
+    if debug > 0: print(f"SEARCH STRING: searching {string} in file")
     list_of_results = []
     for lx, line in enumerate(lines):
         if string in line:
+            if debug > 0: print(f"SEARCH STRING: found string in line {lx}")
             if lowlim and uplim:
                 if lx >= lowlim and lx <= uplim: list_of_results.append(lx)  
             elif lowlim and not uplim:
                 if lx >= lowlim: list_of_results.append(lx)  
+            elif uplim and not lowlim:
+                if lx <= uplim: list_of_results.append(lx)  
             elif not lowlim and not uplim:
                 list_of_results.append(lx)  
     if len(list_of_results) > 0:

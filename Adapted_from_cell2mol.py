@@ -3,9 +3,8 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import reverse_cuthill_mckee
-from cell2mol.elementdata import ElementData  ### This has to be changed
 from typing import Tuple
-
+from Scope.Elementdata import ElementData  
 elemdatabase = ElementData()
 
 ################################

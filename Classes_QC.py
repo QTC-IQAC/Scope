@@ -2,11 +2,11 @@ import sys
 import os
 
 from Scope.Parse_General import search_string, read_lines_file 
-from Scope.unit_cell_tools import get_unit_cell_volume
+from Scope.Unit_cell_tools import get_unit_cell_volume
 from Scope import Constants
 
-from cell2mol.tmcharge_common import labels2formula
-from cell2mol.elementdata import ElementData
+from Scope.Adapted_from_cell2mol import labels2formula
+from Scope.Elementdata import ElementData
 elemdatabase = ElementData()
 
 ######################
