@@ -202,7 +202,6 @@ class job(object):
         if allgood:                                           self.isgood       = True
         if allfinished:                                       self.isfinished   = True
         self.isregistered = True
-
         if debug > 1: print("Registered Job:", self.keyword, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
 
 #############

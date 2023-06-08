@@ -12,7 +12,7 @@ def get_central_difference(f1, f2, displacement: float=0.01, units: str='angstro
     else: print("GET CENTRAL: could not understand the specified units"); return None
     cdiff = ( f1 - f2 ) / (2.0 * displacement)
     return cdiff
-    
+
 def findiff_displacements(coord, displacement: float=0.01, units: str='angstrom'):
     geoms = []
     names = []
@@ -177,3 +177,20 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
     VNMs.reverse()
 
     return VNMs
+
+
+#def read_forces(job: object, debug: int=0)
+#    
+#    ## Read the number of atoms from the gmol object
+#    gmol   = job._recipe.subject
+#    natoms = gmol.natoms
+#
+#    fmatrix = np.zeros((natoms,natoms))
+#    for idx, comp in enumerate(job.computations.sort(key=lambda x: (x.index))):
+#
+#        # this could go to a different function that checks that all computations are good
+#        if comp.isregistered and comp.isgood:
+#        
+#        # reads successive (in terms of index) computations
+#        # and hessian is computed as the difference between forces
+
