@@ -18,12 +18,12 @@ class job(object):
         self.type             = "job"
         self._recipe          = _recipe
         self.path             = _recipe.path
-        self.keyword          = job_data.keyword
+        self.keyword          = job_data.keyword.lower()
         self.job_data         = job_data    ## I hate to do this
         self.hierarchy        = int(job_data.hierarchy)
         self.software         = interpret_software(job_data.software)
         self.suffix           = job_data.suffix
-        self.resources        = job_data.resources
+        #self.environment      = job_data.environment
         self.requisites       = job_data.requisites
         self.constrains       = job_data.constrains
         self.setup            = job_data.setup.lower()
@@ -37,7 +37,7 @@ class job(object):
         ## Corrects self.path in case the user forgets to add '/' 
         if self.path[-1] != '/': self.path += '/'
         ## Corrects self.setup in case the user forgets to change
-        if self.keyword.lower() == 'findiff' or self.keyword.lower() == 'findif': self.setup == 'findiff'
+        if self.keyword == 'findiff' or self.keyword == 'findif': self.setup == 'findiff'
         
     #def set_run_number(self) -> int:
     #    self.run_number = 0
@@ -82,15 +82,21 @@ class job(object):
             ## If necessary, it registers any related job
             if debug > 1: print("Evaluating Job with keyword:", job.keyword)
             if debug > 1: print("Evaluating Job, isregistered:", job.isregistered)
+            if debug > 1: print("Evaluating Job, isgood:", job.isgood)
             if (job.keyword in self.requisites or job.keyword in self.constrains) and not job.isregistered: 
                 if debug > 1: print("Registering Previous Unregistered Job", job.keyword)
                 job.register(debug=debug)
+                if debug > 1: print("Registered Job while checking requisites", job.keyword)
                 if debug > 1: print(job.keyword, job.isregistered, job.isgood, job.isfinished)
 
             ## Evaluates Requisites and Constrains
-            if job.keyword in self.requisites and job.isfinished and job.isgood: 
-                requisites_fulfilled[where_in_array(self.requisites,job.keyword)[0]] = 1
-                if debug > 1: print("Requisite: ", job.keyword, "fulfilled")
+            if job.keyword in self.requisites and job.isfinished:
+                if job.must_be_good and job.isgood: 
+                    requisites_fulfilled[where_in_array(self.requisites,job.keyword)[0]] = 1
+                    if debug > 1: print("Requisite: ", job.keyword, "fulfilled 1")
+                if not job.must_be_good:
+                    requisites_fulfilled[where_in_array(self.requisites,job.keyword)[0]] = 1
+                    if debug > 1: print("Requisite: ", job.keyword, "fulfilled 2")
             elif job.keyword in self.constrains and job.isfinished and job.isgood: 
                 constrains_fulfilled[where_in_array(self.constrains,job.keyword)[0]] = 1
                 if debug > 1: print("Constrain: ", job.keyword, "not fulfilled")
@@ -158,6 +164,10 @@ class job(object):
 ####################
     def register(self, debug: int=0):
         if debug > 1: print("Registering Job:", self.keyword)
+
+        ##########################################################################
+        #### Irrespectively of the setup, we try to register all computations ####
+        ##########################################################################
         allgood     = True
         allfinished = True
         if len(self.computations) > 0:
@@ -177,10 +187,22 @@ class job(object):
         else:                            
             allgood     = False 
             allfinished = False
+
+#        ############################################################
+#        ## Findiff Setup: we extract frequencies at the job level ##
+#        ############################################################
+#        if allgood and self.setup == 'findiff': 
+#            if debug > 1: print("------------------------------------------")
+#            if debug > 1: print("Registering Finite Differences of this job")
+#            if debug > 1: print("------------------------------------------")
+#            from Scope.Register_Data import reg_findiff 
+#            worked = reg_findiff(self)
+#            if not worked: allgood = False
+
         if allgood:                                           self.isgood       = True
         if allfinished:                                       self.isfinished   = True
         self.isregistered = True
-        #if allgood and allfinished:                           self.isregistered = True
+
         if debug > 1: print("Registered Job:", self.keyword, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
 
 #############

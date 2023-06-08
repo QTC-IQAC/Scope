@@ -49,4 +49,80 @@ def pairwise(iterable):
     a, b = tee(iterable)
     next(b, None)
     return zip(a, b)
+
+def symmetrize_matrix(matrix, debug: int=0):
+    assert np.shape(matrix)[0] == np.shape(matrix)[1]
+    dim = np.shape(matrix)[0]
+    sym_matrix = matrix.copy()
+    for idx in range(dim):
+        sym_matrix[idx,idx] = matrix[idx,idx]
+        for jdx in range(idx+1,dim):
+            if debug > 0: print(matrix[idx,jdx], matrix[jdx,idx])
+            sym_matrix[idx,jdx] = (matrix[idx,jdx] + matrix[jdx,idx])/2.0
+            sym_matrix[jdx,idx] = sym_matrix[idx,jdx]
+    return sym_matrix 
+
+def replace_zero(array): 
+    
+    for i in range(len(array)) :
+        if array[i] == 0 : 
+            array[i] = 1
+    return array
+
+def gram_schmidt(A,norm=True,row_vect=False):
+    """Orthonormalizes vectors by gram-schmidt process
+    
+    Parameters
+    -----------
+    A : ndarray,
+    Matrix having vectors in its columns
+    
+    norm : bool,
+    Do you need Normalized vectors?
+    
+    row_vect: bool,
+    Does Matrix A has vectors in its rows?
+    
+    Returns 
+    -------
+    G : ndarray,
+    Matrix of orthogonal vectors 
+    
+    """
+    if row_vect :
+        # if true, transpose it to make column vector matrix
+        A = A.T
+    
+    no_of_vectors = A.shape[1]
+    G = A[:,0:1].copy() # copy the first vector in matrix
+    # 0:1 is done to to be consistent with dimensions - [[1,2,3]]
+    
+    # iterate from 2nd vector to number of vectors
+    for i in range(1,no_of_vectors):
         
+        # calculates weights(coefficents) for every vector in G
+        numerator = A[:,i].dot(G)
+        denominator = np.diag(np.dot(G.T,G)) #to get elements in diagonal
+        weights = np.squeeze(numerator/denominator)
+        
+        # projected vector onto subspace G 
+        projected_vector = np.sum(weights * G,
+                                  axis=1,
+                                  keepdims=True)
+        
+        # orthogonal vector to subspace G
+        orthogonalized_vector = A[:,i:i+1] - projected_vector
+        
+        # now add the orthogonal vector to our set 
+        G = np.hstack((G,orthogonalized_vector))
+        
+    if norm :
+        # to get orthoNORMAL vectors (unit orthogonal vectors)
+        # replace zero to 1 to deal with division by 0 if matrix has 0 vector
+        G = G/replace_zero(np.linalg.norm(G,axis=0))
+    
+    if row_vect:
+        return G.T
+    
+    return G
+

@@ -183,8 +183,35 @@ def reg_frequencies(comp: object, debug: int=0):
 #    worked = False
 #    if comp.software == "qe": forces = QE_get_forces(lines, debug=debug)
 #    # Maybe add an assert for the size of the forces vector
-#    if len(forces) == len(gmol.natoms): worked = True; gmol.forces = forces
+#    if len(forces) == len(gmol.natoms): worked = True; comp.forces = np.array(forces)
 #    return worked
 
 
+#def reg_findiff(job: object, debug: int=0):
+#
+#    ## We collect all computations in a simpler variable
+#    comps = job.computations.sort(key=lambda x: (x.index))
+#
+#    ## Checks that all computations are good and are registered, otherwise quits
+#    for idx, c in enumerate(comps):
+#        worked = reg_forces(c)
+#        if not worked: 
+#            print(f"REG FINDIFF: WARNING. Registration of Forces for Computation {idx} didn't work")
+#            return None
+#
+#    worked = False
+#    gmol = job._recipe.subject
+#    VNMs = get_VNM_from_findiff(job, debug=debug)
+#    gmol.VNMs = [vnm for vnm in VNMs]
+#    gmol.freqs_cm = [vnm.freq_cm for vnm in VNMs]
 
+##   !!! WE MUST DECIDE WHAT TO DO ABOUT NEGATIVE or NEAR-ZERO FREQUENCIES. IN G16 there is no problem, but here yes
+#    if all(vnm.freq >= 0.0 for vnm in VNMs): gmol.isminimum = True
+#    else:                                    gmol.isminimum = False
+#
+#    worked = True
+#    if gmol.isminimum:
+#        new_coord = G16_get_last_geom(lines, debug=debug)
+#        new_tag = "min_coord"
+#        if hasattr(gmol,new_tag): gmol_update_geom(gmol, new_coord, tag=new_tag, debug=debug)
+#        else:                     gmol_create_geom(gmol, new_coord, tag=new_tag, debug=debug)

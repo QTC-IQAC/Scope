@@ -7,7 +7,6 @@ from datetime import datetime
 
 from Scope.Classes_Spin import *
 from Scope.Environment import * 
-#from Scope.Environment import set_cluster, set_user, check_submitted, check_usage, get_queue_and_procs, send_command
 from Scope.Register_Data import reg_general, reg_optimization, reg_frequencies
 from Scope.Write_G16_Inputs import *
 from Scope.Write_QE_Inputs import *
@@ -21,7 +20,7 @@ class computation(object):
         self._job             = _job       
         self.index            = index      
         self.software         = _job.software
-        self.resources        = _job.resources
+        #self.environment      = _job.environment
         self.keyword          = keyword  ## Not the software, but a string used to identify the computation
         self.qc_data          = qc_data
         self.path             = path
@@ -99,18 +98,18 @@ class computation(object):
         self.registration_user = user
 
 ###########################################
-    def run(self, resources: object, options: object, debug: int=0) -> None:
+    def run(self, environment: object, options: object, debug: int=0) -> None:
 
         ## 0-Checks that Resources are available
         if options.want_submit: sent_procs, sent_jobs = check_usage()
         else:                   sent_procs = 0; sent_jobs = 0
-        if sent_procs >= resources.max_procs or sent_jobs >= resources.max_jobs:
+        if sent_procs >= environment.max_procs or sent_jobs >= environment.max_jobs:
             if debug > 0: print(f"    Over maximum jobs and cores reached")
             return None
 
         ## 1-Gets Resources
         if options.want_submit:
-            askqueue, askprocs = get_queue_and_procs(resources=self.resources)
+            askqueue, askprocs = get_queue_and_procs(environment=environment)
             ## 1.1-Adds Resources
             self.add_submission_init(nprocs=askprocs, queue=askqueue)
             ## 1.2-Creates Files

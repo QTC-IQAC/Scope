@@ -9,7 +9,7 @@ from Scope.Workflow import Recipe, Job, Computation
 from Scope.Workflow.Recipe import *
 from Scope.Workflow.Job import *
 from Scope.Workflow.Computation import *
-from Scope.Environment import check_usage, get_queue_and_procs, send_command, set_cluster, set_user
+#from Scope.Environment import check_usage, get_queue_and_procs, send_command, set_cluster, set_user
 from Scope.Read_Write import load_binary, save_binary
 
 ######################
@@ -31,10 +31,10 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
     if not files: return None
 
     #### 1-Reads Input Data
-    resources = set_resources_data(job_path, section="&resources", debug=0)
-    options   = set_options_data(job_path, section="&options"    , debug=0)
-    job_data  = set_job_data(job_path, section="&job_data"       , debug=0)
-    qc_data   = set_qc_data(job_path, section="&qc_data"         , debug=0)
+    environment = set_environment_data(job_path, section="&environment", debug=0)
+    options     = set_options_data(job_path, section="&options"      , debug=0)
+    job_data    = set_job_data(job_path, section="&job_data"         , debug=0)
+    qc_data     = set_qc_data(job_path, section="&qc_data"           , debug=0)
 
     #### 2-Fixes Some Data Depending on Cluster
     cluster = set_cluster()
@@ -76,7 +76,7 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
         ## 5-Finds the job. If it does not exist, it is NOT created.
         #if debug > 0: recipe.get_info()
         exists, this_job = recipe.find_job(job_data=job_data, debug=debug)
-        if debug > 1 and not exists: print("Execute_JOB, step 5: job does not exist")
+        if debug > 1 and not exists: print(f"Execute_JOB, step 5: job {job_data.keyword} does not exist for {recipe.subject.spin}")
 
         ## 5.1 If necessary, creates the job
         if not exists: this_job = recipe.add_job(job_data); updated = True
@@ -85,12 +85,12 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
         if debug > 1: print("---------------------------------------------------")
 
         ## 6-Checks that all requisites and constrains of the job are fulfilled
-        cancontinue = this_job.check_requisites(debug=0)
+        cancontinue = this_job.check_requisites(debug=2)
         if not cancontinue:
-            if debug > 1:   print(f"    Requisites not met, or job already run!")
+            if debug > 1:   print("  Execute_JOB, step 6: requisites NOT met or job already run!")
             continue        # I know if might seem misleading. Here, "continue" means "skip this one"
         else:
-            if debug > 1:   print("Execute_JOB, step 6: requisites evaluated")
+            if debug > 1:   print("  Execute_JOB, step 6: requisites fulfilled")
 
         ####################
         ### COMPUTATIONS ###
@@ -117,7 +117,7 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
                 if debug > 1: print("Execute_JOB, step 7.3a: checking submission status: isrunning=",comp.isrunning)
                 if debug > 1: print("Execute_JOB, step 7.3a: coord tag is", comp.qc_data.coord_tag)
                 if debug > 1: print("Execute_JOB, step 7.3a: is_update:", comp.is_update)
-                if not comp.isrunning:             comp.run(resources, options, debug=debug); updated = True
+                if not comp.isrunning:             comp.run(environment, options, debug=debug); updated = True
             ### 8.3 If no input files, removes job                           #################################
             #elif not comp.output_exists and not comp.input_exists:          ## This shouldn't be necessary ##
             #    recipe.jobs.remove(this_job)                                #################################

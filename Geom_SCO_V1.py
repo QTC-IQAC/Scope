@@ -11,7 +11,9 @@ def getangle(v1, v2):
     v2_u = unit_vector(v2)
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
-def geom_sco_from_xyz(labels, pos, debug=0):   #Computes Structural Variables for all Fe atoms of a given structure
+def geom_sco_from_xyz(labels, pos, debug=0):   
+    #Computes Structural Variables for all Fe atoms of a given structure
+    #Returns two lists, one for FeN and another for NFeN, with all values.
     
     #Computes Fe-N distances and vectors
     alldist = []

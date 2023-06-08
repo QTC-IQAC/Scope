@@ -138,7 +138,7 @@ def get_blocks(matrix: np.ndarray) -> Tuple[list, list]:
 def get_molecules(labels: list, pos: list, factor: float=1.3, debug: int=0) -> Tuple[bool, list]:
     ## Function that identifies connected groups of atoms from their atomic coordinates and labels.
 
-    # Gets the covalent radii, and modifies that of the metal if necessary
+    # Gets the covalent radii
     radii = get_radii(labels)
 
     # Computes the adjacency matrix of what is received
@@ -185,3 +185,15 @@ def get_molecules(labels: list, pos: list, factor: float=1.3, debug: int=0) -> T
 
             moleclist.append(list([atlist, labelist, poslist, radiilist]))
     return Warning, moleclist
+
+################################
+def get_centroid(coord: list) -> list:
+    natoms = len(coord)
+    x = 0
+    y = 0
+    z = 0
+    for idx in range(natoms):
+        x += coord[idx][0]; y += coord[idx][1]; z += coord[idx][2]
+    centroid = [float(x / natoms), float(y / natoms), float(z / natoms)]
+    return np.array(centroid)
+#########################

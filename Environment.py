@@ -145,14 +145,24 @@ def check_usage(cluster: str=set_cluster(), user: str=set_user(), queues: str='a
                 print("Exception checking usage:", exc)
     return cpus, jobs
 
-########################
+#####################
+## PORTAL SPECIFIC ##
+#####################
 def check_queue_availability(queues: str='all', cluster: str=set_cluster(), debug: int=0):
     list_q = set_queues(cluster=cluster, queues=queues, debug=debug)
     list_q_worked = []
     list_empty_cpus = []
     list_total_empty = []
     list_ratio = []
+    list_score = []
     for q in list_q:
+        if   q == 'iqtc02': value = int(1)
+        elif q == 'iqtc04': value = int(2)
+        elif q == 'iqtc06': value = int(4)
+        elif q == 'iqtc08': value = int(8)
+        elif q == 'iqtc09': value = int(8)
+        elif q == 'iqtc10': value = int(8)
+        else:               value = int(0)
         try:
             if debug > 0: print("CHECK_QUEUE_AVAIL: sending queue_stat for q=",q)
             raw = send_command("queue_stat",cluster,queue=q, debug=debug) 
@@ -182,9 +192,10 @@ def check_queue_availability(queues: str='all', cluster: str=set_cluster(), debu
                 list_empty_cpus.append(empty_cpus)
                 list_total_empty.append(np.sum(empty_cpus))
                 list_ratio.append(float(np.sum(empty_cpus))/float(total_nodes))
+                list_score.append(float(np.sum(empty_cpus))*float(value)/float(total_nodes))
 
         except: print(f"CHECK_QUEUE_AVAIL: error evaluating queue {q}")
-    return list_q_worked, list_empty_cpus, list_total_empty, list_ratio
+    return list_q_worked, list_empty_cpus, list_total_empty, list_ratio, list_score
 
 ########################
 def check_submitted(name: str, cluster: str=set_cluster(), debug: int=0):
@@ -211,29 +222,40 @@ def check_submitted(name: str, cluster: str=set_cluster(), debug: int=0):
     return issubmitted
 
 ########################
-def get_queue_and_procs(resources: str="light", cluster: str=set_cluster(), queues: str='all', debug: int=0):
-        #### Finds best number of processors and queue
+def get_queue_and_procs(environment: object, cluster: str=set_cluster(), queues: str='all', debug: int=0):
+    #### Finds best number of processors and queue
+
+    # In case the user didn't specify resources, method, and min_procs
+    if not hasattr(environment,"resources"): resources = "light"
+    else:                                    resources = environment.resources.lower()
+    if not hasattr(environment,"method"):    method    = "score"
+    else:                                    method    = environment.method.lower()
+    if not hasattr(environment,"min_procs"): min_procs = int(6) 
+    else:                                    min_procs = int(environment.min_procs)
+    if not hasattr(environment,"queues"):    queues    = queues.lower()
+    else:                                    queues    = environment.queues.lower()
+
     if "portal" in cluster:
         ## Multiplier
-        if resources.lower() == "light": mult = 1
-        elif resources.lower() == "medium": mult = 2
-        elif resources.lower() == "heavy": mult = 4
+        if   resources == "light":  mult = 1
+        elif resources == "medium": mult = 2
+        elif resources == "heavy":  mult = 4
         else: mult = 1
 
-        if not hasattr(resources,"queues"): queues = 'all' 
-        else:                               queues = resources.queues
+        #if debug > 0: print(f"{resources}")
+        #if debug > 0: print(f"GET_QUEUE$PROCS: setting best queue among {queues}")
 
-        askqueue, maxprocs = set_best_queue(queues=queues, debug=debug)
-        #askqueue, maxprocs = set_best_queue(queues='6,8,9,10', debug=debug)
+        askqueue, maxprocs = set_best_queue(min_procs=min_procs, method=method, queues=queues, debug=debug)
         if askqueue == 'iqtc08': askprocs = 7*mult
         elif askqueue == 'iqtc04': askprocs = 6*mult
+        elif askqueue == 'iqtc02': askprocs = 4*mult
         else: askprocs = 8*mult
 
     elif "login" in cluster or "csuc" in cluster:
         askqueue = "std"
-        if resources.lower() == "light": mult = 1
-        elif resources.lower() == "medium": mult = 2
-        elif resources.lower() == "heavy": mult = 4
+        if   resources == "light":  mult = 1
+        elif resources == "medium": mult = 2
+        elif resources == "heavy":  mult = 4
         askprocs = 8*mult
 
     else:
@@ -245,29 +267,64 @@ def get_queue_and_procs(resources: str="light", cluster: str=set_cluster(), queu
 #####################################
 ##### Portal Specific Functions #####
 #####################################
-def set_best_queue(queues: str='all', debug: int=0):
-    list_q, list_empty_cpus, list_total_empty, list_ratio = check_queue_availability(queues=queues, debug=debug)
+def set_best_queue(min_procs: int=6, method: str='score', queues: str='all', debug: int=0):
+    list_q, list_empty_cpus, list_total_empty, list_ratio, list_score = check_queue_availability(queues=queues, debug=debug)
 
     if debug > 0: print("SET_BEST_QUEUE: results of check_queue_availability:") 
     if debug > 0: print(list_q)
     if debug > 0: print(list_total_empty)
     if debug > 0: print(list_ratio)
+    if debug > 0: print(list_score)
 
     queue_with_most_empty = np.argmax(list_total_empty)
     queue_with_best_ratio = np.argmax(list_ratio)
+    queue_with_best_score = np.argmax(list_score)
     if debug > 0: print("SET_BEST_QUEUE: queue_with_most_empty:", list_q[queue_with_most_empty], np.max(list_total_empty))
     if debug > 0: print("SET_BEST_QUEUE: queue_with_best_ratio:", list_q[queue_with_best_ratio], np.max(list_ratio))
-    found = False
-    while not found:
-        max_empty = np.max(list_empty_cpus[queue_with_most_empty]) 
-        if debug > 0: print("SET_BEST_QUEUE: max_empty:", max_empty) 
-        for idx, cp in enumerate(list_empty_cpus[queue_with_most_empty]):
-            if cp >= 1: 
-                found = True
-                return str(list_q[queue_with_most_empty]), max_empty
-        list_total_empty[queue_with_most_empty] = 0
-        queue_with_most_empty = np.argmax(list_total_empty)
-        if np.sum(list_total_empty) == 0: break
+    if debug > 0: print("SET_BEST_QUEUE: queue_with_best_score:", list_q[queue_with_best_score], np.max(list_score))
+
+    if method == 'total':
+        found = False
+        while not found:
+            max_empty = np.max(list_empty_cpus[queue_with_most_empty]) 
+            if debug > 0: print("SET_BEST_QUEUE: max_empty:", max_empty) 
+            for idx, cp in enumerate(list_empty_cpus[queue_with_most_empty]):
+                if cp >= min_procs: 
+                    found = True
+                    return str(list_q[queue_with_most_empty]), max_empty
+            list_total_empty[queue_with_most_empty] = 0
+            queue_with_most_empty = np.argmax(list_total_empty)
+            if np.sum(list_total_empty) == 0: break
+
+    elif method == 'ratio':
+        found = False
+        while not found:
+            max_ratio = np.max(list_ratio[queue_with_best_ratio]) 
+            num_empty = np.max(list_empty_cpus[queue_with_best_ratio]) 
+            if debug > 0: print("SET_BEST_QUEUE: max_ratio:", max_ratio) 
+            for idx, cp in enumerate(list_empty_cpus[queue_with_best_ratio]):
+                if cp >= min_procs: 
+                    found = True
+                    return str(list_q[queue_with_best_ratio]), num_empty
+            list_ratio[queue_with_best_ratio] = 0.0
+            queue_with_best_ratio = np.argmax(list_ratio)
+            if np.sum(list_ratio) == 0: break
+
+    elif method == 'score':
+        found = False
+        while not found:
+            max_score = np.max(list_score[queue_with_best_score])
+            num_empty = np.max(list_empty_cpus[queue_with_best_score])
+            if debug > 0: print("SET_BEST_QUEUE: max_score:", max_score)
+            for idx, cp in enumerate(list_empty_cpus[queue_with_best_score]):
+                if cp >= min_procs:
+                    found = True
+                    return str(list_q[queue_with_best_score]), num_empty
+            list_ratio[queue_with_best_score] = 0.0
+            queue_with_best_score = np.argmax(list_score)
+            if np.sum(list_score) == 0: break
+
+    else: print("SET BEST QUEUE: wrong method specified"); return None, 0   
 
 #########################
 #def check_fairsharing(user: str=set_user()):

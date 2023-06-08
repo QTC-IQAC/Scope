@@ -13,7 +13,7 @@ elemdatabase = ElementData()
 ##### QC Objects #####
 ######################
 class VNM(object):
-    def __init__(self, index: int, freq: float, red_mass: float, force_cnt: float, IR_int: float, sym: str='A'):
+    def __init__(self, index: int, freq: float, red_mass: float=1.0, force_cnt: float=0.0, IR_int: float=0.0, sym: str='A'):
         self.index = index 
         self.freq_cm = freq                            ## It must be in cm-1
         self.freq = freq*Constants.cm2har              ## It must be in atomic units 

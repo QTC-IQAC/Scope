@@ -180,6 +180,13 @@ def QE_elapsed_time(eline: str, debug: int=0):
     total = days*86400 + hours*3600 + minutes*60 + seconds
     return total 
 
+
+#def QE_get_forces():
+#    WARNING: forces are read in Ry/au in QE. Must convert to Hartre/au
+
+
+
+
 #
 #        new_periodic_xyz.add_energy(energy)
 #

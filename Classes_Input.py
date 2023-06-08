@@ -64,9 +64,9 @@ class input_data(object):
             to_print += string.format(key, str(type(val)), str(val))
         return to_print
 
-def set_resources_data(file_path, section="&resources", debug: int=0):
-    resources = input_data(f_name=file_path, section=section, debug=debug)
-    return resources
+def set_environment_data(file_path, section="&environment", debug: int=0):
+    environment = input_data(f_name=file_path, section=section, debug=debug)
+    return environment
 
 def set_options_data(file_path, section="&options", debug: int=0):
     options = input_data(f_name=file_path, section=section, debug=debug)
