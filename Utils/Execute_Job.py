@@ -109,7 +109,9 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
             if debug > 1: print("Execute_JOB, step 7.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
             if debug > 1: print("Execute_JOB, step 7.1: out_file:", comp.out_path)
             if debug > 1: print("-----------------------------------------------------------------------------------")
+
             comp.check_files()
+
             ## 8.2-Evaluates Submission
             if debug > 1: print("Execute_JOB, step 7.2: checking files [inp, out, sub]:", comp.input_exists, comp.output_exists, comp.subfile_exists)
             if not comp.output_exists: # and comp.input_exists:

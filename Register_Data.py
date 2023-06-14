@@ -77,7 +77,8 @@ def reg_optimization(comp: object, debug: int=0):
     gmol = comp._job._recipe.subject
 
     ### Reads output
-    if not hasattr(comp,'output_lines'): comp.read_lines()
+    #if not hasattr(comp,'output_lines'): comp.read_lines()
+    comp.read_lines()
     lines = comp.output_lines
 
     ### Defines tag for the new geometry. We avoid blanks
@@ -100,7 +101,9 @@ def reg_optimization(comp: object, debug: int=0):
                 gmol_create_geom(gmol, new_coord, tag=new_tag, debug=debug)
                 if debug >= 1: print(f"    REG_OPT: geom created with tag={new_tag}")
             worked = True
-        else: print("    REG_OPT: could not extract last coordinates from", comp.out_path)
+        else: 
+            print("    REG_OPT: could not extract last coordinates from", comp.out_path)
+            print("    REG_OPT: last output line:", lines[-1])
 
     ########
     ## QE ##

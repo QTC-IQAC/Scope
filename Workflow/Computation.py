@@ -75,9 +75,15 @@ class computation(object):
         return run_number
 
     def check_files(self) -> None:
-        self.input_exists   = os.path.isfile(self.inp_path)
-        self.output_exists  = os.path.isfile(self.out_path)
-        self.subfile_exists = os.path.isfile(self.sub_path)
+        self.input_exists     = os.path.isfile(self.inp_path)
+        self.output_exists    = os.path.isfile(self.out_path)
+        self.subfile_exists   = os.path.isfile(self.sub_path)
+        if self.input_exists:   self.input_modtime    = os.path.getmtime(self.inp_path)
+        else:                   self.input_modtime    = int(0) 
+        if self.output_exists:  self.output_modtime   = os.path.getmtime(self.out_path)
+        else:                   self.output_modtime   = int(0) 
+        if self.subfile_exists: self.subfile_modtime  = os.path.getmtime(self.sub_path)
+        else:                   self.subfile_modtime  = int(0) 
         
     def read_lines(self, flat: bool=True) -> None:        
         if self.output_exists: self.output_lines = read_lines_file(self.out_path, flat=flat)
@@ -152,8 +158,15 @@ class computation(object):
 ###########################################
     def register(self, debug: int=0) -> None:
        
+        ## Checks whether the output file exists
         if not hasattr(self,"output_exists"): self.check_files()
-        if not hasattr(self,"output_lines"):  self.read_lines()
+
+        ## If so, it reads the lines under 2 conditions: 
+        if self.output_exists:
+            ## 1-If lines have never been read: 
+            if not hasattr(self,"output_lines"):                                                         self.read_lines()
+            ## 2-If the output file has been modified since it was read
+            elif hasattr(self,"output_lines") and os.path.getmtime(self.out_path) > self.output_modtime: self.read_lines()
 
         ## 1-Registration of General Attributes 
         reg_general(self, debug=debug)  # Gives self.isgood and self.isfinished
