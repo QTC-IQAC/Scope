@@ -151,6 +151,5 @@ def extract_thermal_data(sys: object, branch_keyword: str, Trange: range=range(1
     # Set branch_status_finished
     if minima and "T12" in this_branch.results.keys(): 
         this_branch.set_status("finished", debug=debug)
-        if debug > 0: print("Finished with", this_branch.keyword, "of", sys.refcode)
 
     return True
