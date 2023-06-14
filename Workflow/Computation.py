@@ -159,7 +159,7 @@ class computation(object):
     def register(self, debug: int=0) -> None:
        
         ## Checks whether the output file exists
-        if not hasattr(self,"output_exists"): self.check_files()
+        if not hasattr(self,"output_exists") or not hasattr(self,"output_modtime"): self.check_files()
 
         ## If so, it reads the lines under 2 conditions: 
         if self.output_exists:
@@ -179,13 +179,20 @@ class computation(object):
         elif self.isgood and 'freq' in self._job.keyword:
             worked = reg_frequencies(self, debug=debug)
 
-        else:  print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}"); return False
+        else:  
+            print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}")
+            print(f"        -last line:", self.output_lines[-1])
+            print(f"        -getmtime:" , os.path.getmtime(self.out_path))
+            print(f"        -modtime:"  , self.output_modtime)
+            return False
 
         ## 4-Wraps Up
         if worked:
             self.isregistered = True
             self.add_registration_data()
-        else:  print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}")
+        else:  
+            print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}")
+            print(f"        -last line:", self.output_lines[-1])
 
         return worked
 
