@@ -13,7 +13,7 @@ from Scope.Workflow.Computation import *
 from Scope.Read_Write import load_binary, save_binary
 
 ######################
-def execute_job(sys_path: str, job_path: str, debug: int=0):
+def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: int=0):
 
     report = ''
 
@@ -120,17 +120,26 @@ def execute_job(sys_path: str, job_path: str, debug: int=0):
                 if debug > 1: print("Execute_JOB, step 7.3a: coord tag is", comp.qc_data.coord_tag)
                 if debug > 1: print("Execute_JOB, step 7.3a: is_update:", comp.is_update)
                 if not comp.isrunning:             comp.run(environment, options, debug=debug); updated = True
-            ### 8.3 If no input files, removes job                           #################################
-            #elif not comp.output_exists and not comp.input_exists:          ## This shouldn't be necessary ##
-            #    recipe.jobs.remove(this_job)                                #################################
-            #    updated = True
-            elif comp.output_exists and not comp.input_exists:  report += f"Investigate {comp.out_path} \n"
+            elif comp.output_exists and not comp.input_exists:  
+                report += f"Investigate {comp.out_path} \n"
+                print(f"Investigate {comp.out_path}")
             else:
                 ## 8.3-If output exists, and is not registered, it does it
                 if not comp.isregistered:
-                    worked = comp.register(debug=debug);
-                    if not worked: report += f"Check Registration of {comp.out_path} \n"
+                    worked = comp.register(debug=0)
+                    # If registration fails, either...
+                    if not worked: 
+                        if handle_errors: # ...takes default action 
+                            comp.read_lines()
+                            if len(comp.output_lines) > 0: comp.store(debug=debug)
+                            else:                          this_job.remove_computation(comp_index=comp.index)
+                            report += f"Errors handled for {comp.out_path} \n"
+                            print(f"Errors handled for {comp.out_path}")
+                        else:              # ...or warns the user
+                            report += f"Check Registration of {comp.out_path} \n"
+                            print(f"Check Registration of {comp.out_path}")
                     updated = True
+
                 ## 8.4-If output exists, is registered, but is not good, and it must_be_good:
                 if comp.isregistered and not comp.isgood and this_job.must_be_good:
                     # We make sure that the new_run does not exist:

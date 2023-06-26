@@ -103,7 +103,7 @@ def reg_optimization(comp: object, debug: int=0):
             worked = True
         else: 
             print("    REG_OPT: could not extract last coordinates from", comp.out_path)
-            print("    REG_OPT: last output line:", lines[-1])
+            if len(lines) > 0: print("    REG_OPT: last output line:", lines[-1])
 
     ########
     ## QE ##

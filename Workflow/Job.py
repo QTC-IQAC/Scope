@@ -64,11 +64,20 @@ class job(object):
         self.computations.append(new_computation)
         return new_computation 
     
-    def remove_computation(self, comp_keyword: str):
+    def remove_computation(self, comp_keyword=None, comp_index=None):
         found = False
         for idx, comp in enumerate(self.computations):
-            if comp.keyword == comp_keyword:  found = True; found_idx = idx
-        if found: del self.computations[found_idx]
+            if comp_index is None and comp_keyword is not None: 
+                if comp.keyword == str(comp_keyword): found = True; found_idx = idx
+            elif comp_index is not None and comp_keyword is None: 
+                if comp.index == int(comp_index): found = True; found_idx = idx
+        if found: 
+            to_delete = self.computations[found_idx]
+            to_delete.check_files() 
+            if to_delete.input_exists:   os.remove(to_delete.inp_path) 
+            if to_delete.output_exists:  os.remove(to_delete.out_path) 
+            if to_delete.subfile_exists: os.remove(to_delete.sub_path) 
+            del self.computations[found_idx]
             
     def check_requisites(self, debug: int=0) -> None:
         self.requisites_fulfilled = False

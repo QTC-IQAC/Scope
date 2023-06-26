@@ -69,7 +69,8 @@ class computation(object):
         for idx, comp in enumerate(self._job.computations):  ## Searches in the recipe it is contained
             if debug > 0: print("SET_RUN_NUMBER: in job there is:", comp.keyword, comp.isfinished, comp.run_number)
             if comp.keyword == self.keyword and hasattr(comp,"isfinished") and hasattr(comp,"run_number"):
-                if comp.isfinished and comp.run_number > run_number: run_number = comp.run_number
+                if comp.run_number > run_number: run_number = comp.run_number
+                #if comp.isfinished and comp.run_number > run_number: run_number = comp.run_number
         run_number += 1
         if not self._job.job_data.must_be_good: run_number = 1
         return run_number
@@ -103,6 +104,12 @@ class computation(object):
         self.registration_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         self.registration_cluster = cluster
         self.registration_user = user
+
+###########################################
+    def store(self, debug: int=0) -> None:
+        import shutil
+        if self.output_exists: new_out_path= self.out_path+'_part'
+        shutil.move(self.out_path, new_out_path)
 
 ###########################################
     def run(self, environment: object, options: object, debug: int=0) -> None:
@@ -192,7 +199,7 @@ class computation(object):
             self.add_registration_data()
         else:  
             print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}")
-            print(f"        -last line:", self.output_lines[-1])
+            if len(self.output_lines) > 0: print(f"        -last line:", self.output_lines[-1])
 
         return worked
 
