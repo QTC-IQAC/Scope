@@ -268,8 +268,31 @@ def gen_QE_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: str
             print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
             os.chmod(comp.sub_path, 0o777)
 
-    #elif 'login' in cluster or 'csuc' in cluster:
-    #    with open(comp.sub_path, 'w+') as sub:
+    elif 'csuc' in cluster:
+        with open(comp.sub_path, 'w+') as sub:
+            print(f"#!/bin/bash", file=sub)
+            print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
+            print(f"#SBATCH -e /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
+            print(f"#SBATCH -o /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
+            print(f"#SBATCH -p {queue}", file=sub)
+            print(f"#SBATCH --nodes=1", file=sub)
+            print(f"#SBATCH --ntasks={procs}", file=sub)
+            print(f"#SBATCH --time=10-0", file=sub)
+            print(f"#SBATCH -x pirineus", file=sub)
+            print(f"", file=sub)
+            print(f"module load apps/quantumespresso/6.4.1", file=sub)
+            print(f"", file=sub)
+            print(f"set OMP_NUM_THREADS=1", file=sub)
+            print(f"ulimit -l unlimited", file=sub)
+            print(f"", file=sub)
+            print(f"WORKDIR=$PWD", file=sub)
+            print(f"cd $TMPDIR", file=sub)
+            print(f"cp $WORKDIR/{comp.inp_name} .", file=sub)
+            print(f"mpirun -np {procs} pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
+            print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
+            os.chmod(comp.sub_path, 0o777)
+     
+    else: print("WRITE_QE_INPUTS: Cluster not recognized")
         
 ###################################################
 
