@@ -222,18 +222,15 @@ def check_submitted(name: str, cluster: str=set_cluster(), debug: int=0):
     return issubmitted
 
 ########################
-def get_queue_and_procs(environment: object, cluster: str=set_cluster(), queues: str='all', debug: int=0):
+def get_queue_and_procs(environment: object, debug: int=0):
     #### Finds best number of processors and queue
 
-    # In case the user didn't specify resources, method, and min_procs
-    if not hasattr(environment,"resources"): resources = "light"
-    else:                                    resources = environment.resources.lower()
-    if not hasattr(environment,"method"):    method    = "score"
-    else:                                    method    = environment.method.lower()
-    if not hasattr(environment,"min_procs"): min_procs = int(6) 
-    else:                                    min_procs = int(environment.min_procs)
-    if not hasattr(environment,"queues"):    queues    = queues.lower()
-    else:                                    queues    = environment.queues.lower()
+    # Rename to simplify call
+    resources = environment.resources
+    min_procs = environment.min_procs
+    method    = environment.method
+    cluster   = environment.cluster
+    queues    = environment.queues
 
     if "portal" in cluster:
         ## Multiplier
@@ -241,9 +238,6 @@ def get_queue_and_procs(environment: object, cluster: str=set_cluster(), queues:
         elif resources == "medium": mult = 2
         elif resources == "heavy":  mult = 4
         else: mult = 1
-
-        #if debug > 0: print(f"{resources}")
-        #if debug > 0: print(f"GET_QUEUE$PROCS: setting best queue among {queues}")
 
         askqueue, maxprocs = set_best_queue(min_procs=min_procs, method=method, queues=queues, debug=debug)
         if askqueue == 'iqtc08': askprocs = 7*mult
@@ -325,17 +319,4 @@ def set_best_queue(min_procs: int=6, method: str='score', queues: str='all', deb
             if np.sum(list_score) == 0: break
 
     else: print("SET BEST QUEUE: wrong method specified"); return None, 0   
-
-#########################
-#def check_fairsharing(user: str=set_user()):
-#    raw = subprocess.check_output(['bash','-c', "check_ocupacio" ])
-#    dec = raw.decode("utf-8") 
-#    lines = dec.split("\n")
-#    for l in lines:
-#        if "The group" in l and "has a limit for each user" in l:
-#            limit = l.split()[-1]
-#        elif user in l:
-#            usage = l.split()[2].split("/")[0]
-#    if usage < limit: return True
-#    else: return False
 
