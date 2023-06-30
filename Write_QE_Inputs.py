@@ -96,8 +96,8 @@ def gen_QE_input(comp, debug: int=0):
             print("GEN_QE_INPUT: Also received spin configuration with this data:")
             print(f"    magn_pairs:    {comp.spin_config.magn_pairs}")
             print(f"    magn_uniques:  {comp.spin_config.magn_uniques}")
-        print("GEN_QE_INPUT: ismagnetic:    {comp.spin_config.ismagnetic}")
-        print("GEN_QE_INPUT: magnetization: {comp.spin_config.total_magnetization}")
+        print(f"GEN_QE_INPUT: ismagnetic:    {comp.spin_config.ismagnetic}")
+        print(f"GEN_QE_INPUT: magnetization: {comp.spin_config.total_magnetization}")
     
     ########################### 
     ### WRITES INPUT: PART 1 ##
