@@ -12,10 +12,10 @@ def interpret_software(name: str):
 ##### INPUT CLASS #####
 #######################
 class input_data(object):
-    def __init__(self, f_name: str='', section: str='', debug=0):
+    def __init__(self, f_name: str, section=None, debug=0):
         if f_name != '': self.read(f_name, section, debug=debug)
  
-    def read(self, f_name: str, section: str, debug: int=0):
+    def read(self, f_name: str, section=None, debug: int=0):
         dct = dict()
         with open(f_name, 'r') as f:
             canread = False
@@ -26,12 +26,14 @@ class input_data(object):
                 line = line.strip()
 
                 # Establishes the section of the input to read
-                if line.startswith(section) and not canread: 
-                    if debug > 0: print("Start of section", section, "found in line", idx) 
-                    canread = True #; continue
-                elif line.startswith('/') and canread:
-                    canread = False #; continue
-                    if debug > 0: print("end of section", section, "found in line", idx) 
+                if section is not None:
+                    if line.startswith(section) and not canread: 
+                        if debug > 0: print("Start of section", section, "found in line", idx) 
+                        canread = True #; continue
+                    elif line.startswith('/') and canread:
+                        canread = False #; continue
+                        if debug > 0: print("end of section", section, "found in line", idx) 
+                else: canread = True
                 
                 if canread:
                     data        = line.split('#')[0]
@@ -57,17 +59,18 @@ class input_data(object):
         return self
 
     def _set_attr(self, key, value):
-        try:
-            attr = literal_eval(value)
-        except:
-            attr = value
+        try:      attr = literal_eval(value)
+        except:   attr = value
         setattr(self, key, attr)
         return attr
 
+    def _add_attr(self, dct, key, attr):
+        self.dct[key] = attr
+ 
     def __repr__(self):
         string    = 'self.{:15}| {:20}| {:10}\n'
         to_print  = 'Formatted input interpretation: ( self -> Instance of class Input() )\n'
-        to_print += '---------------------------------------------------\n'
+        to_print+= '---------------------------------------------------\n'
         to_print += string.format('Key', 'Data Type', 'Value')
         to_print += '---------------------------------------------------\n'
         for key in self.dct.keys():
@@ -89,43 +92,43 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"branch"):        print("WARNING: job_data is missing branch"); exit() 
     if not hasattr(data,"target"):        print("WARNING: job_data is missing target"); exit() 
     if not hasattr(data,"hierarchy"):     print("WARNING: job_data is missing hierarchy"); exit() 
-    if not hasattr(data,"suffix"):        data.suffix  = str(data.hierarchy)
-    if not hasattr(data,"keyword"):       data.keyword = str(data.suffix)
-    if not hasattr(data,"setup"):         data.setup = "regular" 
-    if not hasattr(data,"requisites"):    data.requisites = []
-    if not hasattr(data,"constrains"):    data.constrains = ['self']
-    if not hasattr(data,"must_be_good"):  data.must_be_good = False
+    if not hasattr(data,"suffix"):        data._add_attr(suffix, str(data.hierarchy))
+    if not hasattr(data,"keyword"):       data._add_attr(keyword, str(data.suffix))
+    if not hasattr(data,"setup"):         data._add_attr(setup, "regular")
+    if not hasattr(data,"requisites"):    data._add_attr(requisites, [])
+    if not hasattr(data,"constrains"):    data._add_attr(constrains, ['self'])
+    if not hasattr(data,"must_be_good"):  data._add_attr(must_be_good, False)
     return data
 
 def fill_qc_data(data: object, debug: int=0):
     ## Adds defaults to qc_data
     if not hasattr(data,"software"):      print("WARNING: qc_data is missing software"); exit() 
-    else:                                 data.software = interpret_software(data.software)
+    else:                                 data._add_attr(software, interpret_software(data.software))
 
     if data.software == "g16":
-        if not hasattr(data,"functional"):    data.functional = "B3LYP**" 
-        if not hasattr(data,"basis"):         data.basis = "def2SVP" 
-        if not hasattr(data,"jobtype"):       data.jobtype = "scf" 
-        if not hasattr(data,"loose_opt"):     data.loose_opt = False 
-        if not hasattr(data,"tight_opt"):     data.tight_opt = False 
-        if not hasattr(data,"is_grimme"):     data.is_grimme = False 
-        if not hasattr(data,"coord_tag"):     data.coord_tag = "coord" 
+        if not hasattr(data,"functional"):    data._add_attr(functional, "B3LYP**")
+        if not hasattr(data,"basis"):         data._add_attr(basis, "def2SVP")
+        if not hasattr(data,"jobtype"):       data._add_attr(jobtype, "scf")
+        if not hasattr(data,"loose_opt"):     data._add_attr(loose_opt, False)
+        if not hasattr(data,"tight_opt"):     data._add_attr(tight_opt, False)
+        if not hasattr(data,"is_grimme"):     data._add_attr(is_grimme, False)
+        if not hasattr(data,"coord_tag"):     data._add_attr(coord_tag, "coord")
 
     elif data.software == "qe":
-        if not hasattr(data,"coord_tag"):     data.coord_tag = "coord" 
-        if not hasattr(data,"jobtype"):       data.jobtype = "scf" 
-        if not hasattr(data,"functional"):    data.functional = "pbe" 
-        if not hasattr(data,"is_hubbard"):    data.is_hubbard = False 
-        if not hasattr(data,"is_grimme"):     data.is_grimme = False 
+        if not hasattr(data,"coord_tag"):     data._add_attr(coord_tag, "coord")
+        if not hasattr(data,"jobtype"):       data._add_attr(jobtype, "scf")
+        if not hasattr(data,"functional"):    data._add_attr(functional, "pbe")
+        if not hasattr(data,"is_hubbard"):    data._add_attr(is_hubbard, False)
+        if not hasattr(data,"is_grimme"):     data._add_attr(is_grimme, False)
         if not hasattr(data,"uterm"): 
-            if data.is_hubbard:               data.uterm = float(2.27)
-            else:                             data.uterm = None
-        if not hasattr(data,"print_forces"):  data.print_forces = False 
+            if data.is_hubbard:               data._add_attr(uterm, float(2.27))
+            else:                             data._add_attr(uterm, None)
+        if not hasattr(data,"print_forces"):  data._add_attr(print_forces, False)
         if not hasattr(data,"cutoff"): 
-            if data.jobtype == "scf":         data.cutoff = int(25)
-            elif data.jobtype == "relax":     data.cutoff = int(25)
-            elif data.jobtype == "vc-relax":  data.cutoff = int(60)
-        if not hasattr(data,"pressure"):      data.pressure = int(0)
+            if data.jobtype == "scf":         data._add_attr(cutoff, int(25))
+            elif data.jobtype == "relax":     data._add_attr(cutoff, int(25))
+            elif data.jobtype == "vc-relax":  data._add_attr(cutoff, int(60))
+        if not hasattr(data,"pressure"):      data._add_attr(pressure, int(0))
     
     return data
 
