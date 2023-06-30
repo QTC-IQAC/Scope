@@ -155,14 +155,12 @@ def gen_QE_input(comp, debug: int=0):
             if u[1] != 0: print(f"    starting_magnetization({where_in_array(elems,u[0])[0]+1})={u[1]}", file=inp)
 
         ## Hubbard: Here it is assumed that the Hubbard U term will apply to all metals
-        if comp.qc_data.isHubbard:
+        if comp.qc_data.is_hubbard:
             print("    lda_plus_u=.true.,", file=inp)
             for idx, u in enumerate(comp.spin_config.magn_uniques):
-                print(f"    Hubbard_U({where_in_array(elems,u[0])[0]+1})={comp.qc_data.U}", file=inp)
-#            for idx, el in enumerate(elems):
-#                if el in metal_species: print(f"    Hubbard_U({idx+1})={comp.qc_data.U}", file=inp)
+                print(f"    Hubbard_U({where_in_array(elems,u[0])[0]+1})={comp.qc_data.uterm}", file=inp)
 
-        if comp.qc_data.isGrimme:
+        if comp.qc_data.is_grimme:
             print("    vdw_corr='grimme-d3'", file=inp)
             print("    dftd3_version=4", file=inp)
             
@@ -197,8 +195,9 @@ def gen_QE_input(comp, debug: int=0):
             print("    cell_dynamics='bfgs'", file=inp)
             print("    cell_dofree='all'", file=inp)
             print("    cell_factor= 1.2D0", file=inp)
-            print("    press= 0.D0", file=inp)
-            print("    press_conv_thr= 0.5D0", file=inp)
+            print(f"    press= {comp.qc_data.pressure}", file=inp)
+            if comp.qc_data.pressure == 0: print("    press_conv_thr= 0.5D0", file=inp)
+            else:                          print("    press_conv_thr= 0.01D0", file=inp)
             print("/", file=inp)
 
         #//////////////////
@@ -268,7 +267,7 @@ def gen_QE_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: str
             print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
             os.chmod(comp.sub_path, 0o777)
 
-    elif 'csuc' in cluster:
+    elif 'login' in cluster or 'csuc' in cluster:
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
             print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
@@ -288,7 +287,7 @@ def gen_QE_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: str
             print(f"WORKDIR=$PWD", file=sub)
             print(f"cd $TMPDIR", file=sub)
             print(f"cp $WORKDIR/{comp.inp_name} .", file=sub)
-            print(f"mpirun -np {procs} pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
+            print(f"srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
             print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
             os.chmod(comp.sub_path, 0o777)
      

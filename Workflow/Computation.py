@@ -6,6 +6,7 @@ import numpy as np
 from datetime import datetime
 
 from Scope.Classes_Spin import *
+#from Scope.Classes_Input import interpret_software
 from Scope.Environment import * 
 #from Scope.Environment import set_cluster, set_user, check_submitted, check_usage, get_queue_and_procs, send_command
 from Scope.Register_Data import reg_general, reg_optimization, reg_frequencies
@@ -20,10 +21,11 @@ class computation(object):
         self.type             = "computation"
         self._job             = _job       
         self.index            = index      
-        self.software         = _job.software
+        #self.software         = _job.software
         #self.environment      = _job.environment
         self.keyword          = keyword  ## Not the software, but a string used to identify the computation
         self.qc_data          = qc_data
+        self.software         = qc_data.software
         self.path             = path
         self.refcode          = _job._recipe.subject._sys.refcode
         self.run_number       = self.set_run_number()
@@ -46,10 +48,10 @@ class computation(object):
         if self.path[-1] != '/': self.path += '/'
 
         # Filenames depend on Software
-        if self._job.software.lower() == 'g16':
+        if self.software == 'g16':
             inp_extension = ".com"
             out_extension = ".log"
-        if self._job.software.lower() == 'qe':
+        if self.software == 'qe':
             inp_extension = ".input"
             out_extension = ".out"
         sub_extension = ".sub"
@@ -213,9 +215,10 @@ class computation(object):
         to_print += f' Recipe                = {self._job._recipe.keyword}\n'
         to_print += f' Job                   = {self._job.keyword}\n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' self.spin             = {self.spin}\n'
+        to_print += f' self.software         = {self.software}\n'
         to_print += f' self.index            = {self.index}\n' 
-        if self.keyword != '': to_print += f' self.keyword             = {self.keyword}\n' 
+        to_print += f' self.spin             = {self.spin}\n'
+        to_print += f' self.keyword          = {self.keyword}\n' 
         to_print += f' self.inp_path         = {self.inp_path}\n' 
         to_print += f' self.out_path         = {self.out_path}\n' 
         to_print += f' self.isregistered     = {self.isregistered}\n' 

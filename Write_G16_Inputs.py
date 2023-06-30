@@ -14,6 +14,14 @@ from Scope.Other import get_metal_idxs
 def gen_G16_input(comp, debug: int=0):
     gmol = comp._job._recipe.subject
     
+    ## 1-Change variable names to simplify calls
+    jobtype = comp.qc_data.jobtype
+    functional = comp.qc_data.functional
+    basis = comp.qc_data.basis
+    loose_opt = comp.qc_data.loose_opt
+    tight_opt = comp.qc_data.tight_opt
+    coord_tag = comp.qc_data.coord_tag
+
     ### 2-Starts printing input 
     with open(comp.inp_path, 'w') as inp:
         print(f"%chk={comp.refcode}{comp.suffix}.chk", file=inp)
@@ -25,8 +33,6 @@ def gen_G16_input(comp, debug: int=0):
         commandline.append(" scf=(maxconventionalcycles=200,xqc)")
 
         ## 2.2-Functional
-        if hasattr(comp.qc_data,"functional"): functional = comp.qc_data.functional.lower()
-        else:                             functional = "B3LYP**"
         if   functional == "pbe":       commandline.append(" UPBEPBE")
         elif functional == "b3lyp":   commandline.append(" UB3LYP")
         elif functional == "b3lyp*":  commandline.append(" UB3LYP IOp(3/76=1000002000) IOp(3/77=0720008000) IOp(3/78=0810010000)")
@@ -34,8 +40,6 @@ def gen_G16_input(comp, debug: int=0):
         else: print("G16_INPUT: functional", functional, "not recognized")
 
         ## 2.3-Basis
-        if hasattr(comp.qc_data,"basis"): basis = comp.qc_data.basis.lower()
-        else:                        basis = "def2SVP"
         if basis == "def2sv":      commandline.append(" def2SV")
         elif basis == "def2svp":   commandline.append(" def2SVP")
         elif basis == "def2tzv":   commandline.append(" def2TZV")
@@ -44,12 +48,6 @@ def gen_G16_input(comp, debug: int=0):
         else: print("G16_INPUT: basis", basis, "not recognized")
 
         ## 2.4-Jobtype
-        if hasattr(comp.qc_data,"jobtype"): jobtype = comp.qc_data.jobtype.lower()
-        else:                          jobtype = "scf"
-        if hasattr(comp.qc_data,"loose_opt"): loose_opt = comp.qc_data.loose_opt
-        else:                            loose_opt = False
-        if hasattr(comp.qc_data,"tight_opt"): tight_opt = comp.qc_data.tight_opt
-        else:                            tight_opt = False
         if jobtype == "opt" or jobtype == "opth" or jobtype == "opt&freq": 
             if   loose_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,loose)")
             elif tight_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,VeryTight)")
@@ -58,9 +56,7 @@ def gen_G16_input(comp, debug: int=0):
         else: print("G16_INPUT: jobtype", jobtype, "not recognized")
 
         ## 2.5-Grimme
-        if hasattr(comp.qc_data,"isGrimme"): isGrimme = comp.qc_data.isGrimme
-        else:                           isGrimme = False
-        if isGrimme: commandline.append(" EmpiricalDispersion=GD3BJ")
+        if comp.qc_data.is_grimme: commandline.append(" EmpiricalDispersion=GD3BJ")
 
         ## 2.6-Integral Grid
         if tight_opt: commandline.append(" Int=UltraFine")
@@ -76,8 +72,6 @@ def gen_G16_input(comp, debug: int=0):
         ####################################################
         ### Coordinates, which are taken from gmol object ###
         ####################################################
-        if hasattr(comp.qc_data,"coord_tag"):  coord_tag = comp.qc_data.coord_tag.lower()
-        else:                                  coord_tag = "coord"
         assert hasattr(gmol,coord_tag), f"{coord_tag} = coord_tag not found in gmol"
         for a in gmol.atoms:
             ta = getattr(a,coord_tag)

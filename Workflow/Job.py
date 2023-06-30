@@ -5,7 +5,6 @@ import os
 import numpy as np
 from datetime import datetime
 
-from Scope.Classes_Input import interpret_software
 from Scope.Workflow import Computation
 from Scope.Workflow.Computation import *
 from Scope.Other import where_in_array
@@ -21,7 +20,7 @@ class job(object):
         self.keyword          = job_data.keyword.lower()
         self.job_data         = job_data    ## I hate to do this
         self.hierarchy        = int(job_data.hierarchy)
-        self.software         = interpret_software(job_data.software)
+        #self.software         = interpret_software(job_data.software)
         self.suffix           = job_data.suffix
         #self.environment      = job_data.environment
         self.requisites       = job_data.requisites
@@ -231,7 +230,7 @@ class job(object):
         #to_print += f' self.run_number       = {self.run_number}\n'
         to_print += f' self.requisites       = {self.requisites}\n'
         to_print += f' self.constrains       = {self.constrains}\n'
-        to_print += f' self.software         = {self.software}\n'
+        #to_print += f' self.software         = {self.software}\n'
         #to_print += f' self.suffix           = {self.suffix}\n'
         #to_print += f' self.must_be_good     = {self.must_be_good}\n'
         to_print += f' self.setup            = {self.setup}\n'
