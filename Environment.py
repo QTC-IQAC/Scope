@@ -20,26 +20,24 @@ def set_cluster():
 def set_paths(cluster: str=set_cluster(), user: str=set_user(), debug: int=0):
     if 'login' in cluster or 'csuc' in cluster:
         cell2mol_path = "/scratch/svela/SCOPE/Database_SCO/4-Merged"
-        calcs_path = "/home/svela/SCOPE/Database_SCO/5-Complexes_Iso"
-        if cell2mol_path[-1] != '/': cell2mol_path += '/'
-        if calcs_path[-1] != '/': calcs_path += '/'
+        calcs_path    = "/home/svela/SCOPE/Database_SCO/5-Complexes_Iso"
     elif 'portal' in cluster or 'node' in cluster or 'visual' in cluster:
         if 'g2vela' in user:
             cell2mol_path = "/home/g4vela/SCOPE/Database_SCO/4-Merged"
-            calcs_path = "/home/g2vela/SCOPE/Database_SCO/5-Complexes_Iso"
-            if cell2mol_path[-1] != '/': cell2mol_path += '/'
-            if calcs_path[-1] != '/': calcs_path += '/'
+            calcs_path    = "/home/g2vela/SCOPE/Database_SCO/5-Complexes_Iso"
         elif 'g4vela' in user:
             cell2mol_path = "/home/g4vela/SCOPE/Database_SCO/4-Merged"
-            calcs_path = "/home/g4vela/SCOPE/Database_SCO/5-Complexes_Iso"
-            if cell2mol_path[-1] != '/': cell2mol_path += '/'
-            if calcs_path[-1] != '/': calcs_path += '/'
+            calcs_path    = "/home/g4vela/SCOPE/Database_SCO/5-Complexes_Iso"
     elif 'lemma' in cluster:
         cell2mol_path = "/Users/sergivela/Documents/SCOPE/Database_SCO/4-Merged"
-        calcs_path = "/Users/sergivela/Documents/SCOPE/Database_SCO/5-Complexes_Iso"
-        if cell2mol_path[-1] != '/': cell2mol_path += '/'
-        if calcs_path[-1] != '/': calcs_path += '/'
-    else: print(f"Cluster {cluster} not recognized")
+        calcs_path    = "/Users/sergivela/Documents/SCOPE/Database_SCO/5-Complexes_Iso"
+    elif 'uam' in cluster:
+        cell2mol_path = "/home/proyectos/ub100/4-Merged"
+        calcs_path    = "/home/proyectos/ub100/5-Complexes_Iso"
+    else: 
+        print(f"Cluster {cluster} not recognized")
+    if cell2mol_path[-1] != '/': cell2mol_path += '/'
+    if calcs_path[-1] != '/': calcs_path += '/'
     return cell2mol_path, calcs_path
 
 ########################
@@ -48,7 +46,10 @@ def set_PP_Library(cluster: str=set_cluster(), user: str=set_user(), debug: int=
         PP_Library= "/home/svela/Programes/PP_Library"
     elif 'portal' in cluster:
         PP_Library= "/home/g4vela/Programes/PP_Library"
-    else: print("Cluster not recognized")
+    elif 'uam' in cluster:
+        PP_Library= "/lustre/home/ub100435/Programes/PP_Library"
+    else: 
+        print("Cluster not recognized")
     return PP_Library
 
 ########################
@@ -64,7 +65,7 @@ def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(
             raw = subprocess.check_output(['bash','-c', tmp ])
         elif commandtype == "check_job":  raw = subprocess.check_output(['bash','-c', "qstat -xml"]) #-q "+queue+".q" ]) 
         elif commandtype == "submit":     subprocess.run(['bash','-c', 'qsub '+filename]) 
-    elif 'login' in cluster or 'csuc' in cluster:
+    elif 'login' in cluster or 'csuc' in cluster or 'uam' in cluster:
         if commandtype == "qstat":
             tmp = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+str(user)
             try:  
@@ -93,6 +94,8 @@ def set_queues(cluster: str=set_cluster(), queues: str='all', debug: int=0):
     list_of_exceptions = [1, 3, 5, 7]
     if 'login' in cluster or 'csuc' in cluster:
         list_q.append("std")
+    elif 'uam' in cluster:
+        list_q.append("class_a")
     elif 'portal' in cluster:
         if queues == 'all':
                 for i in range(1,11): 
@@ -115,7 +118,7 @@ def check_usage(cluster: str=set_cluster(), user: str=set_user(), queues: str='a
     #raw = subprocess.check_output(['bash','-c', "qstat"])
     raw = send_command("qstat", cluster=cluster,user=user,debug=debug)
 
-    if 'login' in cluster or 'csuc' in cluster:
+    if 'login' in cluster or 'csuc' in cluster or 'uam' in cluster:
         try: 
             #print("Raw:", raw)
             #text = raw.rstrip().split("\n")
@@ -209,7 +212,7 @@ def check_submitted(name: str, cluster: str=set_cluster(), debug: int=0):
         dec = raw.decode("utf-8") 
         flat = dec.replace("\n", "")
     
-        if 'login' in cluster or 'csuc' in cluster:
+        if 'login' in cluster or 'csuc' in cluster or 'uam' in cluster:
             if debug > 0: print("Checking Submission of", name, "in CSUC")
             if name in flat: issubmitted = True 
             else:            issubmitted = False
@@ -245,7 +248,7 @@ def get_queue_and_procs(environment: object, debug: int=0):
         elif askqueue == 'iqtc02': askprocs = 4*mult
         else: askprocs = 8*mult
 
-    elif "login" in cluster or "csuc" in cluster:
+    elif "login" in cluster or "csuc" in cluster or 'uam' in cluster:
         askqueue = "std"
         if   resources == "light":  mult = 1
         elif resources == "medium": mult = 2
