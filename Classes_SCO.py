@@ -40,13 +40,35 @@ class sco_system(object):
         self.results              = dict()
         self.status               = "active"
 
+###################################
+### Functions to restart system ###
+###################################
+    def reset_paths(self, cell2mol_path: str, calcs_path: str, sys_path: str) -> None:
+        if os.path.isdir(cell2mol_path): self.cell2mol_path        = cell2mol_path
+        if os.path.isdir(calcs_path):    self.calcs_path           = calcs_path
+        if os.path.isdir(sys_path):      self.sys_path             = sys_path
+        for br in self.branches:
+            if os.path.isdir(calcs_path+br.keyword): br.path = calcs_path+br.keyword 
+            for rec in br.recipes: 
+                rec.path = br.path
+                for job in rec.jobs:
+                    job.path = rec.path
+                    for comp in job.computations:
+                        if job.setup == "findiff" and os.path.isdir(job.path+findiff): comp.path = job.path+"findiff"
+                        else:                      
+                            comp.path = job.path
+                            comp.inp_path = comp.path+self.inp_name
+                            comp.out_path = comp.path+self.out_name
+                            comp.sub_path = comp.path+self.sub_name
+                            comp.check_files()
+
     def reset_calculations(self) -> None:
         if hasattr(self,"branches"): delattr(self,"branches"); setattr(self,"branches",[])
 
     def reset_crystals(self) -> None:
         if hasattr(self,"crystals"): delattr(self,"crystals"); setattr(self,"crystals",[])
+###################################
 
-    ##########
 #    def add_crystal(self, )
 #        new_crystal = crystal(refcode, name, cell2mol_path, cell, sys, _system=self)
 #        self.crystals.append(new_crystal)
@@ -354,3 +376,25 @@ def create_sco_system(name, cell2mol_path: str, calcs_path: str, sys_path: str="
     newsystem.set_reference_crystals(debug=debug)
     return newsystem
 ##############################
+
+###################################
+### Functions to restart system ###
+###################################
+def reset_paths_out(sys: object, cell2mol_path: str, calcs_path: str, sys_path: str) -> None:
+    if os.path.isdir(cell2mol_path): sys.cell2mol_path        = cell2mol_path
+    if os.path.isdir(calcs_path):    sys.calcs_path           = calcs_path
+    if os.path.isdir(sys_path):      sys.sys_path             = sys_path
+    for br in sys.branches:
+        if os.path.isdir(calcs_path+br.keyword): br.path = calcs_path+br.keyword
+        for rec in br.recipes:
+            rec.path = br.path
+            for job in rec.jobs:
+                job.path = rec.path
+                for comp in job.computations:
+                    if job.setup == "findiff" and os.path.isdir(job.path+findiff): comp.path = job.path+"findiff"
+                    else:
+                        comp.path = job.path
+                        comp.inp_path = comp.path+sys.inp_name
+                        comp.out_path = comp.path+sys.out_name
+                        comp.sub_path = comp.path+sys.sub_name
+                        comp.check_files()
