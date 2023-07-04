@@ -114,6 +114,38 @@ def gen_G16_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: st
             if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)
             os.chmod(comp.sub_path, 0o777)
 
+    elif 'uam' in cluster:
+        project = 'ub100'
+        with open(comp.sub_path, 'w+') as sub:
+            print(f"#!/bin/bash", file=sub)
+            print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
+            print(f"#SBATCH -e /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
+            print(f"#SBATCH -o /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
+            print(f"#SBATCH -p {queue}", file=sub)
+            print(f"#SBATCH -A ub100_serv", file=sub)
+            print(f"#SBATCH --nodes=1", file=sub)
+            print(f"#SBATCH --ntasks={procs}", file=sub)
+            print(f"", file=sub)
+            print(f"source ~/.bashrc", file=sub)
+            print(f"module load gaussian/gaussian16.b1-SSE4", file=sub)
+            print(f"", file=sub)
+            print(f"JOBDIR=$PWD", file=sub)
+            print(f'export RUNDIR="/scratch/{project}/jobs/$SLURM_JOBID"', file=sub)
+            print(f'export GAUSS_SCRDIR="/scratch/{project}/jobs/$SLURM_JOBID"', file=sub)
+            print(f"mkdir -p $RUNDIR", file=sub)
+            print(f"cd $RUNDIR", file=sub)
+            print(f"", file=sub)
+            print(f"cp -i $JOBDIR/{comp.inp_name} .", file=sub)
+            print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
+            print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
+            print(f"cat tmp1 {comp.inp_name} > tmp2", file=sub)
+            print(f"rm tmp1", file=sub)
+            print(f"mv -f tmp2 {comp.inp_name}", file=sub)
+            print(f"g16 < {comp.inp_name} > {comp.out_name}", file=sub)
+            print(f"cp -pr *.log $JOBDIR/", file=sub)
+            if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)
+            os.chmod(comp.sub_path, 0o777)
+
     elif 'portal' in cluster:
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)

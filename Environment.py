@@ -13,8 +13,6 @@ def set_user():
 
 def set_cluster():
     return os.uname()[1]
-    # import platform
-    #return platform.node()
 
 ########################
 def set_paths(cluster: str=set_cluster(), user: str=set_user(), debug: int=0):
@@ -32,8 +30,8 @@ def set_paths(cluster: str=set_cluster(), user: str=set_user(), debug: int=0):
         cell2mol_path = "/Users/sergivela/Documents/SCOPE/Database_SCO/4-Merged"
         calcs_path    = "/Users/sergivela/Documents/SCOPE/Database_SCO/5-Complexes_Iso"
     elif 'uam' in cluster:
-        cell2mol_path = "/home/proyectos/ub100/4-Merged"
-        calcs_path    = "/home/proyectos/ub100/5-Complexes_Iso"
+        cell2mol_path = "/home/proyectos/ub100/SCOPE/4-Merged"
+        calcs_path    = "/home/proyectos/ub100/SCOPE/5-Complexes_Iso"
     else: 
         print(f"Cluster {cluster} not recognized")
     if cell2mol_path[-1] != '/': cell2mol_path += '/'
@@ -54,12 +52,12 @@ def set_PP_Library(cluster: str=set_cluster(), user: str=set_user(), debug: int=
 
 ########################
 def send_command(commandtype: str, filename: str=None, cluster: str=set_cluster(), user: str=set_user(), queue: str='', debug: int=0):
-    if user[2].isdigit(): group = user[0:3]
-    else:               group = user[0:2]
-    if debug > 0: print("SEND_COMMAND: evaluating", commandtype, "for", cluster, "and group:", group)
+    if debug > 0: print("SEND_COMMAND: evaluating", commandtype, "for", cluster)
     if 'portal' in cluster:
         if commandtype == "qstat": raw = subprocess.check_output(['bash','-c', "qstat"])
         elif commandtype == "queue_stat": 
+            if user[2].isdigit(): group = user[0:3]
+            else:               group = user[0:2]
             tmp = str(f"qstat -f | grep {queue} | grep {group}")
             if debug > 0: print("SEND_COMMAND: command=", tmp)
             raw = subprocess.check_output(['bash','-c', tmp ])
@@ -212,8 +210,10 @@ def check_submitted(name: str, cluster: str=set_cluster(), debug: int=0):
         dec = raw.decode("utf-8") 
         flat = dec.replace("\n", "")
     
-        if 'login' in cluster or 'csuc' in cluster or 'uam' in cluster:
-            if debug > 0: print("Checking Submission of", name, "in CSUC")
+        if 'login' in cluster or 'csuc' in cluster: 
+            if name in flat: issubmitted = True 
+            else:            issubmitted = False
+        elif 'uam' in cluster:
             if name in flat: issubmitted = True 
             else:            issubmitted = False
         elif 'portal' in cluster:
@@ -248,8 +248,15 @@ def get_queue_and_procs(environment: object, debug: int=0):
         elif askqueue == 'iqtc02': askprocs = 4*mult
         else: askprocs = 8*mult
 
-    elif "login" in cluster or "csuc" in cluster or 'uam' in cluster:
+    elif "login" in cluster or "csuc" in cluster: 
         askqueue = "std"
+        if   resources == "light":  mult = 1
+        elif resources == "medium": mult = 2
+        elif resources == "heavy":  mult = 4
+        askprocs = 8*mult
+
+    elif 'uam' in cluster:
+        askqueue = "class_a"
         if   resources == "light":  mult = 1
         elif resources == "medium": mult = 2
         elif resources == "heavy":  mult = 4

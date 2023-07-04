@@ -20,9 +20,7 @@ class job(object):
         self.keyword          = job_data.keyword.lower()
         self.job_data         = job_data    ## I hate to do this
         self.hierarchy        = int(job_data.hierarchy)
-        #self.software         = interpret_software(job_data.software)
         self.suffix           = job_data.suffix
-        #self.environment      = job_data.environment
         self.requisites       = job_data.requisites
         self.constrains       = job_data.constrains
         self.setup            = job_data.setup.lower()
@@ -31,21 +29,32 @@ class job(object):
         self.isregistered     = False
         self.isgood           = False
         self.isfinished       = False
-        #self.run_number       = 0   ## WARNING, I'm not sure about that
 
         ## Corrects self.path in case the user forgets to add '/' 
         if self.path[-1] != '/': self.path += '/'
         ## Corrects self.setup in case the user forgets to change
         if self.keyword == 'findiff' or self.keyword == 'findif': self.setup == 'findiff'
         
-    #def set_run_number(self) -> int:
-    #    self.run_number = 0
-    #    for idx, jb in enumerate(self._recipe.jobs):  ## Searches in the recipe it is contained
-    #        if jb.keyword == self.job_data.keyword and hasattr(jb,"isfinished") and hasattr(jb,"run_number"):
-    #            if jb.isfinished and jb.run_number > self.run_number: self.run_number = jb.run_number
-    #    self.run_number += 1
-    #    if not self.job_data.must_be_good: self.run_number = 1
-    #    return self.run_number
+    def check_input(self, job_path: str, debug: int=0):
+        from Scope.Classes_Input import set_job_data, set_qc_data
+        ## job_data is for JOB
+        new_job_data    = set_job_data(job_path, section="&job_data" , debug=0)
+        old_job_data    = self.job_data 
+        if new_job_data != old_job_data: 
+            print(f"CHECK_INPUT: identified changes in job_data for job.keyword={self.keyword}")
+            self.update_job_data(new_job_data) 
+            new_qc_data    = set_qc_data(job_path, section="&qc_data" , debug=0)
+            for comp in self.computations:
+                comp.check_input(job_path=job_path, debug=debug)
+
+    def update_job_data(self, new_job_data, debug: int=0):
+        self.job_data         = new_job_data
+        self.keyword          = new_job_data.keyword.lower()
+        self.suffix           = new_job_data.suffix
+        self.requisites       = new_job_data.requisites
+        self.constrains       = new_job_data.constrains
+        self.setup            = new_job_data.setup.lower()
+        self.must_be_good     = new_job_data.must_be_good                
 
     def find_computation(self, keyword: str='', index=None):
         found = False
@@ -133,6 +142,7 @@ class job(object):
 
         ## Setup for finite Differences
         elif self.setup == "displacement" or self.setup == "disp":
+            from Scope.Gmol_ops import gmol_update_geom, gmol_create_geom
 
             #### Only applies to geometries that are not minimum
             gmol = self._recipe.subject
@@ -147,8 +157,8 @@ class job(object):
                     newtag = "disp_coord"
                     if hasattr(gmol,newtag): gmol_update_geom(gmol, disp_coord, tag=newtag, debug=debug)
                     else:                    gmol_create_geom(gmol, disp_coord, tag=newtag, debug=debug)
-                else: _recipe.remove_job(keyword=self.keyword)    # not sure if this is possible
-            else:     _recipe.remove_job(keyword=self.keyword)    # I'm trying to delete the job when it is not necessary
+                else: self._recipe.remove_job(keyword=self.keyword)    # not sure if this is possible
+            else:     self._recipe.remove_job(keyword=self.keyword)    # I'm trying to delete the job when it is not necessary
         
         ## Setup for finite Differences
         elif self.setup == "findiff": 

@@ -82,6 +82,27 @@ class input_data(object):
             to_print += string.format(key, str(type(val)), str(val))
         return to_print
 
+    def __eq__(self, other):
+        if not isinstance(other, input_data): return False
+        else: 
+            same = True
+            for d in dir(self): 
+                if '_' not in d and not callable(getattr(self,d)):
+                    at1 = getattr(self,d)
+                    try:    
+                        at2 = getattr(other,d)
+                        if at1 != at2: same = False
+                    except: return False
+            for d in dir(other): 
+                if '_' not in d and not callable(getattr(other,d)): 
+                    at1 = getattr(other,d)
+                    try:    
+                        at2 = getattr(self,d)
+                        if at1 != at2: same = False
+                    except: return False
+        return same
+          
+
 #######################
 def fill_environment_data(data: object, debug: int=0):
     ## Adds defaults to environment data

@@ -23,8 +23,12 @@ def vnm_displacement(VNMs: list, initial_coord: list, which: list=[], which_side
             if debug >= 1: print("displacing VNM:", vnm.freq_cm)
             for idx in range(len(vnm.xs)):
                 vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]])
-                if which_side.lower() == 'positive': displacement = vector*maxfactor*0.1
-                elif which_side.lower() == 'negative': displacement = -vector*maxfactor*0.1
+                ## The amount of displacement depends on the maxfactor defined by the user
+                ## ... and the freq_factor, which depends on the frequency
+                if   vnm.freq < -20:  freq_factor = 0.1
+                else:                 freq_factor = 0.2
+                if which_side.lower() == 'positive': displacement = vector*maxfactor*freq_factor
+                elif which_side.lower() == 'negative': displacement = -vector*maxfactor*freq_factor
                 new_coord[idx] = new_coord[idx]+displacement
                 if idx == 0 and debug >= 1: print("displaced coord:", new_coord[idx])
     return new_coord

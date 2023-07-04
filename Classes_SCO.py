@@ -43,6 +43,7 @@ class sco_system(object):
 ###################################
 ### Functions to restart system ###
 ###################################
+    # Eventually, reset_paths could be "change_cluster" function
     def reset_paths(self, cell2mol_path: str, calcs_path: str, sys_path: str, debug: int=0) -> None:
         if os.path.isdir(cell2mol_path): self.cell2mol_path        = cell2mol_path
         if os.path.isdir(calcs_path):    self.calcs_path           = calcs_path
@@ -88,7 +89,11 @@ class sco_system(object):
     ##########
     def add_branch(self, keyword: str, target: str, debug: int=0):
         new_branch = branch(self.calcs_path+keyword, keyword, self, debug=debug)
-        if not os.path.isdir(self.calcs_path+keyword): os.makedirs(self.calcs_path+keyword)
+        if not os.path.isdir(self.calcs_path+keyword): 
+            try: os.makedirs(self.calcs_path+keyword)
+            except Exception as exc:
+                 print(f"Error creating branch folder in {self.calcs_path+keyword}")
+                 print(exc)
 
         if   target.lower()  == "ref_mol"  and hasattr(self,"HS_ref_mol")  and hasattr(self,"LS_ref_mol"):   object_list = list([self.HS_ref_mol,self.LS_ref_mol])
         elif target.lower()  == "ref_crys" and hasattr(self,"HS_ref_crys") and hasattr(self,"LS_ref_crys"):  object_list = list([self.HS_ref_crys.cell,self.LS_ref_crys.cell])

@@ -21,8 +21,6 @@ class computation(object):
         self.type             = "computation"
         self._job             = _job       
         self.index            = index      
-        #self.software         = _job.software
-        #self.environment      = _job.environment
         self.keyword          = keyword  ## Not the software, but a string used to identify the computation
         self.qc_data          = qc_data
         self.software         = qc_data.software
@@ -64,6 +62,17 @@ class computation(object):
         self.inp_path = self.path+self.inp_name
         self.out_path = self.path+self.out_name
         self.sub_path = self.path+self.sub_name
+
+    def check_input(self, job_path: str, debug: int=0):
+        from Scope.Classes_Input import set_qc_data
+        new_qc_data  = set_qc_data(job_path, section="&qc_data" , debug=0)
+        old_qc_data  = self.qc_data 
+        if new_qc_data != old_qc_data: 
+            self.update_qc_data(new_qc_data) 
+
+    def update_qc_data(self, new_qc_data, debug: int=0):
+        self.qc_data          = new_qc_data
+        self.software         = new_qc_data.software
 
     def set_run_number(self, debug: int=1) -> int:
         run_number = 0

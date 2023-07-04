@@ -77,6 +77,7 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
         #if debug > 0: recipe.get_info()
         exists, this_job = recipe.find_job(job_data=job_data, debug=debug)
         if debug > 1 and not exists: print(f"Execute_JOB, step 5: job {job_data.keyword} does not exist for {recipe.subject.spin}")
+        if exists: this_job.check_input(job_path=job_path, debug=debug)
 
         ## 5.1 If necessary, creates the job
         if not exists: this_job = recipe.add_job(job_data); updated = True
@@ -85,7 +86,7 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
         if debug > 1: print("---------------------------------------------------")
 
         ## 6-Checks that all requisites and constrains of the job are fulfilled
-        cancontinue = this_job.check_requisites(debug=2)
+        cancontinue = this_job.check_requisites(debug=0)
         if not cancontinue:
             if debug > 1:   print("  Execute_JOB, step 6: requisites NOT met or job already run!")
             continue        # I know if might seem misleading. Here, "continue" means "skip this one"
