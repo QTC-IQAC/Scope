@@ -63,7 +63,6 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
     if debug > 1 and not exists: print("Execute_JOB, step 4: creating branch")
     if not exists: this_branch = sys.add_branch(job_data.branch, job_data.target, debug=debug); updated = True
     if debug > 1: print("Execute_JOB, step 4: branch loaded")
-    #if debug > 0: this_branch.get_info()
 
     ##############
     ### RECIPE ###
@@ -74,7 +73,6 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
         ### JOB ###
         ###########
         ## 5-Finds the job. If it does not exist, it is NOT created.
-        #if debug > 0: recipe.get_info()
         exists, this_job = recipe.find_job(job_data=job_data, debug=debug)
         if debug > 1 and not exists: print(f"Execute_JOB, step 5: job {job_data.keyword} does not exist for {recipe.subject.spin}")
         if exists: this_job.check_input(job_path=job_path, debug=debug)
@@ -99,7 +97,6 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
         ## 7-Sets the computation(s), meaning that it will check if they exist, and if not, it creates them
         this_job.set_computations_from_setup(qc_data, debug=debug)
         if debug > 1: print("Execute_JOB, step 7: computations set")
-        #if debug > 0: this_job.get_info()
 
         for jdx, comp in enumerate(this_job.computations):
 
@@ -159,8 +156,6 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
                         new_comp.qc_data.coord_tag = new_tag
                         new_comp.qc_data.dct['coord_tag'] = new_tag
                         print("Execute_JOB, step 7.3b: coord tag of new computation is modified to", new_comp.qc_data.coord_tag)
-
-            #if debug > 0: comp.get_info()
 
         # Updates Job Registry information
         this_job.register(debug=0)

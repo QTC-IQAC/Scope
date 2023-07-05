@@ -40,13 +40,16 @@ class spin_config(object):
             self.magn_pairs = list(set(tuple([atsp.label, atsp.magnetization]) for atsp in self.atomic_spins)) 
             self.magn_uniques = list(set(self.magn_pairs))
  
-    def get_info(self):
+    def __repr__(self):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   Spin Configuration                              \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' _Subject              = {self._subject.type}\n'
+        to_print += f' _Subject Type         = {self._subject.type}\n'
         to_print += f'---------------------------------------------------\n'
-        if hasattr(self,"elems"): to_print += f' self.elems             = {self.elems}\n'
+        if hasattr(self,"elems"):               to_print += f' Elements            = {self.elems}\n'
+        if hasattr(self,"ismagnetic"):          to_print += f' Is Magnetic?        = {self.ismagnetic}\n'
+        if hasattr(self,"multiplicity"):        to_print += f' Multiplicity        = {self.multiplicity}\n'
+        if hasattr(self,"total_magnetization"): to_print += f' Total Magnetization = {self.total_magnetization}\n'
         to_print += '----------------------------------------------------\n'
         return to_print
 

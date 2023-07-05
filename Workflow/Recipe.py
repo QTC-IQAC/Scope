@@ -134,8 +134,7 @@ class recipe(object):
 #############
 ### Other ###
 #############
-    def get_info(self):
-    #def __repr__(self):
+    def __repr__(self):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> RECIPE                                  \n'
         to_print += f'---------------------------------------------------\n'
@@ -144,14 +143,10 @@ class recipe(object):
         if hasattr(self.subject,"phase"): to_print += f' Phase                 = {self.subject.phase}\n'
         to_print += f' Type of Object        = {self.subject.type}\n'
         to_print += f'---------------------------------------------------\n'
-        #to_print += f' self.path             = {self.path}\n'
-        #to_print += f' self.keyword          = {self.keyword}\n'
         to_print += f' Num Jobs              = {len(self.jobs)}\n'
         if len(self.jobs) > 0: 
-            #self.jobs.sort(key=lambda x: (x.hierarchy, x.run_number))
             self.jobs.sort(key=lambda x: x.hierarchy)
             to_print += f' Last Job Keyword      = {self.jobs[-1].keyword}\n'
             to_print += f' Last Job Hierarchy    = {self.jobs[-1].hierarchy}\n'
-        #    if self.jobs[-1].run_number > 1: to_print += f' Last Job Run Number   = {self.jobs[-1].run_number}\n'
         to_print += '----------------------------------------------------\n'
-        print(to_print)
+        return to_print

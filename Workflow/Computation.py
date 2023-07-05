@@ -215,7 +215,7 @@ class computation(object):
         return worked
 
 ###########################################
-    def get_info(self) -> None:
+    def __repr__(self) -> None:
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> >>> >>> COMPUTATION                     \n'
         to_print += f'---------------------------------------------------\n'
@@ -234,7 +234,6 @@ class computation(object):
         if self.isregistered: to_print += f' self.isgood           = {self.isgood}\n' 
         if self.isregistered: to_print += f' self.isfinished       = {self.isfinished}\n' 
         if self.isregistered: to_print += f' self.elapsed_time     = {self.elapsed_time}\n' 
-        #to_print += f' self.qc_data          = {self.qc_data.__repr__()}\n' 
         to_print += '----------------------------------------------------\n'
-        print(to_print)
+        return to_print
 ###########################################

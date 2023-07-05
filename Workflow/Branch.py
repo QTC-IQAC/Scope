@@ -98,8 +98,7 @@ class branch(object):
 #############
 ### Other ###
 #############
-    def get_info(self):
-    #def __repr__(self):
+    def __repr__(self):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> BRANCH                                      \n'
         to_print += f'---------------------------------------------------\n'
@@ -113,7 +112,7 @@ class branch(object):
         to_print += f' self.keyword          = {self.keyword}\n'
         to_print += f' Num Recipes           = {len(self.recipes)}\n'
         to_print += '----------------------------------------------------\n'
-        print(to_print)
+        return to_print
 
 
 #    def delete_inactive_recipes(self, obj, keyword, debug: int=0):

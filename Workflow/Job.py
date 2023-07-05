@@ -225,7 +225,7 @@ class job(object):
 #############
 ### Other ###
 #############
-    def get_info(self):
+    def __repr__(self):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> >>> JOB                                 \n'
         to_print += f'---------------------------------------------------\n'
@@ -235,23 +235,15 @@ class job(object):
         to_print += f' Recipe                = {self._recipe.keyword}\n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' self.path             = {self.path}\n'
-        to_print += f' self.code             = {self.keyword}\n'
+        to_print += f' self.keyword          = {self.keyword}\n'
         to_print += f' self.hierarchy        = {self.hierarchy}\n'
-        #to_print += f' self.run_number       = {self.run_number}\n'
         to_print += f' self.requisites       = {self.requisites}\n'
         to_print += f' self.constrains       = {self.constrains}\n'
-        #to_print += f' self.software         = {self.software}\n'
-        #to_print += f' self.suffix           = {self.suffix}\n'
-        #to_print += f' self.must_be_good     = {self.must_be_good}\n'
         to_print += f' self.setup            = {self.setup}\n'
         to_print += f' Num Computations      = {len(self.computations)}\n'
-        #if len(self.computations) > 1: 
-        #    self.computations.sort(key=lambda x: (x.index))
-        #    to_print += f'     Last Computation Index = {self.jobs[-1].keyword}\n'
-        #    if self.jobs[-1].run_number > 1: to_print += f' Last Job Run Number   = {self.jobs[-1].run_number}\n'
         to_print += '----------------------------------------------------\n'
         to_print += f' self.isregistered (Temp) = {self.isregistered}\n'
         to_print += f' self.isgood       (Temp) = {self.isgood}\n' 
         to_print += f' self.isfinished   (Temp) = {self.isfinished}\n' 
         to_print += '----------------------------------------------------\n'
-        print(to_print)
+        return to_print

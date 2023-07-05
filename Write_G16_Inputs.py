@@ -144,6 +144,9 @@ def gen_G16_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: st
             print(f"g16 < {comp.inp_name} > {comp.out_name}", file=sub)
             print(f"cp -pr *.log $JOBDIR/", file=sub)
             if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)
+            print(f"cd $JOBDIR/", file=sub)
+            print(f"rm $RUNDIR/Gau.*", file=sub)
+            print(f"rm $RUNDIR/{comp.refcode}*", file=sub)
             os.chmod(comp.sub_path, 0o777)
 
     elif 'portal' in cluster:

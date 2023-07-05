@@ -216,7 +216,7 @@ class sco_system(object):
 
 
 ###########################################
-    def get_info(self) -> None:
+    def __repr__(self) -> None:
         to_print  = f'---------------------------------------------------\n'
         to_print += f' Formatted input interpretation of SCO System()\n'
         to_print += f'---------------------------------------------------\n'
@@ -226,7 +226,7 @@ class sco_system(object):
         to_print += f' #Crystals             = {len(self.crystals)}\n'
         to_print += f' #Branches             = {len(self.branches)}\n'
         to_print += f'---------------------------------------------------\n'
-        print(to_print)
+        return to_print
 
 ###########################
 ###### Class Crystal ######
@@ -284,12 +284,21 @@ class crystal(object):
             self.HSmolarfraction = float(self.guess_spins.count("HS")/len(self.guess_spins))
         if debug > 0: print(f"    Get_Spin&Phase: phase:{self.phase} and molar_frac: {self.HSmolarfraction}")
 
-    def get_info(self) -> None:
+    def __repr__(self) -> None:
         to_print  = f'---------------------------------------------------\n'
         to_print += f' Formatted input interpretation of Crystal()\n'
-        to_print += f' Work in progress\n'
         to_print += f'---------------------------------------------------\n'
-        print(to_print)
+        to_print += f' Refcode               = {self.refcode}\n'
+        to_print += f' Cell2mol Path         = {self.cell2mol_path}\n'
+        if hasattr(self,"diff_temp"):        to_print += f' Diffraction Temp      = {self.diff_temp}\n'         
+        if hasattr(self,"authors"):          to_print += f' Authors               = {self.authors}\n'           
+        if hasattr(self,"journal_year"):     to_print += f' Year of Publication   = {self.journal_year}\n'      
+        if hasattr(self,"journal_name"):     to_print += f' Journal Name          = {self.journal_name}\n'      
+        if hasattr(self,"journal_volume"):   to_print += f' Journal Volume        = {self.journal_volume}\n'    
+        if hasattr(self,"journal_page"):     to_print += f' Journal Page          = {self.journal_page}\n'      
+        if hasattr(self,"phase"):            to_print += f' Phase                 = {self.phase}\n'
+        if hasattr(self,"HSmolarfraction"):  to_print += f' HS Molar Fraction     = {self.HSmolarfraction}\n'
+        return to_print
        
 ################################
 ##### ASSOCIATED FUNCTIONS #####
