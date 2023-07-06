@@ -71,6 +71,14 @@ class input_data(object):
         self.dct[key] = attr
         setattr(self, key, attr)
  
+    def __add__(self, other):
+        if not isinstance(other, type(self)): return self
+        for d in dir(other):
+            if '_' not in d and not callable(getattr(other,d)) and d != "dct":
+                at1 = getattr(other,d)
+                self._add_attr(d,at1)
+        return self
+
     def __repr__(self):
         string    = 'self.{:15}| {:20}| {:10}\n'
         to_print  = 'Formatted input interpretation: ( self -> Instance of class Input() )\n'

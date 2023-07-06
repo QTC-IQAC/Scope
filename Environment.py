@@ -260,7 +260,7 @@ def get_queue_and_procs(environment: object, debug: int=0):
         if   resources == "light":  mult = 1
         elif resources == "medium": mult = 2
         elif resources == "heavy":  mult = 4
-        askprocs = 8*mult
+        askprocs = 16*mult
 
     else:
         askqueue = ''

@@ -4,10 +4,15 @@ import os
 import shutil
 
 def save_binary(variable, pathfile, backup: bool=False):
+    pathfile = pathfile.replace("lustre","home")
     if not backup:
-        file = open(pathfile,'wb')
-        pickle.dump(variable,file)
-        file.close()
+        try: 
+            file = open(pathfile,'wb')
+            pickle.dump(variable,file)
+            file.close()
+        except Exception as exc:
+            print("Error Saving Binary for pathfile:", pathfile)
+            print(exc)
     if backup:
         print("Backup not implemented, file not saved")
 #        if os.path.isfile(pathfile):
