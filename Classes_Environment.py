@@ -1,3 +1,9 @@
+import sys
+import os
+import copy
+from Scope.Classes_Queue import queue 
+
+
 def set_user():
     return pwd.getpwuid( os.getuid() ).pw_name
 
@@ -83,7 +89,52 @@ class environment(object):
                 self._add_attr(d,at1)
         return self
 
-    def set_queues(self, debug: int=0):
+    def get_management_type(self, debug: int=0):
+        self.management_type = "unknown"
+        
+        ### Sun Grid Engine, SGE ###
+        worked_sge = False
+        try: 
+            sge_queues = subprocess.check_output(['bash','-c', "qconf -sql"])
+            worked_sge = True
+        except: pass
+  
+        ### Slurm Manager ###
+        worked_slurm = False
+        try: 
+            slurm_queues = subprocess.check_output(['bash','-c', "sinfo"])
+            worked_slurm = True
+        except: pass
+
+        if worked_sge and not worked_slurm:   self.management_type = "sge"
+        elif not worked_sge and worked_slurm: self.management_type = "slurm"
+        else: 
+            print("Confict with the recognition of the Queue System")
+            print("SGE:", worked_sge)
+            print("Slurm:", worked_slurm)
+        return self.management_type
+
+    def get_all_queues(self, debug: int=0):
+        self.queues  = []
+        if not hasattr(self,"management_type"): self.get_management_type()
+        if self.management_type == "sge": 
+            raw = subprocess.check_output(['bash','-c', "qconf -sql"]) 
+
+        elif self.management_type == "slurm": 
+            raw = subprocess.check_output(['bash','-c', "sinfo"]) 
+            dec = raw.decode("utf-8")
+            text = dec.rstrip().split("\n")
+            for idx, line in enumerate(text):
+                if idx > 0: 
+                    name, avail, time_limit, num_nodes, state, name_nodes = line.split()
+                    new_queue = queue(, name, avail, time_limit, num_nodes, state, name_nodes)
+                    self.queues.append(new_queue)
+                
+                new_queue = queue(name, time_limit, num_nodes)
+                 
+####################################################
+    def user_queues_preferences(self, debug: int=0):
+        if not hasattr(self,"management_queues"):   self.get_management_queue_info()
         if   'login'  in self.cluster or 'csuc' in self.cluster: suggested = list(["std"])
         elif 'uam'    in self.cluster:                           suggested = list(["class_a"])
         elif 'portal' in self.cluster:                        
@@ -138,59 +189,3 @@ class environment(object):
             elif understood and (tmp == "N" or tmp == 'n'): 
                 correct = False
                 self.list_q = []
-        return self.list_q
-
-    def get_queue_system(self, debug: int=0):
-        self.q_system = "unknown"
-        
-        ### Sun Grid Engine, SGE ###
-        worked_sge = False
-        try: 
-            sge_queues = subprocess.check_output(['bash','-c', "qconf -sql"])
-            worked_sge = True
-        except: pass
-  
-        ### Slurm Manager ###
-        worked_slurm = False
-        try: 
-            slurm_queues = subprocess.check_output(['bash','-c', "sinfo"])
-            worked_slurm = True
-        except: pass
-
-        if worked_sge and not worked_slurm:   self.q_system = "sge"
-        elif not worked_sge and worked_slurm: self.q_system = "slurm"
-        else: 
-            print("Confict with the recognition of the Queue System")
-            print("SGE:", worked_sge)
-            print("Slurm:", worked_slurm)
-        return self.q_system
-
-    def check_queues(self, debug: int=0):
-        if not hasattr(self,"q_system"): self.get_queue_system()
-        if not hasattr(self,"list_q"):   self.set_queues()
-        if self.q_system == "sge": 
-            raw = subprocess.check_output(['bash','-c', "qconf -sql"]) 
-
-        elif self.q_system == "slurm": 
-            raw = subprocess.check_output(['bash','-c', "sinfo"]) 
-            dec = raw.decode("utf-8")
-            text = dec.rstrip().split("\n")
-            for idx, line in enumerate(text):
-                if idx == 0: labels = line.split()
-                else:
-                    props = line.split()
-                    #name, status, time_limit, num_nodes, dummy, name_nodes = line.split()
-                    if len(labels) == len(props): name, status, time_limit, num_nodes, dummy, name_nodes = line.split()
-                
-                new_queue = queue(name, time_limit, num_nodes)
-                 
-
-#############
-### QUEUE ###
-#############
-class queue(object):
-    def __init__(self, name, status, time_limit, num_nodes):
-        self.name          = name
-        self.time_limie    = time_limit
-        self.num_nodes     = num_nodes
- 
