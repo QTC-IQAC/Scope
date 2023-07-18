@@ -143,7 +143,7 @@ def gen_G16_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: st
             print(f"cat tmp1 {comp.inp_name} > tmp2", file=sub)
             print(f"rm tmp1", file=sub)
             print(f"mv -f tmp2 {comp.inp_name}", file=sub)
-            print(f"g16 < {comp.inp_name} > {comp.out_name}", file=sub)
+            print(f"timeout 71h g16 < {comp.inp_name} > {comp.out_name}", file=sub)
             print(f"cp -pr *.log $JOBDIR/", file=sub)
             if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)
             print(f"cd $JOBDIR/", file=sub)

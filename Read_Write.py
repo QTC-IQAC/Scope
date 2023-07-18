@@ -2,6 +2,9 @@ import pickle
 import numpy as np
 import os
 import shutil
+from ast import literal_eval
+
+#from Scope.Other import str_to_list
 
 def save_binary(variable, pathfile, backup: bool=False):
     pathfile = pathfile.replace("lustre","home")
@@ -74,3 +77,30 @@ def read_xyz(xyz_file):
 
     xyz.close()
     return labels, coord
+
+def read_user_input(message: str, rtext: bool=False, rtext_options: list=[], rtype: bool=False, rtype_options: list=[], limit_attempts: bool=True, attempts: int=3, debug: int=0):
+    att = 0
+    correct = False
+    if limit_attempts:
+        while att < attempts and not correct:
+            opt = input(message)
+            if debug > 0: print(f"Read opt={opt}, of type={type(opt)}, rtype={rtype}, rtext={rtext}")
+            if rtext and not rtype:
+                if opt in rtext_options:                                correct = True
+                else:                                                   correct = False; att += 1
+            elif rtype and not rtext:
+                try:        opt = literal_eval(opt); isstr = False
+                except:     isstr = True
+                if debug > 0: print(f"isstr={isstr}, opt={opt}, type={type(opt)}")
+
+                if type(opt) in rtype_options:                          correct = True
+                else:                                                   correct = False; att += 1
+
+            elif rtype and rtext:
+                if type(opt) in rtype_options and opt in rtext_options: correct = True
+                else:                                                   correct = False; att += 1
+            else: correct = True
+            if debug > 0: print(f"correct={correct}, #attempt={att}")
+            
+            if correct: return opt
+            else:       return None

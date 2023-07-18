@@ -29,3 +29,26 @@ def read_lines_file(filepath: str, flat: bool=False):
         for idx, l in enumerate(lines):
             lines[idx] = l.strip('\n')
     return np.array(lines)
+
+def slurm_time_to_seconds(sl_time: str):
+    if sl_time == "infinite":                 ## Infinite 
+        days = 100
+        time = days * 86400 
+    elif ':' in sl_time and '-' in sl_time:   ## Standard Format
+        print(f"Received sl_time: {sl_time}") 
+        blocks = sl_time.replace('-',' ').replace(':',' ').split()
+        if len(blocks) == 4: 
+            days     = int(blocks[0])
+            hours    = int(blocks[1])
+            minutes  = int(blocks[2])
+            seconds  = int(blocks[3])
+        elif len(blocks) == 3: 
+            days     = int(blocks[0])
+            hours    = int(blocks[1])
+            minutes  = int(blocks[2])
+            seconds  = 0 
+        time = days * 86400 + hours * 3600 + minutes * 60 + seconds
+    else:
+        print(f"slurm_time_to_seconds: slurm time could not be parsed: {sl_time}")
+        time = 0
+    return int(time)
