@@ -137,6 +137,15 @@ class environment(object):
         if not hasattr(self,"management_type"): self.get_management_type()
         if self.management_type == "sge": 
             raw = subprocess.check_output(['bash','-c', "qconf -sql"]) 
+            dec = raw.decode("utf-8")
+            text = dec.rstrip().split("\n")
+            for idx, line in enumerate(text):
+                name = line.split() 
+
+                raw2 = subprocess.check_output(['bash','-c', "qstat -f -q "+name])
+                dec2 = raw2.decode("utf-8")
+                text2 = dec2.rstrip().split("\n")
+                print(text2)
 
         ## SLURM ##
         elif self.management_type == "slurm": 
