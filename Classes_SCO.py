@@ -40,6 +40,11 @@ class sco_system(object):
         self.results              = dict()
         self.status               = "active"
 
+    def save(self, filepath: str=None):
+        if filepath is None: filepath = self.sys_path
+        from Scope.Read_Write import save_binary
+        save_binary(self, filepath)
+
 ###################################
 ### Functions to restart system ###
 ###################################

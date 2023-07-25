@@ -35,19 +35,29 @@ def slurm_time_to_seconds(sl_time: str):
         days = 100
         time = days * 86400 
     elif ':' in sl_time and '-' in sl_time:   ## Standard Format
-        print(f"Received sl_time: {sl_time}") 
         blocks = sl_time.replace('-',' ').replace(':',' ').split()
         if len(blocks) == 4: 
             days     = int(blocks[0])
             hours    = int(blocks[1])
             minutes  = int(blocks[2])
             seconds  = int(blocks[3])
+            time = days * 86400 + hours * 3600 + minutes * 60 + seconds
         elif len(blocks) == 3: 
             days     = int(blocks[0])
             hours    = int(blocks[1])
             minutes  = int(blocks[2])
             seconds  = 0 
-        time = days * 86400 + hours * 3600 + minutes * 60 + seconds
+            time = days * 86400 + hours * 3600 + minutes * 60 + seconds
+        else: print(f"slurm_time_to_seconds: slurm time could not be parsed: {sl_time}")
+    elif ':' in sl_time and '-' not in sl_time:   ## No days
+        blocks = sl_time.replace(':',' ').split()
+        if len(blocks) == 3: 
+            days     = 0 
+            hours    = int(blocks[0])
+            minutes  = int(blocks[1])
+            seconds  = int(blocks[2])
+            time = days * 86400 + hours * 3600 + minutes * 60 + seconds
+        else: print(f"slurm_time_to_seconds: slurm time could not be parsed: {sl_time}")
     else:
         print(f"slurm_time_to_seconds: slurm time could not be parsed: {sl_time}")
         time = 0

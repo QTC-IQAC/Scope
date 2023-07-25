@@ -68,7 +68,8 @@ def gen_QE_input(comp, debug: int=0):
     ### DETERMINE SPECIES ###
     #########################
     comp.spin_config.get_QE_data()
-    comp.spin_config.get_info()
+    print(comp.spin_config)
+    #comp.spin_config.get_info()
     metal_indices = get_metal_idxs(gmol.labels)
     metal_species = get_metal_species(gmol.labels)
     elems = comp.spin_config.elems
@@ -291,6 +292,33 @@ def gen_QE_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: str
             print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
             os.chmod(comp.sub_path, 0o777)
      
+    elif 'uam' in cluster:
+        project = 'ub100'
+        with open(comp.sub_path, 'w+') as sub:
+            print(f"#!/bin/bash", file=sub)
+            print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
+            print(f"#SBATCH -e /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
+            print(f"#SBATCH -o /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
+            print(f"#SBATCH -p {queue}", file=sub)
+            print(f"#SBATCH -A ub100_serv", file=sub)
+            print(f"#SBATCH --nodes=1", file=sub)
+            print(f"#SBATCH --ntasks={procs}", file=sub)
+            print(f"", file=sub)
+            print(f"module load espresso/6.5", file=sub)
+            print(f"", file=sub)
+            print(f"set OMP_NUM_THREADS=1", file=sub)
+            print(f"ulimit -l unlimited", file=sub)
+            print(f"", file=sub)
+            print(f"JOBDIR=$PWD", file=sub)
+            print(f'export RUNDIR="/temporal/{user}/jobs/$SLURM_JOBID"', file=sub)
+            print(f"mkdir -p $RUNDIR", file=sub)
+            print(f"cd $RUNDIR", file=sub)
+            print(f"", file=sub)
+            print(f"cp -i $JOBDIR/{comp.inp_name} .", file=sub)
+            print(f"timeout 71h srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
+            print(f"cp -pr {comp.out_name} $JOBDIR/", file=sub)
+            os.chmod(comp.sub_path, 0o777)
+
     else: print("WRITE_QE_INPUTS: Cluster not recognized")
         
 ###################################################

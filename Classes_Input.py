@@ -15,6 +15,7 @@ def interpret_software(name: str):
 class input_data(object):
     def __init__(self, f_name: str, section=None, debug=0):
         if f_name != '': self.read(f_name, section, debug=debug)
+        self.type = "input_data"
  
     def read(self, f_name: str, section=None, debug: int=0):
         dct = dict()

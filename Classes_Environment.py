@@ -6,6 +6,8 @@ import grp
 import subprocess
 
 from Scope.Classes_Queue import queue 
+from Scope.Classes_Input import input_data
+from Scope import Classes_Input
 from Scope.Read_Write import read_user_input
 
 def set_user():
@@ -27,27 +29,54 @@ class environment(object):
         self.cluster     = set_cluster()
         self.user        = set_user()
         self.group       = set_group()
-        self.man_type    = self.get_management_type() 
-        self.mqueues     = []  ## Must be here for the add_queue function
+        self.get_management_type() 
 
-    def __add__(self, other):   ## environment-class can be enriched using the input_data-class
-        if not isinstance(other, input_data): return self
-        for d in dir(other):
-            if '_' not in d and not callable(getattr(other,d)) and d != "dct":
-                at1 = getattr(other,d)
-                self._add_attr(d,at1)
-        return self
+    def __repr__(self) -> None:
+        to_print  = f'\n-----------------------------------------------------------\n'
+        to_print += f' Formatted input interpretation of Environment Class Object()\n'
+        to_print += f'-------------------------------------------------------------\n'
+
+        for d in dir(self):
+            if d[0] != '_' and not callable(getattr(self,d)) and d != "dct" and d != 'mqueues' and d != 'queues':
+                val = getattr(self,d)
+                to_print += f' {d:20} = {val} \n'
+
+        if hasattr(self,"queues"):   
+            if len(self.queues) > 0: to_print += f' Selected Queues: \n'
+            for q in self.queues: 
+                if hasattr(q,"selected"):
+                    if q.selected: to_print += f'     Queue Name             = {q.name}\n'
+        to_print += f'---------------------------------------------------\n'
+        return to_print
 
     def save(self, filepath: str):
         self.filepath    = filepath
         from Scope.Read_Write import save_binary
         save_binary(self, filepath)
 
-    def read_user_specs(self, to_add, debug: int=0):
-        if isinstance(to_add, input_data): self += to_add
-        elif type(to_add) == str: 
-            environment = set_environment_data(to_add, section="&environment", debug=debug)
-            self += to_add
+    def __add__(self, other):   ## environment-class can be enriched using the input_data-class
+        if not hasattr(other,"type"): return self
+        if other.type != "input_data": print("Not input data but:", type(other)); return self
+        for d in dir(other):
+            if '_' not in d and not callable(getattr(other,d)) and d != "dct" and d != "type":
+                at1 = getattr(other,d)
+                self._add_attr(d,at1)
+        return self
+
+    def _add_attr(self, key: str, value):
+        try:      attr = literal_eval(value)
+        except:   attr = value
+        if hasattr(self,"dct"): self.dct[key] = attr
+        setattr(self, key, attr)
+
+    def read_user_specs_from_file(self, path_to_add, debug: int=0):
+        from Classes_Input import set_environment_data
+        new_data = set_environment_data(path_to_add, section="&environment", debug=debug)
+        for d in dir(new_data):
+            if '_' not in d and not callable(getattr(new_data,d)) and d != "dct" and d != "type":
+                at1 = getattr(new_data,d)
+                self._add_attr(d,at1)
+        return self
 
     def check_paths(self, debug: int=0):
         if not hasattr(self,"cell2mol_path"): self.set_paths()
@@ -75,8 +104,8 @@ class environment(object):
             self.scope_home_path    = f"/Users/{self.user}/Documents/SCOPE/Database_SCO/"
             self.scope_scratch_path = None
         elif 'uam' in self.cluster:
-            self.scope_home_path    = f"/home/proyectos/{self.user}/SCOPE/"
-            self.scope_scratch_path = f"/scratch/{self.user}/"   #does not exist because they use ub100 instead of ub100435
+            self.scope_home_path    = f"/home/proyectos/{self.group}/SCOPE/"
+            self.scope_scratch_path = f"/scratch/{self.group}/"   #does not exist because they use ub100 instead of ub100435
         elif 'portal' in self.cluster or 'node' in self.cluster or 'visual' in self.cluster:
             if 'g2vela' in self.user:
                 self.scope_home_path    = f"/home/{self.user}/SCOPE/Database_SCO/"
@@ -132,6 +161,7 @@ class environment(object):
         return self.management_type
 
     def get_mqueues(self, debug: int=0):
+        self.mqueues = []
 
         ##  SGE  ##
         if not hasattr(self,"management_type"): self.get_management_type()
@@ -156,10 +186,10 @@ class environment(object):
                 if idx > 0 and len(line.split()) == 6: 
                     name, avail, time_limit, num_nodes, state, name_nodes = line.split()
                     new_queue = queue(name, avail, time_limit, num_nodes, state, name_nodes, self)
-                    self.add_queue(new_queue) 
+                    self.add_mqueue(new_queue) 
         return self.mqueues
 
-    def add_queue(self, new_queue: object):
+    def add_mqueue(self, new_queue: object):
         if new_queue.name not in list(q.name for q in self.mqueues): 
             if new_queue.num_nodes > 0: self.mqueues.append(new_queue)
         else: 
@@ -174,8 +204,15 @@ class environment(object):
         print(f"Setting Queues For Environment")
 
         if len(suggested_names) > 0: 
-            print(f"Suggested queues are: {','.join(suggested_names)}")
-            message = "Do you want to keep the suggested ones? Y/N "
+            print(f"-------------------------------------------------")
+            print(f"         We found the following Queues:          ")
+            print(f"-------------------------------------------------")
+            #print(f"Suggested queues are: {','.join(suggested_names)}")
+            for n in suggested_names:
+                print(n)
+            print(f"-------------------------------------------------")
+            message = "Do you want to keep all suggested Queues? Y/N "
+            print(" ")
             keep = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"]) 
 
             if keep == "Y" or keep == 'y':        
@@ -186,7 +223,7 @@ class environment(object):
             elif keep == "N" or keep == 'n':      
                 verify = True
                 user_q = []
-                message = "Write the available Queues/Partitions one by one: Enter to Stop  "
+                message = "Write the Queues/Partitions that will be available to SCOPE. Write them one by one: Enter to Stop  "
                 finished = False
                 while not finished: 
                     tmp = read_user_input(message=message, rtype=True, rtype_options=[str]) 
@@ -196,7 +233,7 @@ class environment(object):
         elif len(suggested_names) == 0: 
             verify = True
             user_q = []
-            message = "Write the available Queues/Partitions one by one: Enter to Stop  "
+            message = "Write the Queues/Partitions that will be available to SCOPE. Write them one by one: Enter to Stop  "
             finished = False
             while not finished: 
                 tmp = read_user_input(message=message, rtype=True, rtype_options=[str]) 
@@ -204,7 +241,7 @@ class environment(object):
                 else: finished = True
                             
         if len(user_q) > 0 and verify:
-            print(f"The Interpreted Queues are: {','.join(user_q)}")
+            print(f"The Interpreted Queues are:") #{','.join(user_q)}")
             for q in user_q:
                 print(f"{q}")
             
@@ -228,9 +265,13 @@ class environment(object):
         ## Queue Priority ##
         ####################
         if correct and len(self.queues) > 0:
-            print("Do you want to set manual priorities for the queues?")
-            print("If so, the value you introduce will weight the ratio of free-CPU/total-CPU among queues")
-            print("Otherwise, all queues will be valued equally, and will be chosen based on the above ratio")
+            print(" ")
+            print(f"---------------------------------------------------------------------------------------- ")
+            print("Do you want to set manual priorities for the queues?                                      ")
+            print("If so, the value you introduce will weight the ratio of free-CPU/total-CPU among queues   ")
+            print("Otherwise, all queues will be valued equally, and will be chosen based on the above ratio ")
+            print(f"---------------------------------------------------------------------------------------- ")
+            print(" ")
 
             message = " Y/N "
             prio = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"]) 

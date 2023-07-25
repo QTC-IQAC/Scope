@@ -52,14 +52,14 @@ class queue(object):
         return self
       
     def set_commands(self):
-        if self._environment.man_type == "slurm":
+        if self._environment.management_type == "slurm":
             self.command_check_cluster_state = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+str(self._environment.user)
             self.command_check_queue_state   = 'sinfo -o "%N %P %C" | grep '+self.name 
             self.command_check_nodes_state   = 'sinfo -o "%n %P %C" | grep '+self.name  ## Not being used yet 
             self.command_check_job           = 'squeue -o "%.60j %.12u"' 
             self.command_job_count           = 'squeue | grep '+self.name+' | wc -l'
             self.command_submit              = 'sbatch' 
-        elif self._environment.man_type == "sge":
+        elif self._environment.management_type == "sge":
             self.command_check_cluster_state = "qstat"
             self.command_check_queue_state   = "qstat -f | grep "+self.name
             #self.command_check_nodes_state   = ''  # Not ready
@@ -88,7 +88,7 @@ class queue(object):
             text = dec.rstrip().split("\n")
         except: text = ""
 
-        if self._environment.man_type == "slurm":
+        if self._environment.management_type == "slurm":
             try:
                 for line in text:
                     blocks = line.replace('/',' ').split()
@@ -101,7 +101,7 @@ class queue(object):
                 self.total_cpus = int(0)
                 print(f"CHECK_USAGE: Exception checking usage of queue={self.name}:", exc)
 
-        elif self._environment.man_type == "sge":
+        elif self._environment.management_type == "sge":
             dec = raw.decode("utf-8")
             text = dec.rstrip().split("\n")
             try:
