@@ -191,7 +191,8 @@ class environment(object):
 
     def add_mqueue(self, new_queue: object):
         if new_queue.name not in list(q.name for q in self.mqueues): 
-            if new_queue.num_nodes > 0: self.mqueues.append(new_queue)
+            self.mqueues.append(new_queue)
+            #if new_queue.num_nodes > 0: self.mqueues.append(new_queue)
         else: 
             for q in self.mqueues:
                 if q.name == new_queue.name: q += new_queue
@@ -255,7 +256,8 @@ class environment(object):
         if correct:
             for mq in self.mqueues:
                 if mq.name in user_q: 
-                    mq.selected = True
+                    mq.select_queue()
+                    mq.set_nodes()
                     self.queues.append(mq)
         else:
             return self.queues

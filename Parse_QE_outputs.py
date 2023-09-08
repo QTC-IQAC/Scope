@@ -65,6 +65,9 @@ def parse_final_geoopt_step(lines: str, debug: int=0):
         last_step_last = "Writing output data"   
         last_step_last_line, found2 = search_string(last_step_last, lines, typ="last")
 
+    if last_step_init_line > last_step_last_line:
+        last_step_init_line, found1 = search_string(last_step_init, lines, typ="last", uplim=last_step_last_line)
+
     if found1 and found2: worked = True
     else: worked = False
     return worked, last_step_init_line, last_step_last_line 
@@ -76,8 +79,10 @@ def parse_final_geometry(lines: str, debug: int=0):
         print("PARSE_FINAL_GEOMETRY: final_geoopt_step didn't work. Retrieving empty labels and coordinates. It will fail")
         return [], []
     else:
-        last_step_lines = lines[last_step_init_line:last_step_last_line]
+        last_step_lines = lines[last_step_init_line:last_step_last_line+1]
         if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: final step lines between {last_step_init_line+1} and {last_step_last_line+1}")
+        if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: first last_step_line: {last_step_lines[0]}")
+        if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: last  last_step_line: {last_step_lines[-1]}")
     
         warning = False
         if all(f for f in key_found):  ## Everything worked
@@ -91,11 +96,17 @@ def parse_final_geometry(lines: str, debug: int=0):
             last_geo_init_line = search_string(last_geo_init_string, last_step_lines, typ="last")[0] 
             last_geo_last_line = search_string(last_geo_last_string, last_step_lines, typ="first")[0] - 3
             if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: last geo lines between {last_step_init_line+last_geo_init_line+1} and {last_step_init_line+last_geo_last_line+1}")
+        elif all(not f for f in key_found):  ## Nothing, probably a job terminated due to time limits
+            last_geo_init_string = "ATOMIC_POSITIONS"
+            last_geo_last_string = "Writing output data"
+            last_geo_init_line = search_string(last_geo_init_string, last_step_lines, typ="last", debug=debug)[0] 
+            last_geo_last_line = search_string(last_geo_last_string, last_step_lines, typ="first", debug=debug)[0] - 3
+            if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: last geo lines between {last_step_init_line+last_geo_init_line+1} and {last_step_init_line+last_geo_last_line+1}")
         else: 
+            print("no key was found", key_found)
             warning = True
      
         last_geo_lines = last_step_lines[last_geo_init_line:last_geo_last_line]
-        #last_geo_lines = lines[last_step_init_line+last_geo_init_line:last_step_init_line+last_geo_last_line]
         if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: first last_geo_line: {last_geo_lines[0]}")
         if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: last  last_geo_line: {last_geo_lines[-1]}")
         if not warning:

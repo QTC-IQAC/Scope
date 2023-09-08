@@ -124,7 +124,7 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
             else:
                 ## 8.3-If output exists, and is not registered, it does it
                 if not comp.isregistered:
-                    worked = comp.register(debug=0)
+                    worked = comp.register(debug=debug)
                     # If registration fails, either...
                     if not worked: 
                         if handle_errors: # ...takes default action 

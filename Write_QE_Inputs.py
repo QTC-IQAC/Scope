@@ -305,6 +305,7 @@ def gen_QE_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: str
             print(f"#SBATCH --ntasks={procs}", file=sub)
             print(f"", file=sub)
             print(f"module load espresso/6.5", file=sub)
+            print(f"export SLURM_MPI_TYPE=pmi2", file=sub)
             print(f"", file=sub)
             print(f"set OMP_NUM_THREADS=1", file=sub)
             print(f"ulimit -l unlimited", file=sub)

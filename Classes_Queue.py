@@ -1,4 +1,5 @@
 import subprocess
+import numpy as np
 
 from Scope.Parse_General import slurm_time_to_seconds
 
@@ -12,12 +13,41 @@ class queue(object):
         self.name                = name
         self.time_limit_plain    = time_limit
         self.time_limit          = slurm_time_to_seconds(time_limit)
-        self.num_nodes           = int(num_nodes)
         self.state               = state
-        self.name_nodes          = name_nodes
         self.selected            = False
         self._environment        = _environment
+
         self.set_commands()
+
+    def set_nodes(self):
+        self.nodes = []
+        self.max_cpu_x_node = 0 
+
+        if not hasattr(self,"command_check_nodes_state"): self.set_commands()
+        try:
+            raw = subprocess.check_output(['bash','-c', self.command_check_nodes_state])
+            dec = raw.decode("utf-8")
+            text = dec.rstrip().split("\n")
+        except: text = ""
+
+        for line in text:
+            blocks = line.replace('/',' ').split()
+            if len(blocks) == 6:
+                name      = str(blocks[0])
+                queue     = str(blocks[1])
+                allocated = int(blocks[2])
+                idle      = int(blocks[3])
+                other     = int(blocks[4])
+                total     = int(blocks[5])
+                #if queue != self.name: print(queue, self.name)
+                if total > self.max_cpu_x_node: self.max_cpu_x_node = total
+                newnode = node(name, allocated, idle, other, total, self) 
+                self.nodes.append(newnode)
+
+        self.num_nodes = len(self.nodes)
+        self.nodes.sort(key= lambda x: x.name)
+
+        return self.nodes
 
     def set_priority(self, prio: int=1):
         self.priority = prio
@@ -34,7 +64,7 @@ class queue(object):
         to_print += f' Name                  = {self.name}\n'
         to_print += f' Time Limit Plain      = {self.time_limit_plain}\n'
         to_print += f' Time Limit (s)        = {self.time_limit} seconds\n'
-        to_print += f' Number of Nodes       = {self.num_nodes}\n'
+        if hasattr(self,"num_nodes"):  to_print += f' Number of Nodes       = {self.num_nodes}\n'
         if hasattr(self,"priority"):   to_print += f' Priority              = {self.priority}\n'
         if hasattr(self,"selected"):   to_print += f' Selected              = {self.selected}\n'
         if hasattr(self,"used_cpus"):  to_print += f' Used CPUs             = {self.used_cpus}\n'
@@ -47,8 +77,13 @@ class queue(object):
     def __add__(self, other):
         if not isinstance(other, type(self)): return self
         if self.name == other.name and self.available and other.available: 
-            self.num_nodes  += other.num_nodes 
-            self.name_nodes = self.name_nodes+','+other.name_nodes
+            if hasattr(other,"nodes"):
+                if type(other.nodes) == list:
+                    for on in other.nodes:
+                        if on.name not in [n.name for n in self.nodes]:
+                            self.nodes.append(on)
+            #    else: print(f"QUEUE: {other.name} does not have a list of nodes: {type(other.nodes)}")
+            #else: print(f"QUEUE: {other.name} has no variable other.nodes")
         return self
       
     def set_commands(self):
@@ -129,5 +164,18 @@ class queue(object):
             text = '0'
         self.num_jobs  = int(text[0])
 
+############
+### NODE ###
+############
+class node(object):
+    def __init__(self, name: str, allocated: int, idle: int, other: int, total: int, _queue: object): 
+        self.name                = name
+        self.allocated           = allocated
+        self.idle                = idle
+        self.other               = other
+        self.total               = total
+        self._queue              = _queue
 
-
+    def __repr__(self) -> None:
+        to_print  = f'{self._queue.name}:    {self.name}    usage: {self.allocated}/{self.total}'
+        return to_print
