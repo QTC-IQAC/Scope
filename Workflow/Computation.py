@@ -9,7 +9,7 @@ from Scope.Classes_Spin import *
 #from Scope.Classes_Input import interpret_software
 from Scope.Environment import * 
 #from Scope.Environment import set_cluster, set_user, check_submitted, check_usage, get_queue_and_procs, send_command
-from Scope.Register_Data import reg_general, reg_optimization, reg_frequencies
+from Scope.Register_Data import reg_general, reg_optimization, reg_frequencies, reg_energy
 from Scope.Write_G16_Inputs import *
 from Scope.Write_QE_Inputs import *
 
@@ -192,6 +192,8 @@ class computation(object):
         ## 2-Registration of Optimization Tasks 
         if 'opt' in self._job.keyword or 'relax' in self._job.keyword:
             worked = reg_optimization(self, debug=debug)
+            if worked and self._job.keyword == 'vc-relax': 
+                worked = reg_energy(self, debug=debug)
 
         ## 3-Registration of Frequencies
         elif self.isgood and 'freq' in self._job.keyword:

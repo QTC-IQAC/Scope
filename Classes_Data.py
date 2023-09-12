@@ -63,11 +63,20 @@ class data(object):
 
     def format(self):
         if self.units == 'kj': units = 'kJ/mol'
-        if type(self.value) == float: print(self.key+": "+str(f"{self.value:12.8f}")+" "+self.units)
-        elif type(self.value) == int: print(self.key+": "+str(self.value)+" "+self.units)
-        elif type(self.value) == str: print(self.key+": "+self.value+" "+self.units)
-        elif self.value is None: print(self.key+": None")
-        else: print("Data format error: type is", type(self.value))
+        elif self.units == 'au': units = 'au/mol'
+        if type(self.value) == float: self.formatted = str(self.key+": "+str(f"{self.value:12.8f}")+" "+self.units)
+        elif type(self.value) == int: self.formatted = str(self.key+": "+str(self.value)+" "+self.units)
+        elif type(self.value) == str: self.formatted = str(self.key+": "+self.value+" "+self.units)
+        elif self.value is None:      self.formatted = str(self.key+": None")
+         
+    def __repr__(self) -> None:
+        if not hasattr(self,"formatted"): self.format()
+        to_print =  f'{self.formatted}\n'
+        #to_print += f'------------------------------------------\n'
+        #to_print += f'Extracted from function: {self.function}  \n'
+        #to_print += f'Notes: {self.notes}                       \n'
+        #to_print += f'------------------------------------------\n'
+        return to_print
 
 ##################
 ### OPERATIONS ###

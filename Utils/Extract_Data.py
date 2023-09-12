@@ -6,7 +6,45 @@ import pwd
 from Scope.Classes_Data import *
 from Scope.Thermal_Corrections import *
 from Scope.Workflow import Branch
-#from Scope import Constants
+from Scope import Constants
+
+
+def extract_dH_solid(sys: object, branch_keyword: str, overwrite: bool=False, debug: int=0):
+
+    ##############
+    ### BRANCH ###
+    ##############
+    exists, this_branch = sys.find_branch(branch_keyword, debug=debug)
+    if exists: print("Branch loaded with keyword", this_branch.keyword)
+    if not exists: return False
+
+    ## Checks that both spin states have an associated geometry minimum
+    minima = True
+#    for recipe in this_branch.recipes:
+#        if not hasattr(recipe.subject,"min_coord"): minima = False; print(f"{recipe.subject.spin} of {sys.refcode} is not a minimum")
+
+    ##################################
+    ### RECIPE/MOLECULE PROPERTIES ###
+    ##################################
+    if not minima:
+        print(f"{sys.refcode} didn't reach both minima")
+    else:
+        for recipe in this_branch.recipes:
+            gmol = recipe.subject
+            print("    Doing recipe with:", recipe.keyword, gmol.spin)
+
+            ## Number of molecules
+            ncomplex = 0
+            for mol in gmol.moleclist:
+                if mol.type == "Complex" and hasattr(mol,"scope_guess_spin"): ncomplex += 1
+
+            ## Helec per molecule: ##
+            Helec = gmol.Helec / ncomplex * Constants.ry2har
+
+            if overwrite or not "Helec" in recipe.results.keys():
+                recipe.add_result(data("Helec",Helec,'au/molec',"extract_dH_solid"), overwrite=overwrite)
+                print(gmol.spin, "Helec:")
+                print(recipe.results["Helec"])
 
 def extract_thermal_data(sys: object, branch_keyword: str, Trange: range=range(10,501,1), overwrite: bool=False, debug: int=0):
 

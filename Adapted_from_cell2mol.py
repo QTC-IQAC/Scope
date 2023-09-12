@@ -7,6 +7,8 @@ from typing import Tuple
 from Scope.Elementdata import ElementData  
 elemdatabase = ElementData()
 
+from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
+
 ################################
 def labels2formula(labels):
     elems = elemdatabase.elementnr.keys()
@@ -146,7 +148,6 @@ def get_molecules(labels: list, pos: list, factor: float=1.3, debug: int=0) -> T
 
     # status indicates whether the adjacency matrix could be built normally, or errors were detected. Typically, those errors are steric clashes
     if status == 1:
-        Warning = False
         degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
         lap = adjmat - degree     # computes laplacian
 
@@ -183,8 +184,12 @@ def get_molecules(labels: list, pos: list, factor: float=1.3, debug: int=0) -> T
                     atlist.append(i)
             radiilist = get_radii(labelist)
 
-            moleclist.append(list([atlist, labelist, poslist, radiilist]))
-    return Warning, moleclist
+            newmolec = molecule(str(b), atlist, labelist, poslist, radiilist)
+            newmolec.information(1.3,1.0)
+
+            moleclist.append(newmolec)
+            #moleclist.append(list([atlist, labelist, poslist, radiilist]))
+    return moleclist
 
 ################################
 def get_centroid(coord: list) -> list:

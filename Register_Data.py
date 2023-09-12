@@ -84,6 +84,8 @@ def reg_optimization(comp: object, debug: int=0):
     ### Defines tag for the new geometry. We avoid blanks
     if ' ' in comp._job.keyword:      new_tag = comp._job.keyword.replace(' ','_')
     else:                             new_tag = comp._job.keyword
+    if '-' in comp._job.keyword:      new_tag = comp._job.keyword.replace('-','_')
+    else:                             new_tag = comp._job.keyword
 
     worked = False
     ###############
@@ -173,6 +175,21 @@ def reg_frequencies(comp: object, debug: int=0):
             new_tag = "min_coord"
             if hasattr(gmol,new_tag): gmol_update_geom(gmol, new_coord, tag=new_tag, debug=debug)
             else:                     gmol_create_geom(gmol, new_coord, tag=new_tag, debug=debug)
+    return worked
+
+###########################################
+def reg_energy(comp: object, debug: int=0):
+    gmol = comp._job._recipe.subject
+
+    ### If not yet available, it reads the output lines
+    if not hasattr(comp,'output_lines'): comp.read_lines()
+    lines = comp.output_lines
+
+    worked = False
+    if comp.software == "g16": energy = float(G16_get_last_energy(lines))
+    if comp.software == "qe":  energy = float(parse_final_energy(lines, debug=debug))
+
+    if type(energy) == float: worked = True; gmol.Helec = energy
     return worked
 
 ###########################################

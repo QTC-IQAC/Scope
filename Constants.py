@@ -14,10 +14,10 @@ har2kJmol=2625.5002
 har2cm=219474.6
 eV2har=0.03674930495
 cm2har=0.000004556335281
+ry2har=0.5
 
 
-
-### Derived Factors. Always tobe applied as multiplications
+### Derived Factors. Always to be applied as multiplications
 
 cm2s_1=100*speed_light
 eV2s_1=eV2har*har2cm*cm2s_1

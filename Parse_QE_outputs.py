@@ -9,7 +9,7 @@ import Scope.Constants
 
 bohr2angs = Scope.Constants.bohr2angs
 
-def check_job_requirements(lines: str, key_str: list=["JOB DONE", "Begin final coordinates", "End final coordinates"], debug: int=0):
+def check_job_requirements(lines: list, key_str: list=["JOB DONE", "Begin final coordinates", "End final coordinates"], debug: int=0):
     item = []
     bools = []
     for sx, string in enumerate(key_str):
@@ -45,7 +45,7 @@ def get_cell_vectors(lines, debug: int=0):
     cellparam = cellvec_2_cellparam(cellvec)
     return cellvec, celldim, cellparam
     
-def parse_final_geoopt_step(lines: str, debug: int=0):
+def parse_final_geoopt_step(lines, debug: int=0):
     last_step_init = "Self-consistent Calculation"
     last_step_last = "End final coordinates"
     last_step_init_line, found1 = search_string(last_step_init, lines, typ="last")
@@ -72,7 +72,7 @@ def parse_final_geoopt_step(lines: str, debug: int=0):
     else: worked = False
     return worked, last_step_init_line, last_step_last_line 
     
-def parse_final_geometry(lines: str, debug: int=0):
+def parse_final_geometry(lines, debug: int=0):
     key_line, key_found = check_job_requirements(lines, debug=debug)
     worked, last_step_init_line, last_step_last_line = parse_final_geoopt_step(lines, debug=debug)
     if not worked: 
@@ -135,30 +135,34 @@ def parse_final_geometry(lines: str, debug: int=0):
             #print("coord[-1]=", coord[-1])
         return labels, coord
 
-def parse_final_energy(lines: str, debug: int=0):
+def parse_final_energy(lines, debug: int=0):
     string="Final energy   ="
-    linenum = search_string(string, lines, typ="last")[0]
-    val = lines[linenum].split()[2]
+    linenum, found = search_string(string, lines, typ="last")
+    if found: val = float(lines[linenum].split()[3])
+    else:
+        string = "!    total energy              ="
+        linenum, found  = search_string(string, lines, typ="last")
+        if found: val = float(lines[linenum].split()[4])
+        else: return None
     return val 
 
-def parse_hubbard_energy(lines: str, debug: int=0):
+def parse_hubbard_energy(lines, debug: int=0):
     string = "Hubbard energy            ="
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
     return val 
 
-def parse_grimme_energy(lines: str, debug: int=0):
+def parse_grimme_energy(lines, debug: int=0):
     string = "DFT-D3 Dispersion         ="
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
     return val 
 
-def parse_total_energy(lines: str, debug: int=0):
+def parse_total_energy(lines, debug: int=0):
     string = "!    total energy"
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
     return val
-
 
 def QE_elapsed_time(eline: str, debug: int=0):
     time = eline.split("WALL")[-2]
