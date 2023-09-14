@@ -64,7 +64,7 @@ class state(object):
     def add_computation(self, computation: object):
         self.computations.append(computation)
 
-    def reconstruct(self):
+    def reconstruct(self, debug: int=0):
         if hasattr(self._subject,"type") and hasattr(self,"cellvec"):
             if not hasattr(self,"moleclist"): self.set_moleclist() 
             if self._subject.type.lower() == "cell":
@@ -79,7 +79,9 @@ class state(object):
                 metal_factor = reflist[0].metal_factor
                 moleclist, fraglist, Hlist, init_natoms = identify_frag_molec_H(blocklist, moleclist, refmoleclist, cellvec) 
                 if len(fraglist) > 0 or len(Hlist) > 0: moleclist, finalmols, Warning = fragments_reconstruct(moleclist,fraglist,Hlist,refmoleclist,cellvec,covalent_factor,metal_factor); moleclist.extend(finalmols); self.moleclist = moleclist
-            else: return self.moleclist
+            else: print("WARNING: reconstruct state, _subject is not a cell. I will not reconstruct")
+        else: print("WARNING: reconstruct state, _subject does not have 'type' or 'cellvec' variables")
+        return self.moleclist
         
 #########################################################################
 ## Tools associated with states. Normally, these would be class functions...
