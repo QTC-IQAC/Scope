@@ -50,9 +50,8 @@ def gmol_remove_geom(mol: object, tag: str="new_coord", debug: int=0) -> None:
 #        for jdx, at in enumerate(mol.atoms):
 #            setattr(at,tag,new_coord[mol.atlist[jdx]])
 
-def displace_neg_freqs(gmol: object, ini_coord_tag: str="coord", debug: int=0) -> list:
-    ini_coord = getattr(gmol,ini_coord_tag)
-    disp_coord = vnm_displacement(gmol.VNMs, ini_coord)
+def displace_neg_freqs(ini_coord, VNMs: object, debug: int=0) -> list:
+    disp_coord = vnm_displacement(VNMs, ini_coord)
     return disp_coord
 
 def cell_update_geom(cell: object, new_coord: list, tag: str="coord", debug: int=0) -> None:

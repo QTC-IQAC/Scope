@@ -225,6 +225,8 @@ class computation(object):
         to_print += f' Type of Object        = {self._job._recipe.subject.type}\n'
         to_print += f' Recipe                = {self._job._recipe.keyword}\n'
         to_print += f' Job                   = {self._job.keyword}\n'
+        to_print += f' Initial State         = {self._job.istate}\n'
+        to_print += f' Final State           = {self._job.fstate}\n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' self.software         = {self.software}\n'
         to_print += f' self.index            = {self.index}\n' 

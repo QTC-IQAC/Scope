@@ -20,7 +20,9 @@ def gen_G16_input(comp, debug: int=0):
     basis = comp.qc_data.basis
     loose_opt = comp.qc_data.loose_opt
     tight_opt = comp.qc_data.tight_opt
-    coord_tag = comp.qc_data.coord_tag
+
+    assert hasattr(comp.qc_data,istate), f"istate = {istate} not found in gmol"
+    istate    = comp.qc_data.istate
 
     ### 2-Starts printing input 
     with open(comp.inp_path, 'w') as inp:
@@ -69,16 +71,21 @@ def gen_G16_input(comp, debug: int=0):
         print("", file=inp) 
         print(f"{gmol.totcharge} {comp.spin_config.multiplicity}", file=inp) 
 
-        ####################################################
-        ### Coordinates, which are taken from gmol object ###
-        ####################################################
-        assert hasattr(gmol,coord_tag), f"{coord_tag} = coord_tag not found in gmol"
-        for a in gmol.atoms:
-            ta = getattr(a,coord_tag)
-            if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (a.label, ta[0], ta[1], ta[2]), file=inp)
+        ##################################################################
+        ### Coordinates, which are taken from the initial state object ###
+        ##################################################################
+        for idx, z in zip(istate.labels, istate.coord):
+            if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (z[0], z[1][0], z[1][1], z[1][2]), file=inp)
             else: 
-                if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (a.label, " 0", ta[0], ta[1], ta[2]), file=inp)
-                else:              print("%s $s %.6f  %.6f  %.6f" % (a.label, "-1", ta[0], ta[1], ta[2]), file=inp)
+                if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (z[0].label, " 0", z[1][0], z[1][1], s[1][2]), file=inp)
+                else:              print("%s $s %.6f  %.6f  %.6f" % (z[0].label, "-1", z[1][0], z[1][1], s[1][2]), file=inp)
+
+        #for a in gmol.atoms:
+        #    ta = getattr(a,igeom)
+        #    if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (a.label, ta[0], ta[1], ta[2]), file=inp)
+        #    else: 
+        #        if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (a.label, " 0", ta[0], ta[1], ta[2]), file=inp)
+        #        else:              print("%s $s %.6f  %.6f  %.6f" % (a.label, "-1", ta[0], ta[1], ta[2]), file=inp)
         print("", file=inp) 
 
 ###################################################

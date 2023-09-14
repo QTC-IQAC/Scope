@@ -71,6 +71,12 @@ class input_data(object):
         except:   attr = value
         self.dct[key] = attr
         setattr(self, key, attr)
+
+    def _mod_attr(self, key: str, value):
+        try:      attr = literal_eval(value)
+        except:   attr = value
+        self.dct[key] = attr
+        setattr(self, key, attr)
  
     def __add__(self, other):
         if not isinstance(other, type(self)): return self
@@ -134,10 +140,18 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"hierarchy"):     print("WARNING: job_data is missing hierarchy"); exit() 
     if not hasattr(data,"suffix"):        data._add_attr("suffix", str(data.hierarchy))
     if not hasattr(data,"keyword"):       data._add_attr("keyword", str(data.suffix))
+    if not hasattr(data,"istate"):        data._add_attr("istate", str("initial"))
+    if not hasattr(data,"fstate"):        data._add_attr("fstate", str(data.suffix))
     if not hasattr(data,"setup"):         data._add_attr("setup", "regular")
     if not hasattr(data,"requisites"):    data._add_attr("requisites", [])
     if not hasattr(data,"constrains"):    data._add_attr("constrains", ['self'])
     if not hasattr(data,"must_be_good"):  data._add_attr("must_be_good", False)
+
+    ## Modifies some attributes to avoid blank spaces and hyphens, and to use lower letters
+    data._mod_attr("keyword",str(data.keyword.lower()))
+    data._mod_attr("istate",str(data.istate.lower().replace("-","_").replace(" ","_")))
+    data._mod_attr("fstate",str(data.fstate.lower().replace("-","_").replace(" ","_")))
+
     return data
 
 def fill_qc_data(data: object, debug: int=0):
@@ -152,10 +166,10 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"loose_opt"):     data._add_attr("loose_opt", False)
         if not hasattr(data,"tight_opt"):     data._add_attr("tight_opt", False)
         if not hasattr(data,"is_grimme"):     data._add_attr("is_grimme", False)
-        if not hasattr(data,"coord_tag"):     data._add_attr("coord_tag", "coord")
+        #if not hasattr(data,"coord_tag"):     data._add_attr("coord_tag", "coord")
 
     elif data.software == "qe":
-        if not hasattr(data,"coord_tag"):     data._add_attr("coord_tag", "coord")
+        #if not hasattr(data,"coord_tag"):     data._add_attr("coord_tag", "coord")
         if not hasattr(data,"jobtype"):       data._add_attr("jobtype", "scf")
         if not hasattr(data,"functional"):    data._add_attr("functional", "pbe")
         if not hasattr(data,"is_hubbard"):    data._add_attr("is_hubbard", False)

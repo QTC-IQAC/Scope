@@ -110,6 +110,7 @@ def gen_QE_input(comp, debug: int=0):
         print(f"    pseudo_dir ='{PP_Library}'", file=inp)
         print( "    disk_io='low'", file=inp)
 
+        if 'uam' in cluster: print( "    max_seconds=61200", file=inp)
         if 'portal' in cluster: print(f"    outdir='/scratch/g4vela/QE_WFC'", file=inp)
         elif 'csuc' in cluster or 'login' in cluster: print(f"    outdir='/scratch/svela/QE_WFC/'", file=inp) 
 

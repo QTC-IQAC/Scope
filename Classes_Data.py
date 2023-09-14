@@ -29,6 +29,7 @@ class collection(object):
                 value = getattr(data, condition_name)
                 if value == condition_value: return data
 
+    ### Should be changed to __repr__
     def format(self):
         if self.units == 'kj': units = 'kJ/mol'
         to_print  = f'---------------------------------------------------\n'

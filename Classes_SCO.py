@@ -10,6 +10,7 @@ from Scope.Parse_Cif import get_cif_diffraction_data, get_cif_authors, get_cif_j
 from Scope.Parse_General import search_string, read_lines_file 
 from Scope.Geom_SCO_V1 import geom_sco_from_xyz, guess_spin_state
 from Scope.Read_Write import save_binary, load_binary
+from Scope.Classes_State import state
 #from Scope.Gmol_ops import cell_posttocoord
 
 from Scope.Workflow import Branch
@@ -156,6 +157,12 @@ class sco_system(object):
                 if debug > 0: print(f"LS reference molecule assumed")
         else: print("Empty pool of reference molecules")
 
+        # Creates "initial" states:
+        HS_ini_state = state(self.HS_ref_mol, "initial")
+        HS_ini_state.set_geometry(self.HS_ref_mol.labels, self.HS_ref_mol.coord)
+        LS_ini_state = state(self.LS_ref_mol, "initial")
+        LS_ini_state.set_geometry(self.LS_ref_mol.labels, self.LS_ref_mol.coord)
+
     ##########
     def set_reference_crystals(self, debug: int=0):
         self.has_HS_ref_crys = False
@@ -219,6 +226,16 @@ class sco_system(object):
             setattr(self.LS_ref_crys.cell,"spin","LS")
             if debug > 0: print(f"LS reference crystal assumed")
 
+        # Creates "initial" states:
+        HS_ini_state = state(self.HS_ref_crys, "initial")
+        HS_ini_state.set_geometry(self.HS_ref_crys.cell.labels, self.HS_ref_crys.cell.coord)
+        HS_ini_state.set_cell(self.HS_ref_crys.cell.cellvec, self.HS_ref_crys.cell.cellparam)
+        HS_ini_state.set_moleclist()
+
+        LS_ini_state = state(self.LS_ref_crys, "initial")
+        LS_ini_state.set_geometry(self.LS_ref_crys.cell.labels, self.LS_ref_crys.cell.coord)
+        LS_ini_state.set_cell(self.LS_ref_crys.cell.cellvec, self.LS_ref_crys.cell.cellparam)
+        LS_ini_state.set_moleclist()
 
 ###########################################
     def __repr__(self) -> None:
@@ -246,6 +263,20 @@ class crystal(object):
         self._sys              = sys
         self.cell2mol_path     = cell2mol_path
         self.list_of_molecules = []
+
+        self.fix_cell_coord()
+
+    ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell. 
+    ## However, the molecule and atom objects are updated. We use this info to update the cell
+    def fix_cell_coord(self) -> None:
+        self.cell.labels = []
+        self.cell.pos    = []
+        self.cell.coord  = []
+        for mol in self.cell.moleclist:
+            for a in mol.atoms:
+                self.cell.labels.append(a.label)
+                self.cell.pos.append(a.coord)
+                self.cell.coord.append(a.coord)
 
     def read_cif_data(self, cifpath: str) -> None:
         self.diff_temp         = get_cif_diffraction_data(cifpath) 

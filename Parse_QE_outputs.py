@@ -25,12 +25,12 @@ def get_cell_vectors(lines, debug: int=0):
         cellvec_lines.append(search_string(s, lines, typ="last")[0])
     celldim = []
     try:
-        celldim.append(float(lines[cellvec_lines[0]].split()[1]))
-        celldim.append(float(lines[cellvec_lines[0]].split()[3]))
-        celldim.append(float(lines[cellvec_lines[0]].split()[5]))
-        celldim.append(float(lines[cellvec_lines[1]].split()[1]))
-        celldim.append(float(lines[cellvec_lines[1]].split()[3]))
-        celldim.append(float(lines[cellvec_lines[1]].split()[5]))
+        celldim.append(float(lines[cellvec_lines[0]].split()[1])*bohr2angs)
+        celldim.append(float(lines[cellvec_lines[0]].split()[3])*bohr2angs)
+        celldim.append(float(lines[cellvec_lines[0]].split()[5])*bohr2angs)
+        celldim.append(float(lines[cellvec_lines[1]].split()[1])*bohr2angs)
+        celldim.append(float(lines[cellvec_lines[1]].split()[3])*bohr2angs)
+        celldim.append(float(lines[cellvec_lines[1]].split()[5])*bohr2angs)
     except Exception as exc:
         print("Error trying to parse cell dimensions from file")
         print("Exception is:", exc)
@@ -43,7 +43,37 @@ def get_cell_vectors(lines, debug: int=0):
     cellvec.append(v2*celldim[0])
     cellvec.append(v3*celldim[0])
     cellparam = cellvec_2_cellparam(cellvec)
-    return cellvec, celldim, cellparam
+    return np.array(cellvec), celldim, cellparam
+
+#def get_cell_vectors(lines, debug: int=0):
+#    cellvec_lines = []
+#    cellvec_strings = ["celldm(1)", "celldm(4)", "crystal axes", "unit-cell volume"]
+#    for sdx, s in enumerate(cellvec_strings):
+#        cellvec_lines.append(search_string(s, lines, typ="last")[0])
+#    celldim = []
+#    try:
+#        print(bohr2angs)
+#        celldim.append(float(lines[cellvec_lines[0]].split()[1]))
+#        celldim.append(float(lines[cellvec_lines[0]].split()[3]))
+#        celldim.append(float(lines[cellvec_lines[0]].split()[5]))
+#        celldim.append(float(lines[cellvec_lines[1]].split()[1]))
+#        celldim.append(float(lines[cellvec_lines[1]].split()[3]))
+#        celldim.append(float(lines[cellvec_lines[1]].split()[5]))
+#    except Exception as exc:
+#        print("Error trying to parse cell dimensions from file")
+#        print("Exception is:", exc)
+#        print("cellvec_lines:", cellvec_lines)
+#    cellvec = []
+#    v1 = np.array(lines[cellvec_lines[2]+1].split("=")[1].replace(")", "").replace("(", "").split()).astype(float)
+#    v2 = np.array(lines[cellvec_lines[2]+2].split("=")[1].replace(")", "").replace("(", "").split()).astype(float)
+#    v3 = np.array(lines[cellvec_lines[2]+3].split("=")[1].replace(")", "").replace("(", "").split()).astype(float)
+#    cellvec.append(v1*celldim[0])
+#    cellvec.append(v2*celldim[0])
+#    cellvec.append(v3*celldim[0])
+#    cellparam = cellvec_2_cellparam(cellvec)
+#
+#    ## Values are given in angstrom
+#    return cellvec, celldim, cellparam
     
 def parse_final_geoopt_step(lines, debug: int=0):
     last_step_init = "Self-consistent Calculation"

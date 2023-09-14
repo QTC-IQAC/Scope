@@ -17,18 +17,22 @@ class job(object):
         self.type             = "job"
         self._recipe          = _recipe
         self.path             = _recipe.path
-        self.keyword          = job_data.keyword.lower()
-        self.job_data         = job_data    ## I hate to do this
+        self.job_data         = job_data    
+        self.computations     = []
+        self.isregistered     = False
+        self.isgood           = False
+        self.isfinished       = False
+        
+        ## I hate to do this; repeat variables from job_data
+        self.keyword          = job_data.keyword
+        self.istate           = job_data.istate
+        self.fstate           = job_data.fstate
         self.hierarchy        = int(job_data.hierarchy)
         self.suffix           = job_data.suffix
         self.requisites       = job_data.requisites
         self.constrains       = job_data.constrains
         self.setup            = job_data.setup.lower()
         self.must_be_good     = job_data.must_be_good                
-        self.computations     = []
-        self.isregistered     = False
-        self.isgood           = False
-        self.isfinished       = False
 
         ## Corrects self.path in case the user forgets to add '/' 
         if self.path[-1] != '/': self.path += '/'
@@ -133,47 +137,60 @@ class job(object):
 ### Create Computations Set ###
 ###############################
     def set_computations_from_setup(self, qc_data: object, debug: int=0): 
-        ## Requires qc_data as external input
 
-        ## Setup for regular computations: "1 job=1 computation"
+        ## For Simplicity
+        gmol = self._recipe.subject
+
+        #####################
+        ## 1- Setup for regular computations: "1 job => 1 computation"
+        #####################
         if self.setup == "regular" or self.setup == "reg":
             exists, comp = self.find_computation()
-            if not exists: new_computation = self.add_computation(int(1), qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
+            if not exists: comp = self.add_computation(int(1), qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
+            comp.qc_data._add_attr("istate",self.istate)         
 
-        ## Setup for finite Differences
+        #####################
+        ## 2- Setup to create displaced geometries using VNM to escape from local minima
+        #####################
         elif self.setup == "displacement" or self.setup == "disp":
-            from Scope.Gmol_ops import gmol_update_geom, gmol_create_geom
+            initial_state = find_state(gmol, self.istate)
 
             #### Only applies to geometries that are not minimum
-            gmol = self._recipe.subject
-            if hasattr(gmol,"isminimum"):
-                if not gmol.isminimum: 
-                    from Scope.Gmol_ops import displace_neg_freqs 
-                    exists, comp = self.find_computation()
-                    if not exists: new_computation = self.add_computation(int(1), qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
-
+            if hasattr(initial_state,"coord") and hasattr(initial_state,"VNMs") and hasattr(initial_state,"isminimum"):
+                if not initial_state.isminimum: 
                     ## Displaces Coordinates Following Negative Freqs ###
-                    disp_coord = displace_neg_freqs(gmol,ini_coord_tag=qc_data.coord_tag,debug=debug)
-                    newtag = "disp_coord"
-                    if hasattr(gmol,newtag): gmol_update_geom(gmol, disp_coord, tag=newtag, debug=debug)
-                    else:                    gmol_create_geom(gmol, disp_coord, tag=newtag, debug=debug)
+                    from Scope.Gmol_ops import displace_neg_freqs 
+                    disp_coord = displace_neg_freqs(initial_state.coord, initial_state.VNMs,debug=debug)
+                    final_state = find_state(gmol, self.fstate)                  # Creates New State with Displaced Coordinates
+                    final_state.set_geometry(initial_state.labels, disp_coord)   # Creates New State with Displaced Coordinates 
+
+                    # Initial State of the Computation must be updated, to account for the displacement of geometries
+                    exists, comp = self.find_computation()
+                    if not exists: comp = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
+                    comp.qc_data._add_attr("istate",self.fstate)         ## Updates the initial state of the computation, so it takes the displaced geometries
+
                 else: self._recipe.remove_job(keyword=self.keyword)    # not sure if this is possible
             else:     self._recipe.remove_job(keyword=self.keyword)    # I'm trying to delete the job when it is not necessary
         
-        ## Setup for finite Differences
+        #####################
+        ## 3- Setup for finite Differences
+        #####################
         elif self.setup == "findiff": 
-            from Scope.Findiff import findiff_displacements
-            backup_coord_tag = qc_data.coord_tag
-            findiff_path = self.path+"findiff"
-            geoms, names = findiff_displacements(qc_data.coord_tag, debug=debug)
-            for idx, geo in enumerate(geoms):
-                if hasattr(self._job._recipe._obj,names[idx]):  gmol_update_geom(self._job._recipe._obj, geo, tag=names[idx], debug=debug)
-                else:                                           gmol_create_geom(self._job._recipe._obj, geo, tag=names[idx], debug=debug)
-                qc_data.coord_tag = names[idx]
+            initial_state = find_state(gmol, self.istate)
 
-                # Computations are only added if they do not exist
-                exists, comp = self.find_computation(keyword=names[idx])
-                if not exists: new_computation = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
+            if hasattr(initial_state,"coord"):
+                from Scope.Findiff import findiff_displacements
+                findiff_path = self.path+"findiff"
+                geoms, names = findiff_displacements(initial_state.coord, debug=debug)
+                for idx, geo in enumerate(geoms):
+                    assert len(geo) == len(initial_state.labels)
+                    final_state = find_state(gmol,names[idx])
+                    final_state.set_geometry(initial_state.labels, geo)
+
+                    # Initial State of the Computation must be updated, to account for the displacement of geometries
+                    exists, comp = self.find_computation(keyword=names[idx])
+                    if not exists: comp = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
+                    comp.qc_data._add_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
 
         else: pass
                  

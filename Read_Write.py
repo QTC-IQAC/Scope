@@ -54,6 +54,11 @@ def writexyz(fdir, fname, labels, coord, charge: int=0, spin: int=1):
         for idx, l in enumerate(labels):
             print("%s  %.6f  %.6f  %.6f" % (l, coord[idx][0], coord[idx][1], coord[idx][2]),file=fil)
 
+def print_xyz(labels, coord):
+    for idx, l in enumerate(labels):
+        print("%s  %.6f  %.6f  %.6f" % (l, coord[idx][0], coord[idx][1], coord[idx][2]))
+
+
 #######################
 def read_xyz(xyz_file):
     assert(xyz_file[-4:] == ".xyz")
