@@ -274,11 +274,18 @@ class crystal(object):
         self.cell.labels = []
         self.cell.pos    = []
         self.cell.coord  = []
+        indices          = []
         for mol in self.cell.moleclist:
-            for a in mol.atoms:
+            for idx, a in enumerate(mol.atoms):
                 self.cell.labels.append(a.label)
                 self.cell.pos.append(a.coord)
                 self.cell.coord.append(a.coord)
+                indices.append(mol.atlist[idx])
+        ## Below is to order the atoms as in the original cell, using the indices stored in the molecule object
+        self.cell.labels = [x for _, x in sorted(zip(indices, self.cell.labels), key=lambda pair: pair[0])]
+        self.cell.pos = [x for _, x in sorted(zip(indices, self.cell.pos), key=lambda pair: pair[0])]
+        self.cell.coord = [x for _, x in sorted(zip(indices, self.cell.coord), key=lambda pair: pair[0])]
+        assert len(self.cell.labels) == len(self.cell.pos)
 
     def read_cif_data(self, cifpath: str) -> None:
         self.diff_temp         = get_cif_diffraction_data(cifpath) 

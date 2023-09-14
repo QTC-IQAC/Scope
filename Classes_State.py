@@ -31,6 +31,25 @@ class state(object):
         self.pos         = pos 
         self.coord       = pos 
         self.natoms      = len(labels)
+        assert len(self.labels) == len(self.pos)
+
+    def set_geometry_from_moleclist(self.moleclist):
+        self.labels      = []
+        self.pos         = []
+        self.coord       = []
+        indices     = []
+        for mol in self.moleclist:
+            for idx, at in enumerate(mol.atoms):
+                self.labels.append(at.label)
+                self.pos.append(at.coord)
+                self.coord.append(at.coord)
+                indices.append(mol.atlist[idx])
+        ## Below is to order the atoms as in the original cell, using the indices stored in the molecule object
+        self.labels = [x for _, x in sorted(zip(indices, self.labels), key=lambda pair: pair[0])]
+        self.pos = [x for _, x in sorted(zip(indices, self.pos), key=lambda pair: pair[0])]
+        self.coord = [x for _, x in sorted(zip(indices, self.coord), key=lambda pair: pair[0])]
+        self.natoms = len(self.labels)
+        assert len(self.labels) == len(self.pos)
          
     def set_cell(self, cellvec, cellparam):
         self.cellvec     = cellvec
@@ -69,7 +88,7 @@ class state(object):
             if not hasattr(self,"moleclist"): self.set_moleclist() 
             if self._subject.type.lower() == "cell":
                 from cell2mol import cell_reconstruct
-                from cell2mol.cell_reconstruct import identify_frag_molec_H, getmolecs, tmatgenerator, additem, assigntype
+                from cell2mol.cell_reconstruct import identify_frag_molec_H, getmolecs, tmatgenerator, additem, assigntype, fragments_reconstruct
                 from cell2mol.cellconversions import frac2cart_fromparam, cart2frac, translate
                 import itertools
                 blocklist = self.moleclist.copy()
@@ -78,7 +97,12 @@ class state(object):
                 covalent_factor = refmoleclist[0].factor
                 metal_factor = refmoleclist[0].metal_factor
                 moleclist, fraglist, Hlist, init_natoms = identify_frag_molec_H(blocklist, moleclist, refmoleclist, self.cellvec) 
-                if len(fraglist) > 0 or len(Hlist) > 0: moleclist, finalmols, Warning = fragments_reconstruct(moleclist,fraglist,Hlist,refmoleclist,self.cellvec,covalent_factor,metal_factor); moleclist.extend(finalmols); self.moleclist = moleclist
+                if len(fraglist) > 0 or len(Hlist) > 0: 
+                    moleclist, finalmols, Warning = fragments_reconstruct(moleclist,fraglist,Hlist,refmoleclist,self.cellvec,covalent_factor,metal_factor)
+                    moleclist.extend(finalmols)
+                    self.moleclist = moleclist
+                    self.set_geometry_from_moleclist()
+ 
             else: print("WARNING: reconstruct state, _subject is not a cell. I will not reconstruct")
         else: print("WARNING: reconstruct state, _subject does not have 'type' or 'cellvec' variables")
         return self.moleclist
