@@ -75,8 +75,8 @@ class state(object):
                 blocklist = self.moleclist.copy()
                 moleclist = []
                 refmoleclist = self._subject.refmoleclist.copy()
-                covalent_factor = reflist[0].factor
-                metal_factor = reflist[0].metal_factor
+                covalent_factor = refmoleclist[0].factor
+                metal_factor = refmoleclist[0].metal_factor
                 moleclist, fraglist, Hlist, init_natoms = identify_frag_molec_H(blocklist, moleclist, refmoleclist, cellvec) 
                 if len(fraglist) > 0 or len(Hlist) > 0: moleclist, finalmols, Warning = fragments_reconstruct(moleclist,fraglist,Hlist,refmoleclist,cellvec,covalent_factor,metal_factor); moleclist.extend(finalmols); self.moleclist = moleclist
             else: print("WARNING: reconstruct state, _subject is not a cell. I will not reconstruct")
