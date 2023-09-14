@@ -72,7 +72,7 @@ class state(object):
                 from cell2mol.cell_reconstruct import identify_frag_molec_H, getmolecs, tmatgenerator, additem, assigntype
                 from cell2mol.cellconversions import frac2cart_fromparam, cart2frac, translate
                 import itertools
-                blocklist = moleclist.copy()
+                blocklist = self.moleclist.copy()
                 moleclist = []
                 reflist = self._subject.refmoleclist
                 covalent_factor = reflist[0].factor
