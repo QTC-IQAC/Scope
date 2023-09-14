@@ -74,7 +74,7 @@ class state(object):
                 import itertools
                 blocklist = self.moleclist.copy()
                 moleclist = []
-                reflist = self._subject.refmoleclist
+                refmoleclist = self._subject.refmoleclist.copy()
                 covalent_factor = reflist[0].factor
                 metal_factor = reflist[0].metal_factor
                 moleclist, fraglist, Hlist, init_natoms = identify_frag_molec_H(blocklist, moleclist, refmoleclist, cellvec) 
