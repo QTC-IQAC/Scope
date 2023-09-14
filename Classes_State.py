@@ -2,7 +2,7 @@ from Scope.Adapted_from_cell2mol import get_molecules
 from Scope.Elementdata import ElementData
 elemdatabase = ElementData()
 
-from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
+#from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 
 ##############
 ### STATES ###
@@ -63,6 +63,23 @@ class state(object):
 
     def add_computation(self, computation: object):
         self.computations.append(computation)
+
+    def reconstruct(self):
+        if hasattr(self._subject,"type") and hasattr(self,"cellvec"):
+            if not hasattr(self,"moleclist"): self.set_moleclist() 
+            if self._subject.type.lower() == "cell":
+                from cell2mol import cell_reconstruct
+                from cell2mol.cell_reconstruct import identify_frag_molec_H, getmolecs, tmatgenerator, additem, assigntype
+                from cell2mol.cellconversions import frac2cart_fromparam, cart2frac, translate
+                import itertools
+                blocklist = moleclist.copy()
+                moleclist = []
+                reflist = self._subject.refmoleclist
+                covalent_factor = reflist[0].factor
+                metal_factor = reflist[0].metal_factor
+                moleclist, fraglist, Hlist, init_natoms = identify_frag_molec_H(blocklist, moleclist, refmoleclist, cellvec) 
+                if len(fraglist) > 0 or len(Hlist) > 0: moleclist, finalmols, Warning = fragments_reconstruct(moleclist,fraglist,Hlist,refmoleclist,cellvec,covalent_factor,metal_factor); moleclist.extend(finalmols); self.moleclist = moleclist
+            else: return self.moleclist
         
 #########################################################################
 ## Tools associated with states. Normally, these would be class functions...

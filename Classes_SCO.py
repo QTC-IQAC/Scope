@@ -90,7 +90,7 @@ class sco_system(object):
         for idx, br in enumerate(self.branches):
             if debug > 0: print("evaluating branch with keyword:", br.keyword, "and path:", br.path)
             if br.keyword == keyword:
-                if not os.path.isdir(br.path): print(f"{br.path} does not exists. Loading the branch anyway")
+                if not os.path.isdir(br.path): print(f"WARNING: branch path does not exists. Loading the branch anyway")
                 return True, br
         return False, None
 
@@ -269,7 +269,7 @@ class crystal(object):
         self.fix_cell_coord()
 
     ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell. 
-    ## However, the molecule and atom objects are updated. We use this info to update the cell
+    ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
     def fix_cell_coord(self) -> None:
         self.cell.labels = []
         self.cell.pos    = []
