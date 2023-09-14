@@ -74,11 +74,11 @@ def gen_G16_input(comp, debug: int=0):
         ##################################################################
         ### Coordinates, which are taken from the initial state object ###
         ##################################################################
-        for idx, z in zip(istate.labels, istate.coord):
+        for idx, z in enumerate(zip(istate.labels, istate.coord)):
             if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (z[0], z[1][0], z[1][1], z[1][2]), file=inp)
             else: 
-                if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (z[0].label, " 0", z[1][0], z[1][1], s[1][2]), file=inp)
-                else:              print("%s $s %.6f  %.6f  %.6f" % (z[0].label, "-1", z[1][0], z[1][1], s[1][2]), file=inp)
+                if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (z[0], " 0", z[1][0], z[1][1], s[1][2]), file=inp)
+                else:              print("%s $s %.6f  %.6f  %.6f" % (z[0], "-1", z[1][0], z[1][1], s[1][2]), file=inp)
 
         #for a in gmol.atoms:
         #    ta = getattr(a,igeom)

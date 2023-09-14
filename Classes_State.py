@@ -30,8 +30,7 @@ class state(object):
         self.labels      = labels
         self.pos         = pos 
         self.coord       = pos 
-        for idx, at in enumerate(_subject.atoms):
-            setattr(at,self.name,    
+        self.natoms      = len(labels)
          
     def set_cell(self, cellvec, cellparam):
         self.cellvec     = cellvec
@@ -51,6 +50,13 @@ class state(object):
         else: 
             self.moleclist = []
         return self.moleclist
+
+    def set_atoms(self):
+        if not hasattr(self,"moleclist"): self.set_moleclist()
+        self.atoms = []
+        for mol in self.moleclist:
+            for at in mol.atoms:
+                self.atoms.append(at)
 
     def set_energy(self, energy):
         self.energy     = energy
