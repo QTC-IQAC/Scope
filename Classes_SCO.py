@@ -175,66 +175,78 @@ class sco_system(object):
         LS_ref_crys_temp = 1000
         for idx, crys in enumerate(self.crystals):
   
-            if not hasattr(crys,"phase"): crys.get_spin_and_phase_data(debug=debug)
+            if hasattr(crys.cell,"warning_list"):
+                if not any(crys.cell.warning_list):
+                    if not hasattr(crys,"phase"): crys.get_spin_and_phase_data(debug=debug)
 
-            ### This try/except block is to skip cases in which the diffraction temperature is not known
-            try: crys.diff_temp = float(crys.diff_temp)
-            except: continue
+                    ### This try/except block is to skip cases in which the diffraction temperature is not known
+                    try: crys.diff_temp = float(crys.diff_temp)
+                    except: continue
 
-            if crys.phase == "HS" and crys.diff_temp < HS_ref_crys_temp: 
-                self.HS_ref_crys = deepcopy(crys)
-                self.HS_ref_crys_id = idx
-                self.HS_ref_crys_temp = crys.diff_temp                
-                HS_ref_crys_temp = crys.diff_temp 
-                self.HS_ref_crys._sys  == self 
-                self.HS_ref_crys.type  == "crystal"
-                #self.HS_ref_crys.cell.type  == "cell"
-                setattr(self.HS_ref_crys.cell,"_sys",self)
-                setattr(self.HS_ref_crys.cell,"type","cell")
-                setattr(self.HS_ref_crys.cell,"spin","HS")
-                self.has_HS_ref_crys = True
-                if debug > 0: print(f"HS reference crystal found, new temperature is:", crys.diff_temp)
-            elif crys.phase == "LS" and crys.diff_temp < LS_ref_crys_temp: 
-                self.LS_ref_crys = deepcopy(crys)
-                self.LS_ref_crys_id = idx
-                self.LS_ref_crys_temp = crys.diff_temp                
-                LS_ref_crys_temp = crys.diff_temp                
-                self.LS_ref_crys._sys  == self 
-                self.LS_ref_crys.type  == "crystal"
-                setattr(self.LS_ref_crys.cell,"_sys",self)
-                setattr(self.LS_ref_crys.cell,"spin","LS")
-                setattr(self.LS_ref_crys.cell,"type","cell")
-                self.has_LS_ref_crys = True
-                if debug > 0: print(f"LS reference crystal found, new temperature is:", crys.diff_temp)
-            elif crys.phase == "IS":
-                if debug > 0: print(f"    Set_REF_Crystals: IS phase found but not implemented")
+                    if crys.phase == "HS" and crys.diff_temp < HS_ref_crys_temp: 
+                        self.HS_ref_crys = deepcopy(crys)
+                        self.HS_ref_crys_id = idx
+                        self.HS_ref_crys_temp = crys.diff_temp                
+                        HS_ref_crys_temp = crys.diff_temp 
+                        self.HS_ref_crys._sys  == self 
+                        self.HS_ref_crys.type  == "crystal"
+                        #self.HS_ref_crys.cell.type  == "cell"
+                        setattr(self.HS_ref_crys.cell,"_sys",self)
+                        setattr(self.HS_ref_crys.cell,"type","cell")
+                        setattr(self.HS_ref_crys.cell,"spin","HS")
+                        self.has_HS_ref_crys = True
+                        if debug > 0: print(f"HS reference crystal found, new temperature is:", crys.diff_temp)
+                    elif crys.phase == "LS" and crys.diff_temp < LS_ref_crys_temp: 
+                        self.LS_ref_crys = deepcopy(crys)
+                        self.LS_ref_crys_id = idx
+                        self.LS_ref_crys_temp = crys.diff_temp                
+                        LS_ref_crys_temp = crys.diff_temp                
+                        self.LS_ref_crys._sys  == self 
+                        self.LS_ref_crys.type  == "crystal"
+                        setattr(self.LS_ref_crys.cell,"_sys",self)
+                        setattr(self.LS_ref_crys.cell,"spin","LS")
+                        setattr(self.LS_ref_crys.cell,"type","cell")
+                        self.has_LS_ref_crys = True
+                        if debug > 0: print(f"LS reference crystal found, new temperature is:", crys.diff_temp)
+                    elif crys.phase == "IS":
+                        if debug > 0: print(f"    Set_REF_Crystals: IS phase found but not implemented")
 
         if not self.has_HS_ref_crys:
-            self.HS_ref_crys = deepcopy(self.crystals[0])
-            self.HS_ref_crys_id = 0
-            self.HS_ref_crys.phase == 'HS'
-            self.HS_ref_crys._sys  == self 
-            setattr(self.HS_ref_crys.cell,"type","cell")
-            setattr(self.HS_ref_crys.cell,"_sys",self)
-            setattr(self.HS_ref_crys.cell,"spin","HS")
-            if debug > 0: print(f"HS reference crystal assumed")
+            for idx, crys in enumerate(self.crystals):
+                if hasattr(crys.cell,"warning_list"):
+                    if not any(crys.cell.warning_list):
+                        self.HS_ref_crys = deepcopy(crys)
+                        self.HS_ref_crys_id = 0
+                        self.HS_ref_crys.phase == 'HS'
+                        self.HS_ref_crys._sys  == self 
+                        setattr(self.HS_ref_crys.cell,"type","cell")
+                        setattr(self.HS_ref_crys.cell,"_sys",self)
+                        setattr(self.HS_ref_crys.cell,"spin","HS")
+                        if debug > 0: print(f"HS reference crystal assumed")
+
         if not self.has_LS_ref_crys:
-            self.LS_ref_crys = deepcopy(self.crystals[0])
-            self.LS_ref_crys_id = 0
-            self.LS_ref_crys.phase == 'LS'
-            self.LS_ref_crys._sys  == self 
-            setattr(self.LS_ref_crys.cell,"type","cell")
-            setattr(self.LS_ref_crys.cell,"_sys",self)
-            setattr(self.LS_ref_crys.cell,"spin","LS")
-            if debug > 0: print(f"LS reference crystal assumed")
+            for idx, crys in enumerate(self.crystals):
+                if hasattr(crys.cell,"warning_list"):
+                    if not any(crys.cell.warning_list):
+                        self.LS_ref_crys = deepcopy(crys)
+                        #self.LS_ref_crys = deepcopy(self.crystals[0])
+                        self.LS_ref_crys_id = 0
+                        self.LS_ref_crys.phase == 'LS'
+                        self.LS_ref_crys._sys  == self 
+                        setattr(self.LS_ref_crys.cell,"type","cell")
+                        setattr(self.LS_ref_crys.cell,"_sys",self)
+                        setattr(self.LS_ref_crys.cell,"spin","LS")
+                        if debug > 0: print(f"LS reference crystal assumed")
 
         # Creates "initial" states:
-        HS_ini_state = state(self.HS_ref_crys, "initial")
+        HS_ini_state = state(self.HS_ref_crys.cell, "initial")
+        #if len(self.HS_ref_crys.cell.labels) > 0:
         HS_ini_state.set_geometry(self.HS_ref_crys.cell.labels, self.HS_ref_crys.cell.coord)
         HS_ini_state.set_cell(self.HS_ref_crys.cell.cellvec, self.HS_ref_crys.cell.cellparam)
         HS_ini_state.set_moleclist()
-
-        LS_ini_state = state(self.LS_ref_crys, "initial")
+        
+        LS_ini_state = state(self.LS_ref_crys.cell, "initial")
+        #if len(self.LS_ref_crys.cell.labels) > 0:
         LS_ini_state.set_geometry(self.LS_ref_crys.cell.labels, self.LS_ref_crys.cell.coord)
         LS_ini_state.set_cell(self.LS_ref_crys.cell.cellvec, self.LS_ref_crys.cell.cellparam)
         LS_ini_state.set_moleclist()

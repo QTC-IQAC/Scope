@@ -10,6 +10,13 @@ elemdatabase = ElementData()
 from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 
 ################################
+def printxyz(labels, pos):
+    print(len(labels))
+    print("")
+    for idx, l in enumerate(labels):
+        print("%s  %.6f  %.6f  %.6f" % (l, pos[idx][0], pos[idx][1], pos[idx][2]))
+
+################################
 def labels2formula(labels):
     elems = elemdatabase.elementnr.keys()
     formula=[]

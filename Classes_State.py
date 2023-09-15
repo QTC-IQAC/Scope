@@ -1,4 +1,4 @@
-from Scope.Adapted_from_cell2mol import get_molecules
+from Scope.Adapted_from_cell2mol import get_molecules, printxyz
 from Scope.Elementdata import ElementData
 elemdatabase = ElementData()
 
@@ -33,7 +33,7 @@ class state(object):
         self.natoms      = len(labels)
         assert len(self.labels) == len(self.pos)
 
-    def set_geometry_from_moleclist(self.moleclist):
+    def set_geometry_from_moleclist(self):
         self.labels      = []
         self.pos         = []
         self.coord       = []
@@ -63,19 +63,30 @@ class state(object):
         
     def set_moleclist(self):
         if hasattr(self,"labels") and hasattr(self,"pos"):
-            if hasattr(self._subject,"factor"): factor = self._subject.factor
-            else: factor = 1.3
-            self.moleclist = get_molecules(self.labels, self.pos, factor=factor)
+            if len(self.labels) > 0 and len(self.pos) > 0:
+                if hasattr(self._subject,"factor"): factor = self._subject.factor
+                else: factor = 1.3
+                try: 
+                    self.moleclist = get_molecules(self.labels, self.pos, factor=factor)
+                except: 
+                    print("ERROR setting moleclist for state:", self.name)
+                    printxyz(self.labels, self.pos)
         else: 
             self.moleclist = []
         return self.moleclist
 
+    def set_spin_config(self, spin_config):
+        self.spin_config = spin_config
+
     def set_atoms(self):
         if not hasattr(self,"moleclist"): self.set_moleclist()
         self.atoms = []
+        indices = []
         for mol in self.moleclist:
-            for at in mol.atoms:
+            for idx, at in enumerate(mol.atoms):
                 self.atoms.append(at)
+                indices.append(mol.atlist[idx])
+        self.atoms = [x for _, x in sorted(zip(indices, self.atoms), key=lambda pair: pair[0])]
 
     def set_energy(self, energy):
         self.energy     = energy
@@ -115,7 +126,7 @@ class state(object):
 def find_state(subject: object, search_name: str):
     if hasattr(subject,"states"):
         found = False
-        for idx, sta in subject.states:
+        for idx, sta in enumerate(subject.states):
             if sta.name == search_name: found = True; return sta 
         if not found: 
             sta = state(subject, search_name)

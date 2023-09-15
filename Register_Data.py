@@ -4,6 +4,7 @@ import numpy as np
 from copy import deepcopy
 
 from Scope.Adapted_from_cell2mol import labels2formula, get_adjmatrix, get_radii, get_blocks, get_molecules, inv
+from Scope.Classes_Data import *
 from Scope.Classes_State import *
 from Scope.Gmol_ops import gmol_update_geom, cell_update_geom, gmol_create_geom, cell_create_geom
 from Scope.Parse_QE_outputs import * 
@@ -89,6 +90,7 @@ def reg_optimization(comp: object, debug: int=0):
     ###############
     if comp.software == "g16": 
         new_coord = G16_get_last_geom(lines, debug=debug)
+        labels = gmol.labels.copy()
 
     ########
     ## QE ##
@@ -101,8 +103,14 @@ def reg_optimization(comp: object, debug: int=0):
         if not found_BFGS: comp.isgood = False    
 
         ## Extract Coordinates 
-        labels, new_coord = parse_final_geometry(lines, debug=debug)
-        assert len(labels) == len(new_coord)
+        tmp_labels, new_coord = parse_final_geometry(lines, debug=debug)
+        assert len(tmp_labels) == len(new_coord)
+
+        ## Originally, labels include digits to follow the spin state of metal atoms. For instance 'Fe4' indicates a HS Fe atom
+        ## These digits must be removed from labels when storing the data, since the digit is only for QE  
+        labels = []
+        for l in tmp_labels:
+            labels.append(str(''.join([c for c in l if not c.isdigit()])))
 
         # Extracts Cell Parameters
         if gmol.type == "cell": cellvec, celldim, cellparam = get_cell_vectors(lines, debug=debug) 
@@ -120,6 +128,7 @@ def reg_optimization(comp: object, debug: int=0):
         ## Stores data in the corresponding state-class object
         state = find_state(gmol, comp._job.fstate)   ## If exists, it will be updated 
         state.set_geometry(labels, new_coord)
+        state.set_spin_config(comp.spin_config)
         if gmol.type == "cell": state.set_cell(cellvec, cellparam)
         if gmol.type == "cell": state.set_moleclist()
         state.add_computation(comp)
