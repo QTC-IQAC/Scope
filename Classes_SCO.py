@@ -90,7 +90,7 @@ class sco_system(object):
         for idx, br in enumerate(self.branches):
             if debug > 0: print("evaluating branch with keyword:", br.keyword, "and path:", br.path)
             if br.keyword == keyword:
-                if not os.path.isdir(br.path): print(f"WARNING: branch path does not exists. Loading the branch anyway")
+                if not os.path.isdir(br.path): print(f"WARNING: branch path does not exist. Loading the branch anyway")
                 return True, br
         return False, None
 

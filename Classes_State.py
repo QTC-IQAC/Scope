@@ -133,17 +133,21 @@ class state(object):
 ## However, in this case the classes are defined in cell2mol, and I don't want to change them 
 #########################################################################
 
-def find_state(subject: object, search_name: str):
+def find_state(subject: object, search_name: str, debug: int=0):
+    if debug >= 1: print("FIND_STATE: enters",search_name," with", len(subject.states),"states in subject")
     if hasattr(subject,"states"):
         found = False
         for idx, sta in enumerate(subject.states):
-            if sta.name == search_name: found = True; return sta 
+            if sta.name == search_name: 
+                found = True
+                if debug >= 1: print("FIND STATE: state found")
+                return sta 
         if not found: 
-            sta = state(subject, search_name)
-            subject.states.append(sta)
+            sta = state(subject, search_name)  # Created State is automatically added to subject
+            if debug >= 1: print("FIND_STATE: new state created")
             return sta
     else: 
         setattr(subject,"states",[])
-        sta = state(subject, search_name)
-        subject.states.append(sta)
+        sta = state(subject, search_name) # Created State is automatically added to subject
+        if debug >= 1: print("FIND_STATE: new state created")
         return sta 
