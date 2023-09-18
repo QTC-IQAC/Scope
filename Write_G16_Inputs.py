@@ -9,6 +9,7 @@ from collections import Counter
 from Scope.Environment import set_user, set_cluster
 from Scope.Elementdata import ElementData
 from Scope.Other import get_metal_idxs
+from Scope.Classes_State import find_state
 
 #######################
 def gen_G16_input(comp, debug: int=0):
@@ -21,8 +22,10 @@ def gen_G16_input(comp, debug: int=0):
     loose_opt = comp.qc_data.loose_opt
     tight_opt = comp.qc_data.tight_opt
 
-    assert hasattr(comp.qc_data,istate), f"istate = {istate} not found in gmol"
-    istate    = comp.qc_data.istate
+    assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in gmol"
+    istate    = find_state(gmol, comp.qc_data.istate)
+    assert hasattr(istate,"labels"), f"istate = {comp.qc_data.istate} doesn't have labels"
+    assert hasattr(istate,"coord"),  f"istate = {comp.qc_data.istate} doesn't have coordinates"
 
     ### 2-Starts printing input 
     with open(comp.inp_path, 'w') as inp:
@@ -129,6 +132,7 @@ def gen_G16_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: st
             print(f"#SBATCH -e /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
             print(f"#SBATCH -o /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
             print(f"#SBATCH -p {queue}", file=sub)
+            print(f"#SBATCH --exclude=cibeles3-05", file=sub)
             print(f"#SBATCH -A ub100_serv", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)

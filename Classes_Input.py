@@ -148,7 +148,7 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"must_be_good"):  data._add_attr("must_be_good", False)
 
     ## Modifies some attributes to avoid blank spaces and hyphens, and to use lower letters
-    data._mod_attr("keyword",str(data.keyword.lower()))
+    data._mod_attr("keyword",str(data.keyword.lower().replace("-","_").replace(" ","_")))
     data._mod_attr("istate",str(data.istate.lower().replace("-","_").replace(" ","_")))
     data._mod_attr("fstate",str(data.fstate.lower().replace("-","_").replace(" ","_")))
 

@@ -115,7 +115,7 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
             if not comp.output_exists: # and comp.input_exists:
                 comp.check_submission_status(debug=debug)
                 if debug > 1: print("Execute_JOB, step 7.3a: checking submission status: isrunning=",comp.isrunning)
-                if debug > 1: print("Execute_JOB, step 7.3a: coord tag is", comp.qc_data.coord_tag)
+                if debug > 1: print("Execute_JOB, step 7.3a: initial state is", comp.qc_data.istate)
                 if debug > 1: print("Execute_JOB, step 7.3a: is_update:", comp.is_update)
                 if not comp.isrunning:             comp.run(environment, options, debug=debug); updated = True
             elif comp.output_exists and not comp.input_exists:  
@@ -138,7 +138,7 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
                             print(f"Check Registration of {comp.out_path}")
                     updated = True
 
-                ## 8.4-If output exists, is registered, but is not good, and it must_be_good:
+                ## 8.4-If output exists, is registered, but if is not good, and it must_be_good:
                 if comp.isregistered and not comp.isgood and this_job.must_be_good:
                     # We make sure that the new_run does not exist:
                     exists, new_comp = this_job.find_computation(keyword=comp.keyword, index=comp.index+1)
@@ -150,12 +150,11 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
                         ## Creates new computation
                         new_comp = this_job.add_computation(comp.index+1, qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
                         ## Updates the geometry tag of the new run
-                        if ' ' in new_comp._job.keyword:  new_tag = new_comp._job.keyword.replace(' ','_')
-                        else:                             new_tag = new_comp._job.keyword
+                        #if ' ' in new_comp._job.keyword:  new_tag = new_comp._job.keyword.replace(' ','_')
+                        #else:                             new_tag = new_comp._job.keyword
                         new_comp.qc_data = deepcopy(qc_data)   ## I need to deepcopy, as it will use a modified version of the qc_data object
-                        new_comp.qc_data.coord_tag = new_tag
-                        new_comp.qc_data.dct['coord_tag'] = new_tag
-                        print("Execute_JOB, step 7.3b: coord tag of new computation is modified to", new_comp.qc_data.coord_tag)
+                        new_comp.qc_data._mod_attr("istate",qc_data.fstate)         
+                        print("Execute_JOB, step 7.3b: istate of new computation is modified to", new_comp.qc_data.istate)
 
         # Updates Job Registry information
         this_job.register(debug=0)

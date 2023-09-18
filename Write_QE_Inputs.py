@@ -301,6 +301,7 @@ def gen_QE_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: str
             print(f"#SBATCH -e /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
             print(f"#SBATCH -o /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
             print(f"#SBATCH -p {queue}", file=sub)
+            print(f"#SBATCH --exclude=cibeles3-05", file=sub)
             print(f"#SBATCH -A ub100_serv", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)

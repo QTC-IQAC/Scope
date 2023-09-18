@@ -105,6 +105,7 @@ def reg_optimization(comp: object, debug: int=0):
         ## Extract Coordinates 
         tmp_labels, new_coord = parse_final_geometry(lines, debug=debug)
         assert len(tmp_labels) == len(new_coord)
+        assert len(tmp_labels) > 0
 
         ## Originally, labels include digits to follow the spin state of metal atoms. For instance 'Fe4' indicates a HS Fe atom
         ## These digits must be removed from labels when storing the data, since the digit is only for QE  
@@ -123,6 +124,10 @@ def reg_optimization(comp: object, debug: int=0):
     ######################
     ### Stores Results ###
     ######################
+    assert len(labels) > 0
+    assert len(new_coord) > 0
+    assert len(new_coord) == len(labels)
+
     if len(new_coord) > 0: 
 
         ## Stores data in the corresponding state-class object

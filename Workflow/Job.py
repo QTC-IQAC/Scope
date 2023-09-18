@@ -148,6 +148,7 @@ class job(object):
             exists, comp = self.find_computation()
             if not exists: comp = self.add_computation(int(1), qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
             comp.qc_data._add_attr("istate",self.istate)         
+            comp.qc_data._add_attr("fstate",self.fstate)         
 
         #####################
         ## 2- Setup to create displaced geometries using VNM to escape from local minima
@@ -161,13 +162,14 @@ class job(object):
                     ## Displaces Coordinates Following Negative Freqs ###
                     from Scope.Gmol_ops import displace_neg_freqs 
                     disp_coord = displace_neg_freqs(initial_state.coord, initial_state.VNMs,debug=debug)
-                    final_state = find_state(gmol, self.fstate)                  # Creates New State with Displaced Coordinates
-                    final_state.set_geometry(initial_state.labels, disp_coord)   # Creates New State with Displaced Coordinates 
+                    displ_state = find_state(gmol, "displaced")                  # Creates New State with Displaced Coordinates
+                    displ_state.set_geometry(initial_state.labels, disp_coord)   # Creates New State with Displaced Coordinates 
 
                     # Initial State of the Computation must be updated, to account for the displacement of geometries
                     exists, comp = self.find_computation()
                     if not exists: comp = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
-                    comp.qc_data._add_attr("istate",self.fstate)         ## Updates the initial state of the computation, so it takes the displaced geometries
+                    comp.qc_data._add_attr("istate","displaced")         ## Updates the initial state of the computation, so it takes the displaced geometries
+                    comp.qc_data._add_attr("fstate",self.fstate)         
 
                 else: self._recipe.remove_job(keyword=self.keyword)    # not sure if this is possible
             else:     self._recipe.remove_job(keyword=self.keyword)    # I'm trying to delete the job when it is not necessary
@@ -184,13 +186,14 @@ class job(object):
                 geoms, names = findiff_displacements(initial_state.coord, debug=debug)
                 for idx, geo in enumerate(geoms):
                     assert len(geo) == len(initial_state.labels)
-                    final_state = find_state(gmol,names[idx])
-                    final_state.set_geometry(initial_state.labels, geo)
+                    displ_state = find_state(gmol,names[idx])
+                    displ_state.set_geometry(initial_state.labels, geo)
 
                     # Initial State of the Computation must be updated, to account for the displacement of geometries
                     exists, comp = self.find_computation(keyword=names[idx])
                     if not exists: comp = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
                     comp.qc_data._add_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
+                    comp.qc_data._add_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
 
         else: pass
                  

@@ -117,7 +117,17 @@ class state(object):
             else: print("WARNING: reconstruct state, _subject is not a cell. I will not reconstruct")
         else: print("WARNING: reconstruct state, _subject does not have 'type' or 'cellvec' variables")
         return self.moleclist
-        
+
+
+    def __repr__(self) -> None:
+        to_print  = f'---------------------------------------------------\n'
+        to_print +=  '   STATE                                           \n'
+        to_print += f'---------------------------------------------------\n'
+        to_print += f' Name                  = {self.name}\n'
+        if hasattr(self,"labels"): to_print += f' Labels                = {self.labels}\n'
+        if hasattr(self,"coord"): to_print += f' Coord                 = {self.coord}\n'
+        return to_print
+
 #########################################################################
 ## Tools associated with states. Normally, these would be class functions...
 ## However, in this case the classes are defined in cell2mol, and I don't want to change them 
