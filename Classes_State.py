@@ -20,7 +20,11 @@ class state(object):
         if not hasattr(self._subject,"states"): self._subject.states = []
         found = False
         for idx, st in enumerate(self._subject.states):
-            if st.name == name: found = True
+            if st.name == name: 
+                found = True
+                print("WARNING from CLASS STATE: you're trying to create a state that already exists in _subject.")
+                print("WARNING from CLASS STATE: use function called 'find_state' instead to retrieve existing state")
+                exit()
         if not found: self._subject.states.append(self)
 
 #        updated = False
