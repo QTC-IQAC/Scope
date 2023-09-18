@@ -24,7 +24,6 @@ class state(object):
                 found = True
                 print("WARNING from CLASS STATE: you're trying to create a state that already exists in _subject.")
                 print("WARNING from CLASS STATE: use function called 'find_state' instead to retrieve existing state")
-                exit()
         if not found: self._subject.states.append(self)
 
 #        updated = False
@@ -38,32 +37,32 @@ class state(object):
 #            self._subject.states.append(self)
 #            if debug > 0: print("ADDED state", name)
 
-    def _update(self, other, debug: int=0):
-        if debug > 0: print("Updating State", self.name)
-        if debug > 0: print("SELF", dir(self))
-        if debug > 0: print("OTHER", dir(other))
-        if not isinstance(other, type(self)): 
-            if debug > 0: print("_update STATE: other is not of the same type than self")
-            return self
-        for d in dir(other):
-            if debug > 0: print("_update STATE: checking instance", d)
-            if d in dir(other):
-                if '_' not in d and not callable(getattr(other,d)) and d != "type" and d != "name" and d != "results" and d != "computations":
-                    if debug > 0: print("_update STATE: updating instance", d)
-                    at1 = getattr(other,d)
-                    try:      attr = literal_eval(at1)
-                    except:   attr = value
-                    setattr(self, d, attr)
-                elif d == "results":
-                    for r in other.results:
-                        if debug > 0: print("_update STATE: updating result", r)
-                        self.add_result(r, overwrite=True)
-                elif d == "computations": 
-                    for c in other.computations:
-                        if c not in self.computations: 
-                            if debug > 0: print("_update STATE: updating computations, adding", c)
-                            self.computations.append(c)
-        return self
+#    def _update(self, other, debug: int=0):
+#        if debug > 0: print("Updating State", self.name)
+#        if debug > 0: print("SELF", dir(self))
+#        if debug > 0: print("OTHER", dir(other))
+#        if not isinstance(other, type(self)): 
+#            if debug > 0: print("_update STATE: other is not of the same type than self")
+#            return self
+#        for d in dir(other):
+#            if debug > 0: print("_update STATE: checking instance", d)
+#            if d in dir(other):
+#                if '_' not in d and not callable(getattr(other,d)) and d != "type" and d != "name" and d != "results" and d != "computations":
+#                    if debug > 0: print("_update STATE: updating instance", d)
+#                    at1 = getattr(other,d)
+#                    try:      attr = literal_eval(at1)
+#                    except:   attr = value
+#                    setattr(self, d, attr)
+#                elif d == "results":
+#                    for r in other.results:
+#                        if debug > 0: print("_update STATE: updating result", r)
+#                        self.add_result(r, overwrite=True)
+#                elif d == "computations": 
+#                    for c in other.computations:
+#                        if c not in self.computations: 
+#                            if debug > 0: print("_update STATE: updating computations, adding", c)
+#                            self.computations.append(c)
+#        return self
 
     def add_result(self, result: object, overwrite: bool=False):
         result._object = self
