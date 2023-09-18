@@ -131,12 +131,13 @@ def reg_optimization(comp: object, debug: int=0):
     if len(new_coord) > 0: 
 
         ## Stores data in the corresponding state-class object
-        state = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
-        state.set_geometry(labels, new_coord)
-        state.set_spin_config(comp.spin_config)
-        if gmol.type == "cell": state.set_cell(cellvec, cellparam)
-        if gmol.type == "cell": state.set_moleclist()
-        state.add_computation(comp)
+        exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
+        if not exists: fstate = state(gmol, comp.qc_data.fstate)
+        fstate.set_geometry(labels, new_coord)
+        fstate.set_spin_config(comp.spin_config)
+        if gmol.type == "cell": fstate.set_cell(cellvec, cellparam)
+        if gmol.type == "cell": fstate.set_moleclist()
+        fstate.add_computation(comp)
         worked = True
     else: print("    REG_OPT: empty labels and positions received. Job could not be registered") 
 
@@ -157,9 +158,10 @@ def reg_frequencies(comp: object, debug: int=0):
     else: print(f"    REG_FREQUENCIES: Registry of {comp.software} comps is not implemented.")
 
     ### Storage ###
-    state = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
-    state.set_VNMs(VNMs)
-    state.add_computation(comp)
+    exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
+    if not exists: fstate = state(gmol, comp.qc_data.fstate)
+    fstate.set_VNMs(VNMs)
+    fstate.add_computation(comp)
     worked = True
 
     return worked
@@ -180,9 +182,10 @@ def reg_energy(comp: object, debug: int=0):
     if comp.software == "qe":  energy = float(parse_final_energy(lines, debug=debug))*Constants.ry2har
 
     ### Storage ###
-    state = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
-    state.set_energy(energy, 'au')
-    state.add_computation(comp)
+    exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
+    if not exists: fstate = state(gmol, comp.qc_data.fstate)
+    fstate.set_energy(energy, 'au')
+    fstate.add_computation(comp)
     worked = True
 
     return worked
