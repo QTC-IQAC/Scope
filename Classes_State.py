@@ -66,7 +66,8 @@ class state(object):
 
     def add_result(self, result: object, overwrite: bool=False):
         result._object = self
-        if overwrite or result.key not in self.results.keys():  self.results[result.key] = result
+        if overwrite or result.key not in self.results.keys():  
+            self.results[result.key] = result
 
     def set_geometry(self, labels, pos):
         self.labels      = labels
@@ -131,7 +132,7 @@ class state(object):
         self.atoms = [x for _, x in sorted(zip(indices, self.atoms), key=lambda pair: pair[0])]
 
     def set_energy(self, energy, units):
-        self.add_result(data("Energy",energy,units,"state.set_energy"))
+        self.add_result(data("energy",energy,units,"state.set_energy"))
         #self.energy     = energy
 
     def add_computation(self, computation: object):
@@ -157,8 +158,8 @@ class state(object):
                     self.moleclist = moleclist
                     self.set_geometry_from_moleclist()
  
-            else: print("WARNING: reconstruct state, _subject is not a cell. I will not reconstruct")
-        else: print("WARNING: reconstruct state, _subject does not have 'type' or 'cellvec' variables")
+            else: print("WARNING: reconstruct state, _subject is not a cell. I will not reconstruct"); return None
+        else: print("WARNING: reconstruct state, _subject does not have 'type' or 'cellvec' variables"); return None
         return self.moleclist
 
 
@@ -167,8 +168,10 @@ class state(object):
         to_print +=  '   STATE                                           \n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' Name                  = {self.name}\n'
-        if hasattr(self,"labels"): to_print += f' Labels                = {self.labels}\n'
-        if hasattr(self,"coord"):  to_print += f' Coord                 = {self.coord}\n'
+        if hasattr(self,"labels"):   to_print += f' Labels                = {self.labels[0]}...\n'
+        if hasattr(self,"labels"):   to_print += f' Labels                = {self.labels[0]}...\n'
+        if hasattr(self,"coord"):    to_print += f' Coord                 = {self.coord[0]}...\n'
+        if hasattr(self,"freq_cm"):  to_print += f' Frequencies (cm-1)    = {self.freq_cm[0]}...\n'
         return to_print
 
 #########################################################################
