@@ -147,10 +147,21 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"constrains"):    data._add_attr("constrains", ['self'])
     if not hasattr(data,"must_be_good"):  data._add_attr("must_be_good", False)
 
-    ## Modifies some attributes to avoid blank spaces and hyphens, and to use lower letters
+    ## Modifies some attributes to avoid blank spaces and dashes, and to use lower letters
     data._mod_attr("keyword",str(data.keyword.lower().replace("-","_").replace(" ","_")))
     data._mod_attr("istate",str(data.istate.lower().replace("-","_").replace(" ","_")))
     data._mod_attr("fstate",str(data.fstate.lower().replace("-","_").replace(" ","_")))
+
+    ## Modifies the list of requisites and constrains to avoid blanks and dashes
+    tmp_req = []
+    for r in data.requisites:
+        tmp_req.append(r.replace("-","_").replace(" ","_"))
+    data._mod_attr("requisites",tmp_req)
+
+    tmp_con = []
+    for c in data.constrains:
+        tmp_con.append(c.replace("-","_").replace(" ","_"))
+    data._mod_attr("constrains",tmp_con)
 
     return data
 
