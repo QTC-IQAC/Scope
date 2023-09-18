@@ -21,7 +21,7 @@ class state(object):
         updated = False
         for idx, st in enumerate(self._subject.states):
             if st.name == name: 
-                st.update(self)
+                st._update(self)
                 #self._subject.states[idx] = self
                 updated = True
                 if debug > 0: print("UPDATED state", name) 
