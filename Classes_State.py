@@ -8,7 +8,7 @@ elemdatabase = ElementData()
 ### STATES ###
 ##############
 class state(object):
-    def __init__(self, _subject: object, name: str):
+    def __init__(self, _subject: object, name: str, debug: int=0):
         self.type         = "state"
         self._subject     = _subject
         self.name         = name
@@ -19,8 +19,13 @@ class state(object):
         if not hasattr(self._subject,"states"): self._subject.states = []
         updated = False
         for idx, st in enumerate(self._subject.states):
-            if st.name == name: self._subject.states[idx] = self; updated = True; print("UPDATED STATE") ## Does this action replace (update) the state?
-        if not updated: self._subject.states.append(self); print("ADDED STATE")
+            if st.name == name: 
+                self._subject.states[idx] = self
+                updated = True
+                if debug >= 0: print("UPDATED state", name) 
+        if not updated: 
+            self._subject.states.append(self)
+            if debug >= 0: print("ADDED state", name)
 
     def add_result(self, result: object, overwrite: bool=False):
         result._object = self
