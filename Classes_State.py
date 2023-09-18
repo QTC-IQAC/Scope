@@ -18,7 +18,10 @@ class state(object):
 
 #        ## Creates the variable "states" to the _subject, which should be a "cell" or "molecule"-class object
         if not hasattr(self._subject,"states"): self._subject.states = []
-        self._subject.states.append(self)
+        found = False
+        for idx, st in enumerate(self._subject.states):
+            if st.name == name: found = True, return st
+        if not found: self._subject.states.append(self)
 
 #        updated = False
 #        for idx, st in enumerate(self._subject.states):
