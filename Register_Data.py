@@ -131,7 +131,7 @@ def reg_optimization(comp: object, debug: int=0):
     if len(new_coord) > 0: 
 
         ## Stores data in the corresponding state-class object
-        state = find_state(gmol, comp._job.fstate)   ## If exists, it will be updated 
+        state = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
         state.set_geometry(labels, new_coord)
         state.set_spin_config(comp.spin_config)
         if gmol.type == "cell": state.set_cell(cellvec, cellparam)
@@ -157,7 +157,7 @@ def reg_frequencies(comp: object, debug: int=0):
     else: print(f"    REG_FREQUENCIES: Registry of {comp.software} comps is not implemented.")
 
     ### Storage ###
-    state = find_state(gmol, comp._job.fstate)   ## If exists, it will be updated 
+    state = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
     state.set_VNMs(VNMs)
     state.add_computation(comp)
     worked = True
@@ -177,15 +177,14 @@ def reg_energy(comp: object, debug: int=0):
     ### Parsing ###
     worked = False
     if comp.software == "g16": energy = float(G16_get_last_energy(lines, debug=debug))
-    if comp.software == "qe":  energy = float(parse_final_energy(lines, debug=debug))
+    if comp.software == "qe":  energy = float(parse_final_energy(lines, debug=debug))*Constants.ry2har
 
     ### Storage ###
-    state = find_state(gmol, comp._job.fstate)   ## If exists, it will be updated 
-    state.set_energy(energy)
+    state = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
+    state.set_energy(energy, 'au')
     state.add_computation(comp)
     worked = True
 
-    state.add_result(data("Total Helec",energy,'au',"reg_energy"), overwrite=True)
     return worked
 
 ###########################################

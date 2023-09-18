@@ -1,4 +1,5 @@
 from Scope.Adapted_from_cell2mol import get_molecules, printxyz
+from Scope.Classes_Data import collection, data
 from Scope.Elementdata import ElementData
 elemdatabase = ElementData()
 
@@ -20,12 +21,29 @@ class state(object):
         updated = False
         for idx, st in enumerate(self._subject.states):
             if st.name == name: 
-                self._subject.states[idx] = self
+                st.update(self)
+                #self._subject.states[idx] = self
                 updated = True
                 if debug > 0: print("UPDATED state", name) 
         if not updated: 
             self._subject.states.append(self)
             if debug > 0: print("ADDED state", name)
+
+    def _update(self, other):
+        if not isinstance(other, type(self)): return self
+        for d in dir(other):
+            if '_' not in d and not callable(getattr(other,d)) and d != "type" and d != "name" and d != "results" and d != "computations":
+                at1 = getattr(other,d)
+                try:      attr = literal_eval(at1)
+                except:   attr = value
+                setattr(self, d, attr)
+            elif d == "results":
+                for r in other.results:
+                    self.add_result(r, overwrite=True)
+            elif d == "computations": 
+                for c in other.computations:
+                    if c not in self.computations: self.computations.append(c)
+        return self
 
     def add_result(self, result: object, overwrite: bool=False):
         result._object = self
@@ -93,8 +111,9 @@ class state(object):
                 indices.append(mol.atlist[idx])
         self.atoms = [x for _, x in sorted(zip(indices, self.atoms), key=lambda pair: pair[0])]
 
-    def set_energy(self, energy):
-        self.energy     = energy
+    def set_energy(self, energy, units):
+        self.add_result(data("Energy",energy,units,"state.set_energy"))
+        #self.energy     = energy
 
     def add_computation(self, computation: object):
         self.computations.append(computation)
@@ -130,7 +149,7 @@ class state(object):
         to_print += f'---------------------------------------------------\n'
         to_print += f' Name                  = {self.name}\n'
         if hasattr(self,"labels"): to_print += f' Labels                = {self.labels}\n'
-        if hasattr(self,"coord"): to_print += f' Coord                 = {self.coord}\n'
+        if hasattr(self,"coord"):  to_print += f' Coord                 = {self.coord}\n'
         return to_print
 
 #########################################################################

@@ -188,22 +188,20 @@ class computation(object):
 
         ## 1-Registration of General Attributes 
         reg_general(self, debug=debug)  # Gives self.isgood and self.isfinished
- 
+
         ## 2-Registration of Optimization Tasks 
         if 'opt' in self._job.keyword or 'relax' in self._job.keyword:
-            worked = reg_optimization(self, debug=debug)
-            if worked and self._job.keyword == 'vc-relax': 
-                worked = reg_energy(self, debug=debug)
+            worked = reg_energy(self, debug=debug)
+            if worked: worked = reg_optimization(self, debug=debug)
+            else: 
+                print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}")
 
         ## 3-Registration of Frequencies
         elif self.isgood and 'freq' in self._job.keyword:
             worked = reg_frequencies(self, debug=debug)
-
         else:  
             print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}")
             print(f"        -last line:", self.output_lines[-1])
-            print(f"        -getmtime:" , os.path.getmtime(self.out_path))
-            print(f"        -modtime:"  , self.output_modtime)
             return False
 
         ## 4-Wraps Up
