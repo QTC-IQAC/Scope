@@ -20,7 +20,7 @@ class state(object):
         if not hasattr(self._subject,"states"): self._subject.states = []
         found = False
         for idx, st in enumerate(self._subject.states):
-            if st.name == name: found = True, return st
+            if st.name == name: found = True; return st
         if not found: self._subject.states.append(self)
 
 #        updated = False
