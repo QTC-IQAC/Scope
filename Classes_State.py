@@ -19,8 +19,8 @@ class state(object):
         if not hasattr(self._subject,"states"): self._subject.states = []
         updated = False
         for idx, st in enumerate(self._subject.states):
-            if st.name == name: self._subject.states[idx] = self; updated = True #; print("UPDATED")  ## Replaces (updates) state?
-        if not updated: self._subject.states.append(self) #; print("ADDED")
+            if st.name == name: self._subject.states[idx] = self; updated = True; print("UPDATED STATE") ## Does this action replace (update) the state?
+        if not updated: self._subject.states.append(self); print("ADDED STATE")
 
     def add_result(self, result: object, overwrite: bool=False):
         result._object = self
