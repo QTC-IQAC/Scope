@@ -22,10 +22,10 @@ class state(object):
             if st.name == name: 
                 self._subject.states[idx] = self
                 updated = True
-                if debug >= 0: print("UPDATED state", name) 
+                if debug > 0: print("UPDATED state", name) 
         if not updated: 
             self._subject.states.append(self)
-            if debug >= 0: print("ADDED state", name)
+            if debug > 0: print("ADDED state", name)
 
     def add_result(self, result: object, overwrite: bool=False):
         result._object = self
