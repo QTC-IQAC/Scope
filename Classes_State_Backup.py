@@ -16,18 +16,21 @@ class state(object):
         self.results      = dict()
         self.computations = []
 
-        ## Creates the variable "states" to the _subject, which should be a "cell" or "molecule"-class object
+#        ## Creates the variable "states" to the _subject, which should be a "cell" or "molecule"-class object
         if not hasattr(self._subject,"states"): self._subject.states = []
-        updated = False
-        for idx, st in enumerate(self._subject.states):
-            if st.name == name: 
-                st._update(self, debug=debug)
-                if debug > 0: print("UPDATED SELF", dir(self))
-                updated = True
-                if debug > 0: print("UPDATED state", name) 
-        if not updated: 
-            self._subject.states.append(self)
-            if debug > 0: print("ADDED state", name)
+
+
+
+#        updated = False
+#        for idx, st in enumerate(self._subject.states):
+#            if st.name == name: 
+#                st._update(self, debug=debug)
+#                if debug > 0: print("UPDATED SELF", dir(self))
+#                updated = True
+#                if debug > 0: print("UPDATED state", name) 
+#        if not updated: 
+#            self._subject.states.append(self)
+#            if debug > 0: print("ADDED state", name)
 
     def _update(self, other, debug: int=0):
         if debug > 0: print("Updating State", self.name)
@@ -170,19 +173,13 @@ class state(object):
 
 def find_state(subject: object, search_name: str, debug: int=0):
     if debug >= 1: print("FIND_STATE: enters",search_name," with", len(subject.states),"states in subject")
-    if hasattr(subject,"states"):
+    if not hasattr(subject,"states"): return False, None
+    else: 
         found = False
         for idx, sta in enumerate(subject.states):
             if sta.name == search_name: 
                 found = True
                 if debug >= 1: print("FIND STATE: state found")
-                return sta 
+                return True, sta
         if not found: 
-            sta = state(subject, search_name)  # Created State is automatically added to subject
-            if debug >= 1: print("FIND_STATE: new state created")
-            return sta
-    else: 
-        setattr(subject,"states",[])
-        sta = state(subject, search_name) # Created State is automatically added to subject
-        if debug >= 1: print("FIND_STATE: new state created")
-        return sta 
+            return False, None
