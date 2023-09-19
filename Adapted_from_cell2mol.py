@@ -30,6 +30,16 @@ def labels2formula(labels):
     return formula 
 
 ################################
+def labels2ratio(labels):
+    elems = elemdatabase.elementnr.keys()
+    ratio=[]
+    for z in elems:
+        nz = labels.count(z)
+        if nz > 0: ratio.append(nz)
+    return ratio
+
+################################
+
 def get_elementcount(labels: list) -> np.ndarray:
     elems = elemdatabase.elementnr.keys()
     times = np.zeros((len(elems)),dtype=int)

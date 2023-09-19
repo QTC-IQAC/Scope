@@ -1,4 +1,5 @@
 from ast import literal_eval
+from Scope import Constants
 
 ##################
 ### COLLECTION ###
@@ -30,19 +31,17 @@ class collection(object):
                 if value == condition_value: return data
 
     ### Should be changed to __repr__
-    def format(self):
+    def __repr__(self):
         if self.units == 'kj': units = 'kJ/mol'
         to_print  = f'---------------------------------------------------\n'
         to_print += f'   COLECTION OF DATA   = {self.key}                \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' _object.type          = {self._object.type}\n'
-        to_print += f' _object.keyword       = {self._object.keyword}\n'
         to_print += f' #Entries              = {len(self.datas)}\n'
         if len(self.datas) > 0: to_print += f' First                 = {self.datas[0].value}\n'
         if len(self.datas) > 0: to_print += f' Last                  = {self.datas[-1].value}\n'
         if hasattr(self,"units"):    to_print += f' Units                 = {self.units}\n'
         if hasattr(self,"function"): to_print += f' Function              = {self.function}\n'
-        print(to_print)
+        return to_print
 
 ############
 ### DATA ###
@@ -69,14 +68,14 @@ class data(object):
         elif type(self.value) == int: self.formatted = str(self.key+": "+str(self.value)+" "+self.units)
         elif type(self.value) == str: self.formatted = str(self.key+": "+self.value+" "+self.units)
         elif self.value is None:      self.formatted = str(self.key+": None")
+
+    def print_in_units(self, new_units: str):
+        if self.units == 'au' and (new_units.lower() == 'kj' or new_units.lower() == 'kj/mol'): print(f"{self.value * Constants.har2kJmol:12.8f} {new_units}")
+        if self.units == 'kj' and new_units.lower() == 'au':                                    print(f"{self.value / Constants.har2kJmol:12.8f} {new_units}")
          
     def __repr__(self) -> None:
         if not hasattr(self,"formatted"): self.format()
-        to_print =  f'{self.formatted}\n'
-        #to_print += f'------------------------------------------\n'
-        #to_print += f'Extracted from function: {self.function}  \n'
-        #to_print += f'Notes: {self.notes}                       \n'
-        #to_print += f'------------------------------------------\n'
+        to_print =  f'{self.formatted}'
         return to_print
 
 ##################

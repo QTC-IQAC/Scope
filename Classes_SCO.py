@@ -243,13 +243,13 @@ class sco_system(object):
         #if len(self.HS_ref_crys.cell.labels) > 0:
         HS_ini_state.set_geometry(self.HS_ref_crys.cell.labels, self.HS_ref_crys.cell.coord)
         HS_ini_state.set_cell(self.HS_ref_crys.cell.cellvec, self.HS_ref_crys.cell.cellparam)
-        HS_ini_state.set_moleclist()
+        HS_ini_state.get_moleclist()
         
         LS_ini_state = state(self.LS_ref_crys.cell, "initial")
         #if len(self.LS_ref_crys.cell.labels) > 0:
         LS_ini_state.set_geometry(self.LS_ref_crys.cell.labels, self.LS_ref_crys.cell.coord)
         LS_ini_state.set_cell(self.LS_ref_crys.cell.cellvec, self.LS_ref_crys.cell.cellparam)
-        LS_ini_state.set_moleclist()
+        LS_ini_state.get_moleclist()
 
 ###########################################
     def __repr__(self) -> None:

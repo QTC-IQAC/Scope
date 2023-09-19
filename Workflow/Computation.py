@@ -99,7 +99,10 @@ class computation(object):
         
     def read_lines(self, flat: bool=True) -> None:        
         if self.output_exists: self.output_lines = read_lines_file(self.out_path, flat=flat)
-        else:                  self.output_lines = ''
+        else:                  self.output_lines = []
+
+    def delete_lines(self) -> None:
+        self.output_lines = []
             
     def check_submission_status(self, debug: int=0) -> None:
         key = str(self.refcode+self.suffix)

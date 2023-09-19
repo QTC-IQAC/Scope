@@ -66,13 +66,19 @@ class branch(object):
 
         ## Create file for get_status
         if hasattr(self._sys,"sys_path"):  path = self._sys.sys_path
-        else: print("SET_INACTIVE: system doesnt have sys_path"); return None
+        else: print("BRANCH.SET_STATUS: system doesnt have sys_path"); return None
             
         if   self.keyword.lower() == "isolated" and status == "finished": filename="ISO_FINISHED"
         elif self.keyword.lower() == "solid" and status == "finished":    filename="SOLID_FINISHED"
     
         filepath = str(path+'/'+filename)
         if not os.path.exists(filepath): open(filepath, "a").close() # Should create an empty file
+
+    def remove_output_lines(self):
+        for rec in self.recipes:
+            for job in rec.jobs:
+                for comp in job.computations:
+                    comp.delete_lines()
     
 ####################
 ### Registration ###

@@ -8,186 +8,140 @@ from Scope.Thermal_Corrections import *
 from Scope.Workflow import Branch
 from Scope import Constants
 
+##############################################################################
+### Here is where the all protocols to extract system properties, (often) involving more than one system (eg. HS and LS), are collected
+##############################################################################
 
-def extract_dH_solid(sys: object, branch_keyword: str, overwrite: bool=False, debug: int=0):
+def extract_dH_solid(sys: object, branch_keyword: str, state1: object, state2: object, overwrite: bool=False, debug: int=0):
+
+    ### 1-Branch is loaded
+    exists, this_branch = sys.find_branch(branch_keyword, debug=debug)
+    if exists: print("Branch loaded with keyword", this_branch.keyword)
+    if not exists: return False
+
+    ### 2-Checks that both states exist and are minima
+    if not hasattr(state1,"isminimum") or not hasattr(state2,"isminimum"): return False, None
+    if not state1.isminimum or not state2.isminimum: 
+        if debug > 0: print(f"{state1.name} and/or {state2.name} are not minima")
+        return False, None
+
+    ### 3-Checks that energies have been parsed
+    assert "energy" in state1.results.keys()
+    assert "energy" in state2.results.keys()
+
+    ### 4-Verify properties of the state. Necessary for point 5
+    if not hasattr(state1,"fragmented"): state1.check_fragmentation(reconstruct=True, debug=debug)
+    if not hasattr(state2,"fragmented"): state2.check_fragmentation(reconstruct=True, debug=debug)
+    assert not state1.fragmented, f"Fragmented molecules in the geometry of state1"
+    assert not state2.fragmented, f"Fragmented molecules in the geometry of state2"
+     
+    ## 5-Get the number of complexes in the unit cells: this is why we need point 4
+    ncomplex1 = 0
+    for mol in state1.moleclist:
+        if mol.type == "Complex" and hasattr(mol,"scope_guess_spin"): ncomplex1 += 1
+    ncomplex2 = 0
+    for mol in state2.moleclist:
+        if mol.type == "Complex" and hasattr(mol,"scope_guess_spin"): ncomplex2 += 1
+
+    ## 6-Store Helec per molecule ##
+    if overwrite or not "Helec" in state1.results.keys():
+        key = "Helec"
+        units = state1.results["energy"].units
+        value = state1.results["energy"] / ncomplex1 
+        state1.add_result(data(key,value,str(units+"/molec"),"extract_dH_solid"), overwrite=overwrite)
+    if overwrite or not "Helec" in state2.results.keys():
+        key = "Helec"
+        units = state2.results["energy"].units
+        value = state2.results["energy"] / ncomplex2 
+        state2.add_result(data(key,value,str(units+"/molec"),"extract_dH_solid"), overwrite=overwrite)
+
+    ## 7-Compute dHelec and store it in branch
+    if overwrite or not "dHelec" in this_branch.results.keys():
+        assert state1.results["Helec"].units == state2.results["Helec"].units 
+        key = "dHelec" 
+        value = state1.results["Helec"].value - state2.results["Helec"].value 
+        units = state1.results["Helec"].units
+        function = "extract_dH_solid"
+        this_branch.add_result(data(key,value,units,function), overwrite=overwrite) 
+
+    return this_branch.results["dHelec"]
+
+
+def extract_T12(sys: object, branch_keyword: str, state1: object, state2: object, Trange: range=range(10,501,1), overwrite: bool=False, debug: int=0):
 
     ##############
     ### BRANCH ###
     ##############
     exists, this_branch = sys.find_branch(branch_keyword, debug=debug)
-    if exists: print("Branch loaded with keyword", this_branch.keyword)
-    if not exists: return False
+    if exists and debug > 0: print("Branch loaded with keyword", this_branch.keyword)
+    if not exists: return False, None
 
-    ## Checks that both spin states have an associated geometry minimum
-    minima = True
-#    for recipe in this_branch.recipes:
-#        if not hasattr(recipe.subject,"min_coord"): minima = False; print(f"{recipe.subject.spin} of {sys.refcode} is not a minimum")
+    ## Checks that both states exist and are minima
+    if not hasattr(state1,"isminimum") or not hasattr(state2,"isminimum"): return False, None
+    if not state1.isminimum or not state2.isminimum: 
+        if debug > 0: print(f"{state1.name} and/or {state2.name} are not minima")
+        return False, None
 
-    ##################################
-    ### RECIPE/MOLECULE PROPERTIES ###
-    ##################################
-    if not minima:
-        print(f"{sys.refcode} didn't reach both minima")
-    else:
-        for recipe in this_branch.recipes:
-            gmol = recipe.subject
-            print("    Doing recipe with:", recipe.keyword, gmol.spin)
+    if not "Helec" in state1.results: state1.thermal_data()
+    if not "Helec" in state2.results: state2.thermal_data()
 
-            ## Number of molecules
-            ncomplex = 0
-            for mol in gmol.moleclist:
-                if mol.type == "Complex" and hasattr(mol,"scope_guess_spin"): ncomplex += 1
+    ## dHelec
+    if overwrite or not "dHelec" in this_branch.results.keys():
+        assert state1.results["Helec"].units == state2.results["Helec"].units 
+        key = "dHelec" 
+        value = state1.results["Helec"].value - state2.results["Helec"].value 
+        units = state1.results["Helec"].units
+        function = "extract_T12"
+        this_branch.add_result(data(key,value,units,function), overwrite=overwrite) 
 
-            ## Helec per molecule: ##
-            Helec = gmol.Helec / ncomplex * Constants.ry2har
+    ## dSelec
+    if overwrite or not "dSelec" in this_branch.results.keys():
+        assert state1.results["Selec"].units == state2.results["Selec"].units 
+        key = "dSelec" 
+        value = state1.results["Selec"].value - state2.results["Selec"].value 
+        units = state1.results["Selec"].units
+        function = "extract_T12"
+        this_branch.add_result(data(key,value,units,function), overwrite=overwrite) 
 
-            if overwrite or not "Helec" in recipe.results.keys():
-                recipe.add_result(data("Helec",Helec,'au/molec',"extract_dH_solid"), overwrite=overwrite)
-                print(gmol.spin, "Helec:")
-                print(recipe.results["Helec"])
+    ## dHvib
+    if overwrite or not "dHvib" in this_branch.results.keys():
+        assert state1.results["Hvib"].units == state2.results["Hvib"].units 
+        dHvib_collection = substract_collections("dHvib", state1.results["Hvib"], state2.results["Hvib"], prop="temp")
+        this_branch.add_result(dHvib_collection, overwrite=overwrite)
+        
+    ## dSvib
+    if overwrite or not "dSvib" in this_branch.results.keys():
+        assert state1.results["Svib"].units == state2.results["Svib"].units 
+        dSvib_collection = substract_collections("dSvib", state1.results["Svib"], state2.results["Svib"], prop="temp")
+        this_branch.add_result(dSvib_collection, overwrite=overwrite)
 
-def extract_thermal_data(sys: object, branch_keyword: str, Trange: range=range(10,501,1), overwrite: bool=False, debug: int=0):
+    ## dGtot
+    if overwrite or not "dGtot" in this_branch.results.keys():
+        assert state1.results["Gtot"].units == state2.results["Gtot"].units 
+        dGtot_collection = substract_collections("dGtot", state1.results["Gtot"], state2.results["Gtot"], prop="temp")
+        this_branch.add_result(dGtot_collection, overwrite=overwrite)
 
-    ##############
-    ### BRANCH ###
-    ##############
-    exists, this_branch = sys.find_branch(branch_keyword, debug=debug)
-    if exists: print("Branch loaded with keyword", this_branch.keyword)
-    #print("Nrecipes:", len(this_branch.recipes))
-    if not exists: return False
+    ## T12
+    if overwrite or not "T12" in this_branch.results.keys():
+        dGdata = dGtot_collection.get_values()
+        key = "T12"
+        value = find_t12(Trange, dGdata)
+        units = "K"
+        function = "extract_T12"
+        this_branch.add_result(data(key, value, units, function), overwrite=overwrite)
 
-    ## Checks that both spin states have an associated geometry minimum
-    minima = True
-    for recipe in this_branch.recipes:
-        if not hasattr(recipe.subject,"min_coord"): minima = False; print(f"{recipe.subject.spin} of {sys.refcode} is not a minimum")
-       
-    ##################################
-    ### RECIPE/MOLECULE PROPERTIES ###
-    ##################################
-    ## Only if both minima exist, the results are extracted. First for each individual molecule
-    if not minima: 
-        print(f"{sys.refcode} didn't reach both minima") 
-    else: 
-        print("Both molecules are minima")
-        for recipe in this_branch.recipes:
-            gmol = recipe.subject 
-            print("    Doing recipe with:")
-            print("    ",recipe.keyword, gmol.spin)
-            ## Helec ##
-            if overwrite or not "Helec" in recipe.results.keys():
-                recipe.add_result(data("Helec",gmol.Helec,'au',"extract_thermal_data"), overwrite=overwrite)
-                #recipe.add_result(data("Helec",gmol.Helec*Constants.har2kJmol,'kj',"extract_thermal_data"), overwrite=overwrite)
-                print(gmol.spin, "Helec")
-                recipe.results["Helec"].format()
-            ## Selec ##
-            if overwrite or not "Selec" in recipe.results.keys():
-                recipe.add_result(get_Selec(gmol.spin, outunits='au'), overwrite=overwrite)
-                recipe.results["Selec"].format()
-            ## Hvib and Svib ##
-            if overwrite or not "Hvib" in recipe.results.keys():
-                Hvib_collection = collection("Hvib")
-                for temp in Trange:
-                    Hvib_collection.add_data(get_Hvib(gmol.freqs_cm, temp, freq_units='cm', outunits='au'))
-                recipe.add_result(Hvib_collection, overwrite=overwrite)
-                recipe.results["Hvib"].format()
-            if overwrite or not "Svib" in recipe.results.keys():
-                Svib_collection = collection("Svib")
-                for temp in Trange:
-                    Svib_collection.add_data(get_Svib(gmol.freqs_cm, temp, freq_units='cm', outunits='au'))
-                recipe.add_result(Svib_collection, overwrite=overwrite)
-                recipe.results["Svib"].format()
-            ## Gtot ##
-            if overwrite or not "Gtot" in recipe.results.keys():
-                Gtot_collection = collection("Gtot")
-                for temp in Trange:
-                    # Retrieve data (not value)
-                    Helec = recipe.results["Helec"]
-                    Selec = recipe.results["Selec"]
-                    Hvib = Hvib_collection.find_value_with_property("temp", temp)
-                    Svib = Svib_collection.find_value_with_property("temp", temp)
-                    #print(Helec.units)
-                    #print(Selec.units)
-                    #print(Hvib.units)
-                    #print(Svib.units)
-                    assert Helec.units == Selec.units == Hvib.units == Svib.units 
-                    key = "Gtot"
-                    value = get_Gibbs(Helec.value, Hvib.value, Selec.value, Svib.value, temp)
-                    units = Helec.units 
-                    function = "extract_thermal_data"
-                    new_data = data(key, value, units, function)
-                    new_data.add_property("temp", temp, overwrite=overwrite)
-                    Gtot_collection.add_data(new_data)
-                recipe.add_result(Gtot_collection, overwrite=overwrite)
-                recipe.results["Gtot"].format()
-
-    #########################
-    ### BRANCH PROPERTIES ###
-    #########################
-    if minima:
-        for recipe in this_branch.recipes:
-            if   recipe.subject.spin == "HS": hs_rec = recipe 
-            elif recipe.subject.spin == "LS": ls_rec = recipe 
-            
-        ## dHelec
-        if overwrite or not "dHelec" in this_branch.results.keys():
-            assert hs_rec.results["Helec"].units == ls_rec.results["Helec"].units 
-            key = "dHelec" 
-            value = hs_rec.results["Helec"].value - ls_rec.results["Helec"].value 
-            units = hs_rec.results["Helec"].units
-            function = "extract_thermal_data"
-            this_branch.add_result(data(key,value,units,function), overwrite=overwrite) 
-
-        ## dSelec
-        if overwrite or not "dSelec" in this_branch.results.keys():
-            assert hs_rec.results["Selec"].units == ls_rec.results["Selec"].units 
-            key = "dSelec" 
-            value = hs_rec.results["Selec"].value - ls_rec.results["Selec"].value 
-            units = hs_rec.results["Selec"].units
-            function = "extract_thermal_data"
-            this_branch.add_result(data(key,value,units,function), overwrite=overwrite) 
-
-        ## dHvib
-        if overwrite or not "dHvib" in this_branch.results.keys():
-            assert hs_rec.results["Hvib"].units == ls_rec.results["Hvib"].units 
-            dHvib_collection = substract_collections("dHvib", hs_rec.results["Hvib"], ls_rec.results["Hvib"], prop="temp")
-            this_branch.add_result(dHvib_collection, overwrite=overwrite)
-            
-        ## dSvib
-        if overwrite or not "dSvib" in this_branch.results.keys():
-            assert hs_rec.results["Svib"].units == ls_rec.results["Svib"].units 
-            dSvib_collection = substract_collections("dSvib", hs_rec.results["Svib"], ls_rec.results["Svib"], prop="temp")
-            this_branch.add_result(dSvib_collection, overwrite=overwrite)
-
-        ## dGtot
-        if overwrite or not "dGtot" in this_branch.results.keys():
-            assert hs_rec.results["Gtot"].units == ls_rec.results["Gtot"].units 
-            dGtot_collection = substract_collections("dGtot", hs_rec.results["Gtot"], ls_rec.results["Gtot"], prop="temp")
-            this_branch.add_result(dGtot_collection, overwrite=overwrite)
-            this_branch.results["dGtot"].format()
-
-        ## T12
-            print(f"Finding T12 between {Trange[0]}K and {Trange[-1]}K") 
-            dGdata = dGtot_collection.get_values()
-            print(f"dG between {dGdata[0]} and {dGdata[-1]}") 
-            key = "T12"
-            value = find_t12(Trange, dGdata)
-            print(f"T12 value= {value}")
-            #value = find_t12(Trange, dGtot_collection.datas)
-            units = "K"
-            function = "extract_thermal_data"
-            this_branch.add_result(data(key, value, units, function), overwrite=overwrite)
-
-        if debug > 0:
-            print("Printing RESULTS for branch")
-            this_branch.results["dHelec"].format()
-            this_branch.results["dSelec"].format()
-            this_branch.results["dHvib"].format()
-            this_branch.results["dSvib"].format()
-            this_branch.results["dGtot"].format()
-            this_branch.results["T12"].format()
+    if debug > 0:
+        print("Printing RESULTS for branch")
+        this_branch.results["dHelec"].print_in_units('kj')
+        print(this_branch.results["dSelec"])
+        print(this_branch.results["dHvib"])
+        print(this_branch.results["dSvib"])
+        print(this_branch.results["dGtot"])
+        print(this_branch.results["T12"])
 
     # Set branch_status_finished
-    if minima and "T12" in this_branch.results.keys(): 
+    if "T12" in this_branch.results.keys(): 
         this_branch.set_status("finished", debug=debug)
+        this_branch.remove_output_lines()
 
-    return True
+    return True, this_branch.results["T12"]

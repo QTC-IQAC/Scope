@@ -23,7 +23,8 @@ def gen_G16_input(comp, debug: int=0):
     tight_opt = comp.qc_data.tight_opt
 
     assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in gmol"
-    istate    = find_state(gmol, comp.qc_data.istate)
+    exists, istate    = find_state(gmol, comp.qc_data.istate)
+    assert exists, f"istate = {comp.qc_data.istate} does not exist" 
     assert hasattr(istate,"labels"), f"istate = {comp.qc_data.istate} doesn't have labels"
     assert hasattr(istate,"coord"),  f"istate = {comp.qc_data.istate} doesn't have coordinates"
 
