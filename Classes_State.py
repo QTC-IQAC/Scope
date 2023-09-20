@@ -99,10 +99,10 @@ class state(object):
         self.fragmented = False
 
         # First comparison with current moleclist
-        for mol in moleclist:
+        for mol in self.moleclist:
             found = False
             for rmol in self._subject.refmoleclist:
-                issame = compare_species(mol, rmol)  
+                issame = compare_species.compare_species(mol, rmol)  
                 if issame: found = True
             if not found: self.fragmented = True
         # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
@@ -112,11 +112,10 @@ class state(object):
             for mol in new_moleclist:
                 found = False
                 for rmol in self._subject.refmoleclist:
-                    issame = compare_species(mol, rmol)  
+                    issame = compare_species.compare_species(mol, rmol)  
                     if issame: found = True
                 if not found: self.fragmented = True
         return self.fragmented
-
 
     def set_spin_config(self, spin_config):
         self.spin_config = spin_config
@@ -139,27 +138,29 @@ class state(object):
         self.computations.append(computation)
 
     def reconstruct(self, debug: int=0):
-        if hasattr(self._subject,"type") and hasattr(self,"cellvec"):
-            if not hasattr(self,"moleclist"): self.get_moleclist() 
-            if self._subject.type.lower() == "cell":
-                from cell2mol import cell_reconstruct
-                from cell2mol.cell_reconstruct import identify_frag_molec_H, getmolecs, tmatgenerator, additem, assigntype, fragments_reconstruct
-                from cell2mol.cellconversions import frac2cart_fromparam, cart2frac, translate
-                import itertools
-                blocklist = self.moleclist.copy()
-                moleclist = []
-                refmoleclist = self._subject.refmoleclist.copy()
-                covalent_factor = refmoleclist[0].factor
-                metal_factor = refmoleclist[0].metal_factor
-                moleclist, fraglist, Hlist, init_natoms = identify_frag_molec_H(blocklist, moleclist, refmoleclist, self.cellvec) 
-                if len(fraglist) > 0 or len(Hlist) > 0: 
-                    moleclist, finalmols, Warning = fragments_reconstruct(moleclist,fraglist,Hlist,refmoleclist,self.cellvec,covalent_factor,metal_factor)
-                    moleclist.extend(finalmols)
-                    self.moleclist = moleclist
-                    self.set_geometry_from_moleclist()
- 
-            else: print("WARNING: reconstruct state, _subject is not a cell. I will not reconstruct"); return None
-        else: print("WARNING: reconstruct state, _subject does not have 'type' or 'cellvec' variables"); return None
+        from Scope.Other import HiddenPrints
+        with HiddenPrints():
+            if hasattr(self._subject,"type") and hasattr(self,"cellvec"):
+                if not hasattr(self,"moleclist"): self.get_moleclist() 
+                if self._subject.type.lower() == "cell":
+                    from cell2mol import cell_reconstruct
+                    from cell2mol.cell_reconstruct import identify_frag_molec_H, getmolecs, tmatgenerator, additem, assigntype, fragments_reconstruct
+                    from cell2mol.cellconversions import frac2cart_fromparam, cart2frac, translate
+                    import itertools
+                    blocklist = self.moleclist.copy()
+                    moleclist = []
+                    refmoleclist = self._subject.refmoleclist.copy()
+                    covalent_factor = refmoleclist[0].factor
+                    metal_factor = refmoleclist[0].metal_factor
+                    moleclist, fraglist, Hlist, init_natoms = identify_frag_molec_H(blocklist, moleclist, refmoleclist, self.cellvec) 
+                    if len(fraglist) > 0 or len(Hlist) > 0: 
+                        moleclist, finalmols, Warning = fragments_reconstruct(moleclist,fraglist,Hlist,refmoleclist,self.cellvec,covalent_factor,metal_factor)
+                        moleclist.extend(finalmols)
+                        self.moleclist = moleclist
+                        self.set_geometry_from_moleclist()
+     
+                else: print("WARNING: reconstruct state, _subject is not a cell. I will not reconstruct"); return None
+            else: print("WARNING: reconstruct state, _subject does not have 'type' or 'cellvec' variables"); return None
         return self.moleclist
 
 ####################

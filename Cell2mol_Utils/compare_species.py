@@ -19,7 +19,7 @@ def compare_species(mol1, mol2):
                 if elem != mol2.elemcountvec[kdx]:
                     issame = False
             # Checks adjacency type count
-            if issame:
+            if hasattr(mol1,"adjtypes") and hasattr(mol2,"adjtypes") and issame:
                 for kdx, elem in enumerate(mol1.adjtypes):
                     for ldx, elem2 in enumerate(elem):
                         if elem2 != mol2.adjtypes[kdx, ldx]:

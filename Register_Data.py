@@ -137,6 +137,7 @@ def reg_optimization(comp: object, debug: int=0):
         fstate.set_spin_config(comp.spin_config)
         if gmol.type == "cell": fstate.set_cell(cellvec, cellparam)
         if gmol.type == "cell": fstate.get_moleclist()
+        if gmol.type == "cell": fstate.check_fragmentation(reconstruct=True, debug=debug)
         fstate.add_computation(comp)
         worked = True
     else: print("    REG_OPT: empty labels and positions received. Job could not be registered") 
