@@ -5,6 +5,7 @@ import os
 import numpy as np
 from datetime import datetime
 
+from Scope.Classes_State import state, find_state
 from Scope.Workflow import Computation
 from Scope.Workflow.Computation import *
 from Scope.Other import where_in_array
@@ -100,38 +101,53 @@ class job(object):
         if debug > 1: print("Checking Constrains", self.constrains)
         for idx, job in enumerate(self._recipe.jobs):
 
-            ## If necessary, it registers any related job
-            if debug > 1: print("Evaluating Job with keyword:", job.keyword)
-            if debug > 1: print("Evaluating Job, isregistered:", job.isregistered)
-            if debug > 1: print("Evaluating Job, isgood:", job.isgood)
-            if (job.keyword in self.requisites or job.keyword in self.constrains) and not job.isregistered: 
-                if debug > 1: print("Registering Previous Unregistered Job", job.keyword)
-                job.register(debug=debug)
-                if debug > 1: print("Registered Job while checking requisites", job.keyword)
-                if debug > 1: print(job.keyword, job.isregistered, job.isgood, job.isfinished)
+            if self != job:
+                ## If necessary, it registers any related job
+                if debug > 1: print("Evaluating Job with keyword:", job.keyword)
+                if debug > 1: print("Evaluating Job, isregistered:", job.isregistered)
+                if debug > 1: print("Evaluating Job, isgood:", job.isgood)
+                if debug > 1: print("Evaluating Job, isfinished:", job.isfinished)
+                if (job.keyword in self.requisites or job.keyword in self.constrains) and not job.isregistered: 
+                    if debug > 1: print("Registering Previous Unregistered Job", job.keyword)
+                    job.register(debug=debug)
+                    if debug > 1: print("Registered Job while checking requisites", job.keyword)
+                    if debug > 1: print(job.keyword, job.isregistered, job.isgood, job.isfinished)
 
-            ## Evaluates Requisites and Constrains
-            if job.keyword in self.requisites and job.isfinished:
-                if job.must_be_good and job.isgood: 
-                    requisites_fulfilled[where_in_array(self.requisites,job.keyword)[0]] = 1
-                    if debug > 1: print("Requisite: ", job.keyword, "fulfilled 1")
-                if not job.must_be_good:
-                    requisites_fulfilled[where_in_array(self.requisites,job.keyword)[0]] = 1
-                    if debug > 1: print("Requisite: ", job.keyword, "fulfilled 2")
-            elif job.keyword in self.constrains and job.isfinished and job.isgood: 
-                constrains_fulfilled[where_in_array(self.constrains,job.keyword)[0]] = 1
-                if debug > 1: print("Constrain: ", job.keyword, "not fulfilled")
-            elif job.keyword == self.keyword and 'self' in self.constrains and job.isfinished and job.isgood: 
-                constrains_fulfilled[where_in_array(self.constrains,'self')[0]] = 1
-                if debug > 1: print("Constrain: ", job.keyword, "in self not fulfilled")
-            else:
-                if debug > 1: print("Unrelated or Unregisterd Job with keyword:", job.keyword)
+                ## Evaluates Requisites and Constrains
+                if job.keyword in self.requisites and job.isfinished:
+                    if job.must_be_good and job.isgood: 
+                        requisites_fulfilled[where_in_array(self.requisites,job.keyword)[0]] = 1
+                        if debug > 1: print("Requisite: ", job.keyword, "fulfilled 1")
+                    if not job.must_be_good:
+                        requisites_fulfilled[where_in_array(self.requisites,job.keyword)[0]] = 1
+                        if debug > 1: print("Requisite: ", job.keyword, "fulfilled 2")
+                elif job.keyword in self.constrains and job.isfinished and job.isgood: 
+                    constrains_fulfilled[where_in_array(self.constrains,job.keyword)[0]] = 1
+                    if debug > 1: print("Constrain: ", job.keyword, "not fulfilled")
+                elif job.keyword == self.keyword and 'self' in self.constrains and job.isfinished and job.isgood: 
+                    constrains_fulfilled[where_in_array(self.constrains,'self')[0]] = 1
+                    if debug > 1: print("Constrain: ", job.keyword, "in self not fulfilled")
+                elif job.keyword not in self.requisites and job.keyword not in self.constrains:
+                    if debug > 1: print("Unrelated or Unregisterd Job with keyword:", job.keyword)
+                elif job.keyword in self.requisites and not job.isfinished:
+                    if debug > 1: print("Job in Requisites has not finished:", job.keyword)
 
         # Takes Decision
         if all(a == 1 for a in requisites_fulfilled) or len(self.requisites) == 0: self.requisites_fulfilled = True
         if all(b == 0 for b in constrains_fulfilled) or len(self.constrains) == 0: self.constrains_fulfilled = True
-        if self.requisites_fulfilled and self.constrains_fulfilled: print("Requisites fulfilled"); return True
-        else: return False
+        if self.requisites_fulfilled and self.constrains_fulfilled: 
+            if debug > 1: print("Requisites fulfilled")
+            return True
+        else: 
+            if not   self.requisites_fulfilled: 
+                if debug > 1: print("Requisites NOT fulfilled")
+            elif not self.constrains_fulfilled: 
+                if debug > 1: print("Constrains NOT fulfilled")
+            return False
+
+    def remove_output_lines(self):
+        for comp in self.computations:
+            comp.delete_lines()
 
 ###############################
 ### Create Computations Set ###
@@ -154,7 +170,10 @@ class job(object):
         ## 2- Setup to create displaced geometries using VNM to escape from local minima
         #####################
         elif self.setup == "displacement" or self.setup == "disp":
-            initial_state = find_state(gmol, self.istate)
+            
+            if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: setting displacement starting from {self.istate}")
+            exists, initial_state = find_state(gmol, self.istate)
+            if not exists: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' was not found")
 
             #### Only applies to geometries that are not minimum
             if hasattr(initial_state,"coord") and hasattr(initial_state,"VNMs") and hasattr(initial_state,"isminimum"):
@@ -162,17 +181,22 @@ class job(object):
                     ## Displaces Coordinates Following Negative Freqs ###
                     from Scope.Gmol_ops import displace_neg_freqs 
                     disp_coord = displace_neg_freqs(initial_state.coord, initial_state.VNMs,debug=debug)
-                    displ_state = find_state(gmol, "displaced")                  # Creates New State with Displaced Coordinates
+                    exists, displ_state = find_state(gmol, "displaced")          # Checks if state already exists
+                    if not exists: displ_state = state(gmol, "displaced")        # If not, creates it
                     displ_state.set_geometry(initial_state.labels, disp_coord)   # Creates New State with Displaced Coordinates 
 
                     # Initial State of the Computation must be updated, to account for the displacement of geometries
                     exists, comp = self.find_computation()
-                    if not exists: comp = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
+                    if not exists: comp = self.add_computation(int(1), qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
                     comp.qc_data._add_attr("istate","displaced")         ## Updates the initial state of the computation, so it takes the displaced geometries
                     comp.qc_data._add_attr("fstate",self.fstate)         
 
-                else: self._recipe.remove_job(keyword=self.keyword)    # not sure if this is possible
-            else:     self._recipe.remove_job(keyword=self.keyword)    # I'm trying to delete the job when it is not necessary
+                else: 
+                    if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' is already a minimum")
+                    self._recipe.remove_job(keyword=self.keyword)    # not sure if this is possible
+            else:     
+                print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' does not have the properties required to apply the displacement")
+                self._recipe.remove_job(keyword=self.keyword)    # I'm trying to delete the job when it is not necessary
         
         #####################
         ## 3- Setup for finite Differences
@@ -186,8 +210,9 @@ class job(object):
                 geoms, names = findiff_displacements(initial_state.coord, debug=debug)
                 for idx, geo in enumerate(geoms):
                     assert len(geo) == len(initial_state.labels)
-                    displ_state = find_state(gmol,names[idx])
-                    displ_state.set_geometry(initial_state.labels, geo)
+                    exists, displ_state = find_state(gmol, names[idx])          # Checks if state already exists
+                    if not exists: displ_state = state(gmol, names[idx])        # If not, creates it
+                    displ_state.set_geometry(initial_state.labels, geo)         # Creates New State with Displaced Coordinates 
 
                     # Initial State of the Computation must be updated, to account for the displacement of geometries
                     exists, comp = self.find_computation(keyword=names[idx])

@@ -143,8 +143,8 @@ class computation(object):
             ## 1.2-Creates Files
             self.check_files()
             if not self.input_exists or options.overwrite_inputs:
-                if self.software == 'g16':  gen_G16_input(self, debug=debug)
-                elif self.software == 'qe': gen_QE_input(self, debug=debug)
+                if self.software == 'g16':  gen_G16_input(self, debug=0)
+                elif self.software == 'qe': gen_QE_input(self, debug=0)
             if not self.subfile_exists or options.overwrite_inputs:
                 if self.software == 'g16':  gen_G16_subfile(self, procs=askprocs, queue=askqueue)
                 elif self.software == 'qe': gen_QE_subfile(self, procs=askprocs, queue=askqueue)
@@ -195,22 +195,23 @@ class computation(object):
         ## 2-Registration of Optimization Tasks 
         if 'opt' in self._job.keyword or 'relax' in self._job.keyword:
             worked = reg_energy(self, debug=debug)
-            if worked: worked = reg_optimization(self, debug=debug)
-            else: 
-                print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}")
+            if worked: 
+                print("IM HERE WITH", self.out_path)
+                worked = reg_optimization(self, debug=debug)
 
         ## 3-Registration of Frequencies
         elif self.isgood and 'freq' in self._job.keyword:
             worked = reg_frequencies(self, debug=debug)
         else:  
             print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}")
-            print(f"        -last line:", self.output_lines[-1])
+            if len(self.output_lines) > 0: print(f"        -last line:", self.output_lines[-1])
             return False
 
         ## 4-Wraps Up
         if worked:
             self.isregistered = True
             self.add_registration_data()
+            self.delete_lines()
         else:  
             print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}")
             if len(self.output_lines) > 0: print(f"        -last line:", self.output_lines[-1])
@@ -226,9 +227,11 @@ class computation(object):
         to_print += f' Type of Object        = {self._job._recipe.subject.type}\n'
         to_print += f' Recipe                = {self._job._recipe.keyword}\n'
         to_print += f' Job                   = {self._job.keyword}\n'
-        to_print += f' Initial State         = {self._job.istate}\n'
-        to_print += f' Final State           = {self._job.fstate}\n'
         to_print += f'---------------------------------------------------\n'
+        if hasattr(self,"istate"): to_print += f' self.istate           = {self.istate}\n'
+        else:                      to_print += f' Job Initial State     = {self._job.istate}\n'
+        if hasattr(self,"fstate"): to_print += f' self.fstate           = {self.fstate}\n'
+        else:                      to_print += f' Job Final State       = {self._job.fstate}\n'
         to_print += f' self.software         = {self.software}\n'
         to_print += f' self.index            = {self.index}\n' 
         to_print += f' self.spin             = {self.spin}\n'

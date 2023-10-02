@@ -6,6 +6,7 @@ import pickle
 from collections import Counter
 from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 
+from Scope.Classes_State import find_state
 from Scope.Environment import set_user, set_cluster
 from Scope.Elementdata import ElementData 
 from Scope.Other import get_metal_idxs, get_metal_species, where_in_array
@@ -47,19 +48,29 @@ def gen_QE_input(comp, debug: int=0):
 
     gmol = comp._job._recipe.subject
 
+    ## 1-Change some variable names to simplify calls
     PP_Library = comp.qc_data.pseudo
     cluster = set_cluster()
 
+    ## 2a-Verify Information in State
+    assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in comp.qc_data"
+    exists, istate    = find_state(gmol, comp.qc_data.istate)
+    assert exists, f"istate = {comp.qc_data.istate} does not exist"
+    assert hasattr(istate,"labels"), f"istate = {comp.qc_data.istate} doesn't have labels"
+    assert hasattr(istate,"coord"),  f"istate = {comp.qc_data.istate} doesn't have coordinates"
+
+    ## 2b-Cell or Molecule?
     if hasattr(gmol,"cellparam"): system_type = "cell"
-    else: system_type = "molecule"
+    else:                         system_type = "molecule"
 
     if system_type == "cell":     
-        if hasattr(gmol,"natoms"): natoms = gmol.natoms
-        else:                      natoms = len(gmol.labels) 
-    if system_type == "molecule":  natoms = gmol.natoms
+        assert hasattr(istate,"cellvec"),  f"istate = {comp.qc_data.istate} doesn't have cell vectors"
+        if hasattr(istate,"natoms"): natoms = istate.natoms
+        else:                        natoms = len(istate.labels) 
+    if system_type == "molecule":    natoms = istate.natoms
 
-    if debug >= 1 : print(system_type)
-    if debug >= 1 : print("Creating input in path:", comp.inp_path)
+    if debug >= 1 : print("GEN_QE_INPUT: system_type:", system_type)
+    if debug >= 1 : print("GEN_QE_INPUT: creating input in path:", comp.inp_path)
 
     # Corrects PP_Library path if necessary
     if PP_Library[-1] != '/': PP_Library += '/'
@@ -68,8 +79,6 @@ def gen_QE_input(comp, debug: int=0):
     ### DETERMINE SPECIES ###
     #########################
     comp.spin_config.get_QE_data()
-    print(comp.spin_config)
-    #comp.spin_config.get_info()
     metal_indices = get_metal_idxs(gmol.labels)
     metal_species = get_metal_species(gmol.labels)
     elems = comp.spin_config.elems
@@ -225,18 +234,17 @@ def gen_QE_input(comp, debug: int=0):
             print(f"{spec} {weight:6.4f} {pp}", file=inp)
         
         #///////////////////////////////////////////////////////////////////////////
-        #// Atom Coords, taken from the mol object. Using the provided coord_tag ///
+        #// Atom Coords, taken from the state object. Using the provided istate  ///
         #///////////////////////////////////////////////////////////////////////////
         print("ATOMIC_POSITIONS angstrom", file=inp)
-        cor_tag = getattr(gmol,comp.qc_data.coord_tag)
-        for idx, l in enumerate(gmol.labels):
+        for idx, l in enumerate(istate.labels):
             pointer = 0
             if idx in metal_indices and len(comp.spin_config.atomic_spins) != 0: 
                 label = comp.spin_config.atomic_spins[pointer].get_mod_label() 
                 pointer += 1
             else: 
                 label = l
-            print(f"{label:4}        {cor_tag[idx][0]:12.6f}   {cor_tag[idx][1]:12.6f}   {cor_tag[idx][2]:12.6f}", file=inp)
+            print(f"{label:4}        {istate.coord[idx][0]:12.6f}   {istate.coord[idx][1]:12.6f}   {istate.coord[idx][2]:12.6f}", file=inp)
         print("K_POINTS gamma", file=inp)
 
 ###################################################

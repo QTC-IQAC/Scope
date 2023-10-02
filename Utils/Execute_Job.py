@@ -15,6 +15,7 @@ from Scope.Read_Write import load_binary, save_binary
 ######################
 def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: int=0):
 
+    print("ENTERED EXECUTE JOB with job_path:", job_path)
     report = ''
 
     if debug > 1: print("")
@@ -72,19 +73,20 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
         ###########
         ### JOB ###
         ###########
-        ## 5-Finds the job. If it does not exist, it is NOT created.
+        ## 5-Finds the job. If it does not exist, it is created in 5.1
         exists, this_job = recipe.find_job(job_data=job_data, debug=debug)
-        if debug > 1 and not exists: print(f"Execute_JOB, step 5: job {job_data.keyword} does not exist for {recipe.subject.spin}")
-        if exists: this_job.check_input(job_path=job_path, debug=debug)
 
-        ## 5.1 If necessary, creates the job
+        ## 5.1 If job does not exist, creates the job
         if not exists: this_job = recipe.add_job(job_data); updated = True
+        ## 5.2 If job exists, it checks for input changes (also in qc_data for the computations)
+        else:
+            this_job.check_input(job_path=job_path, debug=debug)
         if debug > 1: print("---------------------------------------------------")
         if debug > 1: print("Execute_JOB, step 5: job loaded for spin", this_job._recipe.subject.spin)
         if debug > 1: print("---------------------------------------------------")
 
         ## 6-Checks that all requisites and constrains of the job are fulfilled
-        cancontinue = this_job.check_requisites(debug=0)
+        cancontinue = this_job.check_requisites(debug=debug)
         if not cancontinue:
             if debug > 1:   print("  Execute_JOB, step 6: requisites NOT met or job already run!")
             continue        # I know if might seem misleading. Here, "continue" means "skip this one"
@@ -96,7 +98,7 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
         ####################
         ## 7-Sets the computation(s), meaning that it will check if they exist, and if not, it creates them
         this_job.set_computations_from_setup(qc_data, debug=debug)
-        if debug > 1: print("Execute_JOB, step 7: computations set")
+        if debug > 1: print("Execute_JOB, step 7: computations set:")
 
         for jdx, comp in enumerate(this_job.computations):
 
@@ -106,6 +108,7 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
             ## 8.1-Checks files
             if debug > 1: print("Execute_JOB, step 7.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
             if debug > 1: print("Execute_JOB, step 7.1: out_file:", comp.out_path)
+            if debug > 1: print("Execute_JOB, step 7.1: is_update:", comp.is_update)
             if debug > 1: print("-----------------------------------------------------------------------------------")
 
             comp.check_files()
@@ -113,11 +116,14 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
             ## 8.2-Evaluates Submission
             if debug > 1: print("Execute_JOB, step 7.2: checking files [inp, out, sub]:", comp.input_exists, comp.output_exists, comp.subfile_exists)
             if not comp.output_exists: # and comp.input_exists:
-                comp.check_submission_status(debug=debug)
-                if debug > 1: print("Execute_JOB, step 7.3a: checking submission status: isrunning=",comp.isrunning)
-                if debug > 1: print("Execute_JOB, step 7.3a: initial state is", comp.qc_data.istate)
-                if debug > 1: print("Execute_JOB, step 7.3a: is_update:", comp.is_update)
-                if not comp.isrunning:             comp.run(environment, options, debug=debug); updated = True
+                if options.want_submit:
+                    comp.check_submission_status(debug=debug)
+                    if debug > 1: print("Execute_JOB, step 7.3a: checking submission status: isrunning=",comp.isrunning)
+                    if debug > 1: print("Execute_JOB, step 7.3a: initial state is", comp.qc_data.istate)
+                    if debug > 1: print("Execute_JOB, step 7.3a: is_update:", comp.is_update)
+                    if not comp.isrunning:             comp.run(environment, options, debug=debug); updated = True
+                else: 
+                    if debug > 1: print("Execute_JOB, step 7.3a: want_submit is False")
             elif comp.output_exists and not comp.input_exists:  
                 report += f"Investigate {comp.out_path} \n"
                 print(f"Investigate {comp.out_path}")
@@ -125,11 +131,12 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
                 ## 8.3-If output exists, and is not registered, it does it
                 if not comp.isregistered:
                     worked = comp.register(debug=debug)
+
                     # If registration fails, either...
                     if not worked: 
                         if handle_errors: # ...takes default action 
                             comp.read_lines()
-                            if len(comp.output_lines) > 0: comp.store(debug=debug)
+                            if len(comp.output_lines) > 0: comp.store(debug=debug)  # Creates Copy of output 
                             else:                          this_job.remove_computation(comp_index=comp.index)
                             report += f"Errors handled for {comp.out_path} \n"
                             print(f"Errors handled for {comp.out_path}")
@@ -140,21 +147,27 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
 
                 ## 8.4-If output exists, is registered, but if is not good, and it must_be_good:
                 if comp.isregistered and not comp.isgood and this_job.must_be_good:
+                    comp.has_update = True
+
                     # We make sure that the new_run does not exist:
                     exists, new_comp = this_job.find_computation(keyword=comp.keyword, index=comp.index+1)
                     if exists:        print("Execute_JOB, step 7.3b: Continuation Computation exists")
                     else:
                         if debug > 1: print("Execute_JOB, step 7.3b: Creating new computation to continue job:")
-                        comp.has_update = True
 
                         ## Creates new computation
                         new_comp = this_job.add_computation(comp.index+1, qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
-                        ## Updates the geometry tag of the new run
-                        #if ' ' in new_comp._job.keyword:  new_tag = new_comp._job.keyword.replace(' ','_')
-                        #else:                             new_tag = new_comp._job.keyword
-                        new_comp.qc_data = deepcopy(qc_data)   ## I need to deepcopy, as it will use a modified version of the qc_data object
-                        new_comp.qc_data._mod_attr("istate",qc_data.fstate)         
+                        new_comp.qc_data = deepcopy(qc_data)                    ## I need to deepcopy, as it will use a modified version of the qc_data object
+
+                    ## In continuation computations, istate must be the modified, so it continues from the last attempt
+                    if  hasattr(comp.qc_data,"fstate"):  
+                        new_comp.qc_data._mod_attr("istate",comp.qc_data.fstate)         
                         print("Execute_JOB, step 7.3b: istate of new computation is modified to", new_comp.qc_data.istate)
+                    elif hasattr(this_job,"fstate"): 
+                        new_comp.qc_data._add_attr("istate",this_job.fstate)         
+                        print("Execute_JOB, step 7.3b: istate of new computation is modified to", new_comp.qc_data.istate)
+                    else: 
+                        print("Execute_JOB, step 7.3b: Could not find valid 'istate' for continuation computation")
 
         # Updates Job Registry information
         this_job.register(debug=0)

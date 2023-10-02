@@ -46,7 +46,7 @@ class input_data(object):
                         ### All capital letters are converted to lower letters
                         if type(key) == str:   key   = key.lower()   
                         if type(value) == str: 
-                            if "/" not in value and key != 'branch': value  = value.lower() # Except paths
+                            if "/" not in value and key != 'branch' and value != 'True' and value != 'False': value  = value.lower() # Except paths
                         if debug > 0: print("key:", key)
                         if debug > 0: print("value:", value)
                         dct[key] = value
@@ -157,7 +157,6 @@ def fill_job_data(data: object, debug: int=0):
     for r in data.requisites:
         tmp_req.append(r.replace("-","_").replace(" ","_"))
     data._mod_attr("requisites",tmp_req)
-
     tmp_con = []
     for c in data.constrains:
         tmp_con.append(c.replace("-","_").replace(" ","_"))
@@ -177,10 +176,8 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"loose_opt"):     data._add_attr("loose_opt", False)
         if not hasattr(data,"tight_opt"):     data._add_attr("tight_opt", False)
         if not hasattr(data,"is_grimme"):     data._add_attr("is_grimme", False)
-        #if not hasattr(data,"coord_tag"):     data._add_attr("coord_tag", "coord")
 
     elif data.software == "qe":
-        #if not hasattr(data,"coord_tag"):     data._add_attr("coord_tag", "coord")
         if not hasattr(data,"jobtype"):       data._add_attr("jobtype", "scf")
         if not hasattr(data,"functional"):    data._add_attr("functional", "pbe")
         if not hasattr(data,"is_hubbard"):    data._add_attr("is_hubbard", False)

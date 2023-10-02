@@ -17,6 +17,10 @@ def check_job_requirements(lines: list, key_str: list=["JOB DONE", "Begin final 
         item.append(search)
         bools.append(found)
     return item, bools
+
+def check_maxseconds(lines: list, string: str="Maximum CPU time exceeded", debug: int=0):
+    linenum, found = search_string(string, lines, typ="last")
+    return linenum, found
     
 def get_cell_vectors(lines, debug: int=0):
     cellvec_lines = []
@@ -45,41 +49,12 @@ def get_cell_vectors(lines, debug: int=0):
     cellparam = cellvec_2_cellparam(cellvec)
     return np.array(cellvec), celldim, cellparam
 
-#def get_cell_vectors(lines, debug: int=0):
-#    cellvec_lines = []
-#    cellvec_strings = ["celldm(1)", "celldm(4)", "crystal axes", "unit-cell volume"]
-#    for sdx, s in enumerate(cellvec_strings):
-#        cellvec_lines.append(search_string(s, lines, typ="last")[0])
-#    celldim = []
-#    try:
-#        print(bohr2angs)
-#        celldim.append(float(lines[cellvec_lines[0]].split()[1]))
-#        celldim.append(float(lines[cellvec_lines[0]].split()[3]))
-#        celldim.append(float(lines[cellvec_lines[0]].split()[5]))
-#        celldim.append(float(lines[cellvec_lines[1]].split()[1]))
-#        celldim.append(float(lines[cellvec_lines[1]].split()[3]))
-#        celldim.append(float(lines[cellvec_lines[1]].split()[5]))
-#    except Exception as exc:
-#        print("Error trying to parse cell dimensions from file")
-#        print("Exception is:", exc)
-#        print("cellvec_lines:", cellvec_lines)
-#    cellvec = []
-#    v1 = np.array(lines[cellvec_lines[2]+1].split("=")[1].replace(")", "").replace("(", "").split()).astype(float)
-#    v2 = np.array(lines[cellvec_lines[2]+2].split("=")[1].replace(")", "").replace("(", "").split()).astype(float)
-#    v3 = np.array(lines[cellvec_lines[2]+3].split("=")[1].replace(")", "").replace("(", "").split()).astype(float)
-#    cellvec.append(v1*celldim[0])
-#    cellvec.append(v2*celldim[0])
-#    cellvec.append(v3*celldim[0])
-#    cellparam = cellvec_2_cellparam(cellvec)
-#
-#    ## Values are given in angstrom
-#    return cellvec, celldim, cellparam
-    
 def parse_final_geoopt_step(lines, debug: int=0):
     last_step_init = "Self-consistent Calculation"
     last_step_last = "End final coordinates"
     last_step_init_line, found1 = search_string(last_step_init, lines, typ="last")
     last_step_last_line, found2 = search_string(last_step_last, lines, typ="last")
+    max_line, max_found = check_maxseconds(lines, debug=debug)
  
     ## In some cases, "End final coordinates" is not written. Probably because the geometry has not fished the optimization 
     ## Then, as an alternative, one can search for NEW-OLD 
@@ -93,7 +68,8 @@ def parse_final_geoopt_step(lines, debug: int=0):
         if debug >= 1: print(f"    PARSE_FINAL_GEOOPT_STEP: 'End final coordinates' not found")
         if debug >= 1: print(f"    PARSE_FINAL_GEOOPT_STEP: Going for the alternative")
         last_step_last = "Writing output data"   
-        last_step_last_line, found2 = search_string(last_step_last, lines, typ="last")
+        if max_found: last_step_last_line, found2 = search_string(last_step_last, lines, typ="all"); last_step_last_line = last_step_last_line[-2]
+        else:         last_step_last_line, found2 = search_string(last_step_last, lines, typ="last")
 
     if last_step_init_line > last_step_last_line:
         last_step_init_line, found1 = search_string(last_step_init, lines, typ="last", uplim=last_step_last_line)
@@ -115,7 +91,7 @@ def parse_final_geometry(lines, debug: int=0):
         if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: last  last_step_line: {last_step_lines[-1]}")
     
         warning = False
-        if all(f for f in key_found):  ## Everything worked
+        if all(f for f in key_found):               ### Everything worked
             last_geo_init_string = "ATOMIC_POSITIONS"
             last_geo_init_line = search_string(last_geo_init_string, last_step_lines, typ="last")[0] 
             last_geo_last_line = last_step_last_line-1
@@ -126,7 +102,7 @@ def parse_final_geometry(lines, debug: int=0):
             last_geo_init_line = search_string(last_geo_init_string, last_step_lines, typ="last")[0] 
             last_geo_last_line = search_string(last_geo_last_string, last_step_lines, typ="first")[0] - 3
             if debug >= 1: print(f"PARSE_FINAL_GEOMETRY: last geo lines between {last_step_init_line+last_geo_init_line+1} and {last_step_init_line+last_geo_last_line+1}")
-        elif all(not f for f in key_found):  ## Nothing, probably a job terminated due to time limits
+        elif all(not f for f in key_found):         ### Nothing, probably a job terminated due to time limits
             last_geo_init_string = "ATOMIC_POSITIONS"
             last_geo_last_string = "Writing output data"
             last_geo_init_line = search_string(last_geo_init_string, last_step_lines, typ="last", debug=debug)[0] 

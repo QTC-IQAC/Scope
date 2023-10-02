@@ -95,9 +95,11 @@ def G16_get_last_geom(lines, debug: int=0):
 
 def G16_get_last_energy(lines, debug: int=0):
     ldx, found = search_string("SCF Done", lines, typ='last')        
-    if found: ener = float(lines[ldx].split()[4])
-    else: ener = float(0.0)
-    return ener
+    if found: 
+        ener = float(lines[ldx].split()[4])
+        return ener
+    else: 
+        return None 
 
 def G16_get_freqs(lines):
     freqs = []

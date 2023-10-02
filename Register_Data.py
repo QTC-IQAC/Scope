@@ -138,6 +138,7 @@ def reg_optimization(comp: object, debug: int=0):
         if gmol.type == "cell": fstate.set_cell(cellvec, cellparam)
         if gmol.type == "cell": fstate.get_moleclist()
         if gmol.type == "cell": fstate.check_fragmentation(reconstruct=True, debug=debug)
+
         fstate.add_computation(comp)
         worked = True
     else: print("    REG_OPT: empty labels and positions received. Job could not be registered") 
@@ -179,15 +180,25 @@ def reg_energy(comp: object, debug: int=0):
 
     ### Parsing ###
     worked = False
-    if comp.software == "g16": energy = float(G16_get_last_energy(lines, debug=debug))
-    if comp.software == "qe":  energy = float(parse_final_energy(lines, debug=debug))*Constants.ry2har
+    try: 
+        if comp.software == "g16": energy = G16_get_last_energy(lines, debug=debug)
+        if comp.software == "qe":  energy = parse_final_energy(lines, debug=debug)*Constants.ry2har
+        if energy is not None:     worked = True
+    except Exception as exc:
+        print(exc)
+        worked = False
 
     ### Storage ###
-    exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
-    if not exists: fstate = state(gmol, comp.qc_data.fstate)
-    fstate.set_energy(energy, 'au')
-    fstate.add_computation(comp)
-    worked = True
+    if worked: 
+        try:
+            exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
+            if not exists: fstate = state(gmol, comp.qc_data.fstate)
+            fstate.set_energy(energy, 'au')
+            fstate.add_computation(comp)
+            worked = True
+        except Exception as exc:
+            print(exc)
+            worked = False
 
     return worked
 

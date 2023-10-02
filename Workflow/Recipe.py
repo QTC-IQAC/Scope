@@ -54,6 +54,11 @@ class recipe(object):
                     if jb.hierarchy == hierarchy and not found: found = True; found_idx = idx
         if found: del self.jobs[found_idx]
 
+    def remove_output_lines(self):
+        for job in self.jobs:
+            for comp in job.computations:
+                comp.delete_lines()
+
 #########################
     def find_job(self, keyword=None, hierarchy=None, job_data=None, debug: int=0):
         found_job = False

@@ -15,9 +15,11 @@ class state(object):
         self.results      = dict()
         self.computations = []
 
-#        ## Creates the variable "states" to the _subject, which should be a "cell" or "molecule"-class object
+        ## Creates the variable "states" to the _subject, which should be a "cell" or "molecule"-class object
         if not hasattr(self._subject,"states"): self._subject.states = []
         found = False
+        
+        ## Verifies that a state with the same name does not exist already. If not, appends it
         for idx, st in enumerate(self._subject.states):
             if st.name == name: 
                 found = True
@@ -107,7 +109,7 @@ class state(object):
             if not found: self.fragmented = True
         # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
         if self.fragmented and reconstruct:
-            new_moleclist = self.reconstruct()
+            new_moleclist = self.reconstruct(debug=debug)
             self.fragmented = False
             for mol in new_moleclist:
                 found = False
@@ -115,6 +117,10 @@ class state(object):
                     issame = compare_species.compare_species(mol, rmol)  
                     if issame: found = True
                 if not found: self.fragmented = True
+            if not self.fragmented: 
+                self.moleclist = new_moleclist
+                self.set_geometry_from_moleclist()
+
         return self.fragmented
 
     def set_spin_config(self, spin_config):
@@ -139,6 +145,7 @@ class state(object):
 
     def reconstruct(self, debug: int=0):
         from Scope.Other import HiddenPrints
+        if debug > 0: print("CLASS_STATE: reconstructing cell")
         with HiddenPrints():
             if hasattr(self._subject,"type") and hasattr(self,"cellvec"):
                 if not hasattr(self,"moleclist"): self.get_moleclist() 

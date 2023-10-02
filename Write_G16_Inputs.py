@@ -15,14 +15,14 @@ from Scope.Classes_State import find_state
 def gen_G16_input(comp, debug: int=0):
     gmol = comp._job._recipe.subject
     
-    ## 1-Change variable names to simplify calls
+    ## 1-Change some variable names to simplify calls
     jobtype = comp.qc_data.jobtype
     functional = comp.qc_data.functional
     basis = comp.qc_data.basis
     loose_opt = comp.qc_data.loose_opt
     tight_opt = comp.qc_data.tight_opt
 
-    assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in gmol"
+    assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in comp.qc_data"
     exists, istate    = find_state(gmol, comp.qc_data.istate)
     assert exists, f"istate = {comp.qc_data.istate} does not exist" 
     assert hasattr(istate,"labels"), f"istate = {comp.qc_data.istate} doesn't have labels"

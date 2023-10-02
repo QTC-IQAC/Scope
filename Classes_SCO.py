@@ -78,20 +78,30 @@ class sco_system(object):
         if hasattr(self,"crystals"): delattr(self,"crystals"); setattr(self,"crystals",[])
 ###################################
 
-#    def add_crystal(self, )
-#        new_crystal = crystal(refcode, name, cell2mol_path, cell, sys, _system=self)
-#        self.crystals.append(new_crystal)
-#        return new_crystal
-
     def find_branch(self, keyword: str, debug: int=0):
-        if debug > 0: print("finding branch with keyword:", keyword)
-        if debug > 0: print("there are", len(self.branches), "branches in system")
+        if debug > 1: print("finding branch with keyword:", keyword)
+        if debug > 1: print("there are", len(self.branches), "branches in system")
         if len(self.branches) == 0: return False, None
         for idx, br in enumerate(self.branches):
-            if debug > 0: print("evaluating branch with keyword:", br.keyword, "and path:", br.path)
+            if debug > 1: print("evaluating branch with keyword:", br.keyword, "and path:", br.path)
             if br.keyword == keyword:
                 if not os.path.isdir(br.path): print(f"WARNING: branch path does not exist. Loading the branch anyway")
                 return True, br
+        return False, None
+
+    def find_computation(self, branch_keyword: str, recipe_keyword: str, job_keyword: str, comp_index: int, debug: int=0):
+        if len(self.branches) == 0: return False, None
+        for br in self.branches:
+            if br.keyword == branch_keyword:
+                if len(br.recipes) == 0: return False, None
+                for rec in br.recipes:
+                    if rec.subject.spin == recipe_keyword:
+                        if len(rec.jobs) == 0: return False, None
+                        for job in rec.jobs:
+                            if job.keyword == job_keyword:
+                                if len(job.computations) == 0: return False, None
+                                for comp in job.computations:
+                                    if comp.index == comp_index: return True, comp
         return False, None
 
     ##########
