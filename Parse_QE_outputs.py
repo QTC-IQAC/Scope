@@ -146,6 +146,8 @@ def parse_final_geometry(lines, debug: int=0):
         return labels, coord
 
 def parse_final_energy(lines, debug: int=0):
+    #line_err, found_conv_error = check_convergence(lines)
+    #if found_conv_error: return None 
     string="Final energy   ="
     linenum, found = search_string(string, lines, typ="last")
     if found: val = float(lines[linenum].split()[3])
@@ -154,7 +156,7 @@ def parse_final_energy(lines, debug: int=0):
         linenum, found  = search_string(string, lines, typ="last")
         if found: val = float(lines[linenum].split()[4])
         else: return None
-    return val 
+    return val*Constants.ry2har 
 
 def parse_hubbard_energy(lines, debug: int=0):
     string = "Hubbard energy            ="

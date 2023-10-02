@@ -182,7 +182,7 @@ def reg_energy(comp: object, debug: int=0):
     worked = False
     try: 
         if comp.software == "g16": energy = G16_get_last_energy(lines, debug=debug)
-        if comp.software == "qe":  energy = parse_final_energy(lines, debug=debug)*Constants.ry2har
+        if comp.software == "qe":  energy = parse_final_energy(lines, debug=debug)
         if energy is not None:     worked = True
     except Exception as exc:
         print(exc)
