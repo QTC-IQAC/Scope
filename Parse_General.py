@@ -1,7 +1,7 @@
 import numpy as np
 
 def search_string(string: str, lines: list, typ: str='all', lowlim: int=None, uplim: int=None, debug: int=0):
-    if type(lines) != list: lines = list([lines])
+    #if type(lines) != list: lines = list([lines])
     if debug > 0: print(f"SEARCH STRING: searching {string} in file")
     list_of_results = []
     for lx, line in enumerate(lines):

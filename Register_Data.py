@@ -7,9 +7,10 @@ from Scope.Adapted_from_cell2mol import labels2formula, get_adjmatrix, get_radii
 from Scope.Classes_Data import *
 from Scope.Classes_State import *
 from Scope.Gmol_ops import gmol_update_geom, cell_update_geom, gmol_create_geom, cell_create_geom
-from Scope.Parse_QE_outputs import * 
 from Scope.Parse_General import read_lines_file, search_string 
 from Scope.Parse_G16_outputs import *
+from Scope.Software.Quantum_Espresso.Parse_QE_outputs import * 
+from Scope.Software.Quantum_Espresso.QE_Class_Output import * 
 from Scope import Constants
 
 ###########################################
@@ -41,29 +42,19 @@ def reg_general(comp: object, debug: int=0):
     ### Quantum Espresso ###
     #########################
     elif comp.software == "qe": 
-        line_done, found_done = search_string("JOB DONE", lines, typ='last')
-        line_time_start, found_time_start = search_string("Program PWSCF", lines, typ='first')
-        line_time_end, found_time_end = search_string("This run was terminated", lines, typ='last')
-        line_elapsed, found_elapsed = search_string("PWSCF        :", lines, typ='last')
 
-        if found_elapsed:
-            eline = lines[line_elapsed]
-            comp.elapsed_time = QE_elapsed_time(eline)
-        else: comp.elapsed_time = float(0)
+        ## With Output Class
+        new_output = qe_output(lines, comp)
 
-        if found_done and found_time_end: comp.isfinished = True
-        else:                             comp.isfinished = False
+        status = new_output.get_status()
+        if status == "worked": 
+            comp.isfinished = True
+            comp.isgood     = True
+        else:
+            comp.isfinished = False
+            comp.isgood     = False
 
-        ## Other conditions for "isgood" might appear when registering other items
-        if found_done and found_time_end: comp.isgood = True
-        else:                             comp.isgood = False
-
-        if debug > 1: print(    "REG_GEN: isgood:    ", comp.isgood)
-        if debug > 1: print(    "REG_GEN: isfinished:", comp.isfinished)
-        if debug > 1: print(    "REG_GEN: found_done:", found_done)
-        if debug > 1: print(    "REG_GEN: found_time_start:", found_time_start)
-        if debug > 1: print(    "REG_GEN: found_time_end:", found_time_end)
-        if debug > 1: print(    "REG_GEN: found_elapsed:", found_elapsed)
+        comp.elapsed_time = new_output.get_elapsed_time()
 
     #############
     ### Other ###

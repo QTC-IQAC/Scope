@@ -21,7 +21,7 @@ class collection(object):
         if not hasattr(self,"units"):    self.units    = data.units
         if not hasattr(self,"function"): self.function = data.function
         if hasattr(self,"units") and self.units == data.units: 
-            data._colection = self
+            data._collection = self
             self.datas.append(data)
 
     def find_value_with_property(self, condition_name: str, condition_value):
@@ -32,9 +32,10 @@ class collection(object):
 
     ### Should be changed to __repr__
     def __repr__(self):
-        if self.units == 'kj': units = 'kJ/mol'
+        if hasattr(self,"units"): 
+            if self.units == 'kj': units = 'kJ/mol'
         to_print  = f'---------------------------------------------------\n'
-        to_print += f'   COLECTION OF DATA   = {self.key}                \n'
+        to_print += f'   COLLECTION OF DATA   = {self.key}                \n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' #Entries              = {len(self.datas)}\n'
         if len(self.datas) > 0: to_print += f' First                 = {self.datas[0].value}\n'
@@ -42,6 +43,9 @@ class collection(object):
         if hasattr(self,"units"):    to_print += f' Units                 = {self.units}\n'
         if hasattr(self,"function"): to_print += f' Function              = {self.function}\n'
         return to_print
+
+    def __len__(self):
+        return int(len(self.datas))
 
 ############
 ### DATA ###

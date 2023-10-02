@@ -19,7 +19,6 @@ from .Other import *
 from .Parse_Cif import *
 from .Parse_G16_outputs import *
 from .Parse_General import *
-from .Parse_QE_outputs import *
 from .Read_Write import *
 from .Register_Data import *
 from .Shape_V0 import *
@@ -28,9 +27,15 @@ from .Unit_cell_tools import *
 from .VNM_tools import *
 from .Write_G16_Inputs import *
 from .Write_ORCA_Inputs import *
-from .Write_QE_Inputs import *
 
 from . import Workflow
 from .Workflow import *
 from . import Utils
 from .Utils import *
+
+from . import Software
+from .Software import *
+
+from .Software.Quantum_Espresso.Parse_QE_outputs import *
+from .Software.Quantum_Espresso.QE_Class_Output import *
+from .Software.Quantum_Espresso.Write_QE_Inputs import *

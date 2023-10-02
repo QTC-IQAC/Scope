@@ -9,22 +9,73 @@ import Scope.Constants
 
 bohr2angs = Scope.Constants.bohr2angs
 
-def check_status(lines: list, debug: int=0):
-    keys=["JOB DONE", "End final coordinates", "Maximum CPU time exceeded", "convergence NOT achieved after"]
-    linenum = []
-    bools = []
-    ## Search Key Elements of Output
-    for sx, string in enumerate(keys):
-        search, found = search_string(string, lines, typ="last")
-        linenum.append(search)
-        bools.append(found)
-    ## Set Status based on Findings
-    if   bools[0] and bools[1] and not bools[2]:                      status = "worked"           ### Everything worked
-    elif bools[0] and bools[3] and not bools[1] and not bools[2]:     status = "not converged"    ### Job ended but did not converge
-    elif bools[2]:                                                    status = "stopped"          ### Job Stopped due to time limits
-    elif all(not f for f in key_found):                               status = "nothing"          ### Nothing, probably a job terminated abruptly
-    else:                                                             status = "unknown"
-    return status
+def parse_geometry_from_step(lines, debug=0):
+    
+    bohr2angs = Scope.Constants.bohr2angs
+    
+    init_str = "ATOMIC_POSITIONS"
+    last_str = "Writing output data"
+    init_linenum, found_init = search_string(init_str, lines, typ="first")
+    last_linenum, found_end  = search_string(last_str, lines, typ="first")
+    if not found_init or not found_end: return None, None
+        
+    last_linenum = last_linenum - 3   ## Writing output data file is written 3 lines after
+    #print(init_linenum, last_linenum)
+    geo_lines = lines[init_linenum:last_linenum]
+
+    ### Reads units of coordinates from the ATOMIC POSITIONS line
+    at_pos_line=geo_lines[0].lower()
+    if "angstrom" in at_pos_line: units = 'angstrom'
+    elif "bohr"   in at_pos_line: units = 'bohr'
+    else: print("PARSE_GEOMETRY: error reading units of coordinates:", at_pos_line)
+
+    ### Reads Coordinates
+    coord = []
+    labels = []
+    for idx, l in enumerate(geo_lines[1:]):
+        line_data = l.split()
+        if len(line_data) == 4:
+            label, x, y, z = l.split()
+            try:
+                if units == "angstrom": coord.append([float(x), float(y), float(z)])
+                elif units == "bohr":   coord.append([float(x*bohr2angs), float(y*bohr2angs), float(z*bohr2angs)])
+                labels.append(label)
+            except exception as exc:
+                if debug >= 1: print(f"PARSE_GEOMETRY: exception {exc} reading line: {l}")
+        else:
+            if debug >= 1: print(f"PARSE_GEOMETRY: line discarded: {line_data}")
+    return labels, coord
+
+def parse_forces_from_step(lines, debug=0):
+    init_str = "Forces acting on atoms"
+    last_str = "Total force ="
+    init_linenum, found_init = search_string(init_str, lines, typ="first")
+    last_linenum, found_end  = search_string(last_str, lines, typ="first")
+    if not found_init or not found_end: return None
+    
+    init_linenum = init_linenum + 2
+    last_linenum = last_linenum - 1   
+    force_lines = lines[init_linenum:last_linenum]
+
+    ### Reads Atomic Forces
+    forces = []
+    for idx, l in enumerate(force_lines):
+        line_data = l.split()
+        if len(line_data) == 9:
+            dummy, atnum, dummy, specnum, dummy, dummy, x, y, z = l.split()
+            try: 
+                forces.append([float(x), float(y), float(z)])
+            except exception as exc:
+                if debug >= 1: print(f"PARSE_FORCES: exception {exc} reading line: {l}")
+        else:
+            if debug >= 1: print(f"PARSE_FORCES: line discarded: {line_data}")
+                
+    ### Reads Total Force
+    total_force = lines[last_linenum+1].split()[3]
+        
+    return forces, total_force
+
+
 
 def check_job_requirements(lines: list, key_str: list=["JOB DONE", "Begin final coordinates", "End final coordinates"], debug: int=0):
     item = []
@@ -43,6 +94,16 @@ def check_convergence(lines: list, string: str="convergence NOT achieved after",
     linenum, found = search_string(string, lines, typ="last")
     return linenum, found
     
+def parse_cell_vectors(lines, debug: int=0):
+    string = "CELL_PARAMETERS"
+    linenum, found = search_string(string, lines, typ="first")
+    if not found: return None
+    cellvec = []
+    cellvec.append(list(float(i) for i in lines[linenum+1].split()))
+    cellvec.append(list(float(i) for i in lines[linenum+2].split()))
+    cellvec.append(list(float(i) for i in lines[linenum+3].split()))
+    return cellvec
+
 def get_cell_vectors(lines, debug: int=0):
     cellvec_lines = []
     cellvec_strings = ["celldm(1)", "celldm(4)", "crystal axes", "unit-cell volume"]
@@ -173,7 +234,8 @@ def parse_final_energy(lines, debug: int=0):
         linenum, found  = search_string(string, lines, typ="last")
         if found: val = float(lines[linenum].split()[4])
         else: return None
-    return val*Scope.Constants.ry2har 
+    return val
+#    return val*Scope.Constants.ry2har 
 
 def parse_hubbard_energy(lines, debug: int=0):
     string = "Hubbard energy            ="

@@ -11,7 +11,7 @@ from Scope.Environment import *
 #from Scope.Environment import set_cluster, set_user, check_submitted, check_usage, get_queue_and_procs, send_command
 from Scope.Register_Data import reg_general, reg_optimization, reg_frequencies, reg_energy
 from Scope.Write_G16_Inputs import *
-from Scope.Write_QE_Inputs import *
+from Scope.Software.Quantum_Espresso.Write_QE_Inputs import *
 
 #########################
 ###### COMPUTATION ######
