@@ -156,7 +156,7 @@ def parse_final_energy(lines, debug: int=0):
         linenum, found  = search_string(string, lines, typ="last")
         if found: val = float(lines[linenum].split()[4])
         else: return None
-    return val*Constants.ry2har 
+    return val*Scope.Constants.ry2har 
 
 def parse_hubbard_energy(lines, debug: int=0):
     string = "Hubbard energy            ="
