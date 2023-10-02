@@ -183,9 +183,9 @@ def gen_QE_input(comp, debug: int=0):
         #////////////////////////
         print(" &electrons", file=inp)
         print("    diagonalization='david'", file=inp)
-        print("    electron_maxstep=250", file=inp)
+        print(f"    electron_maxstep= {comp.qc_data.elec_maxstep}", file=inp)
         print("    conv_thr = 1.0e-5", file=inp)
-        print("    mixing_beta = 0.20", file=inp)
+        print(f"    mixing_beta = {comp.qc_data.mix_beta}", file=inp)
         print("/", file=inp)
    
         #///////////////////

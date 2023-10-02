@@ -161,10 +161,12 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
 
                     ## In continuation computations, istate must be the modified, so it continues from the last attempt
                     if  hasattr(comp.qc_data,"fstate"):  
-                        new_comp.qc_data._mod_attr("istate",comp.qc_data.fstate)         
+                        new_comp.qc_data._add_attr("istate",comp.qc_data.fstate)         
+                        new_comp.qc_data._add_attr("fstate",comp.qc_data.fstate)         
                         print("Execute_JOB, step 7.3b: istate of new computation is modified to", new_comp.qc_data.istate)
                     elif hasattr(this_job,"fstate"): 
                         new_comp.qc_data._add_attr("istate",this_job.fstate)         
+                        new_comp.qc_data._add_attr("fstate",this_job.fstate)         
                         print("Execute_JOB, step 7.3b: istate of new computation is modified to", new_comp.qc_data.istate)
                     else: 
                         print("Execute_JOB, step 7.3b: Could not find valid 'istate' for continuation computation")

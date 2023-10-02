@@ -21,6 +21,10 @@ def check_job_requirements(lines: list, key_str: list=["JOB DONE", "Begin final 
 def check_maxseconds(lines: list, string: str="Maximum CPU time exceeded", debug: int=0):
     linenum, found = search_string(string, lines, typ="last")
     return linenum, found
+
+def check_convergence(lines: list, string: str="convergence NOT achieved after", debug: int=0):
+    linenum, found = search_string(string, lines, typ="last")
+    return linenum, found
     
 def get_cell_vectors(lines, debug: int=0):
     cellvec_lines = []
