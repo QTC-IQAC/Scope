@@ -9,6 +9,23 @@ import Scope.Constants
 
 bohr2angs = Scope.Constants.bohr2angs
 
+def check_status(lines: list, debug: int=0):
+    keys=["JOB DONE", "End final coordinates", "Maximum CPU time exceeded", "convergence NOT achieved after"]
+    linenum = []
+    bools = []
+    ## Search Key Elements of Output
+    for sx, string in enumerate(keys):
+        search, found = search_string(string, lines, typ="last")
+        linenum.append(search)
+        bools.append(found)
+    ## Set Status based on Findings
+    if   bools[0] and bools[1] and not bools[2]:                      status = "worked"           ### Everything worked
+    elif bools[0] and bools[3] and not bools[1] and not bools[2]:     status = "not converged"    ### Job ended but did not converge
+    elif bools[2]:                                                    status = "stopped"          ### Job Stopped due to time limits
+    elif all(not f for f in key_found):                               status = "nothing"          ### Nothing, probably a job terminated abruptly
+    else:                                                             status = "unknown"
+    return status
+
 def check_job_requirements(lines: list, key_str: list=["JOB DONE", "Begin final coordinates", "End final coordinates"], debug: int=0):
     item = []
     bools = []
@@ -156,7 +173,7 @@ def parse_final_energy(lines, debug: int=0):
         linenum, found  = search_string(string, lines, typ="last")
         if found: val = float(lines[linenum].split()[4])
         else: return None
-    return val*Constants.ry2har 
+    return val*Scope.Constants.ry2har 
 
 def parse_hubbard_energy(lines, debug: int=0):
     string = "Hubbard energy            ="
