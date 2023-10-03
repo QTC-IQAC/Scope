@@ -11,9 +11,9 @@ class qe_output(object):
         self.lines          = []
         
     def read_lines(self):
-        self.lines          = read_lines_file(self._computation.out_path)
+        if hasattr(self,"_computation"): self.lines = read_lines_file(self._computation.out_path)
         
-    def get_status(self):
+    def get_output_status(self):
         keys=["JOB DONE", "End final coordinates", "Maximum CPU time exceeded", "convergence NOT achieved after"]
         linenum = []
         bools = []        
@@ -36,8 +36,8 @@ class qe_output(object):
     def get_scf_blocks(self, debug: int=0):
         self.scf_blocks = []        
         ## Strings to Search
-        start_SCF, found = search_string("Self-consistent Calculation", self.lines)
-        end_SCF, found   = search_string("End of self-consistent calculation", self.lines)        
+        start_SCF, found1  = search_string("Self-consistent Calculation", self.lines)
+        end_SCF, found2    = search_string("End of self-consistent calculation", self.lines)        
         ## Finds Blocks
         last_start = 0; last_end   = 0
         for s in start_SCF:
@@ -54,8 +54,10 @@ class qe_output(object):
     def get_opt_blocks(self, debug: int=0):
         if not hasattr(self,"scf_blocks"): self.get_scf_blocks()
         self.opt_blocks = []
-        for idx, b in enumerate(self.scf_blocks[:-1]):
-            self.opt_blocks.append([self.scf_blocks[idx][0], self.scf_blocks[idx+1][0]])
+        if len(self.scf_blocks) > 0: 
+            for idx, b in enumerate(self.scf_blocks[:-1]):
+                self.opt_blocks.append([self.scf_blocks[idx][0], self.scf_blocks[idx+1][0]])
+            self.opt_blocks.append([self.scf_blocks[-1][0],len(self.lines)]) 
         return self.opt_blocks
     
 ##############
@@ -65,46 +67,185 @@ class qe_output(object):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
         self.all_labels = []
         self.all_coords = []
-        for idx, b in enumerate(self.opt_blocks):
-            step_labels, step_coords       = parse_geometry_from_step(self.lines[b[0]+1:b[1]+1])    
-            if idx > 0: assert step_labels[0] == self.all_labels[0][0], f"There is an issue with the parsed labels"
-            self.all_labels.append(step_labels)
-            self.all_coords.append(step_coords)
+        if len(self.opt_blocks) > 0: 
+            for idx, b in enumerate(self.opt_blocks):
+                step_labels, step_coords       = parse_geometry_from_step(self.lines[b[0]+1:b[1]+1])    
+                self.all_labels.append(step_labels)
+                self.all_coords.append(step_coords)
+                if (step_labels is None or step_coords is None) and debug > 0: print("GET_ALL_GEOMETRIES: error parsing geometry between lines", b) 
+        else:
+            if debug > 0: print("GET_ALL_GEOMETRIES: empty list of opt_blocks")
+            self.all_labels = None
+            self.all_coords = None
         return self.all_labels, self.all_coords
 
     def get_last_geometry(self, debug: int=0):
-        if hasattr(self,"all_labels"): 
-            self.last_labels = self.all_labels[-1]
-            self.last_coords = self.all_coords[-1]
+        if hasattr(self,"all_labels"):
+            if len(self.all_labels) > 0 and len(self.all_coords) > 0:
+                for idx in range(len(self.all_labels)-1,-1,-1):
+                    if self.all_labels[idx] is not None and self.all_coords is not None:
+                        self.last_labels = self.all_labels[idx]
+                        self.last_coords = self.all_coords[idx]
+                self.last_labels = None
+                self.last_coords = None
+                return self.last_labels, self.last_coords
+            else:
+                if debug > 0: print("GET_LAST_GEOMETRY: No geometries in list")
+                self.last_labels = None
+                self.last_coords = None
+                return self.last_labels, self.last_coords
         else:
             if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
-            if len(self.opt_blocks) == 0: return None, None
-            init_line = self.opt_blocks[-1][0]+1
-            last_line = self.opt_blocks[-1][1]+1
-            self.last_labels, self.last_coords  = parse_geometry_from_step(self.lines[init_line:last_line])
-        return self.last_labels, self.last_coords
+            if len(self.opt_blocks) == 0:
+                if debug > 0: print("GET_LAST_GEOMETRY: No geometries in list")
+                self.last_labels = None
+                self.last_coords = None
+                return self.last_labels, self.last_coords
+            for idx in range(len(self.opt_blocks)-1,-1,-1):
+                init_line = self.opt_blocks[idx][0]+1
+                last_line = self.opt_blocks[idx][1]+1
+                tmp1, tmp2 = parse_geometry_from_step(self.lines[init_line:last_line])
+                if tmp1 is not None and tmp2 is not None:
+                    self.last_labels = tmp1
+                    self.last_coords = tmp2
+                    return self.last_labels, self.last_coords
+            if debug > 0: print("GET_LAST_GEOMETRY: all geometries are None")
+            self.last_labels = None
+            self.last_coords = None
+            return self.last_labels, self.last_coords
 
 ###################
 ### CELL PARAMS ###
 ###################
-    def get_all_cell_param(self, debug: int=0):
+    def get_all_cell_vectors(self, debug: int=0):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
         self.all_cell_vec = []
-        for idx, b in enumerate(self.opt_blocks):
-            step_cell_vec  = parse_cell_vectors(self.lines[b[0]+1:b[1]+1])
-            self.all_cell_vec.append(step_cell_vec)
+        if len(self.opt_blocks) > 0: 
+            for idx, b in enumerate(self.opt_blocks):
+                step_cell_vec  = parse_cell_vectors(self.lines[b[0]+1:b[1]+1])
+                self.all_cell_vec.append(step_cell_vec)
+                if step_cell_vec is None and debug > 0: print("GET_ALL_CELL_PARAM: error parsing cell_parameters between lines", b)
+        else:
+            if debug > 0: print("GET_ALL_CELL_PARAM: empty list of opt_blocks")
+            self.all_cell_vec = None
         return self.all_cell_vec
 
-    def get_last_cell_param(self, debug: int=0):
-        if hasattr(self,"all_cell_vec"): 
-            self.last_cell_vec = self.all_cell_vec[-1] 
+    def get_last_cell_vectors(self, debug: int=0):
+        if hasattr(self,"all_cell_vec"):
+            if len(self.all_cell_vec) > 0:
+                for c in self.all_cell_vec[-1::-1]:
+                    if c is not None:
+                        self.last_cell_vec = c; return self.last_cell_vec
+                self.last_cell_vec = None
+                return self.last_cell_vec
+            else:
+                if debug > 0: print("GET_LAST_CELL_VECTORS: No all_volumes in list")
+                self.last_cell_vec = None
+                return self.last_cell_vec
         else:
             if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
-            if len(self.opt_blocks) == 0: return None
-            init_line = self.opt_blocks[-1][0]+1
-            last_line = self.opt_blocks[-1][1]+1
-            self.last_cell_vec  = parse_cell_vectors(self.lines[init_line:last_line])
-        return self.last_cell_vec
+            if len(self.opt_blocks) == 0:
+                if debug > 0: print("GET_LAST_CELL_VECTORS: No opt_blocks in list")
+                self.last_cell_vec = None
+                return self.last_cell_vec
+            for idx in range(len(self.opt_blocks)-1,-1,-1):
+                init_line = self.opt_blocks[idx][0]+1
+                last_line = self.opt_blocks[idx][1]+1
+                tmp = parse_cell_vectors(self.lines[init_line:last_line])
+                if tmp is not None:
+                    self.last_cell_vec = tmp; return self.last_cell_vec
+            if debug > 0: print("GET_LAST_CELL_VECTORS: all cell vectors are None")
+            self.last_cell_vec = None
+            return self.last_cell_vec
+
+##############
+### VOLUME ###
+##############
+    def get_all_volumes(self, debug: int=0):
+        if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
+        self.all_volumes = []
+        if len(self.opt_blocks) > 0: 
+            for idx, b in enumerate(self.opt_blocks):
+                step_volume  = parse_volume_from_step(self.lines[b[0]+1:b[1]+1])
+                self.all_volumes.append(step_volume)
+                if step_volume is None and debug > 0: print("GET_ALL_VOLUMES: error parsing volume between lines", b) 
+        else:
+            if debug > 0: print("GET_ALL_VOLUMES: empty list of opt_blocks")
+            self.all_volumes = None
+        return self.all_volumes
+
+    def get_last_volume(self, debug: int=0):
+        if hasattr(self,"all_volumes"): 
+            if len(self.all_volumes) > 0: 
+                for v in self.all_volumes[-1::-1]:
+                    if v is not None:
+                        self.last_volume = v
+                        return self.last_volume
+                self.last_volume = None
+                return self.last_volume
+            else: 
+                if debug > 0: print("GET_LAST_VOLUME: No all_volumes in list")
+                self.last_volume = None
+                return self.last_volume
+        else:
+            if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
+            if len(self.opt_blocks) == 0: 
+                if debug > 0: print("GET_LAST_VOLUME: No opt_blocks in list")
+                self.last_volume = None
+                return self.last_volume
+            for idx in range(len(self.opt_blocks)-1,-1,-1):
+                init_line = self.opt_blocks[idx][0]+1
+                last_line = self.opt_blocks[idx][1]+1
+                tmp = parse_volume_from_step(self.lines[init_line:last_line])
+                if tmp is not None:
+                    self.last_volume = tmp; return self.last_volume
+            if debug > 0: print("GET_LAST_VOLUME: all volumes are None")
+            self.last_volume = None
+            return self.last_volume
+
+###############
+### DENSITY ###
+###############
+    def get_all_densities(self, debug: int=0):
+        if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
+        self.all_densities = []
+        if len(self.opt_blocks) > 0: 
+            for idx, b in enumerate(self.opt_blocks):
+                step_density  = parse_density_from_step(self.lines[b[0]+1:b[1]+1])
+                self.all_densities.append(step_density)
+                if step_density is None and debug > 0: print("GET_ALL_VOLUMES: error parsing density between lines", b) 
+        else:
+            if debug > 0: print("GET_ALL_DENSITIES: empty list of opt_blocks")
+            self.all_densities = None
+        return self.all_densities
+
+    def get_last_density(self, debug: int=0):
+        if hasattr(self,"all_densities"):
+            if len(self.all_densities) > 0:
+                for d in self.all_densities[-1::-1]:
+                    if d is not None:
+                        self.last_density = d; return self.last_density
+                self.last_density = None 
+                return self.last_density
+            else:
+                if debug > 0: print("GET_LAST_DENSITY: No all_densities in list")
+                self.last_density = None 
+                return self.last_density
+        else:
+            if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
+            if len(self.opt_blocks) == 0:
+                if debug > 0: print("GET_LAST_DENSITY: No opt_blocks in list")
+                self.last_density = None 
+                return self.last_density
+            for idx in range(len(self.opt_blocks)-1,-1,-1):
+                init_line = self.opt_blocks[idx][0]+1
+                last_line = self.opt_blocks[idx][1]+1
+                tmp = parse_density_from_step(self.lines[init_line:last_line])
+                if tmp is not None:
+                    self.last_density = tmp; return self.last_density
+            if debug > 0: print("GET_LAST_DENSITY: all densities are None")
+            self.last_density = None 
+            return self.last_density
 
 ##############
 ### FORCES ###
@@ -113,48 +254,96 @@ class qe_output(object):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
         self.all_at_forces = []
         self.all_tot_forces = []
-        for idx, b in enumerate(self.opt_blocks):
-            step_at_forces, step_tot_force = parse_forces_from_step(self.lines[b[0]+1:b[1]+1])
-            assert len(step_at_forces) == len(step_labels), f"{len(step_forces)} {len(step_labels)}"
-            self.all_at_forces.append(step_at_forces)
-            self.all_tot_forces.append(step_tot_force)
+        if len(self.opt_blocks) > 0: 
+            for idx, b in enumerate(self.opt_blocks):
+                step_at_forces, step_tot_force = parse_forces_from_step(self.lines[b[0]+1:b[1]+1])
+                self.all_at_forces.append(step_at_forces)
+                self.all_tot_forces.append(step_tot_force)
+                if (step_at_forces is None or step_tot_force is None) and debug > 0: print("GET_ALL_FORCES: error parsing forces between lines", b) 
+        else:
+            if debug > 0: print("GET_ALL_FORCES: empty list of opt_blocks")
+            self.all_at_forces = None
+            self.all_tot_forces = None
         return self.all_at_forces, self.all_tot_forces
 
     def get_last_forces(self, debug: int=0):
         if hasattr(self,"all_at_forces"): 
-            self.last_at_forces = self.all_at_forces[-1] 
-            self.last_tot_force = self.all_tot_forces[-1] 
+            if len(self.all_at_forces) > 0 and len(self.all_tot_forces) > 0:  
+                for idx in range(len(self.all_at_forces)-1,-1,-1): 
+                    if self.all_at_forces[idx] is not None and self.all_tot_forces is not None: 
+                        self.last_at_forces  = self.all_at_forces[idx]
+                        self.last_tot_forces = self.all_tot_forces[idx]
+                self.last_at_forces = None 
+                self.last_tot_forces = None 
+                return self.last_at_forces, self.last_tot_forces 
+            else: 
+                if debug > 0: print("GET_LAST_FORCES: No all_forces in list")
+                self.last_at_forces = None 
+                self.last_tot_forces = None 
+                return self.last_at_forces, self.last_tot_forces 
         else:
             if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
-            if len(self.opt_blocks) == 0: return None, None
-            init_line = self.opt_blocks[-1][0]+1
-            last_line = self.opt_blocks[-1][1]+1
-            self.last_at_forces, self.last_tot_force = parse_forces_from_step(self.lines[init_line:last_line])
-        return self.last_at_forces, self.last_tot_force
+            if len(self.opt_blocks) == 0: 
+                if debug > 0: print("GET_LAST_FORCES: No opt_blocks in list")
+                self.last_at_forces = None 
+                self.last_tot_forces = None 
+                return self.last_at_forces, self.last_tot_forces 
+            for idx in range(len(self.opt_blocks)-1,-1,-1):
+                init_line = self.opt_blocks[idx][0]+1
+                last_line = self.opt_blocks[idx][1]+1
+                tmp1, tmp2 = parse_forces_from_step(self.lines[init_line:last_line])
+                if tmp1 is not None and tmp2 is not None:
+                    self.last_at_forces = tmp1 
+                    self.last_tot_force = tmp2 
+                    return self.last_at_forces, self.last_tot_force
+            if debug > 0: print("GET_LAST_FORCES: all forces are None")
+            self.last_at_forces = None 
+            self.last_tot_forces = None 
+            return self.last_at_forces, self.last_tot_forces 
             
 ################
 ### ENERGIES ###
 ################
     def get_all_energies(self, debug: int=0):
-        from Scope.Classes_Data import data, collection
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
-        self.all_energies = [] 
-        for b in self.opt_blocks:
-            val      = parse_final_energy(self.lines[b[0]+1:b[1]+1])
-            self.all_energies.append(val)
+        self.all_energies = []
+        if len(self.opt_blocks) > 0: 
+            for idx, b in enumerate(self.opt_blocks):
+                step_energy  = parse_energy_from_step(self.lines[b[0]+1:b[1]+1])
+                self.all_energies.append(step_energy)
+                if step_energy is None and debug > 0: print("GET_ALL_ENERGIES: error parsing energy between lines", b) 
+        else:
+            if debug > 0: print("GET_ALL_ENERGIES: empty list of opt_blocks")
+            self.all_energies = None
         return self.all_energies
 
     def get_last_energy(self, debug: int=0):
         if hasattr(self,"all_energies"): 
-            self.last_energy = self.all_energies[-1]
+            if len(self.all_energies) > 0: 
+                for e in self.all_energies[-1::-1]:
+                    if e is not None:
+                        self.last_energy = e; return self.last_energy
+                self.last_energy = None
+                return self.last_energy
+            else: 
+                if debug > 0: print("GET_LAST_ENERGY: No all_energies in list")
+                self.last_energy = None
+                return self.last_energy
         else:
-            from Scope.Classes_Data import data, collection
             if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
-            if len(self.opt_blocks) == 0: return None, None
-            init_line = self.opt_blocks[-1][0]+1
-            last_line = self.opt_blocks[-1][1]+1
-            self.last_energy = parse_final_energy(self.lines[init_line:last_line])
-        return self.last_energy
+            if len(self.opt_blocks) == 0: 
+                if debug > 0: print("GET_LAST_ENERGY: No opt_blocks in list")
+                self.last_energy = None
+                return self.last_energy
+            for idx in range(len(self.opt_blocks)-1,-1,-1):
+                init_line = self.opt_blocks[idx][0]+1
+                last_line = self.opt_blocks[idx][1]+1
+                tmp = parse_energy_from_step(self.lines[init_line:last_line])
+                if tmp is not None:
+                    self.last_energy = tmp; return self.last_energy
+            if debug > 0: print("GET_LAST_ENERGY: all energies are None")
+            self.last_energy = None
+            return self.last_energy
     
 ############
 ### TIME ###
@@ -178,5 +367,47 @@ class qe_output(object):
         if hasattr(self,"all_coords"):   to_print += f'#Coordinates      = {len(self.all_coords)}\n'
         if hasattr(self,"all_energies"): to_print += f'#Energies         = {len(self.all_energies)}\n'
         if hasattr(self,"all_cell_vec"): to_print += f'#Cell Vectors     = {len(self.all_cell_vec)}\n'
+        if hasattr(self,"last_energy"):  to_print += f'Last Energy       = {self.last_energy}\n'
+        if hasattr(self,"last_volume"):  to_print += f'Last Volume       = {self.last_volume}\n'
+        if hasattr(self,"last_density"): to_print += f'Last Density      = {self.last_density}\n'
         if hasattr(self,"elapsed_time"): to_print += f'Elapsed Time      = {self.elapsed_time}\n'
+        to_print += f'---------------------------------------------------\n'
         return to_print
+
+################
+#### GENERAL ###
+################
+#    def execute_all_parsing(self, prop_name: str, function: str, debug: int=0):
+#        if function not in dir(self): print("Function not in class"); return None
+#        if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
+#        method = getattr(self,"function")
+#        prop = []
+#        for idx, b in enumerate(self.opt_blocks):
+#            init_line = b[0]+1
+#            last_line = b[1]+1
+#            step_prop  = method(self.lines[init_line:last_lines])
+#            if step_prop is not None: prop.append(step_prop)
+#        setattr(self,prop_name,prop)
+#        return getattr(self,prop_name)
+#
+#    def execute_last_parsing(self, prop_name: str, all_prop_name: str, function: str, debug: int=0):
+#        if not function in dir(self): return None
+#        method = getattr(self,"function")
+#        #if not hasattr(self,all_prop_name): self.execute_all_parsing(all_prop_name, function)
+#        if hasattr(self,all_prop_name): 
+#            var = getattr(self,all_prop_name)
+#            if len(var) > 0: 
+#                for v in var[-1::-1]:
+#                    if v is not None: prop = v; setattr(self,prop_name,prop); return getattr(self,prop_name)
+#        else:
+#            if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
+#            if len(self.opt_blocks) == 0: return None
+#
+#            for idx in range(len(self.opt_blocks),-1,-1):
+#                init_line = self.opt_blocks[idx][0]+1
+#                last_line = self.opt_blocks[idx][1]+1
+#                prop = method(self.lines[init_line:last_line])
+#                if prop is not None:
+#                    setattr(self,prop_name,prop)
+#                    return getattr(self,prop_name)
+

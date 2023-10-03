@@ -8,7 +8,7 @@ from Scope.Classes_Data import *
 from Scope.Classes_State import *
 from Scope.Gmol_ops import gmol_update_geom, cell_update_geom, gmol_create_geom, cell_create_geom
 from Scope.Parse_General import read_lines_file, search_string 
-from Scope.Parse_G16_outputs import *
+from Scope.Software.Gaussian.Parse_G16_outputs import *
 from Scope.Software.Quantum_Espresso.Parse_QE_outputs import * 
 from Scope.Software.Quantum_Espresso.QE_Class_Output import * 
 from Scope import Constants

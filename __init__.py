@@ -17,7 +17,6 @@ from .Geom_SCO_V1 import *
 from .Gmol_ops import *
 from .Other import *
 from .Parse_Cif import *
-from .Parse_G16_outputs import *
 from .Parse_General import *
 from .Read_Write import *
 from .Register_Data import *
@@ -25,7 +24,6 @@ from .Shape_V0 import *
 from .Thermal_Corrections import *
 from .Unit_cell_tools import *
 from .VNM_tools import *
-from .Write_G16_Inputs import *
 from .Write_ORCA_Inputs import *
 
 from . import Workflow
@@ -39,3 +37,7 @@ from .Software import *
 from .Software.Quantum_Espresso.Parse_QE_outputs import *
 from .Software.Quantum_Espresso.QE_Class_Output import *
 from .Software.Quantum_Espresso.Write_QE_Inputs import *
+
+from .Software.Gaussian.Write_G16_Inputs import *
+from .Software.Gaussian.Parse_G16_outputs import *
+from .Software.Gaussian.G16_Class_Output import *
