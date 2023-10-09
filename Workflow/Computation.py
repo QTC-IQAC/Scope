@@ -10,8 +10,6 @@ from Scope.Classes_Spin import *
 from Scope.Environment import * 
 #from Scope.Environment import set_cluster, set_user, check_submitted, check_usage, get_queue_and_procs, send_command
 from Scope.Register_Data import reg_general, reg_optimization, reg_frequencies, reg_energy
-from Scope.Software.Gaussian.Write_G16_Inputs import *
-from Scope.Software.Quantum_Espresso.Write_QE_Inputs import *
 
 #########################
 ###### COMPUTATION ######
@@ -26,7 +24,7 @@ class computation(object):
         self.software         = qc_data.software
         self.path             = path
         self.refcode          = _job._recipe.subject._sys.refcode
-        self.run_number       = self.set_run_number()
+        self.run_number       = self.set_run_number(debug=0)
         self.isregistered     = False
         self.has_update       = False
         self.is_update        = is_update
@@ -76,7 +74,7 @@ class computation(object):
 
     def set_run_number(self, debug: int=1) -> int:
         run_number = 0
-        if debug > 0: print("SET_RUN_NUMBER: evaluating", self.keyword)
+        if debug > 0: print("SET_RUN_NUMBER: evaluating computation with keyword", self.keyword)
         for idx, comp in enumerate(self._job.computations):  ## Searches in the recipe it is contained
             if debug > 0: print("SET_RUN_NUMBER: in job there is:", comp.keyword, comp.isfinished, comp.run_number)
             if comp.keyword == self.keyword and hasattr(comp,"isfinished") and hasattr(comp,"run_number"):
@@ -98,11 +96,13 @@ class computation(object):
         else:                   self.subfile_modtime  = int(0) 
         
     def read_lines(self, flat: bool=True) -> None:        
+        if not hasattr(self,"output_exists"): self.check_files()
         if self.output_exists: self.output_lines = read_lines_file(self.out_path, flat=flat)
         else:                  self.output_lines = []
 
     def delete_lines(self) -> None:
-        self.output_lines = []
+        if hasattr(self,"output_lines"): delattr(self,"output_lines")
+        #self.output_lines = []
             
     def check_submission_status(self, debug: int=0) -> None:
         key = str(self.refcode+self.suffix)
@@ -118,6 +118,20 @@ class computation(object):
         self.registration_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         self.registration_cluster = cluster
         self.registration_user = user
+
+    def create_output(self, debug: int=0):
+        if not hasattr(self,'output_lines'): self.read_lines()
+        if   self.software == 'g16': 
+            from Scope.Software.Gaussian.G16_Class_Output import g16_output
+            self.output = g16_output(self.output_lines, self)
+        elif self.software == 'qe':  
+            from Scope.Software.Quantum_Espresso.QE_Class_Output import qe_output
+            self.output = qe_output(self.output_lines, self)
+        else: print(f"COMPUTATION.CREATE_OUTPUT: Output of {comp.software} computationss is not implemented."); return None
+        return self.output 
+
+    def delete_output(self) -> None:
+        if hasattr(self,"output"): delattr(self,"output")
 
 ###########################################
     def store(self, debug: int=0) -> None:
@@ -179,7 +193,7 @@ class computation(object):
 ###########################################
     def register(self, debug: int=0) -> None:
        
-        ## Checks whether the output file exists
+        ## Checks whether the output file exists:
         if not hasattr(self,"output_exists") or not hasattr(self,"output_modtime"): self.check_files()
 
         ## If so, it reads the lines under 2 conditions: 
@@ -189,34 +203,36 @@ class computation(object):
             ## 2-If the output file has been modified since it was read
             elif hasattr(self,"output_lines") and os.path.getmtime(self.out_path) > self.output_modtime: self.read_lines()
 
+        ## 0-Creates Output, the object that will contain the parsing of data
+        self.create_output(debug=debug)
+
         ## 1-Registration of General Attributes 
-        reg_general(self, debug=debug)  # Gives self.isgood and self.isfinished
+        reg_general(self, debug=debug)     # Gives self.isfinished, self.elapsed_time and self.status. It always works
+     
+        ## 2-Registration of Energy 
+        reg_energy(self, debug=debug)      # Stores the "last energy of a complete block" to State if it is not None
+        #if not worked1: print(f"    COMP.REGISTER: Energy Registration didn't work for: {self.out_path}"); return False
 
-        ## 2-Registration of Optimization Tasks 
+        ## 3-Registration of Optimization of Frequency Tasks 
         if 'opt' in self._job.keyword or 'relax' in self._job.keyword:
-            worked = reg_energy(self, debug=debug)
-            if worked: 
-                print("IM HERE WITH", self.out_path)
-                worked = reg_optimization(self, debug=debug)
-
-        ## 3-Registration of Frequencies
-        elif self.isgood and 'freq' in self._job.keyword:
-            worked = reg_frequencies(self, debug=debug)
-        else:  
-            print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}")
-            if len(self.output_lines) > 0: print(f"        -last line:", self.output_lines[-1])
-            return False
+        #if ('opt' in self._job.keyword or 'relax' in self._job.keyword) and worked1:
+            worked2 = reg_optimization(self, debug=debug)
+        elif self.isgood and 'freq' in self._job.keyword: 
+        #elif self.isgood and 'freq' in self._job.keyword and worked1:
+            worked2 = reg_frequencies(self, debug=debug)
+        else: 
+            worked2 = True
 
         ## 4-Wraps Up
-        if worked:
+        if worked2:
             self.isregistered = True
             self.add_registration_data()
-            self.delete_lines()
-        else:  
-            print(f"    WARNING: Update_Registry: Registration didn't work for: {self.out_path}")
-            if len(self.output_lines) > 0: print(f"        -last line:", self.output_lines[-1])
+            self.delete_lines()   ## Output lines are deleted to save disk
+            self.delete_output()  ## Output Object too, since it also stores output lines
+        else: 
+            print(f"    COMP.REGISTER: Opt/Freq Registration didn't work for: {self.out_path}")
 
-        return worked
+        return worked2
 
 ###########################################
     def __repr__(self) -> None:
@@ -242,6 +258,6 @@ class computation(object):
         if self.isregistered: to_print += f' self.isgood           = {self.isgood}\n' 
         if self.isregistered: to_print += f' self.isfinished       = {self.isfinished}\n' 
         if self.isregistered: to_print += f' self.elapsed_time     = {self.elapsed_time}\n' 
-        to_print += '----------------------------------------------------\n'
+        if hasattr(self,"output"): to_print += f'{self.output}\n'
         return to_print
 ###########################################

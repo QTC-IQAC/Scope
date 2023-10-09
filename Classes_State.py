@@ -219,6 +219,11 @@ class state(object):
         if hasattr(self,"labels"):   to_print += f' Labels                = {self.labels[0]}...\n'
         if hasattr(self,"coord"):    to_print += f' Coord                 = {self.coord[0]}...\n'
         if hasattr(self,"freq_cm"):  to_print += f' Frequencies (cm-1)    = {self.freq_cm[0]}...\n'
+        if hasattr(self,"moleclist"):  
+            to_print += f' # Molecules:          = {len(self.moleclist)}\n'
+            to_print += f' With Formulae:                               \n'
+            for idx, m in enumerate(self.moleclist):
+                to_print += f'    {idx}: {m.formula} \n'
         return to_print
 
 #########################################################################

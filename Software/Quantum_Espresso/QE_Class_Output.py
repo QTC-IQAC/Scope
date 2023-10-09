@@ -13,33 +13,61 @@ class qe_output(object):
     def read_lines(self):
         if hasattr(self,"_computation"): self.lines = read_lines_file(self._computation.out_path)
         
-    def get_output_status(self):
-        keys=["JOB DONE", "End final coordinates", "Maximum CPU time exceeded", "convergence NOT achieved after"]
-        linenum = []
-        bools = []        
-        ## Search Key Elements of Output
-        for sx, string in enumerate(keys):
-            search, found = search_string(string, self.lines, typ="last")
-            linenum.append(search)
-            bools.append(found)        
-        ## Set Status based on Findings
-        if   bools[0] and bools[1] and not bools[2]:                      self.status = "worked"           ### Everything worked
-        elif bools[0] and bools[3] and not bools[1] and not bools[2]:     self.status = "not converged"    ### Job ended but did not converge
-        elif bools[2]:                                                    self.status = "stopped"          ### Job Stopped due to time limits
-        elif all(not f for f in bools):                                   self.status = "aborted"          ### Nothing, probably a job terminated abruptly
-        else:                                                             self.status = "unknown"
-        return self.status
-    
+###############
+### STATUS ###
+###############
+    def get_status_finished(self):
+        self.status_finished = parse_status_finished(self.lines)
+        return self.status_finished
+
+    def get_optimization_finished(self, debug: int=0):
+        self.optimization_finished = parse_opt_status(self.lines)
+        return self.optimization_finished
+
+    def get_last_block_status(self, debug: int=0):
+        lines_last_opt_block = self.get_lines_last_opt_block()
+        if lines_last_opt_block is None: return "aborted"   # When file is empty or killed early
+        scf_convergence      = parse_scf_status(lines_last_opt_block)
+        coordinates          = parse_coord_status(lines_last_opt_block)
+        time_limit           = parse_timelimit_status(lines_last_opt_block)
+
+        if   time_limit:  self.last_block_status = "time_stopped" 
+        if   scf_convergence is None: self.last_block_status = "aborted"
+        elif not scf_convergence:     self.last_block_status = "scf_convergence"
+        elif scf_convergence: 
+            if not coordinates:       self.last_block_status = "aborted"
+            else:                     self.last_block_status = "worked"
+        return self.last_block_status
+
 ###############
 ### BLOCKS ###
 ###############
+    def get_last_complete_block(self, debug: int=0):
+        if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
+        found = False
+        for idx in range(len(self.opt_blocks)-1,-1,-1):
+            if not found:
+                init_line = self.opt_blocks[idx][0]+1
+                last_line = self.opt_blocks[idx][1]+1
+                block_lines = self.lines[init_line:last_line]
+                scf_convergence      = parse_scf_status(block_lines)
+                coordinates          = parse_coord_status(block_lines)
+                time_limit           = parse_timelimit_status(block_lines)
+                if not time_limit and scf_convergence and coordinates:
+                    self.last_complete_block = block_lines
+                    found = True
+        if not found: 
+            if debug > 0: print("GET_LAST_COMPLETE_BLOCK: No complete block was found")
+            self.last_complete_block = None
+        return self.last_complete_block
+            
     def get_scf_blocks(self, debug: int=0):
+        start_SCF, found1  = parse_start_scf(self.lines)
+        end_SCF, found2    = parse_end_scf(self.lines)
+        last_start = 0
+        last_end   = 0
         self.scf_blocks = []        
-        ## Strings to Search
-        start_SCF, found1  = search_string("Self-consistent Calculation", self.lines)
-        end_SCF, found2    = search_string("End of self-consistent calculation", self.lines)        
         ## Finds Blocks
-        last_start = 0; last_end   = 0
         for s in start_SCF:
             found_end = False
             for e in end_SCF:
@@ -56,10 +84,25 @@ class qe_output(object):
         self.opt_blocks = []
         if len(self.scf_blocks) > 0: 
             for idx, b in enumerate(self.scf_blocks[:-1]):
-                self.opt_blocks.append([self.scf_blocks[idx][0], self.scf_blocks[idx+1][0]])
+                if idx == 0: self.opt_blocks.append([0, self.scf_blocks[idx+1][0]])
+                else:        self.opt_blocks.append([self.scf_blocks[idx][0], self.scf_blocks[idx+1][0]])
             self.opt_blocks.append([self.scf_blocks[-1][0],len(self.lines)]) 
         return self.opt_blocks
     
+    def get_lines_last_scf_block(self, debug: int=0):
+        if not hasattr(self,"scf_blocks"): self.get_scf_blocks()
+        if len(self.scf_blocks) == 0: return None
+        init_line = self.scf_blocks[-1][0]
+        last_line = self.scf_blocks[-1][1]
+        return self.lines[init_line:last_line]
+
+    def get_lines_last_opt_block(self, debug: int=0):
+        if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
+        if len(self.opt_blocks) == 0: return None
+        init_line = self.opt_blocks[-1][0]
+        last_line = self.opt_blocks[-1][1]
+        return self.lines[init_line:last_line]
+
 ##############
 ### GEOMS ###
 ##############
@@ -114,49 +157,98 @@ class qe_output(object):
             self.last_coords = None
             return self.last_labels, self.last_coords
 
+    def get_geometry_last_complete_block(self, debug: int=0):
+        if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
+        if self.last_complete_block is None: return None, None
+        tmp1, tmp2 = parse_geometry_from_step(self.last_complete_block)
+        if tmp1 is not None and tmp2 is not None:
+            self.last_labels = tmp1
+            self.last_coords = tmp2
+        else:
+            if debug > 0: print("GET_GEOMETRY_LAST_COMPLETE_BLOCK: geometry is None")
+            self.last_labels = None
+            self.last_coords = None
+        return self.last_labels, self.last_coords
+
 ###################
 ### CELL PARAMS ###
 ###################
     def get_all_cell_vectors(self, debug: int=0):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
-        self.all_cell_vec = []
+        self.all_cellvec = []
+        self.all_celldim = []
+        self.all_cellparam = []
         if len(self.opt_blocks) > 0: 
             for idx, b in enumerate(self.opt_blocks):
-                step_cell_vec  = parse_cell_vectors(self.lines[b[0]+1:b[1]+1])
-                self.all_cell_vec.append(step_cell_vec)
-                if step_cell_vec is None and debug > 0: print("GET_ALL_CELL_PARAM: error parsing cell_parameters between lines", b)
+                #step_cell_vec  = parse_cell_vectors(self.lines[b[0]+1:b[1]+1])
+                step_cellvec, step_celldim, step_cellparam  = parse_cell_vectors(self.lines[b[0]+1:b[1]+1])
+                self.all_cellvec.append(step_cellvec)
+                self.all_celldim.append(step_celldim)
+                self.all_cellparam.append(step_cellparam)
+                if step_cellvec is None and debug > 0: print("GET_ALL_CELL_PARAM: error parsing cell_parameters between lines", b)
         else:
             if debug > 0: print("GET_ALL_CELL_PARAM: empty list of opt_blocks")
-            self.all_cell_vec = None
-        return self.all_cell_vec
+            self.all_cellvec = None
+            self.all_celldim = None
+            self.all_cellparam = None
+        return self.all_cellvec, self.all_celldim, self.all_cellparam
 
     def get_last_cell_vectors(self, debug: int=0):
-        if hasattr(self,"all_cell_vec"):
-            if len(self.all_cell_vec) > 0:
-                for c in self.all_cell_vec[-1::-1]:
-                    if c is not None:
-                        self.last_cell_vec = c; return self.last_cell_vec
-                self.last_cell_vec = None
-                return self.last_cell_vec
+        if hasattr(self,"all_cellvec"):
+            if len(self.all_cellvec) > 0:
+                for idx in range(len(self.all_cellvec)-1,-1,-1): 
+                    if self.all_cellvec[idx] is not None:
+                        self.last_cellvec = self.all_cellvec[idx]
+                        self.last_celldim = self.all_celldim[idx]
+                        self.last_cellparam = self.all_cellparam[idx]
+                        return self.last_cellvec, self.last_celldim, self.last_cellparam
+                self.last_cellvec = None
+                self.last_celldim = None
+                self.last_cellparam = None
+                return self.last_cellvec, self.last_celldim, self.last_cellparam
             else:
-                if debug > 0: print("GET_LAST_CELL_VECTORS: No all_volumes in list")
-                self.last_cell_vec = None
-                return self.last_cell_vec
+                if debug > 0: print("GET_LAST_CELL_VECTORS: No cellvectors in list")
+                self.last_cellvec = None
+                self.last_celldim = None
+                self.last_cellparam = None
+                return self.last_cellvec, self.last_celldim, self.last_cellparam
         else:
             if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
             if len(self.opt_blocks) == 0:
                 if debug > 0: print("GET_LAST_CELL_VECTORS: No opt_blocks in list")
-                self.last_cell_vec = None
-                return self.last_cell_vec
+                self.last_cellvec = None
+                self.last_celldim = None
+                self.last_cellparam = None
+                return self.last_cellvec, self.last_celldim, self.last_cellparam
             for idx in range(len(self.opt_blocks)-1,-1,-1):
                 init_line = self.opt_blocks[idx][0]+1
                 last_line = self.opt_blocks[idx][1]+1
-                tmp = parse_cell_vectors(self.lines[init_line:last_line])
-                if tmp is not None:
-                    self.last_cell_vec = tmp; return self.last_cell_vec
+                tmp1, tmp2, tmp3 = parse_cell_vectors(self.lines[init_line:last_line])
+                if tmp1 is not None:
+                    self.last_cellvec = tmp1 
+                    self.last_celldim = tmp2 
+                    self.last_cellparam = tmp3 
+                    return self.last_cellvec, self.last_celldim, self.last_cellparam
             if debug > 0: print("GET_LAST_CELL_VECTORS: all cell vectors are None")
-            self.last_cell_vec = None
-            return self.last_cell_vec
+            self.last_cellvec = None
+            self.last_celldim = None
+            self.last_cellparam = None
+            return self.last_cellvec, self.last_celldim, self.last_cellparam
+
+    def get_cell_vectors_last_complete_block(self, debug: int=0):
+        if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
+        if self.last_complete_block is None: return None, None, None
+        tmp1, tmp2, tmp3 = parse_cell_vectors(self.last_complete_block)
+        if tmp1 is not None:
+            self.last_cellvec = tmp1 
+            self.last_celldim = tmp2 
+            self.last_cellparam = tmp3 
+        else:
+            if debug > 0: print("get_cell_vectors_last_complete_block: cell vector is None")
+            self.last_cellvec = None
+            self.last_celldim = None
+            self.last_cellparam = None
+        return self.last_cellvec, self.last_celldim, self.last_cellparam
 
 ##############
 ### VOLUME ###
@@ -203,6 +295,16 @@ class qe_output(object):
             self.last_volume = None
             return self.last_volume
 
+    def get_volume_last_complete_block(self, debug: int=0):
+        if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
+        if self.last_complete_block is None: return None
+        tmp = parse_volume_from_step(self.last_complete_block)
+        if tmp is not None: self.last_volume = tmp
+        else:
+            if debug > 0: print("get_volume_last_complete_block: volume is None")
+            self.last_volume = None
+        return self.last_volume
+
 ###############
 ### DENSITY ###
 ###############
@@ -246,6 +348,16 @@ class qe_output(object):
             if debug > 0: print("GET_LAST_DENSITY: all densities are None")
             self.last_density = None 
             return self.last_density
+
+    def get_density_last_complete_block(self, debug: int=0):
+        if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
+        if self.last_complete_block is None: return None
+        tmp = parse_density_from_step(self.last_complete_block)
+        if tmp is not None: self.last_density = tmp
+        else:
+            if debug > 0: print("get_density_last_complete_block: density is None")
+            self.last_density = None
+        return self.last_density
 
 ##############
 ### FORCES ###
@@ -300,6 +412,19 @@ class qe_output(object):
             self.last_at_forces = None 
             self.last_tot_forces = None 
             return self.last_at_forces, self.last_tot_forces 
+
+    def get_forces_last_complete_block(self, debug: int=0):
+        if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
+        if self.last_complete_block is None: return None, None
+        tmp1, tmp2 = parse_forces_from_step(self.last_complete_block)
+        if tmp1 is not None and tmp2 is not None:
+            self.last_at_forces = tmp1 
+            self.last_tot_force = tmp2 
+        else:
+            if debug > 0: print("get_forces_last_complete_block: forces are None")
+            self.last_at_forces = None
+            self.last_tot_force = None 
+        return self.last_at_forces, self.last_tot_force
             
 ################
 ### ENERGIES ###
@@ -344,16 +469,22 @@ class qe_output(object):
             if debug > 0: print("GET_LAST_ENERGY: all energies are None")
             self.last_energy = None
             return self.last_energy
+
+    def get_energy_last_complete_block(self, debug: int=0):
+        if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
+        if self.last_complete_block is None: return None
+        tmp = parse_energy_from_step(self.last_complete_block)
+        if tmp is not None: self.last_energy = tmp
+        else:
+            if debug > 0: print("get_energy_last_complete_block: energy is None")
+            self.last_energy = None
+        return self.last_energy
     
 ############
 ### TIME ###
 ############
     def get_elapsed_time(self, debug: int=0):
-        line_elapsed, found_elapsed = search_string("PWSCF        :", self.lines, typ='last')
-        if found_elapsed:
-            eline = self.lines[line_elapsed]
-            self.elapsed_time = QE_elapsed_time(eline)
-        else: self.elapsed_time = float(0)
+        self.elapsed_time = parse_elapsed_time(self.lines)
         return self.elapsed_time        
     
     def __repr__(self):
@@ -361,16 +492,11 @@ class qe_output(object):
         to_print += f'   FORMATTED REPRESENTATION OF OUTPUT CLASS        \n'
         to_print += f'---------------------------------------------------\n'
         to_print += f'# Lines           = {len(self.lines)}\n'
-        if hasattr(self,"status"):       to_print += f'Status            = {self.status}\n'
-        if hasattr(self,"scf_blocks"):   to_print += f'#SCF Blocks       = {len(self.scf_blocks)}\n'
-        if hasattr(self,"opt_blocks"):   to_print += f'#OPT Blocks       = {len(self.opt_blocks)}\n'
-        if hasattr(self,"all_coords"):   to_print += f'#Coordinates      = {len(self.all_coords)}\n'
-        if hasattr(self,"all_energies"): to_print += f'#Energies         = {len(self.all_energies)}\n'
-        if hasattr(self,"all_cell_vec"): to_print += f'#Cell Vectors     = {len(self.all_cell_vec)}\n'
-        if hasattr(self,"last_energy"):  to_print += f'Last Energy       = {self.last_energy}\n'
-        if hasattr(self,"last_volume"):  to_print += f'Last Volume       = {self.last_volume}\n'
-        if hasattr(self,"last_density"): to_print += f'Last Density      = {self.last_density}\n'
-        if hasattr(self,"elapsed_time"): to_print += f'Elapsed Time      = {self.elapsed_time}\n'
+        if hasattr(self,"finished"):                   to_print += f'Finished          = {self.finished}\n'
+        if hasattr(self,"scf_blocks"):                 to_print += f'#SCF Blocks       = {len(self.scf_blocks)}\n'
+        if hasattr(self,"opt_blocks"):                 to_print += f'#OPT Blocks       = {len(self.opt_blocks)}\n'
+        if hasattr(self,"self.last_block_status"):     to_print += f'Last Block Status = {self.last_block_status}\n'
+        if hasattr(self,"elapsed_time"):               to_print += f'Elapsed Time      = {self.elapsed_time}\n'
         to_print += f'---------------------------------------------------\n'
         return to_print
 

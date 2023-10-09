@@ -4,6 +4,19 @@ from Scope.Classes_QC import periodic_xyz
 import Scope.Constants
 
 bohr2angs = Scope.Constants.bohr2angs
+ry2har    = Scope.Constants.ry2har
+
+
+###############
+### PARSING ###
+###############
+def parse_start_scf(lines, debug=0):
+    start_SCF, found  = search_string("Self-consistent Calculation", lines)
+    return start_SCF, found
+
+def parse_end_scf(lines, debug=0):
+    end_SCF, found  = search_string("End of self-consistent calculation", lines)
+    return end_SCF, found
 
 def parse_geometry_from_step(lines, debug=0):
     init_str = "ATOMIC_POSITIONS"
@@ -24,7 +37,7 @@ def parse_geometry_from_step(lines, debug=0):
 
     ### Reads Coordinates
     coord = []
-    labels = []
+    tmp_labels = []
     for idx, l in enumerate(geo_lines[1:]):
         line_data = l.split()
         if len(line_data) == 4:
@@ -32,11 +45,18 @@ def parse_geometry_from_step(lines, debug=0):
             try:
                 if units == "angstrom": coord.append([float(x), float(y), float(z)])
                 elif units == "bohr":   coord.append([float(x*bohr2angs), float(y*bohr2angs), float(z*bohr2angs)])
-                labels.append(label)
+                tmp_labels.append(label)
             except exception as exc:
                 if debug >= 1: print(f"PARSE_GEOMETRY: exception {exc} reading line: {l}")
         else:
             if debug >= 1: print(f"PARSE_GEOMETRY: line discarded: {line_data}")
+ 
+    ## Originally, labels include digits to follow the spin state of metal atoms. For instance 'Fe4' indicates a HS Fe atom
+    ## These digits must be removed from labels when storing the data, since the digit is only for QE
+    labels = []
+    for l in tmp_labels:
+        labels.append(str(''.join([c for c in l if not c.isdigit()])))
+
     return labels, coord
 
 def parse_forces_from_step(lines, debug=0):
@@ -68,15 +88,15 @@ def parse_forces_from_step(lines, debug=0):
         
     return forces, total_force
 
-def parse_cell_vectors(lines, debug: int=0):
-    string = "CELL_PARAMETERS"
-    linenum, found = search_string(string, lines, typ="first")
-    if not found: return None
-    cellvec = []
-    cellvec.append(list(float(i) for i in lines[linenum+1].split()))
-    cellvec.append(list(float(i) for i in lines[linenum+2].split()))
-    cellvec.append(list(float(i) for i in lines[linenum+3].split()))
-    return cellvec
+#def parse_cell_vectors(lines, debug: int=0):
+#    string = "CELL_PARAMETERS"
+#    linenum, found = search_string(string, lines, typ="first")
+#    if not found: return None
+#    cellvec = []
+#    cellvec.append(list(float(i) for i in lines[linenum+1].split()))
+#    cellvec.append(list(float(i) for i in lines[linenum+2].split()))
+#    cellvec.append(list(float(i) for i in lines[linenum+3].split()))
+#    return cellvec
 
 def parse_energy_from_step(lines, debug: int=0):
     string="Final energy   ="
@@ -87,27 +107,32 @@ def parse_energy_from_step(lines, debug: int=0):
         linenum, found  = search_string(string, lines, typ="last")
         if found: val = float(lines[linenum].split()[4])
         else: return None
-    return val
+    return val * ry2har
 
 def parse_hubbard_energy(lines, debug: int=0):
     string = "Hubbard energy            ="
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
-    return val 
+    return val * ry2har
 
 def parse_grimme_energy(lines, debug: int=0):
     string = "DFT-D3 Dispersion         ="
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
-    return val 
+    return val * ry2har
 
 def parse_total_energy(lines, debug: int=0):
     string = "!    total energy"
     linenum = search_string(string, lines, typ="last")[0]
     val = lines[linenum].split()[2]
-    return val
+    return val * ry2har
 
-def QE_elapsed_time(eline: str, debug: int=0):
+def parse_elapsed_time(lines: str, debug: int=0):
+    line_elapsed, found_elapsed = search_string("PWSCF        :", lines, typ='last')
+    if not found_elapsed: return float(0)
+
+    eline = lines[line_elapsed]
+
     time = eline.split("WALL")[-2]
     time2 = time.split("CPU")[1].rstrip().lstrip()
 
@@ -138,26 +163,36 @@ def QE_elapsed_time(eline: str, debug: int=0):
     total = days*86400 + hours*3600 + minutes*60 + seconds
     return total 
 
-#######################
-#### OLD FUNCTIONS ####
-#######################
-#def check_job_requirements(lines: list, key_str: list=["JOB DONE", "Begin final coordinates", "End final coordinates"], debug: int=0):
-#    item = []
-#    bools = []
-#    for sx, string in enumerate(key_str):
-#        search, found = search_string(string, lines, typ="last")
-#        item.append(search)
-#        bools.append(found)
-#    return item, bools
-#
-#def check_maxseconds(lines: list, string: str="Maximum CPU time exceeded", debug: int=0):
-#    linenum, found = search_string(string, lines, typ="last")
-#    return linenum, found
-#
-#def check_convergence(lines: list, string: str="convergence NOT achieved after", debug: int=0):
-#    linenum, found = search_string(string, lines, typ="last")
-#    return linenum, found
-#    
+##############
+### STATUS ###
+##############
+def parse_status_finished(lines):
+    search, found = search_string("JOB DONE", lines, typ="last")
+    return found
+
+def parse_opt_status(lines):
+    linenum, found = search_string("End of BFGS Geometry Optimization", lines, typ="last")
+    if found:                             return True
+    else:                                 return False
+
+def parse_scf_status(lines):
+    linenum1, found1 = search_string("convergence has been achieved", lines, typ="last")
+    linenum2, found2 = search_string("convergence NOT achieved",      lines, typ="last")
+    if found1:                            return True
+    elif found2:                          return False
+    else:                                 return None
+
+def parse_coord_status(lines):
+    linenum1, found1 = search_string("ATOMIC_POSITIONS"   , lines, typ="last")
+    linenum2, found2 = search_string("Writing output data",   lines, typ="last")
+    if found1 and found2:                 return True
+    else:                                 return False
+
+def parse_timelimit_status(lines: list, debug: int=0):
+    linenum, found = search_string("Maximum CPU time exceeded", lines, typ="last")
+    if found:                             return True
+    else:                                 return False
+
 def parse_volume_from_step(lines, debug: int=0):
     string = "unit-cell volume"
     linenum, found = search_string(string, lines, typ="first")
@@ -175,12 +210,14 @@ def parse_density_from_step(lines, debug: int=0):
     else:     val = None
     return val
 
-def get_cell_vectors(lines, debug: int=0):
+def parse_cell_vectors(lines, debug: int=0):
     import numpy as np
     cellvec_lines = []
-    cellvec_strings = ["celldm(1)", "celldm(4)", "crystal axes", "unit-cell volume"]
+    cellvec_strings = ["celldm(1)", "celldm(4)", "crystal axes"] #, "unit-cell volume"]
     for sdx, s in enumerate(cellvec_strings):
-        cellvec_lines.append(search_string(s, lines, typ="last")[0])
+        linenum, found = search_string(s, lines, typ="last")
+        if not found: return None, None, None
+        cellvec_lines.append(linenum)
     celldim = []
     try:
         celldim.append(float(lines[cellvec_lines[0]].split()[1])*bohr2angs)
@@ -194,15 +231,32 @@ def get_cell_vectors(lines, debug: int=0):
         print("Exception is:", exc)
         print("cellvec_lines:", cellvec_lines)
     cellvec = []
-    v1 = np.array(lines[cellvec_lines[2]+1].split("=")[1].replace(")", "").replace("(", "").split()).astype(float)
-    v2 = np.array(lines[cellvec_lines[2]+2].split("=")[1].replace(")", "").replace("(", "").split()).astype(float)
-    v3 = np.array(lines[cellvec_lines[2]+3].split("=")[1].replace(")", "").replace("(", "").split()).astype(float)
+    try:
+        v1 = np.array(lines[cellvec_lines[2]+1].split("=")[1].replace(")", "").replace("(", "").split()).astype(float)
+        v2 = np.array(lines[cellvec_lines[2]+2].split("=")[1].replace(")", "").replace("(", "").split()).astype(float)
+        v3 = np.array(lines[cellvec_lines[2]+3].split("=")[1].replace(")", "").replace("(", "").split()).astype(float)
+    except Exception as exc:
+        print("Error trying to parse cellvec_lines[2] from file")
+        print("Exception is:", exc)
+        print("cellvec_lines:", cellvec_lines[2])
     cellvec.append(v1*celldim[0])
     cellvec.append(v2*celldim[0])
     cellvec.append(v3*celldim[0])
     cellparam = cellvec_2_cellparam(cellvec)
     return np.array(cellvec), celldim, cellparam
 
+#######################
+#### OLD FUNCTIONS ####
+#######################
+#def check_job_requirements(lines: list, key_str: list=["JOB DONE", "Begin final coordinates", "End final coordinates"], debug: int=0):
+#    item = []
+#    bools = []
+#    for sx, string in enumerate(key_str):
+#        search, found = search_string(string, lines, typ="last")
+#        item.append(search)
+#        bools.append(found)
+#    return item, bools
+#
 #def parse_final_geoopt_step(lines, debug: int=0):
 #    last_step_init = "Self-consistent Calculation"
 #    last_step_last = "End final coordinates"

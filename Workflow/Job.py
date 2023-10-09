@@ -221,7 +221,54 @@ class job(object):
                     comp.qc_data._add_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
 
         else: pass
+
+###############################
+## Continuation Computations ##
+###############################
+    def set_continuation_computation(self, comp: object, typ: str, debug: int=0):
+        comp.has_update = True
+    
+        # 0-We make sure that the new_run does not exist. If so, we return it directly:
+        exists, new_comp = self.find_computation(keyword=comp.keyword, index=comp.index+1)
+        if exists:
+            print("Set_Continuation_Comp: Continuation Computation exists")
+            return new_comp
+        else:
+            if debug > 1: print("Set_Continuation_Comp: Creating new computation to continue job:")
+    
+        if typ == "opt":
+            new_comp = self.add_computation(comp.index+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
+            new_comp.qc_data = deepcopy(comp.qc_data)
+        elif typ == "scf":
+            new_comp = self.add_computation(comp.index+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
+            new_comp.qc_data = deepcopy(comp.qc_data)
+            if new_comp.qc_data.software == "qe":
+                import random
+                old_value = new_comp.qc_data.mix_beta
+                new_value = round(random.uniform(0.2,0.8), 2)
+                new_comp.qc_data._mod_attr("mix_beta",new_value)
+                print("Set_Continuation_Comp: Mixing Beta changed to:", new_comp.qc_data.mix_beta)
+        else:
+            print("Set_Continuation_Comp: received unknown type of continuation computation: typ=", typ)
+    
+        ######
+        ## Irrespectively of typ, the new computation will continue from the state, which should contain the latest available geometry and properties
+        #####
+        if  hasattr(comp.qc_data,"fstate"):
+            new_comp.qc_data._add_attr("istate",comp.qc_data.fstate)
+            new_comp.qc_data._add_attr("fstate",comp.qc_data.fstate)
+            print("Execute_JOB, step 7.3b: istate of new computation is modified to", new_comp.qc_data.istate)
+        elif hasattr(self,"fstate"):
+            new_comp.qc_data._add_attr("istate",self.fstate)
+            new_comp.qc_data._add_attr("fstate",self.fstate)
+            print("Execute_JOB, step 7.3b: istate of new computation is modified to", new_comp.qc_data.istate)
+        else:
+            print("Execute_JOB, step 7.3b: Could not find valid 'istate' for continuation computation")
+    
+        return new_comp
+
                  
+
 ####################
 ### Registration ###
 ####################

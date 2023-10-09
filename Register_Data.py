@@ -8,62 +8,30 @@ from Scope.Classes_Data import *
 from Scope.Classes_State import *
 from Scope.Gmol_ops import gmol_update_geom, cell_update_geom, gmol_create_geom, cell_create_geom
 from Scope.Parse_General import read_lines_file, search_string 
-from Scope.Software.Gaussian.Parse_G16_outputs import *
-from Scope.Software.Quantum_Espresso.Parse_QE_outputs import * 
-from Scope.Software.Quantum_Espresso.QE_Class_Output import * 
+
+#from Scope.Software.Gaussian.G16_Class_Output import *
+#from Scope.Software.Quantum_Espresso.QE_Class_Output import * 
+
 from Scope import Constants
 
-###########################################
+######################################################################
+# 0) HERE WE GATHER THE RULES TO REGISTER THE DIFFERENT TYPES OF JOBS ##
+# 1) in computations.register() we manage the connection between registration and the other parts of the code
+# 2) in Execute_Job, we manage the relationship between the registration and the flow of the "Job", "Recipe" and "Branch"
+
+# NOTE: we could consider merging the computations.register with this (0+1).
+######################################################################
+
 def reg_general(comp: object, debug: int=0):
 
-    if not hasattr(comp,'output_lines'): comp.read_lines()
-    lines = comp.output_lines
-   
-    ###################
-    ### Gaussian 16 ###
-    ###################
-    if comp.software == 'g16': 
-        line_normal, found_normal = search_string("Normal termination", lines, typ='all')
-        line_error, found_error   = search_string("Error termination", lines, typ='all')
-        #line_route, found_route   = search_string("Route card not found", lines, typ='all')
-        line_time, found_time     = search_string("Elapsed time:", lines, typ='last')
-        if found_time:
-            elapsed_time_list = lines[line_time].split()[2:]
-            comp.elapsed_time = G16_time_to_sec(elapsed_time_list)
-        else: comp.elapsed_time = float(0)
-
-        if found_error or found_normal:  comp.isfinished = True
-        else:                            comp.isfinished = False
-
-        if found_normal:                 comp.isgood = True
-        else:                            comp.isgood = False
-
-    #########################
-    ### Quantum Espresso ###
-    #########################
-    elif comp.software == "qe": 
-
-        ## With Output Class
-        new_output = qe_output(lines, comp)
-
-        status = new_output.get_status()
-        if status == "worked": 
-            comp.isfinished = True
-            comp.isgood     = True
-        else:
-            comp.isfinished = False
-            comp.isgood     = False
-
-        comp.elapsed_time = new_output.get_elapsed_time()
-
-    #############
-    ### Other ###
-    #############
-    else:
-        comp.isfinished   = False
-        comp.isgood       = False
-        comp.elapsed_time = float(0)
-        print(f"    REG_GENERAL: Registry of {comp.software} comps is not implemented.")
+    if not hasattr(comp,"output"): comp.create_output() 
+    comp.isfinished              = comp.output.get_status_finished()
+    comp.elapsed_time            = comp.output.get_elapsed_time() 
+    comp.status                  = comp.output.get_last_block_status()
+    if debug > 0: 
+        print("REG_GENERAL: comp.isfinished:", comp.isfinished)
+        print("REG_GENERAL: comp.elapsed_time:", comp.elapsed_time)
+        print("REG_GENERAL: comp.status:", comp.status)
 
 ###########################################
 def reg_optimization(comp: object, debug: int=0):
@@ -71,91 +39,60 @@ def reg_optimization(comp: object, debug: int=0):
     ### For simplicity...
     gmol = comp._job._recipe.subject
 
-    ### Reads output
-    comp.read_lines()
-    lines = comp.output_lines
+    ### 0-In Case Reg_General hasn't been run:
+    if not hasattr(comp,"output"): reg_general(comp)
+
+    ### 1-Retrieve the last geometry, and evaluate if it is the converged one (or if it needs to run more)
+    labels, new_coord = comp.output.get_geometry_last_complete_block()
+    comp.isgood = comp.output.get_optimization_finished()
+    if labels is not None:
+        assert len(labels) == len(new_coord)
+        assert len(labels) > 0
+
+    ### 2-If it is a periodic objecet, gets the cell vectors as well
+    if gmol.type == "cell": 
+        cellvec, celldim, cellparam = comp.output.get_cell_vectors_last_complete_block()
+        if cellvec is None: cellvec, celldim, cellparam = comp.output.get_last_cell_vectors()
+        if cellvec is None: print("Couldn't Extract cell vectors from output", comp.out_path)
 
     worked = False
-    ###############
-    ## G09 & G16 ##
-    ###############
-    if comp.software == "g16": 
-        new_coord = G16_get_last_geom(lines, debug=debug)
-        labels = gmol.labels.copy()
-
-    ########
-    ## QE ##
-    ########
-    elif comp.software == "qe":
-
-        ## This means that the optimization hasn't finished. 
-        ## Even in that case, It will still try to retrieve the last geometry 
-        line_BFGS, found_BFGS = search_string("End of BFGS Geometry Optimization", lines, typ='last')
-        if not found_BFGS: comp.isgood = False    
-
-        ## Extract Coordinates 
-        tmp_labels, new_coord = parse_final_geometry(lines, debug=debug)
-        assert len(tmp_labels) == len(new_coord)
-        assert len(tmp_labels) > 0
-
-        ## Originally, labels include digits to follow the spin state of metal atoms. For instance 'Fe4' indicates a HS Fe atom
-        ## These digits must be removed from labels when storing the data, since the digit is only for QE  
-        labels = []
-        for l in tmp_labels:
-            labels.append(str(''.join([c for c in l if not c.isdigit()])))
-
-        # Extracts Cell Parameters
-        if gmol.type == "cell": cellvec, celldim, cellparam = get_cell_vectors(lines, debug=debug) 
-
-    #############
-    ### Other ###
-    #############
-    else: print(f"    REG_OPTIMIZATION: Registry of {comp.software} comps is not implemented.")
-
-    ######################
-    ### Stores Results ###
-    ######################
-    assert len(labels) > 0
-    assert len(new_coord) > 0
-    assert len(new_coord) == len(labels)
-
-    if len(new_coord) > 0: 
-
-        ## Stores data in the corresponding state-class object
-        exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
-        if not exists: fstate = state(gmol, comp.qc_data.fstate)
-        fstate.set_geometry(labels, new_coord)
-        fstate.set_spin_config(comp.spin_config)
-        if gmol.type == "cell": fstate.set_cell(cellvec, cellparam)
-        if gmol.type == "cell": fstate.get_moleclist()
-        if gmol.type == "cell": fstate.check_fragmentation(reconstruct=True, debug=debug)
-
-        fstate.add_computation(comp)
-        worked = True
-    else: print("    REG_OPT: empty labels and positions received. Job could not be registered") 
-
+    if new_coord is not None:
+        try: 
+            ### 2-Stores Results in the State Object
+            exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
+            if not exists: fstate = state(gmol, comp.qc_data.fstate)
+            fstate.set_geometry(labels, new_coord)
+            fstate.set_spin_config(comp.spin_config)
+            if gmol.type == "cell": 
+                fstate.set_cell(cellvec, cellparam)
+                fstate.get_moleclist()
+                fstate.check_fragmentation(reconstruct=True, debug=debug)
+            fstate.add_computation(comp)
+            worked = True
+        except Exception as exc:
+            print("Exception storing results for registry optimization", exc)
     return worked
 
 ###########################################
 def reg_frequencies(comp: object, debug: int=0):
+
+    ### For simplicity...
     gmol = comp._job._recipe.subject
 
-    ### Reads output
-    comp.read_lines()
-    lines = comp.output_lines
-
-    ### Parsing ###
+    ### 0-In Case Reg_General hasn't been run:
+    if not hasattr(comp,"output"): reg_general(comp)
+    
     worked = False
-    if comp.software == "g16": 
-        VNMs = G16_get_VNM(lines, witheigen=True, debug=debug)
-    else: print(f"    REG_FREQUENCIES: Registry of {comp.software} comps is not implemented.")
+    ### 1-Parsing ###
+    VNMs = comp.output.get_vnms()
 
-    ### Storage ###
-    exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
-    if not exists: fstate = state(gmol, comp.qc_data.fstate)
-    fstate.set_VNMs(VNMs)
-    fstate.add_computation(comp)
-    worked = True
+    ### 2-Storage ###
+    if VNMs is not None: 
+        exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
+        if not exists: fstate = state(gmol, comp.qc_data.fstate)
+        fstate.set_VNMs(VNMs)
+        fstate.add_computation(comp)
+        worked = True
 
     return worked
 
@@ -165,74 +102,24 @@ def reg_energy(comp: object, debug: int=0):
     ### For simplicity...
     gmol = comp._job._recipe.subject
 
-    ### Reads output
-    comp.read_lines()
-    lines = comp.output_lines
+    ### 0-In Case Reg_General hasn't been run:
+    if not hasattr(comp,"output"): reg_general(comp)
 
-    ### Parsing ###
-    worked = False
-    try: 
-        if comp.software == "g16": energy = G16_get_last_energy(lines, debug=debug)
-        if comp.software == "qe":  energy = parse_final_energy(lines, debug=debug)
-        if energy is not None:     worked = True
-    except Exception as exc:
-        print(exc)
-        worked = False
+    ### 1-Parses Energy
+    energy = comp.output.get_energy_last_complete_block()       ## last_complete_block requires convergence, not necessary energy. Careful
+    if debug > 0: print(f"REG_ENERGY: energy is {energy} a.u.")
 
     ### Storage ###
-    if worked: 
+    #worked = False
+    if energy is not None:
         try:
-            exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
+            exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated
             if not exists: fstate = state(gmol, comp.qc_data.fstate)
             fstate.set_energy(energy, 'au')
             fstate.add_computation(comp)
             worked = True
         except Exception as exc:
             print(exc)
-            worked = False
+    #        worked = False
 
-    return worked
-
-###########################################
-#def reg_forces(comp: object, debug: int=0):
-#    gmol = comp._job._recipe.subject
-#
-#    ### If not yet available, it reads the output lines
-#    if not hasattr(comp,'output_lines'): comp.read_lines()
-#    lines = comp.output_lines
-#
-#    worked = False
-#    if comp.software == "qe": forces = QE_get_forces(lines, debug=debug)
-#    # Maybe add an assert for the size of the forces vector
-#    if len(forces) == len(gmol.natoms): worked = True; comp.forces = np.array(forces)
-#    return worked
-
-
-#def reg_findiff(job: object, debug: int=0):
-#
-#    ## We collect all computations in a simpler variable
-#    comps = job.computations.sort(key=lambda x: (x.index))
-#
-#    ## Checks that all computations are good and are registered, otherwise quits
-#    for idx, c in enumerate(comps):
-#        worked = reg_forces(c)
-#        if not worked: 
-#            print(f"REG FINDIFF: WARNING. Registration of Forces for Computation {idx} didn't work")
-#            return None
-#
-#    worked = False
-#    gmol = job._recipe.subject
-#    VNMs = get_VNM_from_findiff(job, debug=debug)
-#    gmol.VNMs = [vnm for vnm in VNMs]
-#    gmol.freqs_cm = [vnm.freq_cm for vnm in VNMs]
-
-##   !!! WE MUST DECIDE WHAT TO DO ABOUT NEGATIVE or NEAR-ZERO FREQUENCIES. IN G16 there is no problem, but here yes
-#    if all(vnm.freq >= 0.0 for vnm in VNMs): gmol.isminimum = True
-#    else:                                    gmol.isminimum = False
-#
-#    worked = True
-#    if gmol.isminimum:
-#        new_coord = G16_get_last_geom(lines, debug=debug)
-#        fstate = "min_coord"
-#        if hasattr(gmol,fstate): gmol_update_geom(gmol, new_coord, tag=fstate, debug=debug)
-#        else:                     gmol_create_geom(gmol, new_coord, tag=fstate, debug=debug)
+    #return worked

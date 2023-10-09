@@ -20,7 +20,7 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
 
     if debug > 1: print("")
     if debug > 1: print("----------- NEW JOB ----------")
-    if debug > 1: print("")
+    #if debug > 1: print("")
 
     #### 0-Verifies Files
     files = False
@@ -60,8 +60,7 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
     ##############
     ### BRANCH ###
     ##############
-    exists, this_branch = sys.find_branch(job_data.branch, debug=debug)
-    if debug > 1 and not exists: print("Execute_JOB, step 4: creating branch")
+    exists, this_branch = sys.find_branch(job_data.branch, debug=0)
     if not exists: this_branch = sys.add_branch(job_data.branch, job_data.target, debug=debug); updated = True
     if debug > 1: print("Execute_JOB, step 4: branch loaded")
 
@@ -74,24 +73,25 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
         ### JOB ###
         ###########
         ## 5-Finds the job. If it does not exist, it is created in 5.1
-        exists, this_job = recipe.find_job(job_data=job_data, debug=debug)
+        exists, this_job = recipe.find_job(job_data=job_data, debug=0)
 
         ## 5.1 If job does not exist, creates the job
         if not exists: this_job = recipe.add_job(job_data); updated = True
         ## 5.2 If job exists, it checks for input changes (also in qc_data for the computations)
         else:
             this_job.check_input(job_path=job_path, debug=debug)
+
         if debug > 1: print("---------------------------------------------------")
-        if debug > 1: print("Execute_JOB, step 5: job loaded for spin", this_job._recipe.subject.spin)
+        if debug > 1: print("Execute_JOB, step 5: job loaded")
         if debug > 1: print("---------------------------------------------------")
 
         ## 6-Checks that all requisites and constrains of the job are fulfilled
-        cancontinue = this_job.check_requisites(debug=debug)
+        cancontinue = this_job.check_requisites(debug=0)
         if not cancontinue:
-            if debug > 1:   print("  Execute_JOB, step 6: requisites NOT met or job already run!")
+            if debug > 1:   print("Execute_JOB, step 6: requisites NOT met or job already run!")
             continue        # I know if might seem misleading. Here, "continue" means "skip this one"
         else:
-            if debug > 1:   print("  Execute_JOB, step 6: requisites fulfilled")
+            if debug > 1:   print("Execute_JOB, step 6: requisites fulfilled")
 
         ####################
         ### COMPUTATIONS ###
@@ -103,18 +103,21 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
         for jdx, comp in enumerate(this_job.computations):
 
             #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
-            if debug > 1: print("-----------------------------------------------------------------------------------")
+            if debug > 1: print("")
+            if debug > 1: print("########################################################################")
+            if debug > 1: print(f"    {sys.refcode} -> {this_job._recipe.subject.spin} -> {this_job.keyword} -> {comp.run_number}")
+            if debug > 1: print("########################################################################")
             if debug > 1: print(f"Execute_JOB, step 7.0: evaluating job, and computation with indices: {recipe.jobs.index(this_job)+1}/{len(recipe.jobs)}, {jdx+1}/{len(this_job.computations)}")
+
             ## 8.1-Checks files
+            comp.check_files()
             if debug > 1: print("Execute_JOB, step 7.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
             if debug > 1: print("Execute_JOB, step 7.1: out_file:", comp.out_path)
             if debug > 1: print("Execute_JOB, step 7.1: is_update:", comp.is_update)
-            if debug > 1: print("-----------------------------------------------------------------------------------")
-
-            comp.check_files()
+            if debug > 1: print("Execute_JOB, step 7.1: checking files [inp, out, sub]:", comp.input_exists, comp.output_exists, comp.subfile_exists)
+            #if debug > 1: print("-----------------------------------------------------------------------------------")
 
             ## 8.2-Evaluates Submission
-            if debug > 1: print("Execute_JOB, step 7.2: checking files [inp, out, sub]:", comp.input_exists, comp.output_exists, comp.subfile_exists)
             if not comp.output_exists: # and comp.input_exists:
                 if options.want_submit:
                     comp.check_submission_status(debug=debug)
@@ -140,36 +143,20 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
                             else:                          this_job.remove_computation(comp_index=comp.index)
                             report += f"Errors handled for {comp.out_path} \n"
                             print(f"Errors handled for {comp.out_path}")
-                        else:              # ...or warns the user
-                            report += f"Check Registration of {comp.out_path} \n"
-                            print(f"Check Registration of {comp.out_path}")
                     updated = True
 
-                ## 8.4-If output exists, is registered, but if is not good, and it must_be_good:
-                if comp.isregistered and not comp.isgood and this_job.must_be_good:
-                    comp.has_update = True
-
-                    # We make sure that the new_run does not exist:
-                    exists, new_comp = this_job.find_computation(keyword=comp.keyword, index=comp.index+1)
-                    if exists:        print("Execute_JOB, step 7.3b: Continuation Computation exists")
-                    else:
-                        if debug > 1: print("Execute_JOB, step 7.3b: Creating new computation to continue job:")
-
-                        ## Creates new computation
-                        new_comp = this_job.add_computation(comp.index+1, qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
-                        new_comp.qc_data = deepcopy(qc_data)                    ## I need to deepcopy, as it will use a modified version of the qc_data object
-
-                    ## In continuation computations, istate must be the modified, so it continues from the last attempt
-                    if  hasattr(comp.qc_data,"fstate"):  
-                        new_comp.qc_data._add_attr("istate",comp.qc_data.fstate)         
-                        new_comp.qc_data._add_attr("fstate",comp.qc_data.fstate)         
-                        print("Execute_JOB, step 7.3b: istate of new computation is modified to", new_comp.qc_data.istate)
-                    elif hasattr(this_job,"fstate"): 
-                        new_comp.qc_data._add_attr("istate",this_job.fstate)         
-                        new_comp.qc_data._add_attr("fstate",this_job.fstate)         
-                        print("Execute_JOB, step 7.3b: istate of new computation is modified to", new_comp.qc_data.istate)
-                    else: 
-                        print("Execute_JOB, step 7.3b: Could not find valid 'istate' for continuation computation")
+                print("Execute JOB, step 8: evaluating continuation with")
+                print(f"comp.isregistered={comp.isregistered}")
+                print(f"comp.status={comp.status}")
+                print(f"comp.isgood={comp.isgood}")
+                print(f"this_job.must_be_good={this_job.must_be_good}")
+                ## 8.4 sets continuation computations
+                if comp.status == 'scf_convergence':
+                #if comp.isregistered and comp.status == 'scf_convergence':
+                    new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
+                elif not comp.isgood and this_job.must_be_good:
+                #elif comp.isregistered and not comp.isgood and this_job.must_be_good:
+                    new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
 
         # Updates Job Registry information
         this_job.register(debug=0)
