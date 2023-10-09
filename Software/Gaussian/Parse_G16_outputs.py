@@ -2,6 +2,45 @@ from Scope.Parse_General import search_string, read_lines_file
 from Scope import Constants
 #from Scope.Classes_QC import orbital_set, orbital     ### Add when implementing reading orbitals
 
+##############
+### STATUS ###
+##############
+def parse_status_finished(lines):
+    search1, found1 = search_string("Normal termination", lines, typ="last")
+    search2, found2 = search_string("Error termination", lines, typ="last")
+    if found1 or found2: return True
+    else:                return False
+
+def parse_opt_status(lines):
+    linenum, found = search_string("Optimization completed", lines, typ="last")
+    return found
+
+def parse_scf_status(lines):
+    linenum1, found1 = search_string("SCF Done", lines, typ="last")
+    linenum2, found2 = search_string("Convergence criterion not met",      lines, typ="last")
+    if found1 and not found2:             return True
+    elif found2:                          return False
+    else:                                 return None
+
+def parse_coord_status(lines):
+    linenum, found = search_string("Coordinates (Angstroms)"   , lines, typ="last")
+    return found
+
+def parse_timelimit_status(lines):
+    # No way to set time limit in gaussian jobs. So a time limit is never printed on output
+    return False
+
+###############
+### PARSING ###
+###############
+def parse_start_scf(lines, debug=0):
+    start_SCF, found  = search_string("Cycle   1", lines)
+    return start_SCF, found
+
+def parse_end_scf(lines, debug=0):
+    end_SCF, found  = search_string("SCF Done", lines)
+    return end_SCF, found
+
 def parse_geometry_from_step(lines, debug: int=0):
     from Scope.Elementdata import ElementData
     elemdatabase = ElementData()
@@ -208,6 +247,9 @@ def parse_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
                 index += 1
     return vnms
 
+############
+### TIME ###
+############
 def G16_time_to_sec(time_list: list):
     floats = []
     strings = []

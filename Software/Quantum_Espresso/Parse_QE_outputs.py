@@ -172,8 +172,7 @@ def parse_status_finished(lines):
 
 def parse_opt_status(lines):
     linenum, found = search_string("End of BFGS Geometry Optimization", lines, typ="last")
-    if found:                             return True
-    else:                                 return False
+    return found
 
 def parse_scf_status(lines):
     linenum1, found1 = search_string("convergence has been achieved", lines, typ="last")

@@ -487,16 +487,23 @@ class qe_output(object):
         self.elapsed_time = parse_elapsed_time(self.lines)
         return self.elapsed_time        
     
+#############
+### PRINT ###
+#############
     def __repr__(self):
         to_print  = f'---------------------------------------------------\n'
         to_print += f'   FORMATTED REPRESENTATION OF OUTPUT CLASS        \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f'# Lines           = {len(self.lines)}\n'
-        if hasattr(self,"finished"):                   to_print += f'Finished          = {self.finished}\n'
-        if hasattr(self,"scf_blocks"):                 to_print += f'#SCF Blocks       = {len(self.scf_blocks)}\n'
-        if hasattr(self,"opt_blocks"):                 to_print += f'#OPT Blocks       = {len(self.opt_blocks)}\n'
-        if hasattr(self,"self.last_block_status"):     to_print += f'Last Block Status = {self.last_block_status}\n'
-        if hasattr(self,"elapsed_time"):               to_print += f'Elapsed Time      = {self.elapsed_time}\n'
+        to_print += f'#Lines            = {len(self.lines)}\n'
+        if hasattr(self,"last_block_status"):  to_print += f'Last Block Status = {self.last_block_status}\n'
+        if hasattr(self,"scf_blocks"):    to_print += f'#SCF Blocks       = {len(self.scf_blocks)}\n'
+        if hasattr(self,"opt_blocks"):    to_print += f'#OPT Blocks       = {len(self.opt_blocks)}\n'
+        if hasattr(self,"all_coords"):    to_print += f'#Coordinates      = {len(self.all_coords)}\n'
+        if hasattr(self,"all_energies"):  to_print += f'#Energies         = {len(self.all_energies)}\n'
+        if hasattr(self,"last_energy"):   to_print += f'Last Energy       = {self.last_energy}\n'
+        if hasattr(self,"last_volume"):   to_print += f'Last Volume       = {self.last_volume}\n'
+        if hasattr(self,"last_density"):  to_print += f'Last Density      = {self.last_density}\n'
+        if hasattr(self,"elapsed_time"):  to_print += f'Elapsed Time      = {self.elapsed_time}\n'
         to_print += f'---------------------------------------------------\n'
         return to_print
 
