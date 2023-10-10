@@ -29,14 +29,15 @@ class g16_output(object):
         if lines_last_opt_block is None: return "aborted"   # When file is empty or killed early
         scf_convergence      = parse_scf_status(lines_last_opt_block)
         coordinates          = parse_coord_status(lines_last_opt_block)
+        frequencies          = parse_freq_status(lines_last_opt_block)
         time_limit           = parse_timelimit_status(lines_last_opt_block)
 
-        if   time_limit:  self.last_block_status = "time_stopped"
-        if   scf_convergence is None: self.last_block_status = "aborted"
-        elif not scf_convergence:     self.last_block_status = "scf_convergence"
+        if   time_limit:                                  self.last_block_status = "time_stopped"
+        if   scf_convergence is None:                     self.last_block_status = "aborted"
+        elif not scf_convergence:                         self.last_block_status = "scf_convergence"
         elif scf_convergence:
-            if not coordinates:       self.last_block_status = "aborted"
-            else:                     self.last_block_status = "worked"
+            if not coordinates and not frequencies:       self.last_block_status = "aborted"
+            else:                                         self.last_block_status = "worked"
         return self.last_block_status
 
 ###############

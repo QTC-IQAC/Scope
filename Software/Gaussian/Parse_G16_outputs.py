@@ -15,6 +15,14 @@ def parse_opt_status(lines):
     linenum, found = search_string("Optimization completed", lines, typ="last")
     return found
 
+def parse_freq_status(lines):
+    linenum, found = search_string("- Thermochemistry -", lines, typ="last")
+    return found
+
+def parse_force_status(lines):
+    linenum, found = search_string("Forces (Hartrees/Bohr)", lines, typ='last')
+    return found
+
 def parse_scf_status(lines):
     linenum1, found1 = search_string("SCF Done", lines, typ="last")
     linenum2, found2 = search_string("Convergence criterion not met",      lines, typ="last")

@@ -73,6 +73,16 @@ class sco_system(object):
 
     def reset_calculations(self) -> None:
         if hasattr(self,"branches"): delattr(self,"branches"); setattr(self,"branches",[])
+       
+    ##############################################
+    ### THIS FUNCTION DOESNT SEEM TO WORK WELL ###
+    ##############################################
+    #def reset_branch(self, keyword: str) -> None:
+    #    if hasattr(self,"branches"): 
+    #        for idx, b in enumerate(branches):
+    #            if b.keyword == keyword: del(self.branches[idx]) 
+    #        #exists, branch = self.find_branch(keyword)
+    #        #if exists: branch.reset_recipes() 
 
     def reset_crystals(self) -> None:
         if hasattr(self,"crystals"): delattr(self,"crystals"); setattr(self,"crystals",[])

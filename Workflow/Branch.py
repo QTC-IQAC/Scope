@@ -33,6 +33,10 @@ class branch(object):
         ## Corrects self.path in case the user forgets to add '/' 
         if self.path[-1] != '/': self.path += '/'
 
+    def reset_recipes(self):
+        delattr(self,"recipes"); setattr(self,"recipes", [])
+        #self.recipes = []
+
     def add_result(self, result: object, overwrite: bool=False):
         result._object = self
         if overwrite or result.key not in self.results.keys():  self.results[result.key] = result

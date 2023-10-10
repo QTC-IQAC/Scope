@@ -227,7 +227,7 @@ class state(object):
         return to_print
 
 #########################################################################
-## Tools associated with states. Normally, these would be class functions...
+## Tools associated with states. Normally, these would be class (i.e. molecule) functions...
 ## However, in this case the classes are defined in cell2mol, and I don't want to change them 
 #########################################################################
 
