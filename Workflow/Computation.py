@@ -10,6 +10,8 @@ from Scope.Classes_Spin import *
 from Scope.Environment import * 
 #from Scope.Environment import set_cluster, set_user, check_submitted, check_usage, get_queue_and_procs, send_command
 from Scope.Register_Data import reg_general, reg_optimization, reg_frequencies, reg_energy
+from Scope.Software.Quantum_Espresso.Write_QE_Inputs import *
+from Scope.Software.Gaussian.Write_G16_Inputs import *
 
 #########################
 ###### COMPUTATION ######
@@ -217,7 +219,7 @@ class computation(object):
         if 'opt' in self._job.keyword or 'relax' in self._job.keyword:
         #if ('opt' in self._job.keyword or 'relax' in self._job.keyword) and worked1:
             worked2 = reg_optimization(self, debug=debug)
-        elif self.isgood and 'freq' in self._job.keyword: 
+        elif 'freq' in self._job.keyword: 
         #elif self.isgood and 'freq' in self._job.keyword and worked1:
             worked2 = reg_frequencies(self, debug=debug)
         else: 

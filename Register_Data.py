@@ -93,6 +93,7 @@ def reg_frequencies(comp: object, debug: int=0):
         fstate.set_VNMs(VNMs)
         fstate.add_computation(comp)
         worked = True
+        comp.isgood = True 
 
     return worked
 

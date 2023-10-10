@@ -19,7 +19,9 @@ def parse_scf_status(lines):
     linenum1, found1 = search_string("SCF Done", lines, typ="last")
     linenum2, found2 = search_string("Convergence criterion not met",      lines, typ="last")
     if found1 and not found2:             return True
-    elif found2:                          return False
+    elif found2:                          
+        if linenum1 > linenum2:           return True ## Case of Quadratic Convergence
+        else:                             return False
     else:                                 return None
 
 def parse_coord_status(lines):
