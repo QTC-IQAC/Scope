@@ -46,5 +46,21 @@ def get_aSlatm(mol, indices, mbtypes, targ_coord: str="coord", dens=0.4, cutoff=
             print(f"mol is missing one or more of necessary properties")
         return None
 
+def get_aSlatm_ligands(mol, mbtypes, dens=0.4, cutoff=4.0, debug=0):
+
+    if hasattr(mol, 'atnums') and hasattr(mol, 'coord') and hasattr(mol, 'atoms'):
+        local = qml.representations.generate_slatm(mol.coord, mol.atnums, mbtypes=mbtypes, local=True, dgrids=[dens, dens], rcut=cutoff)
+        if np.isnan(local).any():
+            print("molecule with NaN in slatm", mol.refcode)
+        connected_slatm = []
+        for idx, a in enumerate(mol.atoms):
+            if a.mconnec > 0: connected_slatm.append(local[idx])
+        connected_slatm = np.sum(connected_slatm, axis=0)
+        return np.array(connected_slatm)
+    else:
+        if hasattr(mol, 'refcode'):
+            print(f"mol with refcode {mol.refcode} is missing one or more of necessary properties")
+        else:
+            print(f"mol is missing one or more of necessary properties")
 #def get_SOAP(mol, indices, targ_coord: str="coord", debug=0):
 #    import dscribe
