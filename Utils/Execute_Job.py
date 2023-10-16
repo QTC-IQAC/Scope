@@ -65,11 +65,10 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, calc_fo
     if sys.type == "sco_system":
         exists, this_branch = sys.find_branch(job_data.branch, debug=0)
         if not exists: this_branch = sys.add_branch(job_data.branch, job_data.target, debug=debug); updated = True
-        if debug > 1: print("Execute_JOB, step 4: branch loaded")
     elif sys.type == "Ligand":
         exists, this_branch = find_branch_gmol(job_data.branch, debug=0)
         if not exists: this_branch = add_branch_gmol(job_data.branch, calc_folder, debug=debug); updated = True
-        if debug > 1: print("Execute_JOB, step 4: branch loaded")
+    if debug > 1: print("Execute_JOB, step 4: branch loaded")
 
     ##############
     ### RECIPE ###

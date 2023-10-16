@@ -82,6 +82,11 @@ def cell_create_geom(cell: object, new_coord: list, tag: str="new_coord", debug:
 #######################
 ### Molecules as Sys ##
 #######################
+def create_state_gmol(gmol, keyword)
+    # Creates "initial" states:
+    new_state = state(gmol, keyword)
+    return new_state
+
 def find_branch_gmol(gmol, keyword: str, debug: int=0):
     if not hasattr(gmol,"branches"): setattr(gmol,"branches",[])
     if debug > 1: print("finding branch with keyword:", keyword)
@@ -105,6 +110,10 @@ def add_branch_gmol(gmol, keyword: str, calcs_path: str, debug: int=0):
     ## Creates recipes for the branch. One for each object.
     new_recipe = new_branch.add_recipe(gmol)
     gmol.branches.append(new_branch)
+
+    new_state = state(gmol,"initial") 
+    new_state.set_geometry(gmol.labels, gmol.coord)
+
     return new_branch
 
 ##########
