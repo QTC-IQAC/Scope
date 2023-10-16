@@ -28,6 +28,7 @@ class spin_config(object):
         for idx, atom_spin in enumerate(self.atomic_spins):
             if   atom_spin.orientation == "up":   self.multiplicity += atom_spin.multiplicity 
             elif atom_spin.orientation == "down": self.multiplicity -= atom_spin.multiplicity
+        if len(self.atomic_spins) == 0 and self.multiplicity == 0: self.multiplicity = 1   ## For organic molecules
         return self.multiplicity    
 
     def get_QE_data(self):
@@ -110,8 +111,11 @@ def get_spin_config(gmol: object, metal_spins, debug: int=0):
 
     ## if the user provides an abbreviated list of spin states. For instance, metal_spins="HS"
     if type(metal_spins) == list:
-        if len(metal_spins) == 1:   # user abbreviated
+        if len(metal_spins) == 1:   # user sends 'LS'/'HS'
             tmp = metal_spins[0]
+            is_abbr = True
+        if len(metal_spins) == 0:   # user sends 'LS'/'HS' but there is no metal. Then assume 'LS'
+            tmp = 'LS'
             is_abbr = True
     elif type(metal_spins) == str:
         is_abbr = True

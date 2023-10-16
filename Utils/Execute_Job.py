@@ -5,10 +5,12 @@ import pwd
 
 from Scope.Classes_Input import *
 from Scope.Classes_SCO import sco_system, crystal
-from Scope.Workflow import Recipe, Job, Computation
-from Scope.Workflow.Recipe import *
-from Scope.Workflow.Job import *
-from Scope.Workflow.Computation import *
+#from Scope.Workflow import Branch
+#from Scope.Workflow.Branch import *
+#from Scope.Workflow import Recipe, Job, Computation
+#from Scope.Workflow.Recipe import *
+#from Scope.Workflow.Job import *
+#from Scope.Workflow.Computation import *
 #from Scope.Environment import check_usage, get_queue_and_procs, send_command, set_cluster, set_user
 from Scope.Read_Write import load_binary, save_binary
 
@@ -57,7 +59,7 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, calc_fo
     if debug > 1: print(" ")
     sys = load_binary(sys_path)
     updated = False
-    if debug > 1: print("Execute_JOB, step 3: system loaded")
+    if debug > 1: print(f"Execute_JOB, step 3: system in {sys_path} loaded")
 
     ##############
     ### BRANCH ###
@@ -66,8 +68,10 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, calc_fo
         exists, this_branch = sys.find_branch(job_data.branch, debug=0)
         if not exists: this_branch = sys.add_branch(job_data.branch, job_data.target, debug=debug); updated = True
     elif sys.type == "Ligand":
-        exists, this_branch = find_branch_gmol(job_data.branch, debug=0)
-        if not exists: this_branch = add_branch_gmol(job_data.branch, calc_folder, debug=debug); updated = True
+        assert job_data.target == 'self'
+        from Scope.Gmol_ops import find_branch_gmol, add_branch_gmol
+        exists, this_branch = find_branch_gmol(sys, job_data.branch, debug=0)
+        if not exists: this_branch = add_branch_gmol(sys, job_data.branch, calc_folder, debug=debug); updated = True
     if debug > 1: print("Execute_JOB, step 4: branch loaded")
 
     ##############

@@ -1,5 +1,8 @@
 from cell2mol.tmcharge_common import *
 from Scope.VNM_tools import vnm_displacement 
+from Scope.Workflow import Branch
+from Scope.Workflow.Branch import *
+from Scope.Classes_State import *
 #from copy import deepcopy
 
 def gmol_update_geom(mol: object, new_coord: list, tag: str="coord", debug: int=0) -> None:
@@ -82,10 +85,13 @@ def cell_create_geom(cell: object, new_coord: list, tag: str="new_coord", debug:
 #######################
 ### Molecules as Sys ##
 #######################
-def create_state_gmol(gmol, keyword)
-    # Creates "initial" states:
-    new_state = state(gmol, keyword)
-    return new_state
+def gmol2sys(gmol: object, spin: str, name: str):
+    gmol.name        = name
+    gmol.refcode     = name
+    gmol.branches    = []
+    gmol._sys        = gmol
+    gmol.spin        = 'LS'
+    return gmol
 
 def find_branch_gmol(gmol, keyword: str, debug: int=0):
     if not hasattr(gmol,"branches"): setattr(gmol,"branches",[])
@@ -100,7 +106,8 @@ def find_branch_gmol(gmol, keyword: str, debug: int=0):
     return False, None
 
 def add_branch_gmol(gmol, keyword: str, calcs_path: str, debug: int=0):
-    new_branch = branch(calcs_path+keyword, keyword, gmol, debug=debug)
+    if calcs_path[-1] != '/': calcs_path += '/'
+    new_branch = Branch.branch(calcs_path+keyword, keyword, gmol, debug=debug)
     if not os.path.isdir(calcs_path+keyword):
         try: os.makedirs(calcs_path+keyword)
         except Exception as exc:

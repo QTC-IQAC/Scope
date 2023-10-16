@@ -3,7 +3,10 @@ import os
 import sys
 import numpy as np
 import time
-import qml
+try: 
+    import qml
+except: 
+    pass
 
 import pickle
 from collections import Counter
