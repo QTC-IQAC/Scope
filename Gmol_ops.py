@@ -78,3 +78,38 @@ def cell_create_geom(cell: object, new_coord: list, tag: str="new_coord", debug:
     #    for jdx, at in enumerate(mol.atoms):
     #        setattr(at,tag,new_coord[mol.atlist[jdx]])
 
+
+#######################
+### Molecules as Sys ##
+#######################
+def find_branch_gmol(gmol, keyword: str, debug: int=0):
+    if not hasattr(gmol,"branches"): setattr(gmol,"branches",[])
+    if debug > 1: print("finding branch with keyword:", keyword)
+    if debug > 1: print("there are", len(gmol.branches), "branches in system")
+    if len(gmol.branches) == 0: return False, None
+    for idx, br in enumerate(gmol.branches):
+        if debug > 1: print("evaluating branch with keyword:", br.keyword, "and path:", br.path)
+        if br.keyword == keyword:
+            if not os.path.isdir(br.path): print(f"WARNING: branch path does not exist. Loading the branch anyway")
+            return True, br
+    return False, None
+
+def add_branch_gmol(gmol, keyword: str, calcs_path: str, debug: int=0):
+    new_branch = branch(calcs_path+keyword, keyword, gmol, debug=debug)
+    if not os.path.isdir(calcs_path+keyword):
+        try: os.makedirs(calcs_path+keyword)
+        except Exception as exc:
+             print(f"Error creating branch folder in {calcs_path+keyword}")
+             print(exc)
+
+    ## Creates recipes for the branch. One for each object.
+    new_recipe = new_branch.add_recipe(gmol)
+    gmol.branches.append(new_branch)
+    return new_branch
+
+##########
+
+
+
+
+

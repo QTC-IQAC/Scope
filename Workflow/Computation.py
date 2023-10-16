@@ -221,7 +221,7 @@ class computation(object):
             worked2 = reg_optimization(self, debug=debug)
         elif 'freq' in self._job.keyword: 
         #elif self.isgood and 'freq' in self._job.keyword and worked1:
-            worked2 = reg_frequencies(self, debug=debug)
+            worked2 = reg_frequencies(self, witheigen=False, debug=debug)
         else: 
             worked2 = True
 

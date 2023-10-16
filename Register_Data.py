@@ -74,7 +74,7 @@ def reg_optimization(comp: object, debug: int=0):
     return worked
 
 ###########################################
-def reg_frequencies(comp: object, debug: int=0):
+def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
 
     ### For simplicity...
     gmol = comp._job._recipe.subject
@@ -84,7 +84,7 @@ def reg_frequencies(comp: object, debug: int=0):
     
     worked = False
     ### 1-Parsing ###
-    VNMs = comp.output.get_vnms()
+    VNMs = comp.output.get_vnms(witheigen=witheigen)
 
     ### 2-Storage ###
     if VNMs is not None: 

@@ -177,23 +177,42 @@ class job(object):
 
             #### Only applies to geometries that are not minimum
             if hasattr(initial_state,"coord") and hasattr(initial_state,"VNMs") and hasattr(initial_state,"isminimum"):
-                if not initial_state.isminimum: 
-                    ## Displaces Coordinates Following Negative Freqs ###
+                if initial_state.isminimum: 
+                    if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' is already a minimum")
+                    self._recipe.remove_job(keyword=self.keyword)    # not sure if this is possible
+                else: 
+
+
+                    ## 0-Checks that the VNM exists, and that they have eigenvalues. If not, registers those eigenvalues.
+                    if hasattr(initial_state,"VNMs"):
+                        if not hasattr(initial_state.VNMs[0],"atomidxs"):  #Actually only checking for the first one, but its ok
+                            print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' does not have VNMs with eigenvectors.") 
+                            found = False
+                            for idx, comp in enumerate(initial_state.computations):
+                                if "freq" in comp._job.keyword and comp.isgood and not found:
+                                    print(f"SET COMPUTATIONS FROM SETUP: I will try to read the eigenvectors from", idx, comp.out_path)
+                                    ### 1-Parsing and storage (this block is similar to register_frequencies)
+                                    gmol = comp._job._recipe.subject
+                                    if not hasattr(comp,"output"): reg_general(comp)
+                                    VNMs = comp.output.get_vnms(witheigen=True)
+                                    if VNMs is not None: 
+                                        initial_state.set_VNMs(VNMs)
+                                        found = True
+                                        print(f"SET COMPUTATIONS FROM SETUP: Worked!")
+
+                    ## 1-Displaces Coordinates Following Negative Freqs ###
                     from Scope.Gmol_ops import displace_neg_freqs 
                     disp_coord = displace_neg_freqs(initial_state.coord, initial_state.VNMs,debug=debug)
                     exists, displ_state = find_state(gmol, "displaced")          # Checks if state already exists
                     if not exists: displ_state = state(gmol, "displaced")        # If not, creates it
                     displ_state.set_geometry(initial_state.labels, disp_coord)   # Creates New State with Displaced Coordinates 
 
-                    # Initial State of the Computation must be updated, to account for the displacement of geometries
+                    ## 2-Initial State of the Computation must be updated, to account for the displacement of geometries
                     exists, comp = self.find_computation()
                     if not exists: comp = self.add_computation(int(1), qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
-                    comp.qc_data._add_attr("istate","displaced")         ## Updates the initial state of the computation, so it takes the displaced geometries
+                    comp.qc_data._add_attr("istate","displaced")  ## Updates the initial state of the computation, so it takes the displaced geometries
                     comp.qc_data._add_attr("fstate",self.fstate)         
 
-                else: 
-                    if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' is already a minimum")
-                    self._recipe.remove_job(keyword=self.keyword)    # not sure if this is possible
             else:     
                 print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' does not have the properties required to apply the displacement")
                 self._recipe.remove_job(keyword=self.keyword)    # I'm trying to delete the job when it is not necessary

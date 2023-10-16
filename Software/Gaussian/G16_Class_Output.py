@@ -301,15 +301,17 @@ class g16_output(object):
         self.frequencies = None
         return self.frequencies
 
-    def get_vnms(self, debug: int=0):
+    def get_vnms(self, witheigen: bool=False, debug: int=0):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
         if len(self.opt_blocks) == 0: return None
         for idx in range(len(self.opt_blocks)-1,-1,-1):
             init_line = self.opt_blocks[idx][0]+1
             last_line = self.opt_blocks[idx][1]+1
-            tmp = parse_vnms_from_step(self.lines[init_line:last_line])
+            tmp = parse_vnms_from_step(self.lines[init_line:last_line], witheigen=witheigen, debug=debug)
             if tmp is not None:
                 self.vnms = tmp; return self.vnms
+            else:
+                if debug > 0: print("get_vnms: vnms is None")
         self.vnms = None
         return self.vnms
 

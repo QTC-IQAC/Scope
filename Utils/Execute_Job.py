@@ -13,7 +13,9 @@ from Scope.Workflow.Computation import *
 from Scope.Read_Write import load_binary, save_binary
 
 ######################
-def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: int=0):
+def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, calc_folder: str=None, debug: int=0):
+
+    if calc_folder is None: calc_folder = sys_path ## Temporary Measure
 
     print("ENTERED EXECUTE JOB with job_path:", job_path)
     report = ''
@@ -60,9 +62,14 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
     ##############
     ### BRANCH ###
     ##############
-    exists, this_branch = sys.find_branch(job_data.branch, debug=0)
-    if not exists: this_branch = sys.add_branch(job_data.branch, job_data.target, debug=debug); updated = True
-    if debug > 1: print("Execute_JOB, step 4: branch loaded")
+    if sys.type == "sco_system":
+        exists, this_branch = sys.find_branch(job_data.branch, debug=0)
+        if not exists: this_branch = sys.add_branch(job_data.branch, job_data.target, debug=debug); updated = True
+        if debug > 1: print("Execute_JOB, step 4: branch loaded")
+    elif sys.type == "Ligand":
+        exists, this_branch = find_branch_gmol(job_data.branch, debug=0)
+        if not exists: this_branch = add_branch_gmol(job_data.branch, calc_folder, debug=debug); updated = True
+        if debug > 1: print("Execute_JOB, step 4: branch loaded")
 
     ##############
     ### RECIPE ###
@@ -145,18 +152,31 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, debug: 
                             print(f"Errors handled for {comp.out_path}")
                     updated = True
 
-                print("Execute JOB, step 8: evaluating continuation with")
-                print(f"comp.isregistered={comp.isregistered}")
-                print(f"comp.status={comp.status}")
-                print(f"comp.isgood={comp.isgood}")
-                print(f"this_job.must_be_good={this_job.must_be_good}")
                 ## 8.4 sets continuation computations
                 if comp.status == 'scf_convergence':
                 #if comp.isregistered and comp.status == 'scf_convergence':
                     new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
+                    #if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
                 elif not comp.isgood and this_job.must_be_good:
                 #elif comp.isregistered and not comp.isgood and this_job.must_be_good:
                     new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
+                    #if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
+
+                 
+                print("HERE WITH:", comp.out_path, comp.isregistered, comp._job.keyword, hasattr(comp.qc_data,"fstate") or hasattr(comp._job,"fstate"))
+                if comp.isregistered and "freq" in comp._job.keyword and (hasattr(comp.qc_data,"fstate") or hasattr(comp._job,"fstate")):
+                    if hasattr(comp.qc_data,"fstate"): fstate = comp.qc_data.fstate
+                    else:                              fstate = comp._job.fstate
+                    exists, state = find_state(comp._job._recipe.subject, fstate)
+                    print("State",fstate,"exist=", exists)
+                    if exists and hasattr(state,"VNMs"):
+                        if not hasattr(state.VNMs,"xs"): 
+                            print("RE-REGISTERING:", comp.out_path)
+                            worked = comp.register(debug=debug)
+#                            for v in state.VNMs: 
+#                                print(v.index, v.xs[0])
+                    else:
+                        print("State",fstate,"does not exist")
 
         # Updates Job Registry information
         this_job.register(debug=0)
