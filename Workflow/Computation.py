@@ -140,11 +140,16 @@ class computation(object):
         if not hasattr(self,'states'): self.states = []
         self.states.append(state)
 
-    def verify_state(self, target: str='opt'):
+    def verify_state(self, name, target: str='opt'):
         subject = _job._recipe.subject
-        found, state = find_state(subject, target)
-     
-
+        found, state = find_state(subject, name)
+        if not found: return None
+        if target == 'opt':
+            if hasattr(state,'coord') and hasattr(state,'labels'): return True
+        else: 
+            print("VERIFY STATE: target not implemented")
+            return False 
+            
 ###########################################
     def store(self, debug: int=0) -> None:
         import shutil
