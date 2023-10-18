@@ -253,7 +253,7 @@ class job(object):
             print("Set_Continuation_Comp: Continuation Computation exists")
             return new_comp
         else:
-            if debug > 1: print("Set_Continuation_Comp: Creating new computation to continue job:")
+            if debug > 1: print("Set_Continuation_Comp: Creating new computation to continue job. Type:", typ)
     
         if typ == "opt":
             new_comp = self.add_computation(comp.index+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
@@ -274,15 +274,25 @@ class job(object):
         ## Irrespectively of typ, the new computation will continue from the state, which should contain the latest available geometry and properties
         #####
         if  hasattr(comp.qc_data,"fstate"):
-            new_comp.qc_data._add_attr("istate",comp.qc_data.fstate)
-            new_comp.qc_data._add_attr("fstate",comp.qc_data.fstate)
-            print("Execute_JOB, step 7.3b: istate of new computation is modified to", new_comp.qc_data.istate)
+            iscorrect = comp.verify_state(comp.qc_data.fstate, target='opt')
+            if iscorrect:
+                new_comp.qc_data._add_attr("istate",comp.qc_data.fstate)
+                new_comp.qc_data._add_attr("fstate",comp.qc_data.fstate)
+                print("Set_Continuation_Comp: istate of new computation is modified to", new_comp.qc_data.istate)
+                print("Set_Continuation_Comp: fstate of new computation is modified to", new_comp.qc_data.fstate)
+            else: 
+                print("Set_Continuation_Comp: istate of new computation remains as:", new_comp.qc_data.istate)
+                print("Set_Continuation_Comp: fstate of new computation remains as:", new_comp.qc_data.fstate)
         elif hasattr(self,"fstate"):
-            new_comp.qc_data._add_attr("istate",self.fstate)
-            new_comp.qc_data._add_attr("fstate",self.fstate)
-            print("Execute_JOB, step 7.3b: istate of new computation is modified to", new_comp.qc_data.istate)
-        else:
-            print("Execute_JOB, step 7.3b: Could not find valid 'istate' for continuation computation")
+            iscorrect = comp.verify_state(self.fstate, target='opt')
+            if iscorrect:
+                new_comp.qc_data._add_attr("istate",self.fstate)
+                new_comp.qc_data._add_attr("fstate",self.fstate)
+                print("Set_Continuation_Comp: istate of new computation is modified to", new_comp.qc_data.istate)
+                print("Set_Continuation_Comp: fstate of new computation is modified to", new_comp.qc_data.fstate)
+           else:
+                print("Set_Continuation_Comp: istate of new computation remains as:", new_comp.qc_data.istate)
+                print("Set_Continuation_Comp: fstate of new computation remains as:", new_comp.qc_data.fstate)
     
         return new_comp
 

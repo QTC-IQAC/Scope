@@ -142,6 +142,7 @@ class state(object):
 
     def add_computation(self, computation: object):
         self.computations.append(computation)
+        computation.add_states(self)
 
     def reconstruct(self, debug: int=0):
         from Scope.Other import HiddenPrints

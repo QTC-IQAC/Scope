@@ -30,6 +30,7 @@ class computation(object):
         self.isregistered     = False
         self.has_update       = False
         self.is_update        = is_update
+        self.states           = []
 
         ############
         ### SPIN ###
@@ -134,6 +135,15 @@ class computation(object):
 
     def delete_output(self) -> None:
         if hasattr(self,"output"): delattr(self,"output")
+
+    def add_state(self, state):
+        if not hasattr(self,'states'): self.states = []
+        self.states.append(state)
+
+    def verify_state(self, target: str='opt'):
+        subject = _job._recipe.subject
+        found, state = find_state(subject, target)
+     
 
 ###########################################
     def store(self, debug: int=0) -> None:
