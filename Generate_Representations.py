@@ -50,10 +50,27 @@ def get_aSlatm(mol, indices, mbtypes, targ_coord: str="coord", dens=0.4, cutoff=
             print(f"mol is missing one or more of necessary properties")
         return None
 
-def get_aSlatm_ligands(mol, mbtypes, dens=0.4, cutoff=4.0, debug=0):
+def get_aSlatm_ligands(mol, mbtypes, dens: float=0.4, cutoff: float=4.0, with_metal: bool=False, debug: int=0):
 
     if hasattr(mol, 'atnums') and hasattr(mol, 'coord') and hasattr(mol, 'atoms'):
-        local = qml.representations.generate_slatm(mol.coord, mol.atnums, mbtypes=mbtypes, local=True, dgrids=[dens, dens], rcut=cutoff)
+
+        ## Move coords and atnums to independent lists in case we need to add the metal_atoms
+        #print(mol.coord)
+
+        coords = []
+        atnums = []
+        for idx, a in enumerate(mol.atoms):
+            coords.append(a.coord)
+            atnums.append(a.atnum)
+        if with_metal == True:
+            if len(mol.metalatoms) > 0:
+                for m in mol.metalatoms:
+                    atnums.append(m.atnum)
+                    coords.append(m.coord)
+
+        #print(mol.refcode, coords)
+        #local = qml.representations.generate_slatm(mol.coord, mol.atnums, mbtypes=mbtypes, local=True, dgrids=[dens, dens], rcut=cutoff)
+        local = qml.representations.generate_slatm(coords, atnums, mbtypes=mbtypes, local=True, dgrids=[dens, dens], rcut=cutoff)
         if np.isnan(local).any():
             print("molecule with NaN in slatm", mol.refcode)
         connected_slatm = []
@@ -66,5 +83,3 @@ def get_aSlatm_ligands(mol, mbtypes, dens=0.4, cutoff=4.0, debug=0):
             print(f"mol with refcode {mol.refcode} is missing one or more of necessary properties")
         else:
             print(f"mol is missing one or more of necessary properties")
-#def get_SOAP(mol, indices, targ_coord: str="coord", debug=0):
-#    import dscribe
