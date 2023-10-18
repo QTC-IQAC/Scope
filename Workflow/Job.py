@@ -290,7 +290,7 @@ class job(object):
                 new_comp.qc_data._add_attr("fstate",self.fstate)
                 print("Set_Continuation_Comp: istate of new computation is modified to", new_comp.qc_data.istate)
                 print("Set_Continuation_Comp: fstate of new computation is modified to", new_comp.qc_data.fstate)
-           else:
+            else:
                 print("Set_Continuation_Comp: istate of new computation remains as:", new_comp.qc_data.istate)
                 print("Set_Continuation_Comp: fstate of new computation remains as:", new_comp.qc_data.fstate)
     

@@ -4,6 +4,7 @@ import os
 import pwd
 
 from Scope.Classes_Input import *
+from Scope.Classes_State import *
 from Scope.Classes_SCO import sco_system, crystal
 #from Scope.Workflow import Branch
 #from Scope.Workflow.Branch import *
@@ -165,7 +166,7 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, calc_fo
                     new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
                     #if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
 
-                 
+
                 print("HERE WITH:", comp.out_path, comp.isregistered, comp._job.keyword, hasattr(comp.qc_data,"fstate") or hasattr(comp._job,"fstate"))
                 if comp.isregistered and "freq" in comp._job.keyword and (hasattr(comp.qc_data,"fstate") or hasattr(comp._job,"fstate")):
                     if hasattr(comp.qc_data,"fstate"): fstate = comp.qc_data.fstate
