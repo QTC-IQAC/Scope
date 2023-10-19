@@ -170,12 +170,13 @@ class environment(object):
             dec = raw.decode("utf-8")
             text = dec.rstrip().split("\n")
             for idx, line in enumerate(text):
-                name = line.split() 
-
-                raw2 = subprocess.check_output(['bash','-c', "qstat -f -q "+name])
+                name = line.split()[0] 
+                raw2 = subprocess.check_output(['bash','-c', f"qstat -f | grep '{name}'"])
                 dec2 = raw2.decode("utf-8")
                 text2 = dec2.rstrip().split("\n")
-                print(text2)
+                # Add queue
+                new_queue = queue(name, self)
+                self.add_mqueue(new_queue) 
 
         ## SLURM ##
         elif self.management_type == "slurm": 
@@ -185,7 +186,7 @@ class environment(object):
             for idx, line in enumerate(text):
                 if idx > 0 and len(line.split()) == 6: 
                     name, avail, time_limit, num_nodes, state, name_nodes = line.split()
-                    new_queue = queue(name, avail, time_limit, num_nodes, state, name_nodes, self)
+                    new_queue = queue(name, self, avail=avail, time_limit=time_limit, state=state)
                     self.add_mqueue(new_queue) 
         return self.mqueues
 
@@ -251,6 +252,7 @@ class environment(object):
 
             if tmp == "Y" or tmp == 'y':      correct = True
             elif tmp == "N" or tmp == 'n':    correct = False
+            else:                             correct = False
 
         self.queues = []
         if correct:
