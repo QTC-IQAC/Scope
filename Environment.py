@@ -96,13 +96,13 @@ def set_queues(cluster: str=set_cluster(), queues: str='all', debug: int=0):
         list_q.append("class_a")
     elif 'portal' in cluster:
         if queues == 'all':
-                for i in range(1,11): 
+                for i in range(1,13): 
                     if i in list_of_exceptions: pass
                     elif i < 10: list_q.append(str("iqtc0"+str(i)))
                     else: list_q.append(str("iqtc"+str(i)))
         else:
             digested = queues.rstrip(" ").lstrip(" ").split(',')
-            for i in range(1,11): 
+            for i in range(1,13): 
                 if i == 3 or i == 1: pass
                 elif i != 3 and str(i) in digested: 
                     if i < 10: list_q.append(str("iqtc0"+str(i)))
@@ -163,6 +163,7 @@ def check_queue_availability(queues: str='all', cluster: str=set_cluster(), debu
         elif q == 'iqtc08': value = int(8)
         elif q == 'iqtc09': value = int(8)
         elif q == 'iqtc10': value = int(8)
+        elif q == 'iqtc12': value = int(8)
         else:               value = int(0)
         try:
             if debug > 0: print("CHECK_QUEUE_AVAIL: sending queue_stat for q=",q)
