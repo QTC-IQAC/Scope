@@ -71,79 +71,87 @@ class queue(object):
 
     def set_commands(self):
         if self._environment.management_type == "slurm":
-            self.command_check_cluster_state = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+str(self._environment.user)
+            self.command_check_user_usage    = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+self.name  ## The rest shouldnt be necessary
             self.command_check_queue_state   = 'sinfo -o "%N %P %C" | grep '+self.name 
-            self.command_check_job           = 'squeue -o "%.60j %.12u"' 
             self.command_job_count           = 'squeue | grep '+self.name+' | wc -l'
-            self.command_submit              = 'sbatch' 
         elif self._environment.management_type == "sge":
-            self.command_check_cluster_state = "qstat"
+            self.command_check_user_usage    = "qstat | grep "+self.name
             self.command_check_queue_state   = "qstat -f | grep "+self.name
-            self.command_check_job           = "qstat -xml"
             self.command_job_count           = "qstat | grep "+self.name+" | wc -l"
-            self.command_submit              = "qsub"
 
-    def get_queue_score(self):
-        if not hasattr(self,"allocated"): self.check_usage()
+    def get_queue_score(self, method: str='weighted'):
+        if not hasattr(self,"allocated"): self.check_usage(user='all')
         if not hasattr(self,"priority"):  self.set_priority()
-        if self.total_cpus > 0: self.score = float(self.free)*float(self.priority)/float(self.total)
-        else:                   self.scope = 0.0
+        if self.total_cpus == 0: self.score = float(0.0)
+        else:                  
+            if   method == "weighted": self.score = float(self.free)*float(self.priority)/float(self.total)
+            elif method == "total":    self.score = self.free
+            elif method == "ratio":    self.score = self.free/self.total 
+        return self.score
 
-    def check_usage(self, debug: int=0):
+    def check_user_usage(self):
+        if not hasattr(self, "nodes"): self.set_nodes()
+        self.user_cpus = 0
+        self.user_jobs = 0
+
+        raw = subprocess.check_output(['bash','-c', self.command_check_user_usage])
+        dec = raw.decode("utf-8")
+        text = dec.rstrip().split("\n")
+        ## SGE clusters
+        if self._environment.management_type == "sge":
+            try:
+                for line in text:
+                    if self.name in line:
+                        blocks = line.split()
+                        self.user_cpus  += int(blocks[8])
+                        self.user_jobs  += 1
+            except Exception as exc:
+                self.user_cpus = int(0)
+                self.user_jobs = int(0)
+                print("QUEUE.CHECK_USER_USAGE: exception:", exc)
+
+        ## SLURM clusters
+        elif self._environment.management_type == "slurm":
+            try:
+                for line in text:
+                    blocks = line.split()
+                    self.user_cpus      += int(blocks[5])
+                    self.user_jobs      += 1
+            except Exception as exc:
+                self.user_cpus = int(0)
+                self.user_jobs = int(0)
+                print("QUEUE.CHECK_USER_USAGE: exception:", exc)
+
+        return self.user_cpus, self.user_jobs
+
+    def check_overall_usage(self, debug: int=0):
         if not hasattr(self, "nodes"): self.set_nodes()
         self.allocated    = 0
         self.free         = 0
+        self.max_free     = 0
         self.total        = 0
         for node in self.nodes:
-            node.check_usage()
+            node.check_overall_usage()
             self.allocated   += node.allocated 
-            self.free   += node.free
+            self.free        += node.free
             self.total       += node.total
+            if node.free > self.max_free: self.max_free = node.free
 
-    #def check_usage(self, debug: int=0):
-    #    self.used_cpus    = 0
-    #    self.free_cpus    = 0
-    #    self.total_cpus   = 0
-    #    self.num_jobs     = 0
+##### MOVED TO ENVIRONMENT LEVEL
 
-    #    ############
-    #    ### CPUs ###        
-    #    ############
-    #    try: 
-    #        raw = subprocess.check_output(['bash','-c', self.command_check_queue_state])
-    #        dec = raw.decode("utf-8")
-    #        text = dec.rstrip().split("\n")
-    #    except: text = ""
-
-    #    if self._environment.management_type == "slurm":
-    #        try:
-    #            for line in text:
-    #                blocks = line.replace('/',' ').split()
-    #                self.used_cpus += int(blocks[2])
-    #                self.free_cpus += int(blocks[3])
-    #                self.total_cpus += int(blocks[5])
-    #        except:
-    #            self.used_cpus  = int(0)
-    #            self.free_cpus  = int(0)
-    #            self.total_cpus = int(0)
-    #            print(f"CHECK_USAGE: Exception checking usage of queue={self.name}:", exc)
-
-    #    elif self._environment.management_type == "sge":
-    #        dec = raw.decode("utf-8")
-    #        text = dec.rstrip().split("\n")
-    #        try:
-    #            for line in text:
-    #                if q in line:
-    #                    blocks = line.replace('/',' ').replace('@',' ').split()
-    #                    self.used_cpus  += int(blocks[3])
-    #                    self.free_cpus  += int(blocks[2])
-    #                    self.total_cpus += int(blocks[4])
-    #                    self.num_jobs   += 1
-    #        except Exception as exc:
-    #            self.used_cpus  = int(0)
-    #            self.free_cpus  = int(0)
-    #            self.total_cpus = int(0)
-    #            print(f"CHECK_USAGE: Exception checking usage of queue={self.name}:", exc)
+#    def check_submitted(self, job_name=None, job_id=None, debug: int=0):
+#        if job_name is not None and job_id is None:
+#            raw  = subprocess.check_output(['bash','-c', self.command_check_job])
+#            dec  = raw.decode("utf-8")
+#            flat = dec.replace("\n", "")
+#            if name in flat: found = True
+#            else:            found = False
+#        elif job_name is None and job_id is not None:
+#            print("QUEUE.CHECK_SUBMITTED: this is not yet implemented")
+#            return None
+#        elif job_name is None and job_id is None:
+#            print("QUEUE.CHECK_SUBMITTED: I need or job_name or job_id to find job")
+#            return None
 
     #    ######################
     #    ### NUMBER of JOBS ###        
@@ -210,7 +218,9 @@ class node(object):
         elif self._queue._environment.management_type == "sge":
             self.command_check_state = 'qstat -f | grep '+self._queue.name+' | grep '+self.name 
 
-    def check_usage(self):
+    #def check_user_usage(self, user: str='all'):
+
+    def check_overall_usage(self, user: str='all'):
         if not hasattr(self,"command_check_state"): self.set_commands()
         raw = subprocess.check_output(['bash','-c', self.command_check_state])
         dec = raw.decode("utf-8")

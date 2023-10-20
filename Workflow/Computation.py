@@ -107,9 +107,9 @@ class computation(object):
         if hasattr(self,"output_lines"): delattr(self,"output_lines")
         #self.output_lines = []
             
-    def check_submission_status(self, debug: int=0) -> None:
+    def check_submission_status(self, environment: object, debug: int=0) -> None:
         key = str(self.refcode+self.suffix)
-        self.isrunning = check_submitted(key, debug=debug)
+        self.isrunning = environment.check_submitted(key, debug=debug)
         
     def add_submission_init(self, nprocs: str='Unk', queue: str='Unk', cluster: str=set_cluster(), user: str=set_user()) -> None:
         self.nprocs = nprocs

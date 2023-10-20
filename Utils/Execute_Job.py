@@ -6,17 +6,11 @@ import pwd
 from Scope.Classes_Input import *
 from Scope.Classes_State import *
 from Scope.Classes_SCO import sco_system, crystal
-#from Scope.Workflow import Branch
-#from Scope.Workflow.Branch import *
-#from Scope.Workflow import Recipe, Job, Computation
-#from Scope.Workflow.Recipe import *
-#from Scope.Workflow.Job import *
-#from Scope.Workflow.Computation import *
 #from Scope.Environment import check_usage, get_queue_and_procs, send_command, set_cluster, set_user
 from Scope.Read_Write import load_binary, save_binary
 
 ######################
-def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, calc_folder: str=None, debug: int=0):
+def execute_job(sys_path: str, job_path: str, global_environment: object, handle_errors: bool=False, calc_folder: str=None, debug: int=0):
 
     if calc_folder is None: calc_folder = sys_path ## Temporary Measure
 
@@ -37,21 +31,20 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, calc_fo
     if not files: return None
 
     #### 1-Reads Input Data
-    environment = set_environment_data(job_path, section="&environment", debug=0)
-    options     = set_options_data(job_path, section="&options"      , debug=0)
-    job_data    = set_job_data(job_path, section="&job_data"         , debug=0)
-    qc_data     = set_qc_data(job_path, section="&qc_data"           , debug=0)
+    user_environment = set_environment_data(job_path, section="&environment", debug=0)
+    options          = set_options_data(job_path, section="&options"      , debug=0)
+    job_data         = set_job_data(job_path, section="&job_data"         , debug=0)
+    qc_data          = set_qc_data(job_path, section="&qc_data"           , debug=0)
+
+    #### 1.1-Enrich Environment with User Choices:
+    ### The local Environment merges the overall definitions of the "global environment", with the local preferences for this job. 
+    local_env = global_environment + user_environment   
 
     #### 2-Fixes Some Data Depending on Cluster
-    cluster = set_cluster()
-    if 'lemma' in cluster or 'node' in cluster:
-        options.dct['want_submit'] = False         ## I think I tried options.want_submit = False and didn't work
-        options.dct['overwrite_inputs'] = False    ## " " same above
-        options.dct['overwrite_logs']   = False      ## " " same above
-
-        options.want_submit      = False         ## I think I tried options.want_submit = False and didn't work
-        options.overwrite_inputs = False    ## " " same above
-        options.overwrite_logs   = False      ## " " same above
+    if 'lemma' in local_env.cluster or 'node' in local_env.cluster:
+        options._mod_attr('want_submit',False)      
+        options._mod_attr('overwrite_inputs',False)  
+        options._mod_attr('overwrite_logs',False)     
 
     ##############
     ### SYSTEM ###
@@ -131,11 +124,11 @@ def execute_job(sys_path: str, job_path: str, handle_errors: bool=False, calc_fo
             ## 8.2-Evaluates Submission
             if not comp.output_exists: # and comp.input_exists:
                 if options.want_submit:
-                    comp.check_submission_status(debug=debug)
+                    comp.check_submission_status(local_env, debug=debug)
                     if debug > 1: print("Execute_JOB, step 7.3a: checking submission status: isrunning=",comp.isrunning)
                     if debug > 1: print("Execute_JOB, step 7.3a: initial state is", comp.qc_data.istate)
                     if debug > 1: print("Execute_JOB, step 7.3a: is_update:", comp.is_update)
-                    if not comp.isrunning:             comp.run(environment, options, debug=debug); updated = True
+                    if not comp.isrunning:        comp.run(local_env, options, debug=debug); updated = True
                 else: 
                     if debug > 1: print("Execute_JOB, step 7.3a: want_submit is False")
             elif comp.output_exists and not comp.input_exists:  
