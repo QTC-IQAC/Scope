@@ -256,11 +256,16 @@ class environment(object):
 
         self.queues = []
         if correct:
-            for mq in self.mqueues:
-                if mq.name in user_q: 
-                    mq.select_queue()
-                    mq.set_nodes()
-                    self.queues.append(mq)
+            for uq in user_q:
+                found = False
+                for mq in self.mqueues:
+                    if uq == mq.name or uq in mq.name:
+                        mq.select_queue()
+                        mq.set_nodes()
+                        self.queues.append(mq)
+                        found = True
+                if not found: print(f"USER_QUEUES: could not find {uq} in the system queues")
+                
         else:
             return self.queues
 

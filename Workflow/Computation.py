@@ -141,7 +141,7 @@ class computation(object):
         self.states.append(state)
 
     def verify_state(self, name, target: str='opt'):
-        subject = _job._recipe.subject
+        subject = self._job._recipe.subject
         found, state = find_state(subject, name)
         if not found: return None
         if target == 'opt':

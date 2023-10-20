@@ -46,7 +46,7 @@ class queue(object):
         elif self._environment.management_type == 'sge':
             for idx, line in enumerate(text):
                 blocks = line.replace("@"," ").replace("/"," ").split()
-                if len(blocks) == 8:
+                if len(blocks) == 8 or len(blocks) == 9:
                     blocks = line.replace("@"," ").replace("/"," ").split()
                     queue           = str(blocks[0])
                     node_name       = str(blocks[1])
@@ -217,24 +217,26 @@ class node(object):
         text = dec.rstrip().split("\n")
 
         if self._queue._environment.management_type == 'slurm':
-            blocks = line.replace('/',' ').split()
-            if len(blocks) == 6:
-                total      = int(blocks[5])
-                allocated  = int(blocks[2])
-                free       = total - allocated
-                self.set_occupation(total, allocated, free)
-            else:
-                print("NODE.CHECK_USAGE: Unexpected length of block list", blocks)
+            for line in text:
+                blocks = line.replace('/',' ').split()
+                if len(blocks) == 6:
+                    total      = int(blocks[5])
+                    allocated  = int(blocks[2])
+                    free       = total - allocated
+                    self.set_occupation(total, allocated, free)
+                else:
+                    print("NODE.CHECK_USAGE: Unexpected length of block list", blocks)
 
         elif self._queue._environment.management_type == 'sge':
-            blocks = line.replace("@"," ").replace("/"," ").split()
-            if len(blocks) == 8:
-                free       = int(blocks[4])
-                total      = int(blocks[5])
-                allocated  = total - free
-                self.set_occupation(total, allocated, free)
-            else:
-                print("NODE.CHECK_USAGE: Unexpected length of block list", blocks)
+            for line in text:
+                blocks = line.replace("@"," ").replace("/"," ").split()
+                if len(blocks) == 8 or len(blocks) == 9:
+                    free       = int(blocks[4])
+                    total      = int(blocks[5])
+                    allocated  = total - free
+                    self.set_occupation(total, allocated, free)
+                else:
+                    print("NODE.CHECK_USAGE: Unexpected length of block list", blocks)
 
     def __repr__(self) -> None:
         to_print  = f'{self._queue.name}:    {self.name}    usage: {self.allocated}/{self.total}'
