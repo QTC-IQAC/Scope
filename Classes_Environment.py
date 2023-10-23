@@ -64,7 +64,7 @@ class environment(object):
     def set_PP_Library(self, debug: int=0):
         if   os.path.isdir(self.scope_home_path+"PP_Library"):       self.PP_Library= self.scope_home_path+"PP_Library/"
         elif os.path.isdir(self.scope_scratch_path+"PP_Library"):    self.PP_Library= self.scope_scratch_path+"PP_Library/"
-        else:                                                        self.PP_Library= str(input("Please Specify PP_Library Path:")) 
+        else:                                                        self.PP_Library= str(input("Please Specify PP_Library Path: ")) 
         print("PP_Library set to", self.PP_Library)
         return self.PP_Library
   
@@ -91,17 +91,17 @@ class environment(object):
         keyword = "4-Merged/"
         if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.cell2mol_path = self.scope_home_path+keyword
         elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.cell2mol_path = self.scope_scratch_path+keyword
-        else:                                                self.cell2mol_path = str(input("Please Specify Cell2mol Path:")) 
+        else:                                                self.cell2mol_path = str(input("Please Specify Cell2mol Path: ")) 
 
         keyword = "5-Complexes_Iso/"
         if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.calcs_path = self.scope_home_path+keyword
         elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.calcs_path = self.scope_scratch_path+keyword
-        else:                                                self.calcs_path = str(input("Please Specify Calcs Path:")) 
+        else:                                                self.calcs_path = str(input("Please Specify Calcs Path: ")) 
 
         keyword = "6-Systems_V3/"
         if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.systems_path = self.scope_home_path+keyword
         elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.systems_path = self.scope_scratch_path+keyword
-        else:                                                self.systems_path = str(input("Please Specify Systems Path:")) 
+        else:                                                self.systems_path = str(input("Please Specify Systems Path: ")) 
         
         if self.cell2mol_path[-1]   != '/': self.cell2mol_path += '/'
         if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
@@ -176,52 +176,6 @@ class environment(object):
         self.filepath    = filepath
         from Scope.Read_Write import save_binary
         save_binary(self, filepath)
-
-########################
-###  Dunder Methods  ###
-########################
-    def __repr__(self) -> None:
-        to_print  = f'\n-----------------------------------------------------------\n'
-        to_print += f' Formatted input interpretation of Environment Class Object()\n'
-        to_print += f'-------------------------------------------------------------\n'
-        for d in dir(self):
-            if d[0] != '_' and not callable(getattr(self,d)) and d != "dct" and d != 'mqueues' and d != 'queues':
-                val = getattr(self,d)
-                to_print += f' {d:20} = {val} \n'
-
-        if hasattr(self,"queues"):
-            if len(self.queues) > 0: to_print += f' Selected Queues: \n'
-            for q in self.queues:
-                if hasattr(q,"selected"):
-                    if q.selected: to_print += f'     Queue Name             = {q.name}\n'
-        to_print += f'---------------------------------------------------\n'
-        return to_print
-
-    def __add__(self, other):   ## environment-class can be enriched using the input_data-class
-        if not hasattr(other,"type"): return self
-        if other.type != "input_data": print("Not input data but:", type(other)); return self
-        for d in dir(other):
-            if '_' not in d and not callable(getattr(other,d)) and d != "dct" and d != "type" and d != "queues" and d != "queue":
-                at1 = getattr(other,d)
-                self._add_attr(d,at1)
-            elif d == "queue" or d == "queues":
-                at1 = getattr(other,d)
-                for q in self.available_queues: 
-                    if q.name == at1 or at1 in q.name: q.selected = True
-                    else:                              q.selected = False 
-        return self
-
-    def _add_attr(self, key: str, value):
-        try:      attr = literal_eval(value)
-        except:   attr = value
-        if hasattr(self,"dct"): self.dct[key] = attr
-        setattr(self, key, attr)
-
-    def _mod_attr(self, key: str, value):           ## Same as above
-        try:      attr = literal_eval(value)
-        except:   attr = value
-        if hasattr(self,"dct"): self.dct[key] = attr
-        setattr(self, key, attr)
 
 #####################################
 ###  Connection with Execute_Job  ###
@@ -388,7 +342,7 @@ class environment(object):
         ####################
         ## Queue Priority ##
         ####################
-        if correct and len(self.queues) > 0:
+        if correct and len(self.available_queues) > 0:
             print(" ")
             print(f"---------------------------------------------------------------------------------------- ")
             print("Do you want to set manual priorities for the queues?                                      ")
@@ -402,12 +356,59 @@ class environment(object):
 
             if prio == "Y" or prio == "y":
                 print("Setting Priorities. Please type integer or float")
-                for q in self.queues:
+                for q in self.available_queues:
                     message = f"Set priority for queue={q.name}: "
                     q_prio = read_user_input(message=message, rtype=True, rtype_options=[int, float], debug=0) 
                     q.set_priority(prio=q_prio)
             elif prio == "N" or prio == "n":
-                for q in self.queues:
+                for q in self.available_queues:
                     q.set_priority(prio=int(1))
-            return self.queues
+            return self.available_queues
 
+########################
+###  Dunder Methods  ###
+########################
+    def __repr__(self) -> None:
+        to_print  = f'\n-----------------------------------------------------------\n'
+        to_print += f' Formatted input interpretation of Environment Class Object()\n'
+        to_print += f'-------------------------------------------------------------\n'
+        for d in dir(self):
+            if d[0] != '_' and not callable(getattr(self,d)) and d != "dct" and d != 'mqueues' and d != 'queues':
+                val = getattr(self,d)
+                to_print += f' {d:20} = {val} \n'
+
+        if hasattr(self,"available_queues"):
+            if len(self.available_queues) > 0: to_print += f' Selected Queues: \n'
+            for q in self.available_queues:
+                if hasattr(q,"selected"):
+                    if q.selected: to_print += f'     Queue Name             = {q.name}\n'
+        to_print += f'---------------------------------------------------\n'
+        return to_print
+
+    def __add__(self, other):   ## environment-class can be enriched using the input_data-class
+        if not hasattr(self,"available_queues"): print("ENVIRONMENT.ADD: please run 'user_queue_preferences' first"); return None
+        if not hasattr(other,"type"):                                             return self
+        if other.type != "input_data": print("Not input data but:", type(other)); return self
+        for d in dir(other):
+            if '_' not in d and not callable(getattr(other,d)) and d != "dct" and d != "type" and d != "queues" and d != "queue":
+                at1 = getattr(other,d)
+                self._add_attr(d,at1)
+            elif d == "queue" or d == "queues":
+                list_of_user_q = d.strip().split(",")
+                for user_q in list_of_user_q:
+                    for q in self.available_queues:
+                        if q.name == user_q:     q.selected = True
+                        else:                    q.selected = False
+        return self
+
+    def _add_attr(self, key: str, value):
+        try:      attr = literal_eval(value)
+        except:   attr = value
+        if hasattr(self,"dct"): self.dct[key] = attr
+        setattr(self, key, attr)
+
+    def _mod_attr(self, key: str, value):           ## Same as above
+        try:      attr = literal_eval(value)
+        except:   attr = value
+        if hasattr(self,"dct"): self.dct[key] = attr
+        setattr(self, key, attr)

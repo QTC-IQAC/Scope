@@ -128,6 +128,7 @@ class queue(object):
         if not hasattr(self, "nodes"): self.set_nodes()
         self.allocated    = 0
         self.free         = 0
+        self.max_total    = 0
         self.max_free     = 0
         self.total        = 0
         for node in self.nodes:
@@ -135,7 +136,8 @@ class queue(object):
             self.allocated   += node.allocated 
             self.free        += node.free
             self.total       += node.total
-            if node.free > self.max_free: self.max_free = node.free
+            if node.total > self.max_total: self.max_total = node.total
+            if node.free > self.max_free:   self.max_free = node.free
 
 ##### MOVED TO ENVIRONMENT LEVEL
 
@@ -178,9 +180,11 @@ class queue(object):
         if hasattr(self,"priority"):   to_print += f' Priority              = {self.priority}\n'
         if hasattr(self,"selected"):   to_print += f' Selected              = {self.selected}\n'
         if hasattr(self,"allocated"):  to_print += f' Allocated CPUs        = {self.allocated}\n'
-        if hasattr(self,"free"):  to_print += f' Available CPUs        = {self.free}\n'
+        if hasattr(self,"free"):       to_print += f' Available CPUs        = {self.free}\n'
         if hasattr(self,"total"):      to_print += f' Total CPUs            = {self.total}\n'
-        #if hasattr(self,"num_jobs"):   to_print += f' Num Jobs              = {self.num_jobs}\n'        ### Removed
+        if hasattr(self,"max_total"):  to_print += f' Max CPUs              = {self.max_total}\n'
+        if hasattr(self,"user_jobs"):  to_print += f' Num Jobs {self._environment.user}       = {self.user_jobs}\n'        
+        if hasattr(self,"user_cpus"):  to_print += f' Num CPUs {self._environment.user}       = {self.user_cpus}\n'        
         to_print += f'---------------------------------------------------\n'
         return to_print
 
