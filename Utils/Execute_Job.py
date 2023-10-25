@@ -10,9 +10,12 @@ from Scope.Classes_SCO import sco_system, crystal
 from Scope.Read_Write import load_binary, save_binary
 
 ######################
-def execute_job(sys_path: str, job_path: str, global_environment: object, handle_errors: bool=False, calc_folder: str=None, debug: int=0):
+def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors: bool=False, calc_folder: str=None, debug: int=0):
+    ### !!!!
+    ### It is better that the environment is already loaded, so it is not necessary to load it for every system
+    ### !!!!
 
-    if calc_folder is None: calc_folder = sys_path ## Temporary Measure
+    if calc_folder is None: calc_folder = sys_path ## Temporary Measure for Unique Ligands
 
     print("ENTERED EXECUTE JOB with job_path:", job_path)
     report = ''
@@ -36,12 +39,11 @@ def execute_job(sys_path: str, job_path: str, global_environment: object, handle
     job_data         = set_job_data(job_path, section="&job_data"         , debug=0)
     qc_data          = set_qc_data(job_path, section="&qc_data"           , debug=0)
 
-    #### 1.1-Enrich Environment with User Choices:
-    ### The local Environment merges the overall definitions of the "global environment", with the local preferences for this job. 
-    local_env = global_environment + user_environment   
+    #### 2a-Enrich Environment with User Choices:
+    global_env.read_local_environment(job_path, debug=0)
 
-    #### 2-Fixes Some Data Depending on Cluster
-    if 'lemma' in local_env.cluster or 'node' in local_env.cluster:
+    #### 2b-Forces some options in case the environment is not that of a computation cluster
+    if global_env.management_type == 'None':
         options._mod_attr('want_submit',False)      
         options._mod_attr('overwrite_inputs',False)  
         options._mod_attr('overwrite_logs',False)     
@@ -124,11 +126,11 @@ def execute_job(sys_path: str, job_path: str, global_environment: object, handle
             ## 8.2-Evaluates Submission
             if not comp.output_exists: # and comp.input_exists:
                 if options.want_submit:
-                    comp.check_submission_status(local_env, debug=debug)
+                    comp.check_submission_status(global_env, debug=debug)
                     if debug > 1: print("Execute_JOB, step 7.3a: checking submission status: isrunning=",comp.isrunning)
                     if debug > 1: print("Execute_JOB, step 7.3a: initial state is", comp.qc_data.istate)
                     if debug > 1: print("Execute_JOB, step 7.3a: is_update:", comp.is_update)
-                    if not comp.isrunning:        comp.run(local_env, options, debug=debug); updated = True
+                    if not comp.isrunning:        comp.run(global_env, options, debug=debug); updated = True
                 else: 
                     if debug > 1: print("Execute_JOB, step 7.3a: want_submit is False")
             elif comp.output_exists and not comp.input_exists:  

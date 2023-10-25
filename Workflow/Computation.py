@@ -109,18 +109,18 @@ class computation(object):
             
     def check_submission_status(self, environment: object, debug: int=0) -> None:
         key = str(self.refcode+self.suffix)
-        self.isrunning = environment.check_submitted(key, debug=debug)
+        self.isrunning = environment.check_submitted(job_name=key, debug=debug)
         
-    def add_submission_init(self, nprocs: str='Unk', queue: str='Unk', cluster: str=set_cluster(), user: str=set_user()) -> None:
-        self.nprocs = nprocs
-        self.queue = queue
-        self.submission_cluster = cluster
-        self.submission_user = user
+    def add_submission_init(self, nprocs: int, queue: object) -> None:
+        self.nprocs                = nprocs
+        self.queue_name            = queue.name
+        self.submission_cluster    = queue._environment.cluster
+        self.submission_user       = queue._environment.user
 
     def add_registration_data(self, cluster: str=set_cluster(), user: str=set_user()) -> None:
-        self.registration_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        self.registration_cluster = cluster
-        self.registration_user = user
+        self.registration_time     = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        self.registration_cluster  = cluster
+        self.registration_user     = user
 
     def create_output(self, debug: int=0):
         if not hasattr(self,'output_lines'): self.read_lines()
@@ -147,7 +147,7 @@ class computation(object):
         if target == 'opt':
             if hasattr(state,'coord') and hasattr(state,'labels'): return True
         else: 
-            print("VERIFY STATE: target not implemented")
+            print("COMPUTATION.VERIFY STATE: target not implemented")
             return False 
             
 ###########################################
@@ -157,18 +157,25 @@ class computation(object):
         shutil.move(self.out_path, new_out_path)
 
 ###########################################
+    def submit(self, environment: object, debug: int=0) -> None:
+        os.chdir(self.path)
+        subprocess.run(['bash','-c', environment.command_submit+' '+self.sub_name])
+
+###########################################
     def run(self, environment: object, options: object, debug: int=0) -> None:
 
         ## 0-Checks that Resources are available
-        if options.want_submit: sent_procs, sent_jobs = check_usage()
+        if options.want_submit: sent_procs, sent_jobs = environment.get_user_requested(debug=debug)
         else:                   sent_procs = 0; sent_jobs = 0
         if sent_procs >= environment.max_procs or sent_jobs >= environment.max_jobs:
-            if debug > 0: print(f"    Over maximum jobs and cores reached")
+            if debug > 0: print(f"    Over maximum jobs OR cores reached")
             return None
 
         ## 1-Gets Resources
         if options.want_submit:
-            askqueue, askprocs = get_queue_and_procs(environment=environment)
+            askqueue = environment.get_best_queue(debug=debug)
+            askprocs = environment.requested_procs 
+            #askqueue, askprocs = get_queue_and_procs(environment=environment)
             ## 1.1-Adds Resources
             self.add_submission_init(nprocs=askprocs, queue=askqueue)
             ## 1.2-Creates Files
@@ -177,8 +184,8 @@ class computation(object):
                 if self.software == 'g16':  gen_G16_input(self, debug=0)
                 elif self.software == 'qe': gen_QE_input(self, debug=0)
             if not self.subfile_exists or options.overwrite_inputs:
-                if self.software == 'g16':  gen_G16_subfile(self, procs=askprocs, queue=askqueue)
-                elif self.software == 'qe': gen_QE_subfile(self, procs=askprocs, queue=askqueue)
+                if self.software == 'g16':  gen_G16_subfile(self, queue=askqueue, procs=askprocs)
+                elif self.software == 'qe': gen_QE_subfile(self, queue=askqueue, procs=askprocs)
 
         ## 2-If output exists, prompts for registration
         if self.output_exists and not self.isregistered:
@@ -186,25 +193,26 @@ class computation(object):
             print(f"    {self.output_path}")
             print(f"    ")
 
-        ## 2-Evaluates Submission
+        ## 3-Evaluates Submission
         if options.want_submit:
             can_submit = True
-            ## 2.1-Evaluates if output exists
+            ## 3.1-Evaluates if output exists
             if self.output_exists and not options.overwrite_logs:
                 can_submit = False
                 if debug > 0: print("Output exists and not overwriting logs")
 
-            ## 2.2-Evaluates if output is running
+            ## 3.2-Evaluates if output is running
             if can_submit and not options.ignore_submitted:
-                self.check_submission_status()   ### retrieves self.isrunning
+                self.check_submission_status(environment)   ### retrieves self.isrunning
                 if self.isrunning:
                     can_submit = False
                     if debug > 0: print("Job already running")
 
-            ## 2.3-Submits if possible
+            ## 3.3-Submits if possible
             if can_submit:
-                os.chdir(self.path)
-                send_command("submit", filename=self.sub_name)
+                self.submit(environment)
+                #os.chdir(self.path)
+                #send_command("submit", filename=self.sub_name)
                 #if debug > 0: print(f"Job {self.out_path} submitted")
 
 ###########################################

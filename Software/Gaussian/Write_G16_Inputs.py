@@ -93,11 +93,14 @@ def gen_G16_input(comp, debug: int=0):
         print("", file=inp) 
 
 ###################################################
-def gen_G16_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: str=set_cluster(), user: str=set_user(), savechk: bool=False):
+def gen_G16_subfile(comp: object, queue: object, procs: int=1, savechk: bool=False):
     ## savechk must be tested
    
     if    procs*float(1.5) >= float(8): mem=int(procs*1.5)
     else:                               mem=int(4)
+
+    cluster = queue._environment.cluster
+    user    = queue._environment.user
 
     if 'login' in cluster or 'csuc' in cluster:
         with open(comp.sub_path, 'w+') as sub:
@@ -105,7 +108,7 @@ def gen_G16_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: st
             print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
             print(f"#SBATCH -e /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
             print(f"#SBATCH -o /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
-            print(f"#SBATCH -p {queue}", file=sub)
+            print(f"#SBATCH -p {queue.name}", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
             print(f"#SBATCH --time=10-0", file=sub)
@@ -132,7 +135,7 @@ def gen_G16_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: st
             print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
             print(f"#SBATCH -e /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
             print(f"#SBATCH -o /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
-            print(f"#SBATCH -p {queue}", file=sub)
+            print(f"#SBATCH -p {queue.name}", file=sub)
             print(f"#SBATCH --exclude=cibeles3-05", file=sub)
             print(f"#SBATCH -A ub100_serv", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
@@ -171,7 +174,7 @@ def gen_G16_subfile(comp: object, procs: int=1, queue: str="iqtc09", cluster: st
             print(f"#$ -cwd", file=sub)
             print(f"#$ -o /home/{user}/x-stds/{comp.refcode}{comp.suffix}.stdout", file=sub)
             print(f"#$ -e /home/{user}/x-stds/{comp.refcode}{comp.suffix}.stderr", file=sub)
-            print(f"#$ -q {queue}.q" , file=sub)
+            print(f"#$ -q {queue.name}" , file=sub)
             print(f"", file=sub)
             print(f"source /etc/profile.d/modules.csh", file=sub)
             print(f"source $HOME/.bashrc", file=sub)

@@ -107,5 +107,6 @@ def read_user_input(message: str, rtext: bool=False, rtext_options: list=[], rty
             else: correct = True
             if debug > 0: print(f"correct={correct}, #attempt={att}")
             
-            if correct: return opt
-            else:       return None
+            if not correct: print(f"Please, try again. Options are: {rtext_options}")
+        if correct: return opt
+        else:       return None

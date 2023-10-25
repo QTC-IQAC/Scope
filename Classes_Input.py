@@ -22,19 +22,19 @@ class input_data(object):
         with open(f_name, 'r') as f:
             canread = False
             for idx, line in enumerate(f.readlines()):
-                if debug > 0: print("Doing line", idx, line) 
 
                 if line[0] == '#' or line == '\n': continue
                 line = line.strip()
+                if debug > 0: print("INPUT DATA: Doing line", idx, line) 
 
                 # Establishes the section of the input to read
                 if section is not None:
                     if line.startswith(section) and not canread: 
-                        if debug > 0: print("Start of section", section, "found in line", idx) 
+                        if debug > 0: print("INPUT_DATA: Start of section", section, "found in line", idx) 
                         canread = True #; continue
                     elif line.startswith('/') and canread:
                         canread = False #; continue
-                        if debug > 0: print("end of section", section, "found in line", idx) 
+                        if debug > 0: print("INPUT_DATA: end of section", section, "found in line", idx) 
                 else: canread = True
                 
                 if canread:
@@ -47,8 +47,7 @@ class input_data(object):
                         if type(key) == str:   key   = key.lower()   
                         if type(value) == str: 
                             if "/" not in value and key != 'branch' and value != 'True' and value != 'False': value  = value.lower() # Except paths
-                        if debug > 0: print("key:", key)
-                        if debug > 0: print("value:", value)
+                        if debug > 0: print("key:", key, "value:", value)
                         dct[key] = value
         self.set(dct)
         return self
@@ -121,12 +120,10 @@ class input_data(object):
 #######################
 def fill_environment_data(data: object, debug: int=0):
     ## Adds defaults to environment data
-    if not hasattr(data,"cluster"):       data._add_attr("cluster",set_cluster())
-    if not hasattr(data,"user"):          data._add_attr("user",set_user())
-    if not hasattr(data,"resources"):     data._add_attr("resources","light") 
-    if not hasattr(data,"method"):        data._add_attr("method","score") 
-    if not hasattr(data,"min_procs"):     data._add_attr("min_procs",int(1)) 
-    if not hasattr(data,"queues"):        data._add_attr("queues","all") 
+    if not hasattr(data,"requested_procs"):   data._add_attr("requested_procs",int(1)) 
+    if not hasattr(data,"max_jobs"):          data._add_attr("max_jobs",int(100)) 
+    if not hasattr(data,"max_procs"):         data._add_attr("max_procs",int(320)) 
+    if not hasattr(data,"method"):            data._add_attr("method","weighted") 
     return data
 
 def fill_options_data(data: object, debug: int=0):

@@ -4,11 +4,11 @@ import copy
 import pwd
 import grp 
 import subprocess
+import numpy as np
 
 from Scope.Classes_Queue import queue 
 from Scope.Classes_Input import input_data
 from Scope import Classes_Input
-from Scope.Read_Write import read_user_input
 
 def set_user():
     return pwd.getpwuid( os.getuid() ).pw_name
@@ -25,20 +25,51 @@ def set_cluster():
 ###############
 class environment(object):
     def __init__(self):
-        self.type        = "environment"
-        self.cluster     = set_cluster()
-        self.user        = set_user()
-        self.group       = set_group()
+        self.type                   = "environment"
+        self.cluster                = set_cluster()
+        self.user                   = set_user()
+        self.group                  = set_group()
+        self.available_queues       = [] 
+        self.selected_queues        = [] 
+        self.method                 = 'weighted'
         self.get_management_type() 
 
-    def read_user_specs_from_file(self, path_to_add, debug: int=0):
-        from Classes_Input import set_environment_data
-        new_data = set_environment_data(path_to_add, section="&environment", debug=debug)
-        for d in dir(new_data):
-            if '_' not in d and not callable(getattr(new_data,d)) and d != "dct" and d != "type":
-                at1 = getattr(new_data,d)
+    def read_user_queue_list(self, line):
+        ## Function to digest the queue names assuming that the user will use strange formats
+ 
+        list_of_user_q = line.strip().split(",")
+        for user_q in list_of_user_q:
+            user_q = user_q.strip()
+            for q in self.available_queues:
+                if q.name == user_q or q.alter_name == user_q:
+                    q.select_queue()
+                elif user_q in q.name or q.name in user_q:
+                    message = f"Found Similar queue as the one you requested. Is {q.name} your selection: {user_q} Y/N "
+                    tmp = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"])
+                    if tmp == "Y" or tmp == 'y':
+                        q.select_queue()
+                        q.alter_name = user_q
+
+    def read_local_environment(self, file_path, debug: int=0):
+        from Scope.Classes_Input import set_environment_data
+        if not hasattr(self,"available_queues"): print("ENVIRONMENT.ADD: please run 'user_queue_preferences' first"); return None
+        local_env = set_environment_data(file_path, debug=debug)
+        if debug > 0: print("ENV.READ_USER_SPECS: reading data:", local_env)
+
+        self.added_attr = {}
+        for d in dir(local_env):
+
+            ## General Attributes
+            if d[0] != '_' and not callable(getattr(local_env,d)) and d != "dct" and d != "type" and d != "queues" and d != "queue":
+                at1 = getattr(local_env,d)
+                if debug > 0: print(f"ENV.READ_USER_SPECS: adding key={d}, value={at1}")
                 self._add_attr(d,at1)
-        return self
+                self.added_attr[d] = at1 
+            ## Queues are selected
+            elif d == "queues" or d == "queue":
+                at1 = getattr(local_env,d)
+                self.read_user_queue_list(at1)
+        return self.added_attr
 
     def check_paths(self, debug: int=0):
         if not hasattr(self,"cell2mol_path"): self.set_paths()
@@ -52,13 +83,14 @@ class environment(object):
         else:                                                                  return False
 
     def set_commands(self):
-        if self._environment.management_type == "slurm":
-            self.command_check_user_usage    = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R"'
+        if self.management_type == "slurm":
+            self.command_get_user_usage    = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R"'
             self.command_check_job           = 'squeue -o "%.60j %.12u"'
             self.command_submit              = 'sbatch'
-        elif self._environment.management_type == "sge":
-            self.command_check_user_usage    = "qstat"
-            self.command_check_job           = "qstat -xml"
+        elif self.management_type == "sge":
+            self.command_get_user_usage    = "qstat"
+            self.command_get_user_waiting  = "qstat -f | grep ' qw '"
+            self.command_check_job           = "qstat -xml | grep JB_name"
             self.command_submit              = "qsub"
 
     def set_PP_Library(self, debug: int=0):
@@ -172,6 +204,23 @@ class environment(object):
             for q in self.mqueues:
                 if q.name == new_queue.name: q += new_queue
 
+    def find_queue(self, queue_name: str):
+        found = False
+        for q in self.mqueues:
+            if q.name == queue_name or q.name_alter == queue_name:
+                return True, q
+        return False, None
+
+    def make_queue_available(self, queue_name: str):
+        found, q = self.find_queue(queue_name)
+        if found and q not in self.available_queues: self.available_queues.append(q)
+        if not found: print(f"ENV.MAKE_QUEUE_AVAILABLE: queue {queue_name} not found")
+
+    def make_queue_selected(self, queue_name: str):
+        found, q = self.find_queue(queue_name)
+        if found and q not in self.selected_queues: self.selected_queues.append(q)
+        if not found: print(f"ENV.MAKE_QUEUE_AVAILABLE: queue {queue_name} not found")
+
     def save(self, filepath: str):
         self.filepath    = filepath
         from Scope.Read_Write import save_binary
@@ -180,97 +229,139 @@ class environment(object):
 #####################################
 ###  Connection with Execute_Job  ###
 #####################################
-    def check_user_usage(self, method: str='direct', debug: int=0):
-        if not hasattr(self,"available_queues"): 
-            print("CHECK_USER_USAGE: please run 'user_queue_preferences' first")  
+    def get_user_requested(self, debug: int=0):
+        if not hasattr(self,"user_waiting_cpus"): self.get_user_waiting(debug=debug)
+        if not hasattr(self,"user_running_cpus"): self.get_user_running(debug=debug)
+        self.user_requested_cpus = self.user_waiting_cpus + self.user_running_cpus
+        self.user_requested_jobs = self.user_waiting_jobs + self.user_running_jobs
+        return self.user_requested_cpus, self.user_requested_jobs
+
+    def get_user_waiting(self, debug: int=0):
+        if not hasattr(self,"command_get_user_waiting"): self.set_commands()
+        self.user_waiting_cpus = int(0)
+        self.user_waiting_jobs = int(0)
+
+        try: 
+            raw = subprocess.check_output(['bash','-c', self.command_get_user_waiting])
+            dec = raw.decode("utf-8")
+            text = dec.rstrip().split("\n")
+        except Exception as exc:
+            self.user_waiting_cpus = int(0)
+            self.user_waiting_jobs = int(0)
+            return self.user_waiting_cpus, self.user_waiting_jobs
+
+        ## SGE clusters
+        if self.management_type == "sge":
+            try:
+                for line in text:
+                    blocks = line.split()
+                    if len(blocks) == 8:
+                        if blocks[4] == 'qw':
+                            self.user_waiting_cpus  += int(blocks[7])
+                            self.user_waiting_jobs  += 1
+            except Exception as exc:
+                self.user_waiting_cpus = int(0)
+                self.user_waiting_jobs = int(0)
+        return self.user_waiting_cpus, self.user_waiting_jobs
+
+    def get_user_running(self, method: str='direct', debug: int=0):
+        if not hasattr(self,"command_get_user_waiting"): self.set_commands()
+        if len(self.available_queues) == 0: 
+            print("CHECK_USER_USAGE: please set available queues first by running the method 'set_queues'") 
             return None
-        self.user_cpus = 0
-        self.user_jobs = 0
-        # Retrieve User CPU and job
-        for idx, q in enumerate(self.available_queues):
+        self.user_running_cpus = 0
+        self.user_running_jobs = 0
 
-            ## Method 1 - Node by node
-            if method == 'nodes': 
-                cpus, jobs = q.check_user_usage(debug=debug)
-                self.user_cpus += cpus
-                self.user_jobs += jobs
+        ## Method 1 - Queue by Queue
+        if method == 'queues': 
+            for idx, q in enumerate(self.available_queues):
+                cpus, jobs     = q.get_user_running(debug=debug)
+                self.user_running_cpus += cpus
+                self.user_running_jobs += jobs
+            ## Finally, we add the waiting jobs
+            #wcpus, wjobs = self.get_user_waiting(debug=debug)
+            #self.user_running_cpus += wcpus
+            #self.user_running_jobs += wjobs
 
-            ## Method 2 - Directly
-            elif method == 'direct':
-                raw = subprocess.check_output(['bash','-c', self.command_check_user_usage])
-                dec = raw.decode("utf-8")
-                text = dec.rstrip().split("\n")
-                ## SGE clusters
-                if self._environment.management_type == "sge":
-                    try:
-                        for line in text:
-                            if self.name in line:
-                                blocks = line.split()
-                                self.user_cpus  += int(blocks[8])
-                                self.user_jobs  += 1
-                    except Exception as exc:
-                        self.user_cpus = int(0)
-                        self.user_jobs = int(0)
-                        print("QUEUE.CHECK_USER_USAGE: exception:", exc)
+        ## Method 2 - Directly
+        elif method == 'direct':
+            raw = subprocess.check_output(['bash','-c', self.command_get_user_usage])
+            dec = raw.decode("utf-8")
+            text = dec.rstrip().split("\n")
+            ## SGE clusters
+            if self.management_type == "sge":
+                try:
+                    for line in text:           
+                        blocks = line.split()
+                        if len(blocks) == 9:
+                            if blocks[4] == 'r':
+                                self.user_running_cpus  += int(blocks[8])
+                                self.user_running_jobs  += 1
+                except Exception as exc:
+                    self.user_running_cpus += int(0)
+                    self.user_running_jobs += int(0)
+                    print("ENVIRONMENT.CHECK_USER_USAGE: exception:", exc)
         
-                ## SLURM clusters
-                elif self._environment.management_type == "slurm":
-                    try:
-                        for line in text:
+            ## SLURM clusters
+            elif self.management_type == "slurm":
+                try:
+                    for line in text:
+                        if q.name in line or q.alter_name in line:
                             blocks = line.split()
-                            self.user_cpus      += int(blocks[5])
-                            self.user_jobs      += 1
-                    except Exception as exc:
-                        self.user_cpus = int(0)
-                        self.user_jobs = int(0)
-                        print("QUEUE.CHECK_USER_USAGE: exception:", exc)
-        return self.user_cpus, self.user_jobs
+                            self.user_running_cpus      += int(blocks[5])
+                            self.user_running_jobs      += 1
+                except Exception as exc:
+                    self.user_running_cpus = int(0)
+                    self.user_running_jobs = int(0)
+                    print("ENVIRONMENT.CHECK_USER_USAGE: exception:", exc)
+        return self.user_running_cpus, self.user_running_jobs
          
-    def get_best_queue(self, method: str='weighted', debug: int=0):
-        if not hasattr(self,"available_queues"): print("GET_BEST_QUEUE: please run 'user_queue_preferences' first"); return None
-        scores = []
+    def get_best_queue(self, autoselect: bool=False, debug: int=0):
+   
+        ## If user has not selected queues yet. Then we take all available queues
+        if len(self.selected_queues) == 0: 
+            print(f"GET_BEST_QUEUE: queues have not been selected. Taking all available queues")
+            target_queues = getattr(self,"available_queues")
+            if autoselect:
+                for aq in self.available_queues:
+                    aq.select_queue()
+        elif len(self.available_queues) > 0:
+            target_queues = getattr(self,"selected_queues")
+        else:
+            print(f"GET_BEST_QUEUE: neither selected nor available queues were found")
+            return None
+
         # Retrieve score
-        for idx, q in enumerate(self.available_queues):
-            if q.selected: 
-                tmp = q.get_queue_score()
-                scores.append(tmp)
-                if debug > 0: print(f"GET_BEST_QUEUE: evaluated {q.name} with score {tmp}")
+        scores = []
+        for idx, q in enumerate(target_queues):
+            tmp = q.get_queue_score(method=self.method)
+            scores.append(tmp)
+            if debug > 0: print(f"GET_BEST_QUEUE: evaluated {q.name} with score {tmp}")
+
         # Select best
         best_idx = np.argmax(scores) 
         if debug > 0: print(f"GET_BEST_QUEUE: selected best_idx={best_idx} of {scores}")
-        if debug > 0: print(f"GET_BEST_QUEUE: returning {self.available_queues[best_idx].name}")
-        return self.available_queues[best_idx]
+        if debug > 0: print(f"GET_BEST_QUEUE: returning {target_queues[best_idx].name}")
+        return target_queues[best_idx]
 
-    def check_submitted(self, job_name=None, job_id=None, debug: int=0):
+    def check_submitted(self, job_name: str, debug: int=0):
+        if not hasattr(self,"command_check_job"): self.set_commands()
         if not hasattr(self,"management_type"): self.get_management_type()
         if self.management_type is "None": return False 
 
-        if job_name is None and job_id is None: 
-            print("ENVIRONMENT.CHECK_SUBMITTED: I need or job_name or job_id to find job")
-            return None
-        elif job_name is not None and job_id is None:
-            raw  = subprocess.check_output(['bash','-c', self.command_check_job])
-            dec  = raw.decode("utf-8")
-            flat = dec.replace("\n", "")
-            if name in flat: found = True
-            else:            found = False
-        elif job_name is None and job_id is not None:
-            print("ENVIRONMENT.CHECK_SUBMITTED: this is not yet implemented")
-            return None
+        raw  = subprocess.check_output(['bash','-c', self.command_check_job])
+        dec  = raw.decode("utf-8")
+        flat = dec.replace("\n", "")
+        if self.management_type == "sge": flat = flat.replace("<","").replace(">","").replace("/","").replace("JB_name","").split()
+        if str(job_name) in flat: found = True
+        else:                     found = False
+        return found
 
-        ### Checks for submission queue after queue among the selected ones
-        #for q in self.available_queues:
-        #    found = q.check_submitted(job_name, job_id, debug=debug)
-        #    if found is None: return None                          ### None is when things go wrong
-        #    if found:         return True
-        #    if debug > 0: print(f"ENVIRONMENT.CHECK_SUBMITTED: found={found} in queue={q.name}")
-        ### If not found yet, returns False
-        return False
-
-#####################
-###  User Choices ###
-#####################
-    def user_queues_preferences(self, debug: int=0):
+#########################
+###  User Interaction ###
+#########################
+    def set_queues(self, debug: int=0):
+        from Scope.Read_Write import read_user_input
         if not hasattr(self,"mqueues"):   self.get_mqueues()
 
         suggested_names = list(q.name for q in self.mqueues if q.available)
@@ -278,13 +369,12 @@ class environment(object):
 
         if len(suggested_names) > 0: 
             print(f"-------------------------------------------------")
-            print(f"         We found the following Queues:          ")
+            print(f"         The following Queues were found:        ")
             print(f"-------------------------------------------------")
-            #print(f"Suggested queues are: {','.join(suggested_names)}")
             for n in suggested_names:
                 print(n)
             print(f"-------------------------------------------------")
-            message = "Do you want to keep all suggested Queues? Y/N "
+            message = "Do you want to keep ALL suggested Queues? Y/N "
             print(" ")
             keep = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"]) 
 
@@ -299,8 +389,12 @@ class environment(object):
                 finished = False
                 while not finished: 
                     tmp = read_user_input(message=message, rtype=True, rtype_options=[str]) 
-                    if tmp != '':    user_q.append(tmp.strip())
+                    if tmp != '':    
+                        interpreted_q = tmp.strip().replace(",","").split(" ")
+                        for iq in interpreted_q:
+                            if iq != '': user_q.append(iq.strip())
                     else: finished = True
+            else: correct = False
                     
         elif len(suggested_names) == 0: 
             verify = True
@@ -309,10 +403,14 @@ class environment(object):
             finished = False
             while not finished: 
                 tmp = read_user_input(message=message, rtype=True, rtype_options=[str]) 
-                if tmp != '':    user_q.append(tmp.strip())
+                if tmp != '':    
+                    interpreted_q = tmp.strip().replace(",","").split(" ")
+                    for iq in interpreted_q:
+                        if iq != '': user_q.append(iq.strip())
                 else: finished = True
                             
         if len(user_q) > 0 and verify:
+            print(f" ")
             print(f"The Interpreted Queues are:") #{','.join(user_q)}")
             for q in user_q:
                 print(f"{q}")
@@ -324,18 +422,23 @@ class environment(object):
             elif tmp == "N" or tmp == 'n':    correct = False
             else:                             correct = False
 
-        self.available_queues = []
         if correct:
             for uq in user_q:
                 found = False
                 for mq in self.mqueues:
-                    if uq == mq.name or uq in mq.name:
-                        mq.select_queue()
+                    if uq == mq.name or uq == mq.alter_name and not found: 
+                        found = True
                         mq.set_nodes()
                         self.available_queues.append(mq)
-                        found = True
+                    elif uq in mq.name or mq.name in uq and not found:
+                        message = f"I found a similar queue as the one you requested. Is {mq.name} your selection: {uq}? Y/N "
+                        tmp = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"])
+                        if tmp == "Y" or tmp == 'y':
+                            found = True
+                            mq.set_nodes()
+                            mq.alter_name = uq
+                            self.available_queues.append(mq)
                 if not found: print(f"USER_QUEUES: could not find {uq} in the system queues")
-                
         else:
             return self.available_queues
 
@@ -365,6 +468,55 @@ class environment(object):
                     q.set_priority(prio=int(1))
             return self.available_queues
 
+#########################
+###  Hardcoded Paths  ###
+#########################
+    def set_PP_Library(self, debug: int=0):
+        if   os.path.isdir(self.scope_home_path+"PP_Library"):       self.PP_Library= self.scope_home_path+"PP_Library/"
+        elif os.path.isdir(self.scope_scratch_path+"PP_Library"):    self.PP_Library= self.scope_scratch_path+"PP_Library/"
+        else:                                                        self.PP_Library= str(input("Please Specify PP_Library Path: "))
+        print("PP_Library set to", self.PP_Library)
+        return self.PP_Library
+
+    def set_paths(self, debug: int=0):
+        if 'login' in self.cluster or 'csuc' in self.cluster:
+            self.scope_home_path    = f"/home/{self.user}/SCOPE/Database_SCO/"
+            self.scope_scratch_path = f"/scratch/{self.user}/SCOPE/Database_SCO/"
+        elif 'lemma' in self.cluster:
+            self.scope_home_path    = f"/Users/{self.user}/Documents/SCOPE/Database_SCO/"
+            self.scope_scratch_path = None
+        elif 'uam' in self.cluster:
+            self.scope_home_path    = f"/home/proyectos/{self.group}/SCOPE/"
+            self.scope_scratch_path = f"/scratch/{self.group}/"   #does not exist because they use ub100 instead of ub100435
+        elif 'portal' in self.cluster or 'node' in self.cluster or 'visual' in self.cluster:
+            if 'g2vela' in self.user:
+                self.scope_home_path    = f"/home/{self.user}/SCOPE/Database_SCO/"
+                self.scope_scratch_path = f"/scratch/{self.user}/SCOPE/Database_SCO/"
+            elif 'g4vela' in self.user:
+                self.scope_home_path    = f"/home/{self.user}/SCOPE/Database_SCO/"
+                self.scope_scratch_path = f"/scratch/{self.user}/SCOPE/Database_SCO/"
+        else:
+            print(f"Cluster {self.cluster} not recognized")
+
+        keyword = "4-Merged/"
+        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.cell2mol_path = self.scope_home_path+keyword
+        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.cell2mol_path = self.scope_scratch_path+keyword
+        else:                                                self.cell2mol_path = str(input("Please Specify Cell2mol Path: "))
+
+        keyword = "5-Complexes_Iso/"
+        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.calcs_path = self.scope_home_path+keyword
+        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.calcs_path = self.scope_scratch_path+keyword
+        else:                                                self.calcs_path = str(input("Please Specify Calcs Path: "))
+
+        keyword = "6-Systems_V3/"
+        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.systems_path = self.scope_home_path+keyword
+        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.systems_path = self.scope_scratch_path+keyword
+        else:                                                self.systems_path = str(input("Please Specify Systems Path: "))
+
+        if self.cell2mol_path[-1]   != '/': self.cell2mol_path += '/'
+        if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
+        if self.systems_path[-1]    != '/': self.systems_path  += '/'
+
 ########################
 ###  Dunder Methods  ###
 ########################
@@ -372,34 +524,35 @@ class environment(object):
         to_print  = f'\n-----------------------------------------------------------\n'
         to_print += f' Formatted input interpretation of Environment Class Object()\n'
         to_print += f'-------------------------------------------------------------\n'
-        for d in dir(self):
-            if d[0] != '_' and not callable(getattr(self,d)) and d != "dct" and d != 'mqueues' and d != 'queues':
-                val = getattr(self,d)
-                to_print += f' {d:20} = {val} \n'
+        to_print += f' Cluster               = {self.cluster}\n'
+        to_print += f' User                  = {self.user}\n'
+        to_print += f' Group                 = {self.group}\n'
+        to_print += f'\n'
+        to_print += f' Queue System          = {self.management_type}\n'
+        if hasattr(self,"method"): to_print += f' Method of Queue Sel   = {self.method}\n'
+        if hasattr(self,"filepath"): to_print += f' Path of saved file    = {self.filepath}\n'
+        if hasattr(self,"available_queues"): 
+            to_print += f' Number of available queues = {len(self.available_queues)}:\n'
+            for aq in self.available_queues:
+                to_print += f'    {aq.name}\n'
+        if hasattr(self,"selected_queues"):  
+            to_print += f' Number selected queues = {len(self.selected_queues)}:\n'
+            for sq in self.selected_queues:
+                to_print += f'    {sq.name}\n'
 
-        if hasattr(self,"available_queues"):
-            if len(self.available_queues) > 0: to_print += f' Selected Queues: \n'
-            for q in self.available_queues:
-                if hasattr(q,"selected"):
-                    if q.selected: to_print += f'     Queue Name             = {q.name}\n'
-        to_print += f'---------------------------------------------------\n'
+        ## Prints the options added as local environment
+        if hasattr(self,"added_attr"):
+            if len(self.added_attr) > 0:  
+                to_print += f'---------------------------------------------------\n'
+                to_print += f' LOCAL ENVIRONMENT OPTIONS ADDED:\n'
+                to_print += f'-------------------------------------------------------------\n'
+                string    = 'self.{:15}| {:20}| {:10}\n'
+                to_print += string.format('Key', 'Data Type', 'Value')
+                for key in self.added_attr.keys():
+                    val = self.added_attr[key]
+                    to_print += string.format(key, str(type(val)), str(val))
+                to_print += f'-------------------------------------------------------------\n'
         return to_print
-
-    def __add__(self, other):   ## environment-class can be enriched using the input_data-class
-        if not hasattr(self,"available_queues"): print("ENVIRONMENT.ADD: please run 'user_queue_preferences' first"); return None
-        if not hasattr(other,"type"):                                             return self
-        if other.type != "input_data": print("Not input data but:", type(other)); return self
-        for d in dir(other):
-            if '_' not in d and not callable(getattr(other,d)) and d != "dct" and d != "type" and d != "queues" and d != "queue":
-                at1 = getattr(other,d)
-                self._add_attr(d,at1)
-            elif d == "queue" or d == "queues":
-                list_of_user_q = d.strip().split(",")
-                for user_q in list_of_user_q:
-                    for q in self.available_queues:
-                        if q.name == user_q:     q.selected = True
-                        else:                    q.selected = False
-        return self
 
     def _add_attr(self, key: str, value):
         try:      attr = literal_eval(value)

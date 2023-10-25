@@ -8,9 +8,10 @@ from Scope.Parse_General import slurm_time_to_seconds
 #############
 class queue(object):
     def __init__(self, name: str, _environment: object, avail: str='up', time_limit: str='infinite', state: str='idle'):
-        if avail == "up":    self.available  = True
-        else:                self.available  = False
+        if avail == "up":  self.available  = True
+        else:              self.available  = False
         self.name                = name
+        self.alter_name          = name
         self.time_limit_plain    = time_limit
         self.time_limit          = slurm_time_to_seconds(time_limit)
         self.state               = state
@@ -66,105 +67,101 @@ class queue(object):
         return self.priority
 
     def select_queue(self):
+        if not hasattr(self._environment,"selected_queues"): self._environment.selected_queues = []
+        if self not in self._environment.selected_queues: 
+            self._environment.selected_queues.append(self)
         self.selected = True
         return self.selected
 
     def set_commands(self):
         if self._environment.management_type == "slurm":
-            self.command_check_user_usage    = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+self.name  ## The rest shouldnt be necessary
+            self.command_get_user_usage      = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+self.name  ## The rest shouldnt be necessary
             self.command_check_queue_state   = 'sinfo -o "%N %P %C" | grep '+self.name 
             self.command_job_count           = 'squeue | grep '+self.name+' | wc -l'
         elif self._environment.management_type == "sge":
-            self.command_check_user_usage    = "qstat | grep "+self.name
+            self.command_get_user_usage      = "qstat | grep "+self.name
             self.command_check_queue_state   = "qstat -f | grep "+self.name
             self.command_job_count           = "qstat | grep "+self.name+" | wc -l"
 
     def get_queue_score(self, method: str='weighted'):
-        if not hasattr(self,"allocated"): self.check_usage(user='all')
-        if not hasattr(self,"priority"):  self.set_priority()
-        if self.total_cpus == 0: self.score = float(0.0)
+        if not hasattr(self,"priority"):             self.set_priority()
+        if not hasattr(self,"last_usage_check"):     self.get_overall_usage()
+        if hasattr(self,"submitted"):                  self.free = self.free - self.submitted    ### Accounts for submitted jobs that are still not running, serves to update the score before next submission 
+        if self.total == 0: self.score = float(0.0)
         else:                  
             if   method == "weighted": self.score = float(self.free)*float(self.priority)/float(self.total)
             elif method == "total":    self.score = self.free
             elif method == "ratio":    self.score = self.free/self.total 
+            else: print("GET_QUEUE_SCORE: unknown method", method); self.score = float(1.0)
         return self.score
 
-    def check_user_usage(self):
-        if not hasattr(self, "nodes"): self.set_nodes()
-        self.user_cpus = 0
-        self.user_jobs = 0
+    def get_user_running(self, debug: int=0):
+        ### Evaluating the usage by queues, has the risk that pending jobs will not appear. 
+        ### Thus, this function is meant to be called at the environment level, were we can also run the "get_user_waiting" method
 
-        raw = subprocess.check_output(['bash','-c', self.command_check_user_usage])
-        dec = raw.decode("utf-8")
-        text = dec.rstrip().split("\n")
+        self.user_running_cpus = 0
+        self.user_running_jobs = 0
+
+        try: 
+            raw = subprocess.check_output(['bash','-c', self.command_get_user_usage])
+            dec = raw.decode("utf-8")
+            text = dec.rstrip().split("\n")
+        except Exception as exc:
+            text = []
+
         ## SGE clusters
         if self._environment.management_type == "sge":
             try:
                 for line in text:
-                    if self.name in line:
+                    if self.name in line or self.alter_name in line:
                         blocks = line.split()
-                        self.user_cpus  += int(blocks[8])
-                        self.user_jobs  += 1
+                        self.user_running_cpus  += int(blocks[8])
+                        self.user_running_jobs  += 1
             except Exception as exc:
-                self.user_cpus = int(0)
-                self.user_jobs = int(0)
+                self.user_running_cpus += int(0)
+                self.user_running_jobs += int(0)
                 print("QUEUE.CHECK_USER_USAGE: exception:", exc)
 
         ## SLURM clusters
         elif self._environment.management_type == "slurm":
             try:
                 for line in text:
-                    blocks = line.split()
-                    self.user_cpus      += int(blocks[5])
-                    self.user_jobs      += 1
+                    if self.name in line or self.alter_name in line:
+                        blocks = line.split()
+                        self.user_running_cpus      += int(blocks[5])
+                        self.user_running_jobs      += 1
             except Exception as exc:
-                self.user_cpus = int(0)
-                self.user_jobs = int(0)
+                self.user_running_cpus = int(0)
+                self.user_running_jobs = int(0)
                 print("QUEUE.CHECK_USER_USAGE: exception:", exc)
 
-        return self.user_cpus, self.user_jobs
+        return self.user_running_cpus, self.user_running_jobs
 
-    def check_overall_usage(self, debug: int=0):
-        if not hasattr(self, "nodes"): self.set_nodes()
+    def get_overall_usage(self, debug: int=0):
+        ### For the overall usage, we have to go node by node
+        ### Again, we do not count pending jobs, but there's nothing we can do 
         self.allocated    = 0
         self.free         = 0
         self.max_total    = 0
         self.max_free     = 0
         self.total        = 0
+
+        ### Below is an attempt to set up a system so this function is not run twice in short periods of time, to save time
+
+        #if not hasattr(self,"last_usage_check"): self.last_usage_check = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        #current_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        #time_passed  = current_time - self.last_usage_check
+        #if self.last_usage_check 
+        #self.get_overall_usage()
+
+        if not hasattr(self, "nodes"): self.set_nodes()
         for node in self.nodes:
-            node.check_overall_usage()
+            node.get_overall_usage()
             self.allocated   += node.allocated 
             self.free        += node.free
             self.total       += node.total
             if node.total > self.max_total: self.max_total = node.total
             if node.free > self.max_free:   self.max_free = node.free
-
-##### MOVED TO ENVIRONMENT LEVEL
-
-#    def check_submitted(self, job_name=None, job_id=None, debug: int=0):
-#        if job_name is not None and job_id is None:
-#            raw  = subprocess.check_output(['bash','-c', self.command_check_job])
-#            dec  = raw.decode("utf-8")
-#            flat = dec.replace("\n", "")
-#            if name in flat: found = True
-#            else:            found = False
-#        elif job_name is None and job_id is not None:
-#            print("QUEUE.CHECK_SUBMITTED: this is not yet implemented")
-#            return None
-#        elif job_name is None and job_id is None:
-#            print("QUEUE.CHECK_SUBMITTED: I need or job_name or job_id to find job")
-#            return None
-
-    #    ######################
-    #    ### NUMBER of JOBS ###        
-    #    ######################
-    #    try: 
-    #        raw = subprocess.check_output(['bash','-c', self.command_job_count])
-    #        dec = raw.decode("utf-8")
-    #        text = dec.rstrip().split("\n")
-    #    except: 
-    #        text = '0'
-    #    self.num_jobs  = int(text[0])
 
 ##########################
 ######## DUNDER ##########
@@ -174,17 +171,20 @@ class queue(object):
         to_print += f' Formatted input interpretation of Queue Class Object()\n'
         to_print += f'-------------------------------------------------------\n'
         to_print += f' Name                  = {self.name}\n'
+        if self.alter_name != self.name:  to_print += f' Alternative Name      = {self.alter_name}\n'
         to_print += f' Time Limit Plain      = {self.time_limit_plain}\n'
         to_print += f' Time Limit (s)        = {self.time_limit} seconds\n'
         if hasattr(self,"num_nodes"):  to_print += f' Number of Nodes       = {self.num_nodes}\n'
         if hasattr(self,"priority"):   to_print += f' Priority              = {self.priority}\n'
+        if hasattr(self,"score"):      to_print += f' Score                 = {self.score}\n'
         if hasattr(self,"selected"):   to_print += f' Selected              = {self.selected}\n'
         if hasattr(self,"allocated"):  to_print += f' Allocated CPUs        = {self.allocated}\n'
         if hasattr(self,"free"):       to_print += f' Available CPUs        = {self.free}\n'
         if hasattr(self,"total"):      to_print += f' Total CPUs            = {self.total}\n'
+        if hasattr(self,"pending"):    to_print += f' pending CPUs          = {self.pending}\n'
         if hasattr(self,"max_total"):  to_print += f' Max CPUs              = {self.max_total}\n'
-        if hasattr(self,"user_jobs"):  to_print += f' Num Jobs {self._environment.user}       = {self.user_jobs}\n'        
-        if hasattr(self,"user_cpus"):  to_print += f' Num CPUs {self._environment.user}       = {self.user_cpus}\n'        
+        if hasattr(self,"user_running_jobs"):  to_print += f' Num Jobs {self._environment.user}       = {self.user_running_jobs}\n'        
+        if hasattr(self,"user_running_cpus"):  to_print += f' Num CPUs {self._environment.user}       = {self.user_running_cpus}\n'        
         to_print += f'---------------------------------------------------\n'
         return to_print
 
@@ -213,7 +213,7 @@ class node(object):
     def set_occupation(self, total: int, allocated: int, free: int):
         self.total               = total
         self.allocated           = allocated
-        self.free           = free
+        self.free                = free
         self.other               = total - allocated - free
 
     def set_commands(self):
@@ -222,9 +222,7 @@ class node(object):
         elif self._queue._environment.management_type == "sge":
             self.command_check_state = 'qstat -f | grep '+self._queue.name+' | grep '+self.name 
 
-    #def check_user_usage(self, user: str='all'):
-
-    def check_overall_usage(self, user: str='all'):
+    def get_overall_usage(self): # , user: str='all'):
         if not hasattr(self,"command_check_state"): self.set_commands()
         raw = subprocess.check_output(['bash','-c', self.command_check_state])
         dec = raw.decode("utf-8")
