@@ -77,7 +77,7 @@ class queue(object):
     def set_commands(self):
         if self._environment.management_type == "slurm":
             self.command_get_user_usage      = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+self.name  ## The rest shouldnt be necessary
-            self.command_check_queue_state   = 'sinfo -o "%N %P %C" | grep '+self.name 
+            self.command_check_queue_state   = 'sinfo -o "%n %P %C" | grep '+self.name 
             self.command_job_count           = 'squeue | grep '+self.name+' | wc -l'
         elif self._environment.management_type == "sge":
             self.command_get_user_usage      = "qstat | grep "+self.name
@@ -200,7 +200,7 @@ class queue(object):
 
     def __add__(self, other):
         if not isinstance(other, type(self)): return self
-        if self.name == other.name and self.free and other.free:
+        if self.name == other.name or self.alter_name == other.alter_name:
             if hasattr(other,"nodes"):
                 if type(other.nodes) == list:
                     for on in other.nodes:
@@ -261,6 +261,12 @@ class node(object):
                     print("NODE.CHECK_USAGE: Unexpected length of block list", blocks)
 
     def __repr__(self) -> None:
-        to_print  = f'{self._queue.name}:    {self.name}    usage: {self.allocated}/{self.total}'
+        to_print  = f'\n------------------------------------------------------\n'
+        to_print += f' Formatted input interpretation of NODE Class Object()\n'
+        to_print += f'------------------------------------------------------\n'
+        if hasattr(self._queue,"name"):   to_print += f' Queue Name            = {self._queue.name}\n'
+        if hasattr(self,"name"):          to_print += f' Node Name             = {self.name}\n'
+        if hasattr(self,"allocated"):     to_print += f' Allocated CPUS        = {self.allocated}\n'
+        if hasattr(self,"total"):         to_print += f' Total CPUS            = {self.total}\n'
         return to_print
 
