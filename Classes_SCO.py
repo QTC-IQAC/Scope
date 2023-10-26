@@ -50,26 +50,40 @@ class sco_system(object):
 ### Functions to restart system ###
 ###################################
     # Eventually, reset_paths could be "change_cluster" function
-    def reset_paths(self, cell2mol_path: str, calcs_path: str, sys_path: str, debug: int=0) -> None:
-        if os.path.isdir(cell2mol_path): self.cell2mol_path        = cell2mol_path
-        if os.path.isdir(calcs_path):    self.calcs_path           = calcs_path
-        if os.path.isdir(sys_path):      self.sys_path             = sys_path
-        if debug > 0: print(f"RESET_PATHS_OUT: new system paths: {self.cell2mol_path}, {self.calcs_path}, {self.sys_path}")
-        for br in self.branches:
-            if os.path.isdir(calcs_path+br.keyword+'/'): br.path = calcs_path+br.keyword+'/'
-            else: print(f"RESET_PATHS_OUT: {calcs_path+br.keyword+'/'} path does not exist")
-            for rec in br.recipes:
-                rec.path = br.path
-                for job in rec.jobs:
-                    job.path = rec.path
-                    for comp in job.computations:
-                        if job.setup == "findiff" and os.path.isdir(job.path+findiff): comp.path = job.path+"findiff/"
-                        else:                                                          comp.path = job.path
-                        comp.inp_path = comp.path+comp.inp_name
-                        comp.out_path = comp.path+comp.out_name
-                        comp.sub_path = comp.path+comp.sub_name
-                        comp.check_files()
-                        if debug > 0: print(f"RESET_PATHS_OUT: new computation path: {comp.inp_path}")
+    def reset_paths(self, environment: object, debug: int=0) -> None: 
+        reset = False
+
+        ## Environment Sends the Global Paths. The Paths Specifics to the System are obtained here: 
+        target_sys_path             = environment.sys_path+self.refcode+'/'
+        target_calcs_path           = environment.calcs_path+self.refcode+'/'
+        target_cell2mol_path        = environment.cell2mol_path+self.refcode+'/'
+
+        ## We make sure that those exist:
+        if os.path.isdir(target_sys_path) and os.path.isdir(target_calcs_path) and os.path.isdir(target_cell2mol_path):      
+            reset = True
+            self.sys_path             = target_sys_path
+            self.calcs_path           = target_calcs_path 
+            self.cell2mol_path        = target_cell2mol_path 
+            if debug > 0: print(f"RESET_PATHS_OUT: new system paths: {self.cell2mol_path}, {self.calcs_path}, {self.sys_path}")
+
+            ## We go down the hierarchy to change branch, recipe, jobs, and calculation paths:
+            for br in self.branches:
+                tmp = target_calcs_path+br.keyword+'/'
+                if os.path.isdir(tmp): br.path = tmp 
+                else: print(f"RESET_PATHS_OUT: {tmp} path does not exist")
+                for rec in br.recipes:
+                    rec.path = br.path
+                    for job in rec.jobs:
+                        job.path = rec.path
+                        for comp in job.computations:
+                            if job.setup == "findiff" and os.path.isdir(job.path+findiff): comp.path = job.path+"findiff/"
+                            else:                                                          comp.path = job.path
+                            comp.inp_path = comp.path+comp.inp_name
+                            comp.out_path = comp.path+comp.out_name
+                            comp.sub_path = comp.path+comp.sub_name
+                            comp.check_files()
+                            if debug > 0: print(f"RESET_PATHS_OUT: new computation path: {comp.inp_path}")
+        return reset
 
     def reset_calculations(self) -> None:
         if hasattr(self,"branches"): delattr(self,"branches"); setattr(self,"branches",[])
@@ -95,7 +109,10 @@ class sco_system(object):
         for idx, br in enumerate(self.branches):
             if debug > 1: print("evaluating branch with keyword:", br.keyword, "and path:", br.path)
             if br.keyword == keyword:
-                if not os.path.isdir(br.path): print(f"WARNING: branch path does not exist. Loading the branch anyway")
+                if not os.path.isdir(br.path): 
+                    print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                    print(f"WARNING: branch path {br.path} does not exist. Loading the branch anyway")
+                    print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
                 return True, br
         return False, None
 

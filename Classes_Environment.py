@@ -77,19 +77,22 @@ class environment(object):
         else:                                 self.iscell2mol_path   = False
         if os.path.exists(self.calcs_path):   self.iscalcs_path      = True
         else:                                 self.iscalcs_path      = False
-        if os.path.exists(self.systems_path): self.issystems_path    = True 
-        else:                                 self.issystems_path    = False
-        if self.issystems_path and self.iscalcs_path and self.iscell2mol_path: return True
+        if os.path.exists(self.sys_path):     self.issys_path        = True 
+        else:                                 self.issys_path        = False
+        if debug > 0 and not os.path.isdir(self.cell2mol_path): print(f"ENVIRONMENT.CHECK_PATHS: {self.cell2mol_path} does not exist")
+        if debug > 0 and not os.path.isdir(self.sys_path):      print(f"ENVIRONMENT.CHECK_PATHS: {self.sys_path} does not exist")
+        if debug > 0 and not os.path.isdir(self.calcs_path):    print(f"ENVIRONMENT.CHECK_PATHS: {self.calcs_path} does not exist")
+        if self.issys_path and self.iscalcs_path and self.iscell2mol_path: return True
         else:                                                                  return False
 
     def set_commands(self):
         if self.management_type == "slurm":
-            self.command_get_user_usage    = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R"'
+            self.command_get_user_usage      = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R"'
             self.command_check_job           = 'squeue -o "%.60j %.12u"'
             self.command_submit              = 'sbatch'
         elif self.management_type == "sge":
-            self.command_get_user_usage    = "qstat"
-            self.command_get_user_waiting  = "qstat -f | grep ' qw '"
+            self.command_get_user_usage      = "qstat"
+            self.command_get_user_waiting    = "qstat -f | grep ' qw '"
             self.command_check_job           = "qstat -xml | grep JB_name"
             self.command_submit              = "qsub"
 
@@ -123,21 +126,21 @@ class environment(object):
         keyword = "4-Merged/"
         if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.cell2mol_path = self.scope_home_path+keyword
         elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.cell2mol_path = self.scope_scratch_path+keyword
-        else:                                                self.cell2mol_path = str(input("Please Specify Cell2mol Path: ")) 
+        else:                                                                                        self.cell2mol_path = str(input("Please Specify Cell2mol Path: ")) 
 
         keyword = "5-Complexes_Iso/"
         if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.calcs_path = self.scope_home_path+keyword
         elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.calcs_path = self.scope_scratch_path+keyword
-        else:                                                self.calcs_path = str(input("Please Specify Calcs Path: ")) 
+        else:                                                                                        self.calcs_path = str(input("Please Specify Calcs Path: ")) 
 
         keyword = "6-Systems_V3/"
-        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.systems_path = self.scope_home_path+keyword
-        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.systems_path = self.scope_scratch_path+keyword
-        else:                                                self.systems_path = str(input("Please Specify Systems Path: ")) 
+        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.sys_path = self.scope_home_path+keyword
+        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.sys_path = self.scope_scratch_path+keyword
+        else:                                                                                        self.sys_path = str(input("Please Specify Systems Path: ")) 
         
         if self.cell2mol_path[-1]   != '/': self.cell2mol_path += '/'
         if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
-        if self.systems_path[-1]    != '/': self.systems_path  += '/'
+        if self.sys_path[-1]        != '/': self.sys_path  += '/'
 
     def get_management_type(self, debug: int=0):
         self.management_type = "None"
@@ -430,7 +433,7 @@ class environment(object):
     def check_submitted(self, job_name: str, debug: int=0):
         if not hasattr(self,"command_check_job"): self.set_commands()
         if not hasattr(self,"management_type"): self.get_management_type()
-        if self.management_type is "None": return False 
+        if self.management_type == "None": return False 
 
         raw  = subprocess.check_output(['bash','-c', self.command_check_job])
         dec  = raw.decode("utf-8")
@@ -444,6 +447,9 @@ class environment(object):
 ###  User Interaction ###
 #########################
     def set_queues(self, debug: int=0):
+        ## If it is not a computation cluster, returns an empty list
+        if self.management_type == "None": return []
+
         from Scope.Read_Write import read_user_input
         if not hasattr(self,"mqueues"):   self.get_mqueues()
 
@@ -592,13 +598,13 @@ class environment(object):
         else:                                                self.calcs_path = str(input("Please Specify Calcs Path: "))
 
         keyword = "6-Systems_V3/"
-        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.systems_path = self.scope_home_path+keyword
-        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.systems_path = self.scope_scratch_path+keyword
-        else:                                                self.systems_path = str(input("Please Specify Systems Path: "))
+        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.sys_path = self.scope_home_path+keyword
+        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.sys_path = self.scope_scratch_path+keyword
+        else:                                                self.sys_path = str(input("Please Specify Systems Path: "))
 
         if self.cell2mol_path[-1]   != '/': self.cell2mol_path += '/'
         if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
-        if self.systems_path[-1]    != '/': self.systems_path  += '/'
+        if self.sys_path[-1]    != '/': self.sys_path  += '/'
 
 ########################
 ###  Dunder Methods  ###
