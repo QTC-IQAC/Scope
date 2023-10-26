@@ -12,7 +12,13 @@ from Scope import Constants
 ### Here is where the all protocols to extract system properties, (often) involving more than one system (eg. HS and LS), are collected
 ##############################################################################
 
-def extract_dH_solid(sys: object, branch_keyword: str, state1: object, state2: object, overwrite: bool=False, debug: int=0):
+def extract_dH_solid(sys: object, global_env: object, branch_keyword: str, state1: object, state2: object, overwrite: bool=False, debug: int=0):
+
+    ## 0-Changes paths if necessary
+    if global_env.check_paths(debug=1):
+        if debug > 1: print(f"Extract_dH, step 0: global environment found with correct paths. RESETTING")
+        updated = sys.reset_paths(global_env, debug=0)
+        if updated and debug > 1: print(f"Extract_dH, step 0: system paths reset")
 
     ### 1-Branch is loaded
     exists, this_branch = sys.find_branch(branch_keyword, debug=debug)
@@ -76,7 +82,13 @@ def extract_dH_solid(sys: object, branch_keyword: str, state1: object, state2: o
     return True, this_branch.results["dHelec"]
 
 
-def extract_T12(sys: object, branch_keyword: str, state1: object, state2: object, Trange: range=range(10,501,1), overwrite: bool=False, debug: int=0):
+def extract_T12(sys: object, global_env: object, branch_keyword: str, state1: object, state2: object, Trange: range=range(10,501,1), overwrite: bool=False, debug: int=0):
+
+    ## 0-Changes paths if necessary
+    if global_env.check_paths(debug=1):
+        if debug > 1: print(f"Extract_dH, step 0: global environment found with correct paths. RESETTING")
+        updated = sys.reset_paths(global_env, debug=0)
+        if updated and debug > 1: print(f"Extract_dH, step 0: system paths reset")
 
     ##############
     ### BRANCH ###

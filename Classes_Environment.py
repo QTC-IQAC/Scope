@@ -33,6 +33,7 @@ class environment(object):
         self.selected_queues        = [] 
         self.method                 = 'weighted'
         self.get_management_type() 
+        self.set_commands()
 
     def read_user_queue_list(self, line):
         ## Function to digest the queue names assuming that the user will use strange formats
