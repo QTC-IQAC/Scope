@@ -341,11 +341,11 @@ class environment(object):
 
     def get_user_running(self, method: str='direct', debug: int=0):
         if not hasattr(self,"command_get_user_waiting"): self.set_commands()
-        if len(self.available_queues) == 0: 
-            print("CHECK_USER_USAGE: please set available queues first by running the method 'set_queues'") 
-            return None
         self.user_running_cpus = 0
         self.user_running_jobs = 0
+        if len(self.available_queues) == 0: 
+            print("CHECK_USER_RUNNING: please set available queues first by running the method 'set_queues'") 
+            return None
 
         ## Method 1 - Queue by Queue
         if method == 'queues': 
@@ -375,20 +375,21 @@ class environment(object):
                 except Exception as exc:
                     self.user_running_cpus += int(0)
                     self.user_running_jobs += int(0)
-                    print("ENVIRONMENT.CHECK_USER_USAGE: exception:", exc)
+                    print("ENVIRONMENT.CHECK_USER_RUNNING: exception:", exc)
         
             ## SLURM clusters
             elif self.management_type == "slurm":
                 try:
                     for line in text:
-                        if q.name in line or q.alter_name in line:
-                            blocks = line.split()
-                            self.user_running_cpus      += int(blocks[5])
-                            self.user_running_jobs      += 1
+                        blocks = line.split()
+                        if len(blocks) == 8:
+                            if blocks[2] == self.user and blocks[3] == 'R':
+                                self.user_running_cpus      += int(blocks[5])
+                                self.user_running_jobs      += 1
                 except Exception as exc:
                     self.user_running_cpus = int(0)
                     self.user_running_jobs = int(0)
-                    print("ENVIRONMENT.CHECK_USER_USAGE: exception:", exc)
+                    print("ENVIRONMENT.CHECK_USER_RUNNING: exception:", exc)
         return self.user_running_cpus, self.user_running_jobs
          
     def get_best_queue(self, autoselect: bool=False, debug: int=0):
