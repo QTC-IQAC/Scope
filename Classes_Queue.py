@@ -1,3 +1,4 @@
+from datetime import datetime, timedelta
 import subprocess
 import numpy as np
 
@@ -83,16 +84,23 @@ class queue(object):
             self.command_check_queue_state   = "qstat -f | grep "+self.name
             self.command_job_count           = "qstat | grep "+self.name+" | wc -l"
 
-    def get_queue_score(self, method: str='weighted'):
-        if not hasattr(self,"priority"):             self.set_priority()
-        if not hasattr(self,"last_usage_check"):     self.get_overall_usage()
-        if hasattr(self,"submitted"):                  self.free = self.free - self.submitted    ### Accounts for submitted jobs that are still not running, serves to update the score before next submission 
-        if self.total == 0: self.score = float(0.0)
-        else:                  
-            if   method == "weighted": self.score = float(self.free)*float(self.priority)/float(self.total)
-            elif method == "total":    self.score = self.free
-            elif method == "ratio":    self.score = self.free/self.total 
-            else: print("GET_QUEUE_SCORE: unknown method", method); self.score = float(1.0)
+    def get_queue_score(self, force_update: bool=False, method: str='weighted'):
+        if not hasattr(self,"priority"):      self.set_priority(prio=int(1))   ## If user has set a priority. Then 1
+        if not hasattr(self,"free"):          self.get_overall_usage(force_run=force_update)
+
+        ## If queue has no computation capacity. Score = 0 
+        if self.total == 0: self.score = float(0.0); return self.score
+
+        ## Else. First, we account for jobs that are scheduled to run on this queue. 
+        if hasattr(self,"waiting_cpus"):         tmp = self.free - self.waiting_cpus 
+        else:                                    tmp = self.free 
+
+        ## Finally, we compute the score
+        if   method == "weighted": self.score = float(tmp)*float(self.priority)/float(self.total)
+        elif method == "total":    self.score = tmp
+        elif method == "ratio":    self.score = tmp/self.total 
+        else: print("GET_QUEUE_SCORE: unknown method", method); self.score = float(1.0)
+        #if self.score < float(0.0): self.score = float(0.0)
         return self.score
 
     def get_user_running(self, debug: int=0):
@@ -137,31 +145,33 @@ class queue(object):
 
         return self.user_running_cpus, self.user_running_jobs
 
-    def get_overall_usage(self, debug: int=0):
+    def get_overall_usage(self, force_run: bool=False, debug: int=0):
         ### For the overall usage, we have to go node by node
-        ### Again, we do not count pending jobs, but there's nothing we can do 
-        self.allocated    = 0
-        self.free         = 0
-        self.max_total    = 0
-        self.max_free     = 0
-        self.total        = 0
+        ### We do not count pending jobs. This is done at the environment level
+        if not hasattr(self,"nodes"):            self.set_nodes()
+        if not hasattr(self,"allocated"):        self.allocated    = 0
+        if not hasattr(self,"free"):             self.free         = 0
+        if not hasattr(self,"max_total"):        self.max_total    = 0
+        if not hasattr(self,"max_free"):         self.max_free     = 0
+        if not hasattr(self,"total"):            self.total        = 0
 
-        ### Below is an attempt to set up a system so this function is not run twice in short periods of time, to save time
+        ### The function only updates every 60 seconds, unless force_run
+        if hasattr(self,"last_usage_check"): 
+            current_time = datetime.now()
+            time_gap = current_time - self.last_usage_check
+            if time_gap.total_seconds() > 60: proceed = True 
+            else:                             proceed = False
+        else:                                 proceed = True
 
-        #if not hasattr(self,"last_usage_check"): self.last_usage_check = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        #current_time = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        #time_passed  = current_time - self.last_usage_check
-        #if self.last_usage_check 
-        #self.get_overall_usage()
-
-        if not hasattr(self, "nodes"): self.set_nodes()
-        for node in self.nodes:
-            node.get_overall_usage()
-            self.allocated   += node.allocated 
-            self.free        += node.free
-            self.total       += node.total
-            if node.total > self.max_total: self.max_total = node.total
-            if node.free > self.max_free:   self.max_free = node.free
+        if proceed or force_run: 
+            for node in self.nodes:
+                node.get_overall_usage()
+                self.allocated   += node.allocated 
+                self.free        += node.free
+                self.total       += node.total
+                if node.total > self.max_total: self.max_total = node.total
+                if node.free > self.max_free:   self.max_free = node.free
+            self.last_usage_check = datetime.now()
 
 ##########################
 ######## DUNDER ##########
@@ -181,7 +191,7 @@ class queue(object):
         if hasattr(self,"allocated"):  to_print += f' Allocated CPUs        = {self.allocated}\n'
         if hasattr(self,"free"):       to_print += f' Available CPUs        = {self.free}\n'
         if hasattr(self,"total"):      to_print += f' Total CPUs            = {self.total}\n'
-        if hasattr(self,"pending"):    to_print += f' pending CPUs          = {self.pending}\n'
+        if hasattr(self,"waiting_cpus"): to_print += f' Waiting CPUs          = {self.waiting_cpus}\n'
         if hasattr(self,"max_total"):  to_print += f' Max CPUs              = {self.max_total}\n'
         if hasattr(self,"user_running_jobs"):  to_print += f' Num Jobs {self._environment.user}       = {self.user_running_jobs}\n'        
         if hasattr(self,"user_running_cpus"):  to_print += f' Num CPUs {self._environment.user}       = {self.user_running_cpus}\n'        

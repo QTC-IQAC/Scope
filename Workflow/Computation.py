@@ -113,9 +113,10 @@ class computation(object):
         
     def add_submission_init(self, nprocs: int, queue: object) -> None:
         self.nprocs                = nprocs
-        self.queue_name            = queue.name
+        self.submission_queue      = queue.name
         self.submission_cluster    = queue._environment.cluster
         self.submission_user       = queue._environment.user
+        ## self.job_id is retrieved in self.submit
 
     def add_registration_data(self, cluster: str=set_cluster(), user: str=set_user()) -> None:
         self.registration_time     = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -157,10 +158,28 @@ class computation(object):
         shutil.move(self.out_path, new_out_path)
 
 ###########################################
-    def submit(self, environment: object, debug: int=0) -> None:
+    def submit(self, environment: object, want_job_id: bool=False, debug: int=0) -> None:
+        ## Goes to path. Otherwise subprocess will fail
         os.chdir(self.path)
-        subprocess.run(['bash','-c', environment.command_submit+' '+self.sub_name])
 
+        ## If job_id is selected. Tries to get it and store it. Else, it just runs
+        if not want_job_id: 
+            subprocess.run(['bash','-c', environment.command_submit+' '+self.sub_name])
+            self.job_id = None
+        else: 
+            raw = subprocess.check_output(['bash','-c', environment.command_submit+' '+self.sub_name])
+            dec = raw.decode("utf-8")
+            text = dec.rstrip().split("\n")[0]
+                
+            if environment.management_type == "sge":
+                blocks = text.split()
+                if len(blocks) == 7 and blocks[2].isdigit() and blocks[6] == 'submitted':   
+                    self.job_id = int(blocks[2])
+                    print(f"COMPUTATION.SUBMIT: job submitted with job_id: {self.job_id}")
+                else:
+                    print(f"COMPUTATION.SUBMIT: job submitted with unknown job_id. Blocks: {blocks}")
+                    self.job_id = None
+ 
 ###########################################
     def run(self, environment: object, options: object, debug: int=0) -> None:
 
@@ -210,10 +229,7 @@ class computation(object):
 
             ## 3.3-Submits if possible
             if can_submit:
-                self.submit(environment)
-                #os.chdir(self.path)
-                #send_command("submit", filename=self.sub_name)
-                #if debug > 0: print(f"Job {self.out_path} submitted")
+                self.submit(environment, debug=debug)
 
 ###########################################
     def register(self, debug: int=0) -> None:
@@ -256,6 +272,9 @@ class computation(object):
             self.delete_output()  ## Output Object too, since it also stores output lines
         else: 
             print(f"    COMP.REGISTER: Opt/Freq Registration didn't work for: {self.out_path}")
+
+        ### 5-Deletes Job_Id from queue pending
+        #if hasattr(self,"job_id") and hasattr(self,"submission_queue"):
 
         return worked2
 

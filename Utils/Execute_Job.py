@@ -35,9 +35,9 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
 
     #### 1-Reads Input Data
     user_environment = set_environment_data(job_path, section="&environment", debug=0)
-    options          = set_options_data(job_path, section="&options"      , debug=0)
-    job_data         = set_job_data(job_path, section="&job_data"         , debug=0)
-    qc_data          = set_qc_data(job_path, section="&qc_data"           , debug=0)
+    options          = set_options_data(job_path, section="&options"        , debug=0)
+    job_data         = set_job_data(job_path, section="&job_data"           , debug=0)
+    qc_data          = set_qc_data(job_path, section="&qc_data"             , debug=0)
 
     #### 2a-Enrich Environment with User Choices:
     global_env.read_local_environment(job_path, debug=0)

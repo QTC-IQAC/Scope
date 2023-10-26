@@ -207,7 +207,7 @@ class environment(object):
     def find_queue(self, queue_name: str):
         found = False
         for q in self.mqueues:
-            if q.name == queue_name or q.name_alter == queue_name:
+            if q.name == queue_name or q.alter_name == queue_name:
                 return True, q
         return False, None
 
@@ -230,8 +230,10 @@ class environment(object):
 ###  Connection with Execute_Job  ###
 #####################################
     def get_user_requested(self, debug: int=0):
-        if not hasattr(self,"user_waiting_cpus"): self.get_user_waiting(debug=debug)
-        if not hasattr(self,"user_running_cpus"): self.get_user_running(debug=debug)
+        #if not hasattr(self,"user_waiting_cpus"): self.get_user_waiting(debug=debug)
+        #if not hasattr(self,"user_running_cpus"): self.get_user_running(debug=debug)
+        self.get_user_waiting(debug=debug)
+        self.get_user_running(debug=debug)
         self.user_requested_cpus = self.user_waiting_cpus + self.user_running_cpus
         self.user_requested_jobs = self.user_waiting_jobs + self.user_running_jobs
         return self.user_requested_cpus, self.user_requested_jobs
@@ -240,7 +242,6 @@ class environment(object):
         if not hasattr(self,"command_get_user_waiting"): self.set_commands()
         self.user_waiting_cpus = int(0)
         self.user_waiting_jobs = int(0)
-
         try: 
             raw = subprocess.check_output(['bash','-c', self.command_get_user_waiting])
             dec = raw.decode("utf-8")
@@ -263,6 +264,76 @@ class environment(object):
                 self.user_waiting_cpus = int(0)
                 self.user_waiting_jobs = int(0)
         return self.user_waiting_cpus, self.user_waiting_jobs
+
+############## NOW ###
+    def assign_waiting_jobs(self, debug: int=0):
+        if not hasattr(self,"command_get_user_waiting"): self.set_commands()
+        self.jobs_assigned = []
+        self.jobs_pending  = []
+        ### Retrieve all waiting jobs
+        try:
+            raw = subprocess.check_output(['bash','-c', self.command_get_user_waiting], stderr=subprocess.DEVNULL)
+            dec = raw.decode("utf-8")
+            text = dec.rstrip().split("\n")
+        except Exception as exc:
+            print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: exception retrieving waiting jobs")
+            print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: likely due to no jobs in queue")
+            text = []
+
+        ### Save all their job_ids
+        ## SGE clusters
+        all_job_id = []   # This will store all job_ids that are going to be parsed now
+        if self.management_type == "sge":
+            for line in text:
+                blocks = line.split()
+                if len(blocks) == 8:
+                    if blocks[4] == 'qw':
+                        job_id = int(blocks[0])
+                        if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: job {job_id} might go to pending")
+                        all_job_id.append(job_id)
+                        if job_id not in self.jobs_assigned and job_id not in self.jobs_pending: 
+                            self.jobs_pending.append(job_id)
+                            if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: pending job: {job_id}")
+
+        ### Assign pending jobs
+        for jp in self.jobs_pending[:]: 
+            if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: evaluating pending job: {jp}")
+            # Find Queue
+            raw2   = subprocess.check_output(['bash','-c', f"qstat -j {jp} | grep 'hard_queue_list'"])
+            dec2   = raw2.decode("utf-8")
+            text2  = dec2.rstrip().split("\n")[0]
+            blocks = text2.split()
+            if len(blocks) == 2:
+                q_name = text2.split()[1]
+                for aq in self.available_queues: 
+                    if q_name == aq.name or q_name == aq.alter_name:
+                        if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: pending job: {jp}. queue found: {aq.name}")
+                        if not hasattr(aq,"waiting_cpus"): aq.waiting_cpus = 0
+                        if not hasattr(aq,"waiting_jobs"): aq.waiting_jobs = []
+                        queue_to_assign = aq
+            else: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: parsing of hard_queue_list failed. Blocks:{blocks}")
+
+            # Find number of requested processors
+            raw3   = subprocess.check_output(['bash','-c', f"qstat -j {jp} | grep 'parallel environment'"])
+            dec3   = raw3.decode("utf-8")
+            text3  = dec3.rstrip().split("\n")[0]
+            blocks = text3.split()
+            if len(blocks) == 5 and blocks[4].isdigit():
+                queue_to_assign.waiting_cpus += int(blocks[4])
+                queue_to_assign.waiting_jobs.append(jp)
+                self.jobs_assigned.append(jp) 
+                self.jobs_pending.remove(jp) 
+                if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: job: {jp} assigned to {aq.name}")
+                if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: queue has now {queue_to_assign.waiting_cpus} cpus waiting")
+            else: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: parsing of requested processors failed. Blocks:{blocks}")
+
+        ### Flushes out old assigned job ids, so that one of the checks above, doesnt get too costly
+        if len(self.jobs_assigned) > 0:
+            min_job_id = np.min(all_job_id)
+            for ja in self.jobs_assigned[:]:
+                if ja < (min_job_id + 5000): self.jobs_assigned.remove(ja)
+
+############## NOW ###
 
     def get_user_running(self, method: str='direct', debug: int=0):
         if not hasattr(self,"command_get_user_waiting"): self.set_commands()
@@ -317,6 +388,15 @@ class environment(object):
         return self.user_running_cpus, self.user_running_jobs
          
     def get_best_queue(self, autoselect: bool=False, debug: int=0):
+        ## This method gives back the best queue to submit a computation.
+        ## Basically, it computes a score for each queue that is either available (self.available_queues)
+        ## or selected (self.selected_queues) by the user. 
+        ## The score is computed for each queue separately using:
+        ## 1-the current queue availability (accounting for all users)
+        ## 2-the currently pending jobs     (accounting for one user, i.e. the one using scope)
+        ##
+        ## 1) is computed once every 60 seconds, as it is demanding
+        ## 2) is computed every time
    
         ## If user has not selected queues yet. Then we take all available queues
         if len(self.selected_queues) == 0: 
@@ -331,12 +411,15 @@ class environment(object):
             print(f"GET_BEST_QUEUE: neither selected nor available queues were found")
             return None
 
-        # Retrieve score
+        # Assign Waiting Jobs. Point (2) in intro
+        self.assign_waiting_jobs()
+
+        # Retrieve score. Point (1) in intro
         scores = []
         for idx, q in enumerate(target_queues):
             tmp = q.get_queue_score(method=self.method)
             scores.append(tmp)
-            if debug > 0: print(f"GET_BEST_QUEUE: evaluated {q.name} with score {tmp}")
+            if debug > 0: print(f"GET_BEST_QUEUE: evaluated {q.name} with score {tmp:8.4f}")
 
         # Select best
         best_idx = np.argmax(scores) 
