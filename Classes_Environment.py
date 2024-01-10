@@ -585,6 +585,8 @@ class environment(object):
         if   os.path.isdir(self.scope_home_path+"PP_Library"):       self.PP_Library= self.scope_home_path+"PP_Library/"
         elif os.path.isdir(self.scope_scratch_path+"PP_Library"):    self.PP_Library= self.scope_scratch_path+"PP_Library/"
         else:                                                        self.PP_Library= str(input("Please Specify PP_Library Path: "))
+        # Corrects PP_Library path if necessary
+        if self.PP_Library[-1] != '/': self.PP_Library += '/'
         print("PP_Library set to", self.PP_Library)
         return self.PP_Library
 

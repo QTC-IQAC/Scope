@@ -126,7 +126,7 @@ def add_branch_gmol(gmol, keyword: str, calcs_path: str, debug: int=0):
 ##########
 
 ##########################
-### Periodic xyz as Sys ## (see below for definition of a periodic xyz)
+### Periodic xyz as Sys ## (see Alternative_Sys_Classes.py for definition of a periodic xyz)
 ##########################
 def perxyz2sys(perxyz: object, name: str):
     perxyz.name        = name
@@ -171,38 +171,43 @@ def add_branch_perxyz(perxyz, keyword: str, calcs_path: str, debug: int=0):
 
     return new_branch
 
-########################################################
-## perxyz is set up with the definition below in mind ## (From Sandeman's project)
-########################################################
+#############################
+### Simple Molecule as Sys ## (see Alternative_Sys_Classes.py for definition of a simple molecule)
+#############################
+def smol2sys(smol: object, name: str):
+    smol.type        = "smol"
+    smol.name        = name
+    smol.refcode     = name
+    smol.branches    = []
+    smol._sys        = smol
+    return smol
 
-##########################
-#class simple_molecule(object):
-#    def __init__(self, atom_idx: list, labels: list, coord: list, radii: list) -> None:
-#        self.atom_idx             = atom_idx
-#        self.labels               = labels
-#        self.coord                = coord
-#        self.radii                = radii
-#
-#class periodic_xyz(object):
-#    def __init__(self, name: str, labels: list, coord: list, path: str) -> None:
-#        self.name                 = name
-#        self.labels               = labels
-#        self.coord                = coord
-#        self.path                 = path
-#        self.moleclist            = []
-#        self.formula              = labels2formula(labels)
-#        self.phase                = str(name.split("_")[0])
-#        self.pressure             = float(name.split("_")[1])
-#
-#    def add_cell_info(self, cellvec, celldim, cellparam) -> None:
-#        self.cellvec              = cellvec
-#        self.celldim              = celldim
-#        self.cellparam            = cellparam
-#        self.volume               = get_unit_cell_volume(*cellparam)
-#
-#    def add_molecule(self, mol: object) -> None:
-#        if mol not in self.moleclist: self.moleclist.append(mol)
-##########################
+def find_branch_smol(smol, keyword: str, debug: int=0):
+    if not hasattr(smol,"branches"): setattr(smol,"branches",[])
+    if debug > 1: print("finding branch with keyword:", keyword)
+    if debug > 1: print("there are", len(smol.branches), "branches in system")
+    if len(smol.branches) == 0: return False, None
+    for idx, br in enumerate(smol.branches):
+        if debug > 1: print("evaluating branch with keyword:", br.keyword, "and path:", br.path)
+        if br.keyword == keyword:
+            if not os.path.isdir(br.path): print(f"WARNING: branch path does not exist. Loading the branch anyway")
+            return True, br
+    return False, None
 
+def add_branch_smol(smol, keyword: str, calcs_path: str, debug: int=0):
+    if calcs_path[-1] != '/': calcs_path += '/'
+    new_branch = Branch.branch(calcs_path+keyword, keyword, smol, debug=debug)
+    if not os.path.isdir(calcs_path+keyword):
+        try: os.makedirs(calcs_path+keyword)
+        except Exception as exc:
+             print(f"Error creating branch folder in {calcs_path+keyword}")
+             print(exc)
 
+    ## Creates recipes for the branch. One for each object.
+    new_recipe = new_branch.add_recipe(smol)
+    smol.branches.append(new_branch)
 
+    new_state = state(smol,"initial")
+    new_state.set_geometry(smol.labels, smol.coord)
+
+    return new_branch

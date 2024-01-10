@@ -44,13 +44,13 @@ def get_pp(ppfolder, elem):
     return sendpp
 
 #######################
-def gen_QE_input(comp, debug: int=0):
+def gen_QE_input(comp: object, environment: object, debug: int=0):
 
     gmol = comp._job._recipe.subject
 
     ## 1-Change some variable names to simplify calls
-    PP_Library = comp.qc_data.pseudo
-    cluster = set_cluster()
+    PP_Library = environment.PP_Library
+    cluster    = environment.cluster
 
     ## 2a-Verify Information in State
     assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in comp.qc_data"
@@ -62,6 +62,14 @@ def gen_QE_input(comp, debug: int=0):
     ## 2b-Cell or Molecule?
     if hasattr(gmol,"cellparam"): system_type = "cell"
     else:                         system_type = "molecule"
+    
+    ## Charge of System
+    if system_type == "cell":
+        if hasattr(gmol,"type"): 
+            if gmol.type == "perxyz": system_charge = gmol.totcharge     
+            else:                     system_charge = int(0)
+        else:                         system_charge = int(0)
+    else:                             system_charge = gmol.totcharge
 
     if system_type == "cell":     
         assert hasattr(istate,"cellvec"),  f"istate = {comp.qc_data.istate} doesn't have cell vectors"
@@ -71,9 +79,6 @@ def gen_QE_input(comp, debug: int=0):
 
     if debug >= 1 : print("GEN_QE_INPUT: system_type:", system_type)
     if debug >= 1 : print("GEN_QE_INPUT: creating input in path:", comp.inp_path)
-
-    # Corrects PP_Library path if necessary
-    if PP_Library[-1] != '/': PP_Library += '/'
 
     #########################
     ### DETERMINE SPECIES ###
@@ -148,11 +153,13 @@ def gen_QE_input(comp, debug: int=0):
         if not hasattr(comp.spin_config,"ismagnetic"): comp.spin_config.get_total_magnetization()
         if comp.spin_config.ismagnetic: print(f"    nspin=2,", file=inp)
         else:          print(f"    nspin=1,", file=inp)
+
+        print(f"    tot_charge={system_charge}", file=inp)
         
-        if system_type == "molecule" and hasattr(gmol, 'totcharge'):
-            print(f"    tot_charge={gmol.totcharge}", file=inp)
-        else:
-            print("    tot_charge=0", file=inp)
+        #if system_type == "molecule" and hasattr(gmol, 'totcharge'):
+        #    print(f"    tot_charge={gmol.totcharge}", file=inp)
+        #else:
+        #    print("    tot_charge=0", file=inp)
         
         ## Total Magnetization
         #tot_magn = 0      

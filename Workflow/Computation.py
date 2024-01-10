@@ -212,7 +212,7 @@ class computation(object):
             self.check_files()
             if not self.input_exists or options.overwrite_inputs:
                 if self.software == 'g16':  gen_G16_input(self, debug=0)
-                elif self.software == 'qe': gen_QE_input(self, debug=0)
+                elif self.software == 'qe': gen_QE_input(self, environment, debug=0)
             if not self.subfile_exists or options.overwrite_inputs:
                 if self.software == 'g16':  gen_G16_subfile(self, queue=askqueue, procs=askprocs)
                 elif self.software == 'qe': gen_QE_subfile(self, queue=askqueue, procs=askprocs)

@@ -86,6 +86,11 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
         from Scope.Gmol_ops import find_branch_perxyz, add_branch_perxyz
         exists, this_branch = find_branch_perxyz(sys, job_data.branch, debug=0)
         if not exists: this_branch = add_branch_perxyz(sys, job_data.branch, calc_folder, debug=debug); updated = True
+    elif sys.type == "smol":
+        assert job_data.target == 'self'
+        from Scope.Gmol_ops import find_branch_smol, add_branch_smol
+        exists, this_branch = find_branch_smol(sys, job_data.branch, debug=0)
+        if not exists: this_branch = add_branch_smol(sys, job_data.branch, calc_folder, debug=debug); updated = True
     if debug > 1: print("EXECUTE_JOB, step 4: branch loaded")
 
     ##############
