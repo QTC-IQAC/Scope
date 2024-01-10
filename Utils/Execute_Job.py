@@ -68,6 +68,8 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
     ##############
     ### BRANCH ###
     ##############
+
+    # Here, it depends on the type of system that is sent for computation
     if sys.type == "sco_system":
         exists, this_branch = sys.find_branch(job_data.branch, debug=0)
         if not exists: this_branch = sys.add_branch(job_data.branch, job_data.target, debug=debug); updated = True
@@ -76,6 +78,11 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
         from Scope.Gmol_ops import find_branch_gmol, add_branch_gmol
         exists, this_branch = find_branch_gmol(sys, job_data.branch, debug=0)
         if not exists: this_branch = add_branch_gmol(sys, job_data.branch, calc_folder, debug=debug); updated = True
+    elif sys.type == "perxyz":
+        assert job_data.target == 'self'
+        from Scope.Gmol_ops import find_branch_perxyz, add_branch_perxyz
+        exists, this_branch = find_branch_perxyz(sys, job_data.branch, debug=0)
+        if not exists: this_branch = add_branch_perxyz(sys, job_data.branch, calc_folder, debug=debug); updated = True
     if debug > 1: print("EXECUTE_JOB, step 4: branch loaded")
 
     ##############

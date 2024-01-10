@@ -83,13 +83,6 @@ def gen_G16_input(comp, debug: int=0):
             else: 
                 if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (z[0], " 0", z[1][0], z[1][1], s[1][2]), file=inp)
                 else:              print("%s $s %.6f  %.6f  %.6f" % (z[0], "-1", z[1][0], z[1][1], s[1][2]), file=inp)
-
-        #for a in gmol.atoms:
-        #    ta = getattr(a,igeom)
-        #    if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (a.label, ta[0], ta[1], ta[2]), file=inp)
-        #    else: 
-        #        if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (a.label, " 0", ta[0], ta[1], ta[2]), file=inp)
-        #        else:              print("%s $s %.6f  %.6f  %.6f" % (a.label, "-1", ta[0], ta[1], ta[2]), file=inp)
         print("", file=inp) 
 
 ###################################################
