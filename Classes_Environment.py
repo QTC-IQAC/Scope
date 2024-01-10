@@ -225,10 +225,15 @@ class environment(object):
         if found and q not in self.selected_queues: self.selected_queues.append(q)
         if not found: print(f"ENV.MAKE_QUEUE_AVAILABLE: queue {queue_name} not found")
 
-    def save(self, filepath: str):
-        self.filepath    = filepath
+    def save(self, filepath=None):
+        if filepath is None and hasattr(self,"filepath"):            pass
+        elif filepath is not None and hasattr(self,"filepath"):      self.filepath = filepath
+        elif filepath is not None and not hasattr(self,"filepath"):  self.filepath = filepath
+        elif filepath is None and not hasattr(self,"filepath"): 
+            print("ENVIRONMENT.SAVE: please re-run and provide filepath")
+            return None
         from Scope.Read_Write import save_binary
-        save_binary(self, filepath)
+        save_binary(self, self.filepath)
 
 #####################################
 ###  Connection with Execute_Job  ###
@@ -285,13 +290,27 @@ class environment(object):
             text = []
 
         ### Save all their job_ids
-        ## SGE clusters
         all_job_id = []   # This will store all job_ids that are going to be parsed now
+
+        ## SGE clusters
         if self.management_type == "sge":
             for line in text:
                 blocks = line.split()
                 if len(blocks) == 8:
                     if blocks[4] == 'qw':
+                        job_id = int(blocks[0])
+                        if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: job {job_id} might go to pending")
+                        all_job_id.append(job_id)
+                        if job_id not in self.jobs_assigned and job_id not in self.jobs_pending: 
+                            self.jobs_pending.append(job_id)
+                            if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: pending job: {job_id}")
+
+        ## SLURM clusters
+        elif self.management_type == "slurm":
+            for line in text:
+                blocks = line.split()
+                if len(blocks) == 8:
+                    if blocks[2] == self.user and blocks[3] == 'PD':
                         job_id = int(blocks[0])
                         if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: job {job_id} might go to pending")
                         all_job_id.append(job_id)

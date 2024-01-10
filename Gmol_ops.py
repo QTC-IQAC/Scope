@@ -167,6 +167,7 @@ def add_branch_perxyz(perxyz, keyword: str, calcs_path: str, debug: int=0):
 
     new_state = state(perxyz,"initial")
     new_state.set_geometry(perxyz.labels, perxyz.coord)
+    new_state.set_cell(perxyz.cellvec, perxyz.cellparam)
 
     return new_branch
 

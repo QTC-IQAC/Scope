@@ -33,7 +33,7 @@ def range2list(rang: range):
         lst.append(i)
     return lst
 
-def get_metal_idxs(labels: list):
+def get_metal_idxs(labels: list, debug: int=0):
     from Scope.Elementdata import ElementData
     elemdatabase = ElementData()
     metal_indices = []

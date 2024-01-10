@@ -167,6 +167,8 @@ class computation(object):
             subprocess.run(['bash','-c', environment.command_submit+' '+self.sub_name])
             self.job_id = None
         else: 
+
+            ### ALL below should go to environment
             raw = subprocess.check_output(['bash','-c', environment.command_submit+' '+self.sub_name])
             dec = raw.decode("utf-8")
             text = dec.rstrip().split("\n")[0]
@@ -175,6 +177,15 @@ class computation(object):
                 blocks = text.split()
                 if len(blocks) == 7 and blocks[2].isdigit() and blocks[6] == 'submitted':   
                     self.job_id = int(blocks[2])
+                    print(f"COMPUTATION.SUBMIT: job submitted with job_id: {self.job_id}")
+                else:
+                    print(f"COMPUTATION.SUBMIT: job submitted with unknown job_id. Blocks: {blocks}")
+                    self.job_id = None
+
+            elif environment.management_type == "slurm":
+                blocks = text.split()
+                if len(blocks) == 4 and blocks[3].isdigit() and blocks[0] == 'Submitted':   
+                    self.job_id = int(blocks[3])
                     print(f"COMPUTATION.SUBMIT: job submitted with job_id: {self.job_id}")
                 else:
                     print(f"COMPUTATION.SUBMIT: job submitted with unknown job_id. Blocks: {blocks}")

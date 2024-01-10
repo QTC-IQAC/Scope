@@ -61,9 +61,12 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
     #if not os.path.isdir(sys.sys_path):
     #    if debug > 1: print(f"EXECUTE_JOB, step 3b: {sys.sys_path} does not exist")
     if global_env.check_paths(debug=1): 
-        if debug > 1: print(f"EXECUTE_JOB, step 3b: global environment found with correct paths. RESETTING")
-        updated = sys.reset_paths(global_env, debug=0)
-        if updated and debug > 1: print(f"EXECUTE_JOB, step 3b: system paths reset")
+        if debug > 1: print(f"EXECUTE_JOB, step 3b: global environment found with correct paths")
+        try: 
+            updated = sys.reset_paths(global_env, debug=0)
+            if updated and debug > 1: print(f"EXECUTE_JOB, step 3b: system paths reset")
+        except Exception as exc: 
+            pass
 
     ##############
     ### BRANCH ###
