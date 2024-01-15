@@ -17,7 +17,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
 
     if calc_folder is None: calc_folder = sys_path ## Temporary Measure for Unique Ligands
 
-    print("ENTERED EXECUTE JOB with job_path:", job_path)
+    #print("ENTERED EXECUTE JOB with job_path:", job_path)
     report = ''
 
     if debug > 1: print("")
@@ -172,10 +172,13 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                             else:                          this_job.remove_computation(comp_index=comp.index)
                             report += f"Errors handled for {comp.out_path} \n"
                             print(f"Errors handled for {comp.out_path}")
+                        else:
+                            report += f"Error registering {comp.out_path} \n"
+                            print(f"Error registering {comp.out_path}")
                     updated = True
 
-                ## 8.4 sets continuation computations
-                if comp.status == 'scf_convergence':
+                ## 8.4 sets continuation computations. These are added to JOB object 
+                if comp.status == 'no_scf_convergence':
                 #if comp.isregistered and comp.status == 'scf_convergence':
                     new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
                     #if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"

@@ -6,13 +6,13 @@ from Scope.Software.Quantum_Espresso import Parse_QE_outputs
 
 #########################
 class simple_molecule(object):
-    def __init__(self, atom_idx: list, labels: list, coord: list, charge: int=0, spin: str='LS') -> None:
+    def __init__(self, atom_idx: list, labels: list, coord: list, totcharge: int=0, spin: str='LS') -> None:
         self.type                 = "smol"
         self.atom_idx             = atom_idx
         self.labels               = labels
         self.coord                = coord
         self.radii                = get_radii(labels)
-        self.charge               = charge
+        self.totcharge            = totcharge
         self.spin                 = spin  
 
 class periodic_xyz(object):
@@ -37,6 +37,6 @@ class periodic_xyz(object):
 
     def sum_charges(self):
         self.totcharge = 0
-        for mol in self.moleclist: self.totcharge += mol.charge
+        for mol in self.moleclist: self.totcharge += mol.totcharge
         return self.totcharge
 #########################

@@ -24,9 +24,10 @@ class computation(object):
         self.keyword          = keyword  ## Not the software, but a string used to identify the computation
         self.qc_data          = qc_data
         self.software         = qc_data.software
+        self.jobtype          = qc_data.jobtype
         self.path             = path
         self.refcode          = _job._recipe.subject._sys.refcode
-        self.run_number       = self.set_run_number(debug=0)
+        self.run_number       = self.set_run_number(debug=1)
         self.isregistered     = False
         self.has_update       = False
         self.is_update        = is_update
@@ -84,7 +85,7 @@ class computation(object):
                 if comp.run_number > run_number: run_number = comp.run_number
                 #if comp.isfinished and comp.run_number > run_number: run_number = comp.run_number
         run_number += 1
-        if not self._job.job_data.must_be_good: run_number = 1
+        #if not self._job.job_data.must_be_good: run_number = 1
         return run_number
 
     def check_files(self) -> None:
@@ -250,9 +251,9 @@ class computation(object):
 
         ## If so, it reads the lines under 2 conditions: 
         if self.output_exists:
-            ## 1-If lines have never been read: 
+            # 1-If lines have never been read: 
             if not hasattr(self,"output_lines"):                                                         self.read_lines()
-            ## 2-If the output file has been modified since it was read
+            # 2-If the output file has been modified since job was last registered
             elif hasattr(self,"output_lines") and os.path.getmtime(self.out_path) > self.output_modtime: self.read_lines()
 
         ## 0-Creates Output, the object that will contain the parsing of data
@@ -262,32 +263,33 @@ class computation(object):
         reg_general(self, debug=debug)     # Gives self.isfinished, self.elapsed_time and self.status. It always works
      
         ## 2-Registration of Energy 
-        reg_energy(self, debug=debug)      # Stores the "last energy of a complete block" to State if it is not None
+        worked = reg_energy(self, debug=debug)      # Stores the "last energy of a complete block" to State if it is not None
         #if not worked1: print(f"    COMP.REGISTER: Energy Registration didn't work for: {self.out_path}"); return False
 
         ## 3-Registration of Optimization of Frequency Tasks 
         if 'opt' in self._job.keyword or 'relax' in self._job.keyword:
         #if ('opt' in self._job.keyword or 'relax' in self._job.keyword) and worked1:
-            worked2 = reg_optimization(self, debug=debug)
+            worked = reg_optimization(self, debug=debug)
         elif 'freq' in self._job.keyword: 
         #elif self.isgood and 'freq' in self._job.keyword and worked1:
-            worked2 = reg_frequencies(self, witheigen=False, debug=debug)
-        else: 
-            worked2 = True
+            worked = reg_frequencies(self, witheigen=False, debug=debug)
+        #else: 
+        #    worked = True
 
         ## 4-Wraps Up
-        if worked2:
+        if worked:
             self.isregistered = True
             self.add_registration_data()
             self.delete_lines()   ## Output lines are deleted to save disk
             self.delete_output()  ## Output Object too, since it also stores output lines
         else: 
-            print(f"    COMP.REGISTER: Opt/Freq Registration didn't work for: {self.out_path}")
+            print(f"COMP.REGISTER: Registration didn't work for: {self.out_path}")
+            #print(f"    COMP.REGISTER: Opt/Freq Registration didn't work for: {self.out_path}")
 
         ### 5-Deletes Job_Id from queue pending
         #if hasattr(self,"job_id") and hasattr(self,"submission_queue"):
 
-        return worked2
+        return worked
 
 ###########################################
     def __repr__(self) -> None:

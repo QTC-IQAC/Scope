@@ -6,6 +6,9 @@ class qe_output(object):
     def __init__(self, lines: list, computation: object=None):
         self._computation   = computation
         self.lines          = lines
+        if hasattr(computation,"jobtype"):           self.jobtype        = computation.jobtype
+        elif hasattr(computation.qc_data,"jobtype"): self.jobtype        = computation.qc_data.jobtype
+        self.requisites     = self.get_requisites()
         
     def clear_lines(self):
         self.lines          = []
@@ -13,6 +16,16 @@ class qe_output(object):
     def read_lines(self):
         if hasattr(self,"_computation"): self.lines = read_lines_file(self._computation.out_path)
         
+##################
+### REQUISITES ###
+##################
+    # Not very useful now, the idea is to define the blocks of data that are needed for every jobtype
+    def get_requisites(self):
+        if   self.jobtype == 'scf':       self.requisites = ['scf'] 
+        elif self.jobtype == 'relax':     self.requisites = ['scf','opt'] 
+        elif self.jobtype == 'vc-relax':  self.requisites = ['scf','opt'] 
+        return self.requisites
+
 ###############
 ### STATUS ###
 ###############
@@ -24,6 +37,10 @@ class qe_output(object):
         self.optimization_finished = parse_opt_status(self.lines)
         return self.optimization_finished
 
+    def get_scf_finished(self, debug: int=0):
+        self.scf_finished = parse_scf_status(self.lines)
+        return self.scf_finished
+
     def get_last_block_status(self, debug: int=0):
         lines_last_opt_block = self.get_lines_last_opt_block()
         if lines_last_opt_block is None: return "aborted"   # When file is empty or killed early
@@ -31,11 +48,11 @@ class qe_output(object):
         coordinates          = parse_coord_status(lines_last_opt_block)
         time_limit           = parse_timelimit_status(lines_last_opt_block)
 
-        if   time_limit:  self.last_block_status = "time_stopped" 
+        if   time_limit:              self.last_block_status = "time_stopped" 
         if   scf_convergence is None: self.last_block_status = "aborted"
-        elif not scf_convergence:     self.last_block_status = "scf_convergence"
+        elif not scf_convergence:     self.last_block_status = "no_scf_convergence"
         elif scf_convergence: 
-            if not coordinates:       self.last_block_status = "aborted"
+            if not coordinates:       self.last_block_status = "no_coord"
             else:                     self.last_block_status = "worked"
         return self.last_block_status
 
@@ -43,19 +60,36 @@ class qe_output(object):
 ### BLOCKS ###
 ###############
     def get_last_complete_block(self, debug: int=0):
-        if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
+        if not hasattr(self,"opt_blocks"): self.get_opt_blocks(debug=debug)
         found = False
+        if debug > 0: print(f"GET_LAST_COMPLETE_BLOCK: evaluating with jobtype={self.jobtype}")
         for idx in range(len(self.opt_blocks)-1,-1,-1):
             if not found:
                 init_line = self.opt_blocks[idx][0]+1
                 last_line = self.opt_blocks[idx][1]+1
+                if debug > 0: print(f"GET_LAST_COMPLETE_BLOCK: evaluating block {idx}. Between {init_line} and {last_line}")
                 block_lines = self.lines[init_line:last_line]
                 scf_convergence      = parse_scf_status(block_lines)
                 coordinates          = parse_coord_status(block_lines)
                 time_limit           = parse_timelimit_status(block_lines)
-                if not time_limit and scf_convergence and coordinates:
-                    self.last_complete_block = block_lines
-                    found = True
+                if debug > 0: print(f"GET_LAST_COMPLETE_BLOCK: found scf={scf_convergence}, coord={coordinates}, timelimit={time_limit}" )
+
+                # Evaluates conditions depending on the requisites of this type of job
+                good = True
+                if good and time_limit:                                                                     good = False
+                if good and 'scf'  in self.requisites and (not scf_convergence or scf_convergence is None): good = False  
+                if good and 'opt'  in self.requisites and not coordinates:                                  good = False
+                if good: found = True; self.last_complete_block = block_lines 
+ 
+                # OLD WAY
+#                if 'scf' in self.jobtype:
+#                    if not time_limit and scf_convergence:
+#                        self.last_complete_block = block_lines
+#                        found = True
+#                else:
+#                    if not time_limit and scf_convergence and coordinates:
+#                        self.last_complete_block = block_lines
+#                        found = True
         if not found: 
             if debug > 0: print("GET_LAST_COMPLETE_BLOCK: No complete block was found")
             self.last_complete_block = None
@@ -80,7 +114,7 @@ class qe_output(object):
         return self.scf_blocks
     
     def get_opt_blocks(self, debug: int=0):
-        if not hasattr(self,"scf_blocks"): self.get_scf_blocks()
+        if not hasattr(self,"scf_blocks"): self.get_scf_blocks(debug=debug)
         self.opt_blocks = []
         if len(self.scf_blocks) > 0: 
             for idx, b in enumerate(self.scf_blocks[:-1]):

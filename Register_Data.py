@@ -106,12 +106,14 @@ def reg_energy(comp: object, debug: int=0):
     ### 0-In Case Reg_General hasn't been run:
     if not hasattr(comp,"output"): reg_general(comp)
 
-    ### 1-Parses Energy
+    ### 1-Parses Energy
     energy = comp.output.get_energy_last_complete_block()       ## last_complete_block requires convergence, not necessary energy. Careful
+    comp.isgood = comp.output.get_scf_finished()
+    print("REG_ENERGY:", energy, comp.isgood)
     if debug > 0: print(f"REG_ENERGY: energy is {energy} a.u.")
 
     ### Storage ###
-    #worked = False
+    worked = False
     if energy is not None:
         try:
             exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated
@@ -121,6 +123,5 @@ def reg_energy(comp: object, debug: int=0):
             worked = True
         except Exception as exc:
             print(exc)
-    #        worked = False
-
-    #return worked
+            worked = False
+    return worked

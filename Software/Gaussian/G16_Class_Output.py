@@ -4,14 +4,27 @@ from Scope.Software.Gaussian.Parse_G16_outputs import *
 
 class g16_output(object):
     def __init__(self, lines: list, computation: object=None):
-        self._computation   = computation
-        self.lines          = lines
+        self._computation     = computation
+        self.lines            = lines
+        if hasattr(computation,"jobtype"):           self.jobtype        = computation.jobtype
+        elif hasattr(computation.qc_data,"jobtype"): self.jobtype        = computation.qc_data.jobtype
+        self.requisites       = self.get_requisites()
         
     def clear_lines(self):
         self.lines          = []
         
     def read_lines(self):
         if hasattr(self,"_computation"): self.lines = read_lines_file(self._computation.out_path)
+
+##################
+### REQUISITES ###
+##################
+    # Not very useful now, the idea is to define the blocks of data that are needed for every jobtype
+    def get_requisites(self):
+        if   self.jobtype == 'scf':   self.requisites = ['scf'] 
+        elif self.jobtype == 'opt':   self.requisites = ['scf','opt'] 
+        elif self.jobtype == 'freq':  self.requisites = ['scf','freq'] 
+        return self.requisites
 
 ###############
 ### STATUS ###
@@ -24,6 +37,10 @@ class g16_output(object):
         self.optimization_finished = parse_opt_status(self.lines)
         return self.optimization_finished
 
+    def get_scf_finished(self, debug: int=0):
+        self.scf_finished = parse_scf_status(self.lines)
+        return self.scf_finished
+
     def get_last_block_status(self, debug: int=0):
         lines_last_opt_block = self.get_lines_last_opt_block()
         if lines_last_opt_block is None: return "aborted"   # When file is empty or killed early
@@ -32,11 +49,13 @@ class g16_output(object):
         frequencies          = parse_freq_status(lines_last_opt_block)
         time_limit           = parse_timelimit_status(lines_last_opt_block)
 
+        if debug > 0: print(f"GET_LAST_BLOCK_STATUS: found scf={scf_convergence}, coord={coordinates}, frequencies={frequencies}, timelimit={time_limit}" )
+
         if   time_limit:                                  self.last_block_status = "time_stopped"
         if   scf_convergence is None:                     self.last_block_status = "aborted"
-        elif not scf_convergence:                         self.last_block_status = "scf_convergence"
+        elif not scf_convergence:                         self.last_block_status = "no_scf_convergence"
         elif scf_convergence:
-            if not coordinates and not frequencies:       self.last_block_status = "aborted"
+            if not coordinates and not frequencies:       self.last_block_status = "no_coord"
             else:                                         self.last_block_status = "worked"
         return self.last_block_status
 
@@ -44,23 +63,66 @@ class g16_output(object):
 ### BLOCKS ###
 ###############
     def get_last_complete_block(self, debug: int=0):
-        if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
+        if not hasattr(self,"opt_blocks"): self.get_opt_blocks(debug=debug)
         found = False
+        if debug > 0: print(f"GET_LAST_COMPLETE_BLOCK: evaluating with jobtype={self.jobtype}")
         for idx in range(len(self.opt_blocks)-1,-1,-1):
             if not found:
                 init_line = self.opt_blocks[idx][0]+1
                 last_line = self.opt_blocks[idx][1]+1
+                if debug > 0: print(f"GET_LAST_COMPLETE_BLOCK: evaluating block {idx}. Between {init_line} and {last_line}")
                 block_lines = self.lines[init_line:last_line]
                 scf_convergence      = parse_scf_status(block_lines)
                 coordinates          = parse_coord_status(block_lines)
+                frequencies          = parse_freq_status(block_lines)
                 time_limit           = parse_timelimit_status(block_lines)
-                if not time_limit and scf_convergence and coordinates:
-                    self.last_complete_block = block_lines
-                    found = True
+                if debug > 0: print(f"GET_LAST_COMPLETE_BLOCK: found scf={scf_convergence}, coord={coordinates}, frequencies={frequencies}, timelimit={time_limit}" )
+
+                # Evaluates conditions depending on the requisites of this type of job
+                good = True
+                if good and time_limit:                                                                     good = False
+                if good and 'scf'  in self.requisites and (not scf_convergence or scf_convergence is None): good = False  
+                if good and 'opt'  in self.requisites and not coordinates:                                  good = False
+                if good and 'freq' in self.requisites and not frequencies:                                  good = False
+                if good: found = True; self.last_complete_block = block_lines 
+
+#                if 'scf' in self.jobtype:
+#                    if not time_limit and scf_convergence:
+#                        self.last_complete_block = block_lines
+#                        found = True
+#                elif 'opt' in self.jobtype:
+#                    if not time_limit and scf_convergence and coordinates and frequencies:
+#                        self.last_complete_block = block_lines
+#                        found = True
+#                elif 'freq' in self.jobtype:
+#                    if not time_limit and scf_convergence and frequencies:
+#                        self.last_complete_block = block_lines
+#                        found = True
+#                else: print(f"GET_LAST_COMPLETE_BLOCK: unexpected output.jobtype={self.jobtype}")
+ 
         if not found:
-            if debug > 0: print("GET_LAST_COMPLETE_BLOCK: No complete block was found")
+            print("GET_LAST_COMPLETE_BLOCK: No complete block was found")
             self.last_complete_block = None
         return self.last_complete_block
+
+#    def get_last_complete_block(self, debug: int=0):
+#        if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
+#        found = False
+#        for idx in range(len(self.opt_blocks)-1,-1,-1):
+#            if not found:
+#                init_line = self.opt_blocks[idx][0]+1
+#                last_line = self.opt_blocks[idx][1]+1
+#                block_lines = self.lines[init_line:last_line]
+#                scf_convergence      = parse_scf_status(block_lines)
+#                coordinates          = parse_coord_status(block_lines)
+#                time_limit           = parse_timelimit_status(block_lines)
+#                if not time_limit and scf_convergence and coordinates:
+#                    self.last_complete_block = block_lines
+#                    found = True
+#        if not found:
+#            if debug > 0: print("GET_LAST_COMPLETE_BLOCK: No complete block was found")
+#            self.last_complete_block = None
+#        return self.last_complete_block
 
     def get_scf_blocks(self, debug: int=0):
         start_SCF, found1  = parse_start_scf(self.lines)
@@ -222,15 +284,12 @@ class g16_output(object):
     def get_forces_last_complete_block(self, debug: int=0):
         if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
         if self.last_complete_block is None: return None, None
-        tmp1, tmp2 = parse_forces_from_step(self.last_complete_block)
-        if tmp1 is not None and tmp2 is not None:
-            self.last_at_forces = tmp1
-            self.last_tot_force = tmp2
+        tmp = parse_forces_from_step(self.last_complete_block)
+        if tmp is not None:
+            self.last_at_forces = tmp
         else:
-            if debug > 0: print("get_forces_last_complete_block: forces are None")
             self.last_at_forces = None
-            self.last_tot_force = None
-        return self.last_at_forces, self.last_tot_force
+        return self.last_at_forces
 
 ################
 ### ENERGIES ###

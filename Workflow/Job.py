@@ -253,7 +253,7 @@ class job(object):
             print("Set_Continuation_Comp: Continuation Computation exists")
             return new_comp
         else:
-            if debug > 1: print("Set_Continuation_Comp: Creating new computation to continue job. Type:", typ)
+            if debug > 1: print("Set_Continuation_Comp: Creating new computation to continue job. Type:", typ, "Path:", comp.path)
     
         if typ == "opt":
             new_comp = self.add_computation(comp.index+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
