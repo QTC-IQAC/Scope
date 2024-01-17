@@ -109,22 +109,29 @@ def parse_energy_from_step(lines, debug: int=0):
         else: return None
     return val * ry2har
 
-def parse_hubbard_energy(lines, debug: int=0):
-    string = "Hubbard energy            ="
-    linenum = search_string(string, lines, typ="last")[0]
-    val = lines[linenum].split()[2]
-    return val * ry2har
+#def parse_hubbard_energy(lines, debug: int=0):
+#    string = "Hubbard energy            ="
+#    linenum = search_string(string, lines, typ="last")[0]
+#    val = lines[linenum].split()[2]
+#    return val * ry2har
+#
+#def parse_grimme_energy(lines, debug: int=0):
+#    string = "DFT-D3 Dispersion         ="
+#    linenum = search_string(string, lines, typ="last")[0]
+#    val = lines[linenum].split()[2]
+#    return val * ry2har
+#
+#def parse_total_energy(lines, debug: int=0):
+#    string = "!    total energy"
+#    linenum = search_string(string, lines, typ="last")[0]
+#    val = lines[linenum].split()[2]
+#    return val * ry2har
 
-def parse_grimme_energy(lines, debug: int=0):
-    string = "DFT-D3 Dispersion         ="
-    linenum = search_string(string, lines, typ="last")[0]
-    val = lines[linenum].split()[2]
-    return val * ry2har
-
-def parse_total_energy(lines, debug: int=0):
-    string = "!    total energy"
-    linenum = search_string(string, lines, typ="last")[0]
-    val = lines[linenum].split()[2]
+def parse_makov_from_step(lines, debug: int=0):
+    string = "!    Total+Makov-Payne energy"
+    linenum, found = search_string(string, lines, typ="last")
+    if found: val = float(lines[linenum].split()[4]); 
+    else: return None
     return val * ry2har
 
 def parse_elapsed_time(lines: str, debug: int=0):

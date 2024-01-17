@@ -6,6 +6,11 @@ from ast import literal_eval
 
 #from Scope.Other import str_to_list
 
+def center_geom(coord: list, origin_atom_idx: int):
+    ref = np.array(coord[origin_atom_idx])
+    new_coord = np.array(coord)-ref
+    return new_coord
+
 def save_binary(variable, pathfile, backup: bool=False):
     pathfile = pathfile.replace("lustre","home")
     if not backup:

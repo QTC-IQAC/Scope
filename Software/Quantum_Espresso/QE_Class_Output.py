@@ -507,13 +507,17 @@ class qe_output(object):
     def get_energy_last_complete_block(self, debug: int=0):
         if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
         if self.last_complete_block is None: return None
-        tmp = parse_energy_from_step(self.last_complete_block)
-        if tmp is not None: self.last_energy = tmp
+        ## If Makov Payne Energy has been requested, it is taken
+        tmp = parse_makov_from_step(self.last_complete_block)
+        if tmp is None: 
+            tmp = parse_energy_from_step(self.last_complete_block)
+        if tmp is not None: 
+            self.last_energy = tmp
         else:
             if debug > 0: print("get_energy_last_complete_block: energy is None")
             self.last_energy = None
         return self.last_energy
-    
+
 ############
 ### TIME ###
 ############

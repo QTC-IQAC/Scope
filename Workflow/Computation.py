@@ -262,6 +262,13 @@ class computation(object):
         ## 1-Registration of General Attributes 
         reg_general(self, debug=debug)     # Gives self.isfinished, self.elapsed_time and self.status. It always works
      
+        ## Retry with reading lines
+        if not self.isfinished or self.status == "aborted":
+            self.delete_output()
+            self.read_lines()
+            self.create_output(debug=debug)
+            reg_general(self, debug=debug)  
+
         ## 2-Registration of Energy 
         worked = reg_energy(self, debug=debug)      # Stores the "last energy of a complete block" to State if it is not None
         #if not worked1: print(f"    COMP.REGISTER: Energy Registration didn't work for: {self.out_path}"); return False

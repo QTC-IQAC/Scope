@@ -166,29 +166,29 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
 
                     # If registration fails, either...
                     if not worked: 
-                        if handle_errors: # ...takes default action 
-                            comp.read_lines()
-                            if len(comp.output_lines) > 0: comp.store(debug=debug)  # Creates Copy of output 
-                            else:                          this_job.remove_computation(comp_index=comp.index)
-                            report += f"Errors handled for {comp.out_path} \n"
-                            print(f"Errors handled for {comp.out_path}")
+                        ## 8.4 sets continuation computations. These are added to JOB object 
+                        if comp.status == 'no_scf_convergence':
+                        #if comp.isregistered and comp.status == 'scf_convergence':
+                            new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
+                            if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
+                        elif not comp.isgood and this_job.must_be_good:
+                            new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
+                            if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
+
+                        # Checks for newer computations of the same kind. If they already exist, no message is printed since it is considered outdated
                         else:
-                            report += f"Error registering {comp.out_path} \n"
-                            print(f"Error registering {comp.out_path}")
+                            if handle_errors:          # ...takes default action 
+                                comp.read_lines()
+                                if len(comp.output_lines) > 0: comp.store(debug=debug)  # Creates Copy of output 
+                                else:                          this_job.remove_computation(comp_index=comp.index)
+                                report += f"Errors handled for {comp.out_path}. Please Re-Submit \n"
+                                print(f"Errors handled for {comp.out_path}")
+                            else:
+                                report += f"Error registering {comp.out_path}. Please Re-Submit \n"
+                                print(f"Error registering {comp.out_path}")
                     updated = True
 
-                ## 8.4 sets continuation computations. These are added to JOB object 
-                if comp.status == 'no_scf_convergence':
-                #if comp.isregistered and comp.status == 'scf_convergence':
-                    new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
-                    #if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
-                elif not comp.isgood and this_job.must_be_good:
-                #elif comp.isregistered and not comp.isgood and this_job.must_be_good:
-                    new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
-                    #if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
-
-
-                print("HERE WITH:", comp.out_path, comp.isregistered, comp._job.keyword, hasattr(comp.qc_data,"fstate") or hasattr(comp._job,"fstate"))
+                ## Re-reads eigenvectors of a frequency computation 
                 if comp.isregistered and "freq" in comp._job.keyword and (hasattr(comp.qc_data,"fstate") or hasattr(comp._job,"fstate")):
                     if hasattr(comp.qc_data,"fstate"): fstate = comp.qc_data.fstate
                     else:                              fstate = comp._job.fstate
@@ -198,8 +198,6 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                         if not hasattr(state.VNMs,"xs"): 
                             print("RE-REGISTERING:", comp.out_path)
                             worked = comp.register(debug=debug)
-#                            for v in state.VNMs: 
-#                                print(v.index, v.xs[0])
                     else:
                         print("State",fstate,"does not exist")
 

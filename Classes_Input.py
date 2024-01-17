@@ -143,6 +143,7 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"requisites"):    data._add_attr("requisites", [])
     if not hasattr(data,"constrains"):    data._add_attr("constrains", ['self'])
     if not hasattr(data,"must_be_good"):  data._add_attr("must_be_good", False)
+    #if not hasattr(data,"max_attempts") and data.must_be_good:  data._add_attr("max_attempts", int(5)) ## Not Implemented
 
     ## Modifies some attributes to avoid blank spaces and dashes, and to use lower letters
     data._mod_attr("keyword",str(data.keyword.lower().replace("-","_").replace(" ","_")))
