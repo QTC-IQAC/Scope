@@ -271,7 +271,6 @@ class computation(object):
 
         ## 2-Registration of Energy 
         worked = reg_energy(self, debug=debug)      # Stores the "last energy of a complete block" to State if it is not None
-        #if not worked1: print(f"    COMP.REGISTER: Energy Registration didn't work for: {self.out_path}"); return False
 
         ## 3-Registration of Optimization of Frequency Tasks 
         if 'opt' in self._job.keyword or 'relax' in self._job.keyword:
@@ -291,7 +290,6 @@ class computation(object):
             self.delete_output()  ## Output Object too, since it also stores output lines
         else: 
             print(f"COMP.REGISTER: Registration didn't work for: {self.out_path}")
-            #print(f"    COMP.REGISTER: Opt/Freq Registration didn't work for: {self.out_path}")
 
         ### 5-Deletes Job_Id from queue pending
         #if hasattr(self,"job_id") and hasattr(self,"submission_queue"):

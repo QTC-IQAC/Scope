@@ -89,6 +89,10 @@ def extract_T12(sys: object, branch_keyword: str, High_E_state: object, Low_E_st
                 if updated and debug > 1: print(f"EXECUTE_JOB, step 3b: system paths reset")
             except Exception as exc: 
                 pass
+ 
+    if flexible:
+        if not hasattr(High_E_state,"num_neq_freqs"): High_E_state.set_VNMs(High_E_state.VNMs)
+        if not hasattr(Low_E_state,"num_neq_freqs"):  Low_E_state.set_VNMs(Low_E_state.VNMs)
 
     ##############
     ### BRANCH ###

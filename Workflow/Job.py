@@ -97,8 +97,8 @@ class job(object):
         self.constrains_fulfilled = False
         requisites_fulfilled = np.zeros((len(self.requisites)))  ## To be correct, all must be 1
         constrains_fulfilled = np.zeros((len(self.constrains)))  ## To be correct, all must be 0
-        if debug > 1: print("Checking Requisites", self.requisites)
-        if debug > 1: print("Checking Constrains", self.constrains)
+        if debug > 1: print("Checking Requisites", self.requisites, "for job:",self.keyword)
+        if debug > 1: print("Checking Constrains", self.constrains, "for job:",self.keyword)
         for idx, job in enumerate(self._recipe.jobs):
 
             if self != job:

@@ -3,6 +3,7 @@ from Scope.Classes_Data import collection, data
 from Scope.Elementdata import ElementData
 from Scope.Cell2mol_Utils import compare_species
 elemdatabase = ElementData()
+import numpy as np
 
 ##############
 ### STATES ###
