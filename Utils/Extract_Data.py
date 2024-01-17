@@ -78,7 +78,7 @@ def extract_dH_solid(sys: object, branch_keyword: str, High_E_state: object, Low
     return True, this_branch.results["dHelec"]
 
 
-def extract_T12(sys: object, branch_keyword: str, High_E_state: object, Low_E_state: object, Trange: range=range(10,501,1), overwrite: bool=False, global_env: object=None, debug: int=0):
+def extract_T12(sys: object, branch_keyword: str, High_E_state: object, Low_E_state: object, Trange: range=range(10,501,1), flexible: bool=True, overwrite: bool=False, global_env: object=None, debug: int=0):
 
     ## 0-Changes paths if necessary
     if global_env is not None:
@@ -103,11 +103,11 @@ def extract_T12(sys: object, branch_keyword: str, High_E_state: object, Low_E_st
         return False, None
 
     ## If not, it evaluates if the states could be considered minima for the sake of T12 evaluation
-    if not High_E_state.isminimum and not High_E_state.almost_minimum:
+    if not High_E_state.isminimum and (not High_E_state.almost_minimum or not flexible):
         if debug > 0: print(f"{High_E_state.name} cannot be used for Thermochemistry")
         return False, None
         
-    if not Low_E_state.isminimum and not Low_E_state.almost_minimum:
+    if not Low_E_state.isminimum and (not Low_E_state.almost_minimum or not flexible):
         if debug > 0: print(f"{High_E_state.name} cannot be used for Thermochemistry")
         return False, None
  
