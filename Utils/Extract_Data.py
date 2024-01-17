@@ -12,26 +12,22 @@ from Scope import Constants
 ### Here is where the all protocols to extract system properties, (often) involving more than one system (eg. HS and LS), are collected
 ##############################################################################
 
-def extract_dH_solid(sys: object, global_env: object, branch_keyword: str, state1: object, state2: object, overwrite: bool=False, debug: int=0):
+def extract_dH_solid(sys: object, branch_keyword: str, state1: object, state2: object, overwrite: bool=False, global_env: object=None, debug: int=0):
 
     ## 0-Changes paths if necessary
-    if global_env.check_paths(debug=1):
-        if debug > 1: print(f"Extract_dH, step 0: global environment found with correct paths. RESETTING")
-        updated = sys.reset_paths(global_env, debug=0)
-        if updated and debug > 1: print(f"Extract_dH, step 0: system paths reset")
+    if global_env is not None:
+        if global_env.check_paths(debug=1): 
+            if debug > 1: print(f"EXECUTE_JOB, step 3b: global environment found with correct paths")
+            try: 
+                updated = sys.reset_paths(global_env, debug=0)
+                if updated and debug > 1: print(f"EXECUTE_JOB, step 3b: system paths reset")
+            except Exception as exc: 
+                pass
 
     ### 1-Branch is loaded
     exists, this_branch = sys.find_branch(branch_keyword, debug=debug)
     if exists: print("Branch loaded with keyword", this_branch.keyword)
     if not exists: return False
-
-    #### 2-Checks that both states exist and are minima
-    #if not hasattr(state1,"isminimum") or not hasattr(state2,"isminimum"): 
-    #    if debug > 0: print(f"{state1.name} and/or {state2.name} are not evaluated as minima")
-    #    return False, None
-    #if not state1.isminimum or not state2.isminimum: 
-    #    if debug > 0: print(f"{state1.name} and/or {state2.name} are not minima")
-    #    return False, None
 
     ### 2-Checks that energies have been parsed
     assert "energy" in state1.results.keys()
@@ -82,13 +78,17 @@ def extract_dH_solid(sys: object, global_env: object, branch_keyword: str, state
     return True, this_branch.results["dHelec"]
 
 
-def extract_T12(sys: object, global_env: object, branch_keyword: str, state1: object, state2: object, Trange: range=range(10,501,1), overwrite: bool=False, debug: int=0):
+def extract_T12(sys: object, branch_keyword: str, state1: object, state2: object, Trange: range=range(10,501,1), overwrite: bool=False, global_env: object=None, debug: int=0):
 
     ## 0-Changes paths if necessary
-    if global_env.check_paths(debug=1):
-        if debug > 1: print(f"Extract_dH, step 0: global environment found with correct paths. RESETTING")
-        updated = sys.reset_paths(global_env, debug=0)
-        if updated and debug > 1: print(f"Extract_dH, step 0: system paths reset")
+    if global_env is not None:
+        if global_env.check_paths(debug=1): 
+            if debug > 1: print(f"EXECUTE_JOB, step 3b: global environment found with correct paths")
+            try: 
+                updated = sys.reset_paths(global_env, debug=0)
+                if updated and debug > 1: print(f"EXECUTE_JOB, step 3b: system paths reset")
+            except Exception as exc: 
+                pass
 
     ##############
     ### BRANCH ###
