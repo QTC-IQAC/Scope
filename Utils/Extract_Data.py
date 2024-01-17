@@ -12,7 +12,7 @@ from Scope import Constants
 ### Here is where the all protocols to extract system properties, (often) involving more than one system (eg. HS and LS), are collected
 ##############################################################################
 
-def extract_dH_solid(sys: object, branch_keyword: str, state1: object, state2: object, overwrite: bool=False, global_env: object=None, debug: int=0):
+def extract_dH_solid(sys: object, branch_keyword: str, High_E_state: object, Low_E_state: object, overwrite: bool=False, global_env: object=None, debug: int=0):
 
     ## 0-Changes paths if necessary
     if global_env is not None:
@@ -30,45 +30,45 @@ def extract_dH_solid(sys: object, branch_keyword: str, state1: object, state2: o
     if not exists: return False
 
     ### 2-Checks that energies have been parsed
-    assert "energy" in state1.results.keys()
-    assert "energy" in state2.results.keys()
+    assert "energy" in High_E_state.results.keys()
+    assert "energy" in Low_E_state.results.keys()
 
     ### 3-Verify properties of the state. Necessary for point 4
-    if not hasattr(state1,"fragmented"): state1.check_fragmentation(reconstruct=True, debug=debug)
-    if not hasattr(state2,"fragmented"): state2.check_fragmentation(reconstruct=True, debug=debug)
-    assert not state1.fragmented, f"Fragmented molecules in the geometry of state1"
-    assert not state2.fragmented, f"Fragmented molecules in the geometry of state2"
+    if not hasattr(High_E_state,"fragmented"): High_E_state.check_fragmentation(reconstruct=True, debug=debug)
+    if not hasattr(Low_E_state,"fragmented"): Low_E_state.check_fragmentation(reconstruct=True, debug=debug)
+    assert not High_E_state.fragmented, f"Fragmented molecules in the geometry of High_E_state"
+    assert not Low_E_state.fragmented, f"Fragmented molecules in the geometry of Low_E_state"
      
     ## 4-Get the number of complexes in the unit cells: this is why we need point 3
     ncomplex1 = 0
-    for mol in state1.moleclist:
+    for mol in High_E_state.moleclist:
         if mol.type == "Complex": ncomplex1 += 1
     ncomplex2 = 0
-    for mol in state2.moleclist:
+    for mol in Low_E_state.moleclist:
         if mol.type == "Complex": ncomplex2 += 1
         #if mol.type == "Complex" and hasattr(mol,"scope_guess_spin"): ncomplex2 += 1
 
-    print("STEP4", ncomplex1, "complexes found in state1")
-    print("STEP4", ncomplex2, "complexes found in state1")
+    print("STEP4", ncomplex1, "complexes found in High_E_state")
+    print("STEP4", ncomplex2, "complexes found in High_E_state")
 
     ## 5-Store Helec per molecule ##
-    if overwrite or not "Helec" in state1.results.keys():
+    if overwrite or not "Helec" in High_E_state.results.keys():
         key = "Helec"
-        units = state1.results["energy"].units
-        value = state1.results["energy"].value / ncomplex1 
-        state1.add_result(data(key,value,str(units+"/molec"),"extract_dH_solid"), overwrite=overwrite)
-    if overwrite or not "Helec" in state2.results.keys():
+        units = High_E_state.results["energy"].units
+        value = High_E_state.results["energy"].value / ncomplex1 
+        High_E_state.add_result(data(key,value,str(units+"/molec"),"extract_dH_solid"), overwrite=overwrite)
+    if overwrite or not "Helec" in Low_E_state.results.keys():
         key = "Helec"
-        units = state2.results["energy"].units
-        value = state2.results["energy"].value / ncomplex2 
-        state2.add_result(data(key,value,str(units+"/molec"),"extract_dH_solid"), overwrite=overwrite)
+        units = Low_E_state.results["energy"].units
+        value = Low_E_state.results["energy"].value / ncomplex2 
+        Low_E_state.add_result(data(key,value,str(units+"/molec"),"extract_dH_solid"), overwrite=overwrite)
 
     ## 6-Compute dHelec and store it in branch
     if overwrite or not "dHelec" in this_branch.results.keys():
-        assert state1.results["Helec"].units == state2.results["Helec"].units 
+        assert High_E_state.results["Helec"].units == Low_E_state.results["Helec"].units 
         key = "dHelec" 
-        value = state1.results["Helec"].value - state2.results["Helec"].value 
-        units = state1.results["Helec"].units
+        value = High_E_state.results["Helec"].value - Low_E_state.results["Helec"].value 
+        units = High_E_state.results["Helec"].units
         function = "extract_dH_solid"
         this_branch.add_result(data(key,value,units,function), overwrite=overwrite) 
 
@@ -78,7 +78,7 @@ def extract_dH_solid(sys: object, branch_keyword: str, state1: object, state2: o
     return True, this_branch.results["dHelec"]
 
 
-def extract_T12(sys: object, branch_keyword: str, state1: object, state2: object, Trange: range=range(10,501,1), overwrite: bool=False, global_env: object=None, debug: int=0):
+def extract_T12(sys: object, branch_keyword: str, High_E_state: object, Low_E_state: object, Trange: range=range(10,501,1), overwrite: bool=False, global_env: object=None, debug: int=0):
 
     ## 0-Changes paths if necessary
     if global_env is not None:
@@ -98,48 +98,56 @@ def extract_T12(sys: object, branch_keyword: str, state1: object, state2: object
     if not exists: return False, None
 
     ## Checks that both states exist and are minima
-    if not hasattr(state1,"isminimum") or not hasattr(state2,"isminimum"): return False, None
-    if not state1.isminimum or not state2.isminimum: 
-        if debug > 0: print(f"{state1.name} and/or {state2.name} are not minima")
+    if not hasattr(High_E_state,"isminimum") or not hasattr(Low_E_state,"isminimum"): 
+        if debug > 0: print(f"{High_E_state.name} and/or {Low_E_state.name} have not been evaluated as minima")
         return False, None
 
-    if not "Helec" in state1.results: state1.thermal_data()
-    if not "Helec" in state2.results: state2.thermal_data()
+    ## If not, it evaluates if the states could be considered minima for the sake of T12 evaluation
+    if not High_E_state.isminimum and not High_E_state.almost_minimum:
+        if debug > 0: print(f"{High_E_state.name} cannot be used for Thermochemistry")
+        return False, None
+        
+    if not Low_E_state.isminimum and not Low_E_state.almost_minimum:
+        if debug > 0: print(f"{High_E_state.name} cannot be used for Thermochemistry")
+        return False, None
+ 
+    if not "Helec" in High_E_state.results: High_E_state.thermal_data()
+    if not "Helec" in Low_E_state.results: Low_E_state.thermal_data()
 
     ## dHelec
     if overwrite or not "dHelec" in this_branch.results.keys():
-        assert state1.results["Helec"].units == state2.results["Helec"].units 
+        assert High_E_state.results["Helec"].units == Low_E_state.results["Helec"].units 
         key = "dHelec" 
-        value = state1.results["Helec"].value - state2.results["Helec"].value 
-        units = state1.results["Helec"].units
+        value = High_E_state.results["Helec"].value - Low_E_state.results["Helec"].value 
+        units = High_E_state.results["Helec"].units
         function = "extract_T12"
         this_branch.add_result(data(key,value,units,function), overwrite=overwrite) 
 
     ## dSelec
     if overwrite or not "dSelec" in this_branch.results.keys():
-        assert state1.results["Selec"].units == state2.results["Selec"].units 
+        assert High_E_state.results["Selec"].units == Low_E_state.results["Selec"].units 
         key = "dSelec" 
-        value = state1.results["Selec"].value - state2.results["Selec"].value 
-        units = state1.results["Selec"].units
+        value = High_E_state.results["Selec"].value - Low_E_state.results["Selec"].value 
+        units = High_E_state.results["Selec"].units
         function = "extract_T12"
         this_branch.add_result(data(key,value,units,function), overwrite=overwrite) 
 
     ## dHvib
     if overwrite or not "dHvib" in this_branch.results.keys():
-        assert state1.results["Hvib"].units == state2.results["Hvib"].units 
-        dHvib_collection = substract_collections("dHvib", state1.results["Hvib"], state2.results["Hvib"], prop="temp")
+        assert High_E_state.results["Hvib"].units == Low_E_state.results["Hvib"].units 
+        dHvib_collection = substract_collections("dHvib", High_E_state.results["Hvib"], Low_E_state.results["Hvib"], prop="temp")
         this_branch.add_result(dHvib_collection, overwrite=overwrite)
         
     ## dSvib
     if overwrite or not "dSvib" in this_branch.results.keys():
-        assert state1.results["Svib"].units == state2.results["Svib"].units 
-        dSvib_collection = substract_collections("dSvib", state1.results["Svib"], state2.results["Svib"], prop="temp")
+        assert High_E_state.results["Svib"].units == Low_E_state.results["Svib"].units 
+        dSvib_collection = substract_collections("dSvib", High_E_state.results["Svib"], Low_E_state.results["Svib"], prop="temp")
         this_branch.add_result(dSvib_collection, overwrite=overwrite)
 
     ## dGtot
     if overwrite or not "dGtot" in this_branch.results.keys():
-        assert state1.results["Gtot"].units == state2.results["Gtot"].units 
-        dGtot_collection = substract_collections("dGtot", state1.results["Gtot"], state2.results["Gtot"], prop="temp")
+        assert High_E_state.results["Gtot"].units == Low_E_state.results["Gtot"].units 
+        dGtot_collection = substract_collections("dGtot", High_E_state.results["Gtot"], Low_E_state.results["Gtot"], prop="temp")
         this_branch.add_result(dGtot_collection, overwrite=overwrite)
 
     ## T12

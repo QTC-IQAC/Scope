@@ -66,8 +66,16 @@ class state(object):
     def set_VNMs(self, VNMs):
         self.VNMs = VNMs
         self.freqs_cm = [vnm.freq_cm for vnm in VNMs]
-        if all(vnm.freq >= 0.0 for vnm in self.VNMs): self.isminimum = True
-        else:                                         self.isminimum = False
+        if all(vnm.freq_cm >= 0.0 for vnm in self.VNMs): self.isminimum = True
+        else:                                            self.isminimum = False
+
+        ## If it is not a minimum, evaluates if, at least, is close
+        if not self.isminimum:
+            self.num_neg_freqs = 0
+            for vnm in self.VNMs: 
+                if vnm.freq_cm < 0.0: self.num_neg_freqs += 1
+            if self.num_neg_freqs <= 3 and VNMs[0].freq_cm > -50: self.almost_minimum = True
+            else:                                                 self.almost_minimum = False
         
     def get_moleclist(self):
         if hasattr(self,"labels") and hasattr(self,"pos"):
@@ -185,13 +193,13 @@ class state(object):
         if overwrite or not "Hvib" in self.results.keys():
             Hvib_collection = collection("Hvib")
             for temp in Trange:
-                Hvib_collection.add_data(get_Hvib(self.freqs_cm, temp, freq_units='cm', outunits='au'))
+                Hvib_collection.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au'))
             self.add_result(Hvib_collection, overwrite=overwrite)
         ## Svib ## 
         if overwrite or not "Svib" in self.results.keys():
             Svib_collection = collection("Svib")
             for temp in Trange:
-                Svib_collection.add_data(get_Svib(self.freqs_cm, temp, freq_units='cm', outunits='au'))
+                Svib_collection.add_data(get_Svib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au'))
             self.add_result(Svib_collection, overwrite=overwrite)
         ## Gtot ##
         if overwrite or not "Gtot" in self.results.keys():
@@ -219,7 +227,9 @@ class state(object):
         to_print += f' Name                  = {self.name}\n'
         if hasattr(self,"labels"):   to_print += f' Labels                = {self.labels[0]}...\n'
         if hasattr(self,"coord"):    to_print += f' Coord                 = {self.coord[0]}...\n'
-        if hasattr(self,"freq_cm"):  to_print += f' Frequencies (cm-1)    = {self.freq_cm[0]}...\n'
+        to_print += f' Is Minimum            = {self.isminimum}\n'
+        if hasattr(self,"almost_minimum"): to_print += f' Almost a Minimum      = {self.almost_minimum}\n'
+        if hasattr(self,"freq_cm"):        to_print += f' First Frequency (cm-1)= {self.freq_cm[0]}...\n'
         if hasattr(self,"moleclist"):  
             to_print += f' # Molecules:          = {len(self.moleclist)}\n'
             to_print += f' With Formulae:                               \n'
