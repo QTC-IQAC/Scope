@@ -1,4 +1,5 @@
 import os, sys
+import numpy as np
 
 class HiddenPrints:
     def __enter__(self):
@@ -7,6 +8,19 @@ class HiddenPrints:
     def __exit__(self, exc_type, exc_val, exc_tb):
         sys.stdout.close()
         sys.stdout = self._original_stdout
+
+def extract_from_list(entrylist: list, old_array: np.ndarray, dimension: int=2) -> np.ndarray:
+    length = len(entrylist)
+    if dimension == 2:
+        new_array = np.empty((length, length))
+        for idx, row in enumerate(entrylist):
+            for jdx, col in enumerate(entrylist):
+                new_array[idx, jdx] = old_array[row][col]
+    elif dimension == 1:
+        new_array = np.empty((length))
+        for idx, val in enumerate(entrylist):
+            new_array[idx] = old_array[val]
+    return new_array
 
 def where_in_array(array,condition) -> list:
     results = []

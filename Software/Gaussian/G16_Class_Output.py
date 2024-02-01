@@ -68,8 +68,8 @@ class g16_output(object):
         if debug > 0: print(f"GET_LAST_COMPLETE_BLOCK: evaluating with jobtype={self.jobtype}")
         for idx in range(len(self.opt_blocks)-1,-1,-1):
             if not found:
-                init_line = self.opt_blocks[idx][0]+1
-                last_line = self.opt_blocks[idx][1]+1
+                init_line = self.opt_blocks[idx][0]#+1
+                last_line = self.opt_blocks[idx][1]#+1
                 if debug > 0: print(f"GET_LAST_COMPLETE_BLOCK: evaluating block {idx}. Between {init_line} and {last_line}")
                 block_lines = self.lines[init_line:last_line]
                 scf_convergence      = parse_scf_status(block_lines)
@@ -147,9 +147,9 @@ class g16_output(object):
         self.opt_blocks = []
         if len(self.scf_blocks) > 0:
             for idx, b in enumerate(self.scf_blocks[:-1]):
-                if idx == 0: self.opt_blocks.append([0, self.scf_blocks[idx+1][0]])
-                else:        self.opt_blocks.append([self.scf_blocks[idx][0], self.scf_blocks[idx+1][0]])
-            self.opt_blocks.append([self.scf_blocks[-1][0],len(self.lines)])
+                if idx == 0: self.opt_blocks.append([0, self.scf_blocks[idx+1][0]-1])
+                else:        self.opt_blocks.append([self.scf_blocks[idx][0], self.scf_blocks[idx+1][0]-1])
+            self.opt_blocks.append([self.scf_blocks[-1][0],len(self.lines)-1])
         return self.opt_blocks
 
     def get_lines_last_scf_block(self, debug: int=0):
@@ -175,7 +175,8 @@ class g16_output(object):
         self.all_coords = []
         if len(self.opt_blocks) > 0:
             for idx, b in enumerate(self.opt_blocks):
-                step_labels, step_coords       = parse_geometry_from_step(self.lines[b[0]+1:b[1]+1])
+                step_labels, step_coords       = parse_geometry_from_step(self.lines[b[0]:b[1]])
+                #step_labels, step_coords       = parse_geometry_from_step(self.lines[b[0]+1:b[1]+1])
                 self.all_labels.append(step_labels)
                 self.all_coords.append(step_coords)
                 if (step_labels is None or step_coords is None) and debug > 0: print("GET_ALL_GEOMETRIES: error parsing geometry between lines", b)
@@ -208,8 +209,8 @@ class g16_output(object):
                 self.last_coords = None
                 return self.last_labels, self.last_coords
             for idx in range(len(self.opt_blocks)-1,-1,-1):
-                init_line = self.opt_blocks[idx][0]+1
-                last_line = self.opt_blocks[idx][1]+1
+                init_line = self.opt_blocks[idx][0]#+1
+                last_line = self.opt_blocks[idx][1]#+1
                 tmp1, tmp2 = parse_geometry_from_step(self.lines[init_line:last_line])
                 if tmp1 is not None and tmp2 is not None:
                     self.last_labels = tmp1
@@ -242,15 +243,14 @@ class g16_output(object):
         self.all_tot_forces = []
         if len(self.opt_blocks) > 0:
             for idx, b in enumerate(self.opt_blocks):
-                step_at_forces, step_tot_force = parse_forces_from_step(self.lines[b[0]+1:b[1]+1])
+                step_at_forces = parse_forces_from_step(self.lines[b[0]:b[1]])
+                #step_at_forces = parse_forces_from_step(self.lines[b[0]+1:b[1]+1])
                 self.all_at_forces.append(step_at_forces)
-                self.all_tot_forces.append(step_tot_force)
-                if (step_at_forces is None or step_tot_force is None) and debug > 0: print("GET_ALL_FORCES: error parsing forces between lines", b)
+                if step_at_forces is None and debug > 0: print("GET_ALL_FORCES: error parsing forces between lines", b)
         else:
             if debug > 0: print("GET_ALL_FORCES: empty list of opt_blocks")
             self.all_at_forces = None
-            self.all_tot_forces = None
-        return self.all_at_forces, self.all_tot_forces
+        return self.all_at_forces
 
     def get_last_forces(self, debug: int=0):
         if hasattr(self,"all_at_forces"):
@@ -271,8 +271,8 @@ class g16_output(object):
                 self.last_at_forces = None
                 return self.last_at_forces
             for idx in range(len(self.opt_blocks)-1,-1,-1):
-                init_line = self.opt_blocks[idx][0]+1
-                last_line = self.opt_blocks[idx][1]+1
+                init_line = self.opt_blocks[idx][0]#+1
+                last_line = self.opt_blocks[idx][1]#+1
                 tmp1 = parse_forces_from_step(self.lines[init_line:last_line])
                 if tmp1 is not None:
                     self.last_at_forces = tmp1
@@ -299,7 +299,8 @@ class g16_output(object):
         self.all_energies = []
         if len(self.opt_blocks) > 0:
             for idx, b in enumerate(self.opt_blocks):
-                step_energy  = parse_energy_from_step(self.lines[b[0]+1:b[1]+1])
+                step_energy  = parse_energy_from_step(self.lines[b[0]:b[1]])
+                #step_energy  = parse_energy_from_step(self.lines[b[0]+1:b[1]+1])
                 self.all_energies.append(step_energy)
                 if step_energy is None and debug > 0: print("GET_ALL_ENERGIES: error parsing energy between lines", b)
         else:
@@ -326,8 +327,8 @@ class g16_output(object):
                 self.last_energy = None
                 return self.last_energy
             for idx in range(len(self.opt_blocks)-1,-1,-1):
-                init_line = self.opt_blocks[idx][0]+1
-                last_line = self.opt_blocks[idx][1]+1
+                init_line = self.opt_blocks[idx][0]#+1
+                last_line = self.opt_blocks[idx][1]#+1
                 tmp = parse_energy_from_step(self.lines[init_line:last_line])
                 if tmp is not None:
                     self.last_energy = tmp; return self.last_energy
@@ -352,8 +353,8 @@ class g16_output(object):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
         if len(self.opt_blocks) == 0: return None
         for idx in range(len(self.opt_blocks)-1,-1,-1):
-            init_line = self.opt_blocks[idx][0]+1
-            last_line = self.opt_blocks[idx][1]+1
+            init_line = self.opt_blocks[idx][0]#+1
+            last_line = self.opt_blocks[idx][1]#+1
             tmp = parse_freqs_from_step(self.lines[init_line:last_line])
             if tmp is not None:
                 self.frequencies = tmp; return self.frequencies
@@ -364,8 +365,8 @@ class g16_output(object):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
         if len(self.opt_blocks) == 0: return None
         for idx in range(len(self.opt_blocks)-1,-1,-1):
-            init_line = self.opt_blocks[idx][0]+1
-            last_line = self.opt_blocks[idx][1]+1
+            init_line = self.opt_blocks[idx][0]#+1
+            last_line = self.opt_blocks[idx][1]#+1
             tmp = parse_vnms_from_step(self.lines[init_line:last_line], witheigen=witheigen, debug=debug)
             if tmp is not None:
                 self.vnms = tmp; return self.vnms

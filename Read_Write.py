@@ -59,6 +59,20 @@ def writexyz(fdir, fname, labels, coord, charge: int=0, spin: int=1):
         for idx, l in enumerate(labels):
             print("%s  %.6f  %.6f  %.6f" % (l, coord[idx][0], coord[idx][1], coord[idx][2]),file=fil)
 
+def write_xyz_forces_energy(fdir, fname, labels, coord, forces, energy, charge: int=0, spin: int=1, other=None):
+    if fdir[-1] != "/":
+        fdir = fdir + "/"
+    natoms = len(labels)
+    fullname = fdir + fname
+    if os.path.isfile(fullname): mode = 'a'
+    else:                        mode = 'w'
+    with open(fullname, mode) as fil:
+        print(natoms, file=fil)
+        if other is None: print(charge, spin, energy, file=fil)
+        else:             print(charge, spin, energy, other, file=fil)
+        for idx, l in enumerate(labels):
+            print("%s  %.6f  %.6f  %.6f  %.6f  %.6f  %.6f" % (l, coord[idx][0], coord[idx][1], coord[idx][2], forces[idx][0], forces[idx][1], forces[idx][2]),file=fil)
+
 def print_xyz(labels, coord):
     for idx, l in enumerate(labels):
         print("%s  %.6f  %.6f  %.6f" % (l, coord[idx][0], coord[idx][1], coord[idx][2]))

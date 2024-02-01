@@ -3,7 +3,7 @@ import os
 import numpy as np
 from copy import deepcopy
 
-from Scope.Adapted_from_cell2mol import labels2formula, get_adjmatrix, get_radii, get_blocks, get_molecules, inv
+from Scope.Adapted_from_cell2mol import *
 from Scope.Classes_Data import *
 from Scope.Classes_State import *
 from Scope.Gmol_ops import gmol_update_geom, cell_update_geom, gmol_create_geom, cell_create_geom
@@ -87,13 +87,18 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
     VNMs = comp.output.get_vnms(witheigen=witheigen)
 
     ### 2-Storage ###
-    if VNMs is not None: 
+    if VNMs is not None:
         exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
         if not exists: fstate = state(gmol, comp.qc_data.fstate)
         fstate.set_VNMs(VNMs)
         fstate.add_computation(comp)
         worked = True
         comp.isgood = True 
+
+    ### Also forces, but they do not condition "worked" or "isgood"
+    forces = comp.output.get_forces_last_complete_block()
+    if forces is not None:
+        fstate.set_forces(forces)
 
     return worked
 

@@ -10,6 +10,20 @@ elemdatabase = ElementData()
 from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 
 ################################
+def extract_from_list(entrylist: list, old_array: list, dimension: int=2) -> list:
+    length = len(entrylist)
+    if dimension == 2:
+        new_array = np.empty((length, length), dtype=object)
+        for idx, row in enumerate(entrylist):
+            for jdx, col in enumerate(entrylist):
+                new_array[idx, jdx] = old_array[row][col]
+    elif dimension == 1:
+        new_array = np.empty((length), dtype=object)
+        for idx, val in enumerate(entrylist):
+            new_array[idx] = (old_array[val])
+    return list(new_array)
+
+################################
 def printxyz(labels, pos):
     print(len(labels))
     print("")
@@ -17,7 +31,7 @@ def printxyz(labels, pos):
         print("%s  %.6f  %.6f  %.6f" % (l, pos[idx][0], pos[idx][1], pos[idx][2]))
 
 ################################
-def labels2formula(labels):
+def labels2formula(labels: list):
     elems = elemdatabase.elementnr.keys()
     formula=[]
     for z in elems:
@@ -39,15 +53,21 @@ def labels2ratio(labels):
     return ratio
 
 ################################
+def labels2electrons(labels):
+    eleccount = 0
+    for l in labels:
+        eleccount += elemdatabase.elementnr[l]
+    return eleccount 
 
-def get_elementcount(labels: list) -> np.ndarray:
-    elems = elemdatabase.elementnr.keys()
-    times = np.zeros((len(elems)),dtype=int)
+################################
+def get_element_count(labels: list, heavy_only: bool=False) -> np.ndarray:
+    elems = list(elemdatabase.elementnr.keys())
+    count = np.zeros((len(elems)),dtype=int)
     for l in labels:
         for jdx, elem in enumerate(elems):
-            if l == elem:
-                times[jdx] += 1
-    return times
+            if l == elem:                             count[jdx] += 1
+            if (l == 'H' or l == 'D') and heavy_only: count = 0
+    return count
 
 ################################
 def get_adjacency_types(label: list, conmat: np.ndarray) -> np.ndarray:
@@ -83,8 +103,8 @@ def get_radii(labels: list) -> np.ndarray:
     return np.array(radii)
 
 ####################################
-def get_adjmatrix(labels: list, pos: list, factor: float, radii="default") -> Tuple[int, list, list]:
-    status = 1  # good molecule, no clashes yet
+def get_adjmatrix(labels: list, pos: list, cov_factor: float, radii="default") -> Tuple[int, list, list]:
+    isgood = True 
     clash_threshold = 0.3
     natoms = len(labels)
     adjmat = np.zeros((natoms, natoms))
@@ -103,9 +123,9 @@ def get_adjmatrix(labels: list, pos: list, factor: float, radii="default") -> Tu
                 a = np.array(pos[i])
                 b = np.array(pos[j])
                 dist = np.linalg.norm(a - b)
-                thres = (radii[i] + radii[j]) * factor
+                thres = (radii[i] + radii[j]) * cov_factor
                 if dist <= clash_threshold:
-                    status = 0  # invalid molecule
+                    isgood = False # invalid molecule
                     print("Adjacency Matrix: Distance", dist, "smaller than clash for atoms", i, j)
                 elif dist <= thres:
                     adjmat[i, j] = 1
@@ -117,7 +137,7 @@ def get_adjmatrix(labels: list, pos: list, factor: float, radii="default") -> Tu
 
     adjmat = adjmat.astype(int)
     adjnum = adjnum.astype(int)
-    return status, adjmat, adjnum
+    return isgood, adjmat, adjnum
 
 ####################################
 def inv(perm: list) -> list:
@@ -154,59 +174,59 @@ def get_blocks(matrix: np.ndarray) -> Tuple[list, list]:
     return startlist, endlist
 
 ####################################
-def get_molecules(labels: list, pos: list, factor: float=1.3, debug: int=0) -> Tuple[bool, list]:
-    ## Function that identifies connected groups of atoms from their atomic coordinates and labels.
-
-    # Gets the covalent radii
-    radii = get_radii(labels)
-
-    # Computes the adjacency matrix of what is received
-    status, adjmat, adjnum = get_adjmatrix(labels, pos, factor, radii)
-
-    # status indicates whether the adjacency matrix could be built normally, or errors were detected. Typically, those errors are steric clashes
-    if status == 1:
-        degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
-        lap = adjmat - degree     # computes laplacian
-
-        # creates block matrix
-        graph = csr_matrix(lap)
-        perm = reverse_cuthill_mckee(graph)
-        gp1 = graph[perm, :]
-        gp2 = gp1[:, perm]
-        dense = gp2.toarray()
-
-        # detects blocks in the block diagonal matrix called "dense"
-        startlist, endlist = get_blocks(dense)
-
-        nmolec = len(startlist)
-        # keeps track of the atom movement within the matrix. Needed later
-        atomlist = np.zeros((len(dense)))
-        for b in range(0, nmolec):
-            for i in range(0, len(dense)):
-                if (i >= startlist[b]) and (i <= endlist[b]):
-                    atomlist[i] = b + 1
-        invperm = inv(perm)
-        atomlistperm = [int(atomlist[i]) for i in invperm]
-
-        # assigns atoms to molecules
-        moleclist = []
-        for b in range(0, nmolec):
-            labelist = []
-            poslist = []
-            atlist = []    # atom indices in the original ordering
-            for i in range(0, len(atomlistperm)):
-                if atomlistperm[i] == b + 1:
-                    labelist.append(labels[i])
-                    poslist.append(pos[i])
-                    atlist.append(i)
-            radiilist = get_radii(labelist)
-
-            newmolec = molecule(str(b), atlist, labelist, poslist, radiilist)
-            newmolec.information(1.3,1.0)
-
-            moleclist.append(newmolec)
-            #moleclist.append(list([atlist, labelist, poslist, radiilist]))
-    return moleclist
+#def get_molecules(labels: list, pos: list, factor: float=1.3, debug: int=0) -> Tuple[bool, list]:
+#    ## Function that identifies connected groups of atoms from their atomic coordinates and labels.
+#
+#    # Gets the covalent radii
+#    radii = get_radii(labels)
+#
+#    # Computes the adjacency matrix of what is received
+#    isgood, adjmat, adjnum = get_adjmatrix(labels, pos, factor, radii)
+#
+#    # isgood indicates whether the adjacency matrix could be built normally, or errors were detected. Typically, those errors are steric clashes
+#    if isgood:
+#        degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
+#        lap = adjmat - degree     # computes laplacian
+#
+#        # creates block matrix
+#        graph = csr_matrix(lap)
+#        perm = reverse_cuthill_mckee(graph)
+#        gp1 = graph[perm, :]
+#        gp2 = gp1[:, perm]
+#        dense = gp2.toarray()
+#
+#        # detects blocks in the block diagonal matrix called "dense"
+#        startlist, endlist = get_blocks(dense)
+#
+#        nmolec = len(startlist)
+#        # keeps track of the atom movement within the matrix. Needed later
+#        atomlist = np.zeros((len(dense)))
+#        for b in range(0, nmolec):
+#            for i in range(0, len(dense)):
+#                if (i >= startlist[b]) and (i <= endlist[b]):
+#                    atomlist[i] = b + 1
+#        invperm = inv(perm)
+#        atomlistperm = [int(atomlist[i]) for i in invperm]
+#
+#        # assigns atoms to molecules
+#        moleclist = []
+#        for b in range(0, nmolec):
+#            labelist = []
+#            poslist = []
+#            atlist = []    # atom indices in the original ordering
+#            for i in range(0, len(atomlistperm)):
+#                if atomlistperm[i] == b + 1:
+#                    labelist.append(labels[i])
+#                    poslist.append(pos[i])
+#                    atlist.append(i)
+#            radiilist = get_radii(labelist)
+#
+#            newmolec = molecule(str(b), atlist, labelist, poslist, radiilist)
+#            newmolec.information(1.3,1.0)
+#
+#            moleclist.append(newmolec)
+#            #moleclist.append(list([atlist, labelist, poslist, radiilist]))
+#    return moleclist
 
 ################################
 def get_centroid(coord: list) -> list:
@@ -219,3 +239,113 @@ def get_centroid(coord: list) -> list:
     centroid = [float(x / natoms), float(y / natoms), float(z / natoms)]
     return np.array(centroid)
 #########################
+
+#########################
+def split_complex(labels: list) -> Tuple[list, list]:
+    metals_idx = []
+    rest_idx   = []
+    for idx, l in enumerate(labels):
+        block = elemdatabase.elementblock[l] 
+        if block == "d" or block == "f": metals_idx.append(a) 
+        else:                            rest_idx.append(a)
+    return metals_idx, rest_idx
+#########################
+
+####################################
+def split_species(labels: list, pos: list, indices: list=None, factor: float=1.3, debug: int=0) -> Tuple[bool, list]:
+    ## Function that identifies connected groups of atoms from their atomic coordinates and labels.
+
+    # Gets the covalent radii
+    radii = get_radii(labels)
+
+    if indices is None:  indices = [*range(0,len(labels),1)]
+
+    # Computes the adjacency matrix of what is received
+    # isgood indicates whether the adjacency matrix could be built normally, or errors were detected. Typically, those errors are steric clashes
+    isgood, adjmat, adjnum = get_adjmatrix(labels, pos, factor, radii)
+    if not isgood: return None, None
+
+    degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
+    lap = adjmat - degree     # computes laplacian
+
+    # creates block matrix
+    graph = csr_matrix(lap)
+    perm = reverse_cuthill_mckee(graph)
+    gp1 = graph[perm, :]
+    gp2 = gp1[:, perm]
+    dense = gp2.toarray()
+
+    # detects blocks in the block diagonal matrix called "dense"
+    startlist, endlist = get_blocks(dense)
+
+    nblocks = len(startlist)
+    # keeps track of the atom movement within the matrix. Needed later
+    atomlist = np.zeros((len(dense)))
+    for b in range(0, nblocks):
+        for i in range(0, len(dense)):
+            if (i >= startlist[b]) and (i <= endlist[b]):
+                atomlist[i] = b + 1
+    invperm = inv(perm)
+    atomlistperm = [int(atomlist[i]) for i in invperm]
+
+    # assigns atoms to molecules
+    blocklist = []
+    for b in range(0, nblocks):
+        atlist = []    # atom indices in the original ordering
+        for i in range(0, len(atomlistperm)):
+            if atomlistperm[i] == b + 1:
+                atlist.append(indices[i])
+        blocklist.append(atlist)
+    return blocklist
+
+#####################
+def merge_atoms(atoms):
+    labels = [] 
+    coord  = [] 
+    for a in atoms:
+        labels.append(a.label) 
+        coords.append(a.coord) 
+    return labels, coord
+
+#################################
+def compare_atoms(at1, at2, debug: int=0):
+    if debug > 0: 
+        print("Comparing Atoms")
+        print(at1)
+        print(at2)
+    if (at1.label != at2.label): return False
+    if hasattr(at1,"charge") and hasattr(at2,"charge"):
+        if (at1.charge != at2.charge): return False
+    if hasattr(at1,"spin") and hasattr(at2,"spin"):
+        if (at1.spin != at2.spin): return False
+    return True
+
+#################################
+def compare_species(mol1, mol2, debug: int=0):
+    if debug > 0: 
+        print("Comparing Species")
+        print(mol1)
+        print(mol2)
+    # a pair of species is compared on the basis of:
+    # 1) the total number of atoms
+    if (mol1.natoms != mol2.natoms): return False
+
+    # 2) the total number of electrons (as sum of atomic number)
+    if (mol1.eleccount != mol2.eleccount): return False
+
+    # 3) the number of atoms of each type
+    if not hasattr(mol1,"element_count"): mol1.set_element_count()
+    if not hasattr(mol2,"element_count"): mol2.set_element_count()
+    for kdx, elem in enumerate(mol1.element_count):
+        if elem != mol2.element_count[kdx]: return False       
+
+    # 4) the number of adjacencies between each pair of element types
+    if not hasattr(mol1,"adj_types"):     mol1.set_adj_types()
+    if not hasattr(mol2,"adj_types"):     mol2.set_adj_types()
+    for kdx, elem in enumerate(mol1.adj_types):
+        for ldx, elem2 in enumerate(elem):
+            if elem2 != mol2.adj_types[kdx, ldx]: return False
+    return True
+#################################
+
+

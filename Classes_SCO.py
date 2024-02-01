@@ -11,7 +11,6 @@ from Scope.Parse_General import search_string, read_lines_file
 from Scope.Geom_SCO_V1 import geom_sco_from_xyz, guess_spin_state
 from Scope.Read_Write import save_binary, load_binary
 from Scope.Classes_State import state
-#from Scope.Gmol_ops import cell_posttocoord
 
 from Scope.Workflow import Branch
 from Scope.Workflow.Branch import *

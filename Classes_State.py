@@ -1,9 +1,11 @@
-from Scope.Adapted_from_cell2mol import get_molecules, printxyz, labels2formula, labels2ratio
+from Scope.Adapted_from_cell2mol import *
 from Scope.Classes_Data import collection, data
 from Scope.Elementdata import ElementData
 from Scope.Cell2mol_Utils import compare_species
 elemdatabase = ElementData()
 import numpy as np
+from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
+#from Scope.Classes_Molecule import *
 
 ##############
 ### STATES ###
@@ -39,6 +41,7 @@ class state(object):
         self.coord       = pos 
         self.natoms      = len(labels)
         self.formula     = labels2formula(self.labels)
+        #self.radii       = get_radii(labels)
         assert len(self.labels) == len(self.pos)
 
     def set_geometry_from_moleclist(self):
@@ -64,6 +67,9 @@ class state(object):
         self.cellvec     = cellvec
         self.cellparam   = cellparam
 
+    def set_forces(self, forces):
+        self.forces      = forces
+
     def set_VNMs(self, VNMs):
         self.VNMs = VNMs
         self.freqs_cm = [vnm.freq_cm for vnm in VNMs]
@@ -79,17 +85,25 @@ class state(object):
             else:                                                 self.almost_minimum = False
         
     def get_moleclist(self):
-        if hasattr(self,"labels") and hasattr(self,"pos"):
-            if len(self.labels) > 0 and len(self.pos) > 0:
-                if hasattr(self._subject,"factor"): factor = self._subject.factor
-                else: factor = 1.3
-                try: 
-                    self.moleclist = get_molecules(self.labels, self.pos, factor=factor)
-                except: 
-                    print("ERROR setting moleclist for state:", self.name)
-                    printxyz(self.labels, self.pos)
-        else: 
-            self.moleclist = []
+        if not hasattr(self,"labels") or not hasattr(self,"pos"): return None
+        if len(self.labels) == 0 or len(self.pos) == 0: return None
+        if hasattr(self._subject,"factor"): factor = self._subject.factor
+        else: factor = 1.3
+
+        #try: 
+        blocklist = split_species(self.labels, self.pos, factor=factor)
+        self.moleclist = [] 
+        for b in blocklist:
+            mol_labels  = extract_from_list(b, self.labels, dimension=1)
+            mol_coords  = extract_from_list(b, self.coord, dimension=1)
+            #mol_radii   = extract_from_list(b, self.radii, dimension=1)
+            newmolec    = molecule(mol_labels, mol_coords, mol_radii)
+            #newmolec    = molecule("name",b,mol_labels, mol_coords, mol_radii)
+            if newmolec.iscomplex: newmolec.split_complex()
+            self.moleclist.append(newmolec)
+        #except Exception as exc: 
+        #    print("ERROR setting moleclist for state:", self.name, "Exception is:", exc)
+        #    printxyz(self.labels, self.pos)
         return self.moleclist
 
 #######
@@ -226,9 +240,9 @@ class state(object):
         to_print +=  '   STATE                                           \n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' Name                  = {self.name}\n'
-        if hasattr(self,"labels"):   to_print += f' Labels                = {self.labels[0]}...\n'
-        if hasattr(self,"coord"):    to_print += f' Coord                 = {self.coord[0]}...\n'
-        to_print += f' Is Minimum            = {self.isminimum}\n'
+        if hasattr(self,"labels"):         to_print += f' Labels                = {self.labels[0]}...\n'
+        if hasattr(self,"coord"):          to_print += f' Coord                 = {self.coord[0]}...\n'
+        if hasattr(self,"isminimum"):      to_print += f' Is Minimum            = {self.isminimum}\n'
         if hasattr(self,"almost_minimum"): to_print += f' Almost a Minimum      = {self.almost_minimum}\n'
         if hasattr(self,"freq_cm"):        to_print += f' First Frequency (cm-1)= {self.freq_cm[0]}...\n'
         if hasattr(self,"moleclist"):  
