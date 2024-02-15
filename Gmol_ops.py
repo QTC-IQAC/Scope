@@ -1,4 +1,4 @@
-from cell2mol.tmcharge_common import *
+#from cell2mol.tmcharge_common import *
 from Scope.VNM_tools import vnm_displacement 
 from Scope.Workflow import Branch
 from Scope.Workflow.Branch import *

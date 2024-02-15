@@ -7,10 +7,11 @@ from typing import Tuple
 from Scope.Elementdata import ElementData  
 elemdatabase = ElementData()
 
-from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
+#from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 
 ################################
-def extract_from_list(entrylist: list, old_array: list, dimension: int=2) -> list:
+def extract_from_list(entrylist: list, old_array: list, dimension: int=2, debug: int=0) -> list:
+    #if debug >= 0: print("EXTRACT_FROM_LIST. received:", len(entrylist), np.max(entrylist)+1, len(old_array))
     length = len(entrylist)
     if dimension == 2:
         new_array = np.empty((length, length), dtype=object)
@@ -20,7 +21,7 @@ def extract_from_list(entrylist: list, old_array: list, dimension: int=2) -> lis
     elif dimension == 1:
         new_array = np.empty((length), dtype=object)
         for idx, val in enumerate(entrylist):
-            new_array[idx] = (old_array[val])
+            new_array[idx] = old_array[val]
     return list(new_array)
 
 ################################
@@ -113,8 +114,9 @@ def get_adjmatrix(labels: list, pos: list, cov_factor: float, radii="default") -
     # Sometimes argument radii np.ndarry, or list
     with warnings.catch_warnings():
         warnings.simplefilter(action="ignore", category=FutureWarning)
-        if radii == "default":
-            radii = get_radii(labels)
+        if type(radii) == str:
+            if radii == "default":
+                radii = get_radii(labels)
 
     # Creates Adjacency Matrix
     for i in range(0, natoms - 1):
@@ -229,7 +231,7 @@ def get_blocks(matrix: np.ndarray) -> Tuple[list, list]:
 #    return moleclist
 
 ################################
-def get_centroid(coord: list) -> list:
+def compute_centroid(coord: list) -> list:
     natoms = len(coord)
     x = 0
     y = 0
@@ -241,29 +243,45 @@ def get_centroid(coord: list) -> list:
 #########################
 
 #########################
-def split_complex(labels: list) -> Tuple[list, list]:
-    metals_idx = []
-    rest_idx   = []
-    for idx, l in enumerate(labels):
-        block = elemdatabase.elementblock[l] 
-        if block == "d" or block == "f": metals_idx.append(a) 
-        else:                            rest_idx.append(a)
-    return metals_idx, rest_idx
-#########################
-
-####################################
-def split_species(labels: list, pos: list, indices: list=None, factor: float=1.3, debug: int=0) -> Tuple[bool, list]:
-    ## Function that identifies connected groups of atoms from their atomic coordinates and labels.
-
+def count_species(labels: list, pos: list, radii: list=None, indices: list=None, cov_factor: float=1.3, debug: int=0) -> Tuple[bool, list]:
     # Gets the covalent radii
-    radii = get_radii(labels)
-
+    if radii is None:    radii = get_radii(labels)
     if indices is None:  indices = [*range(0,len(labels),1)]
 
     # Computes the adjacency matrix of what is received
     # isgood indicates whether the adjacency matrix could be built normally, or errors were detected. Typically, those errors are steric clashes
-    isgood, adjmat, adjnum = get_adjmatrix(labels, pos, factor, radii)
-    if not isgood: return None, None
+    isgood, adjmat, adjnum = get_adjmatrix(labels, pos, cov_factor, radii)
+    if not isgood: return int(0)
+
+    degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
+    lap = adjmat - degree     # computes laplacian
+
+    # creates block matrix
+    graph = csr_matrix(lap)
+    perm = reverse_cuthill_mckee(graph)
+    gp1 = graph[perm, :]
+    gp2 = gp1[:, perm]
+    dense = gp2.toarray()
+
+    # detects blocks in the block diagonal matrix called "dense"
+    startlist, endlist = get_blocks(dense)
+
+    nblocks = len(startlist)
+    return nblocks
+#########################
+
+####################################
+def split_species(labels: list, pos: list, radii: list=None, indices: list=None, cov_factor: float=1.3, debug: int=0) -> Tuple[bool, list]:
+    ## Function that identifies connected groups of atoms from their atomic coordinates and labels.
+
+    # Gets the covalent radii
+    if radii is None:    radii = get_radii(labels)
+    if indices is None:  indices = [*range(0,len(labels),1)]
+
+    # Computes the adjacency matrix of what is received
+    # isgood indicates whether the adjacency matrix could be built normally, or errors were detected. Typically, those errors are steric clashes
+    isgood, adjmat, adjnum = get_adjmatrix(labels, pos, cov_factor, radii)
+    if not isgood: return None
 
     degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
     lap = adjmat - degree     # computes laplacian

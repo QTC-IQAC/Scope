@@ -10,7 +10,7 @@ except:
 
 import pickle
 from collections import Counter
-from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
+#from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 #from Scope.Elementdata import ElementData
 #elemdatabase = ElementData()
 

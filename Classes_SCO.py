@@ -11,6 +11,7 @@ from Scope.Parse_General import search_string, read_lines_file
 from Scope.Geom_SCO_V1 import geom_sco_from_xyz, guess_spin_state
 from Scope.Read_Write import save_binary, load_binary
 from Scope.Classes_State import state
+from Scope.Classes_Molecule import *
 
 from Scope.Workflow import Branch
 from Scope.Workflow.Branch import *
@@ -169,38 +170,45 @@ class sco_system(object):
                 if mol.scope_guess_spin == 'HS' and not self.hasHS:
                     self.hasHS = True
                     self.HS_ref_mol_id = idx
-                    self.HS_ref_mol = deepcopy(mol)
+                    self.HS_ref_mol = import_molecule(mol, parent=self)
                     self.HS_ref_mol.spin = 'HS'
-                    self.HS_ref_mol._sys = self
+                    self.HS_ref_mol._sys = self  #Duplicate with parent to avoid crashes
                     if debug > 0: print(f"HS reference molecule found")
                 elif mol.scope_guess_spin == 'LS' and not self.hasLS:
                     self.hasLS = True
                     self.LS_ref_mol_id = idx
-                    self.LS_ref_mol = deepcopy(mol)
+                    self.LS_ref_mol = import_molecule(mol, parent=self)
                     self.LS_ref_mol.spin = 'LS'
-                    self.LS_ref_mol._sys = self
+                    self.LS_ref_mol._sys = self   #Duplicate with parent to avoid crashes
                     if debug > 0: print(f"LS reference molecule found")
             ### If it hasn't found any molecule that can be classified as HS and LS... then takes anything
             if not self.hasHS:
                 self.HS_ref_mol_id = 0
-                self.HS_ref_mol = deepcopy(pool[0])
+                self.HS_ref_mol = import_molecule(pool[0], parent=self)
                 self.HS_ref_mol.spin = 'HS'
-                self.HS_ref_mol._sys = self
+                self.HS_ref_mol._sys = self  #Duplicate to avoid crashes
                 if debug > 0: print(f"HS reference molecule assumed")
             if not self.hasLS:
                 self.LS_ref_mol_id = 0
-                self.LS_ref_mol = deepcopy(pool[0])
+                self.LS_ref_mol = import_molecule(pool[0], parent=self)
                 self.LS_ref_mol.spin = 'LS'
-                self.LS_ref_mol._sys = self
+                self.LS_ref_mol._sys = self   #Duplicate to avoid crashes
                 if debug > 0: print(f"LS reference molecule assumed")
+
         else: print("Empty pool of reference molecules")
 
         # Creates "initial" states:
-        HS_ini_state = state(self.HS_ref_mol, "initial")
-        HS_ini_state.set_geometry(self.HS_ref_mol.labels, self.HS_ref_mol.coord)
-        LS_ini_state = state(self.LS_ref_mol, "initial")
-        LS_ini_state.set_geometry(self.LS_ref_mol.labels, self.LS_ref_mol.coord)
-
+        if hasattr(self,"HS_ref_mol") and hasattr(self,"LS_ref_mol"): 
+            if self.HS_ref_mol.natoms != self.LS_ref_mol.natoms: 
+                print(f"different number of atoms HS: {self.HS_ref_mol.natoms} vs. LS: {self.LS_ref_mol.natoms}"); return False
+        if hasattr(self,"HS_ref_mol"):
+            HS_ini_state = state(self.HS_ref_mol, "initial")
+            HS_ini_state.set_geometry(self.HS_ref_mol.labels, self.HS_ref_mol.coord)
+        if hasattr(self,"LS_ref_mol"):
+            LS_ini_state = state(self.LS_ref_mol, "initial")
+            LS_ini_state.set_geometry(self.LS_ref_mol.labels, self.LS_ref_mol.coord)
+        return True
+        
     ##########
     def set_reference_crystals(self, debug: int=0):
         self.has_HS_ref_crys = False
@@ -211,6 +219,7 @@ class sco_system(object):
         LS_ref_crys_temp = 1000
         for idx, crys in enumerate(self.crystals):
   
+            #if not hasattr(crys.cell,"warning_list"): print("NO WARNING LIST")
             if hasattr(crys.cell,"warning_list"):
                 if not any(crys.cell.warning_list):
                     if not hasattr(crys,"phase"): crys.get_spin_and_phase_data(debug=debug)
@@ -226,7 +235,6 @@ class sco_system(object):
                         HS_ref_crys_temp = crys.diff_temp 
                         self.HS_ref_crys._sys  == self 
                         self.HS_ref_crys.type  == "crystal"
-                        #self.HS_ref_crys.cell.type  == "cell"
                         setattr(self.HS_ref_crys.cell,"_sys",self)
                         setattr(self.HS_ref_crys.cell,"type","cell")
                         setattr(self.HS_ref_crys.cell,"spin","HS")
@@ -275,17 +283,24 @@ class sco_system(object):
                         if debug > 0: print(f"LS reference crystal assumed")
 
         # Creates "initial" states:
-        HS_ini_state = state(self.HS_ref_crys.cell, "initial")
-        #if len(self.HS_ref_crys.cell.labels) > 0:
-        HS_ini_state.set_geometry(self.HS_ref_crys.cell.labels, self.HS_ref_crys.cell.coord)
-        HS_ini_state.set_cell(self.HS_ref_crys.cell.cellvec, self.HS_ref_crys.cell.cellparam)
-        HS_ini_state.get_moleclist()
+        if hasattr(self,"HS_ref_crys") and hasattr(self,"LS_ref_crys"): 
+            if self.HS_ref_crys.cell.natoms != self.LS_ref_crys.cell.natoms:
+                print(f"different number of atoms HS: {self.HS_ref_crys.cell.natoms} vs. LS: {self.LS_ref_crys.cell.natoms}"); return False
+
+        if hasattr(self,"HS_ref_crys"):
+            HS_ini_state = state(self.HS_ref_crys.cell, "initial")
+            #if len(self.HS_ref_crys.cell.labels) > 0:
+            HS_ini_state.set_geometry(self.HS_ref_crys.cell.labels, self.HS_ref_crys.cell.coord)
+            HS_ini_state.set_cell(self.HS_ref_crys.cell.cellvec, self.HS_ref_crys.cell.cellparam)
+            HS_ini_state.get_moleclist()
         
-        LS_ini_state = state(self.LS_ref_crys.cell, "initial")
-        #if len(self.LS_ref_crys.cell.labels) > 0:
-        LS_ini_state.set_geometry(self.LS_ref_crys.cell.labels, self.LS_ref_crys.cell.coord)
-        LS_ini_state.set_cell(self.LS_ref_crys.cell.cellvec, self.LS_ref_crys.cell.cellparam)
-        LS_ini_state.get_moleclist()
+        if hasattr(self,"LS_ref_crys"):
+            LS_ini_state = state(self.LS_ref_crys.cell, "initial")
+            #if len(self.LS_ref_crys.cell.labels) > 0:
+            LS_ini_state.set_geometry(self.LS_ref_crys.cell.labels, self.LS_ref_crys.cell.coord)
+            LS_ini_state.set_cell(self.LS_ref_crys.cell.cellvec, self.LS_ref_crys.cell.cellparam)
+            LS_ini_state.get_moleclist()
+        return True
 
 ###########################################
     def __repr__(self) -> None:
@@ -304,17 +319,21 @@ class sco_system(object):
 ###### Class Crystal ######
 ###########################
 class crystal(object):
-    def __init__(self, refcode: str, name: str, cell2mol_path: str, cell: object, sys: object) -> None:
+    def __init__(self, refcode: str, name: str, cell2mol_path: str, cell_path: str, sys: object) -> None:
         self.type              = "crystal" 
         self.version           = "V3" 
         self.refcode           = refcode
         self.name              = name
-        self.cell              = cell 
+        self.cell_path         = cell2mol_path+cell_path
+        self.cell              = import_cell(load_binary(self.cell_path))
         self._sys              = sys
         self.cell2mol_path     = cell2mol_path
         self.list_of_molecules = []
 
         self.fix_cell_coord()
+
+    def reload_cell(self) -> None:
+        self.cell              = import_cell(self.cell_path)
 
     ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell. 
     ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
@@ -324,11 +343,13 @@ class crystal(object):
         self.cell.coord  = []
         indices          = []
         for mol in self.cell.moleclist:
+            if not hasattr(mol,"atoms"): mol.set_atoms() 
             for idx, a in enumerate(mol.atoms):
                 self.cell.labels.append(a.label)
                 self.cell.pos.append(a.coord)
                 self.cell.coord.append(a.coord)
-                indices.append(mol.atlist[idx])
+                indices.append(a.index)
+                #indices.append(mol.atlist[idx])
         ## Below is to order the atoms as in the original cell, using the indices stored in the molecule object
         self.cell.labels = [x for _, x in sorted(zip(indices, self.cell.labels), key=lambda pair: pair[0])]
         self.cell.pos = [x for _, x in sorted(zip(indices, self.cell.pos), key=lambda pair: pair[0])]
@@ -345,15 +366,14 @@ class crystal(object):
 
     def get_FeN6_molecules(self, debug: int=0):
         for idx, mol in enumerate(self.cell.moleclist):
-            if mol.type == "Complex":
+            if mol.iscomplex:
                 keepit = False
-                for met in mol.metalist:
-                    if hasattr(met, "coord_sphere"):
-                        formula = labels2formula(met.coord_sphere)
-                        if formula == "N6": keepit = True
-                    else: print("No coord_sphere variable in metal object")
+                for met in mol.metals:
+                    if not hasattr(met, "coord_sphere"): met.get_coord_sphere()
+                    if met.coord_sphere == "N6" and hasattr(met,"charge"): keepit = True
+                    elif met.coord_sphere is None: print("No coord_sphere variable in metal object")
                 if keepit:
-                    ox_state = mol.metalist[0].totcharge
+                    ox_state = mol.metals[0].charge
                     mol.scope_FeNdist, mol.scope_FeNangle = geom_sco_from_xyz(mol.labels, mol.coord)
                     mol.scope_guess_spin = guess_spin_state(int(ox_state), mol.scope_FeNdist[0])
                     self.list_of_molecules.append(mol)
@@ -461,14 +481,15 @@ def create_sco_system(name, cell2mol_path: str, calcs_path: str, sys_path: str="
     newsystem = sco_system(name, cell2mol_path, calcs_path, sys_path)
     if debug > 0: print("Searching crystals in", cell2mol_path)
     crystal_files, crystal_objects, crystal_paths, crystal_names, cif_paths  = find_crystals(name, cell2mol_path, debug=debug)
-    if debug > 0: print("Found", len(crystal_files),"crystals in",cell2mol_path,":")
+    if debug > 0: print("Found", len(crystal_files),"crystals in",cell2mol_path)
     # for each crystal:
     for idx, crys in enumerate(crystal_files):
-        if debug > 0: print(idx, name, crystal_names[idx], crystal_paths[idx])
-        newcrystal = crystal(name, crystal_names[idx], crystal_paths[idx], crystal_objects[idx], sys=newsystem)
+        if debug > 0: print("Crystal",idx, name, crystal_names[idx], crystal_paths[idx]+crystal_files[idx])
+        newcrystal = crystal(name, crystal_names[idx], crystal_paths[idx], crystal_files[idx], sys=newsystem)
+        #newcrystal = crystal(name, crystal_names[idx], crystal_paths[idx], crystal_objects[idx], sys=newsystem)
 
         # Adds coord as variable. Legacy at some point
-        cell_postocoord(newcrystal.cell)
+        #cell_postocoord(newcrystal.cell)
         # Stores reconstructed coordinates as a new coord and label variables. Original ones are stored separately
         #cell_reconstructed_coord(newcrystal.cell)
 
@@ -476,14 +497,15 @@ def create_sco_system(name, cell2mol_path: str, calcs_path: str, sys_path: str="
         newcrystal.get_FeN6_molecules(debug=debug)
         newcrystal.get_spin_and_phase_data(debug=debug)
                             
-        # At the end, it stores the data in the system object
+        # If it worked, at the end it stores the data in the system object
         newsystem.crystals.append(newcrystal)
 
     # Determines Reference HS and LS molecules and crystals, if there are
     if debug > 0: print(len(newsystem.crystals), "crystals in system. Setting reference molecules and crystals")
-    newsystem.set_reference_molecs(debug=debug)
-    newsystem.set_reference_crystals(debug=debug)
-    return newsystem
+    worked1 = newsystem.set_reference_molecs(debug=debug)
+    worked2 = newsystem.set_reference_crystals(debug=debug)
+    if worked1 and worked2: return newsystem
+    else:                   return None
 ##############################
 
 ###################################
