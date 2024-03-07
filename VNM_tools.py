@@ -19,14 +19,15 @@ def vnm_displacement(VNMs: list, initial_coord: list, which: list=[], which_side
     new_coord = initial_coord.copy()    
     if debug >= 1: print("initial coord:", new_coord[0])
     for vnm in VNMs:
-        if vnm.freq < 0.0 and vnm.index in which:
-            if debug >= 1: print("displacing VNM:", vnm.freq_cm)
+        if vnm.index in which:
+            if debug >= 1: print("displacing VNM with frequency:", vnm.freq_cm)
             for idx in range(len(vnm.xs)):
                 vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]])
                 ## The amount of displacement depends on the maxfactor defined by the user
                 ## ... and the freq_factor, which depends on the frequency
                 if   vnm.freq < -20:  freq_factor = 0.1
                 else:                 freq_factor = 0.2
+                if debug >= 1: print(f"using factor={maxfactor*freq_factor}")
                 if which_side.lower() == 'positive': displacement = vector*maxfactor*freq_factor
                 elif which_side.lower() == 'negative': displacement = -vector*maxfactor*freq_factor
                 new_coord[idx] = new_coord[idx]+displacement
