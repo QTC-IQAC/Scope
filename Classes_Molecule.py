@@ -150,10 +150,11 @@ class specie(object):
         if not isinstance(other, type(self)): return self
         return self
 
-    def __repr__(self):
-        to_print  = f'---------------------------------------------------\n'
-        to_print +=  '   >>> SPECIE >>>                                  \n'
-        to_print += f'---------------------------------------------------\n'
+    def __repr__(self, indirect: bool=False):
+        to_print = ''
+        if not indirect: to_print += f'---------------------------------------------------\n'
+        if not indirect: to_print +=  '   >>> SPECIE >>>                                  \n'
+        if not indirect: to_print += f'---------------------------------------------------\n'
         to_print += f' Version               = {self.version}\n'
         to_print += f' Type                  = {self.type}\n'
         if hasattr(self,'subtype'): to_print += f' Sub-Type              = {self.subtype}\n'
@@ -227,6 +228,12 @@ class molecule(specie):
                 self.metals.append(newmetal)
         return self.ligands, self.metals
         
+    def __repr__(self):
+        to_print = f'---------------------------------------------------\n'
+        to_print +=  '   >>> MOLECULE >>>                                \n'
+        to_print += f'---------------------------------------------------\n'
+        to_print += specie.__repr__(self, indirect=True)
+        return to_print
     #def get_metal_adjmatrix(self):
     #    if not hasattr(self,"adjmat"): self.get_adjmatrix() 
     #    if self.adjmat is None: return None, None

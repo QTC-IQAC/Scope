@@ -115,7 +115,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
         if debug > 1: print("---------------------------------------------------")
 
         ## 6-Checks that all requisites and constrains of the job are fulfilled
-        cancontinue = this_job.check_requisites(debug=2)
+        cancontinue = this_job.check_requisites(debug=debug)
         if not cancontinue:
             if debug > 1:   print("EXECUTE_JOB, step 6: requisites NOT met or job already run!")
             continue        # I know if might seem misleading. Here, "continue" means "skip this one"
