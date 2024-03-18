@@ -152,14 +152,19 @@ class sco_system(object):
 
     ##########
     def set_reference_molecs(self, debug: int=0):
+ 
+        print("HERE")
         self.hasLS = False
         self.hasHS = False
 
         pool = []
         ##### All these below could go somewhere else #####
         ### Colects reference molecules from all crystals
+        print(len(self.crystals))
         for crys in self.crystals:
-            if len(crys.list_of_molecules) == 0: crys.get_FeN6_molecules(debug=debug)
+            if len(crys.list_of_molecules) == 0: 
+                print("getting_feN6") 
+                crys.get_FeN6_molecules(debug=debug)
             for mol in crys.list_of_molecules:
                 pool.append(mol)
 
@@ -308,8 +313,9 @@ class sco_system(object):
         to_print += f' Formatted input interpretation of SCO System()\n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' Refcode               = {self.refcode}\n'
-        to_print += f' Cell2mol Path         = {self.cell2mol_path}\n'
-        to_print += f' Scope Path            = {self.calcs_path}\n'
+        to_print += f' Cell Path             = {self.cell2mol_path}\n'
+        to_print += f' Calculations Path     = {self.calcs_path}\n'
+        to_print += f' System Path           = {self.sys_path}\n'
         to_print += f' #Crystals             = {len(self.crystals)}\n'
         to_print += f' #Branches             = {len(self.branches)}\n'
         to_print += f'---------------------------------------------------\n'
@@ -343,17 +349,28 @@ class crystal(object):
         self.cell.coord  = []
         indices          = []
         for mol in self.cell.moleclist:
-            if not hasattr(mol,"atoms"): mol.set_atoms() 
+
+            if not hasattr(mol,"atoms"): 
+                mol.set_atoms() 
+            else:
+                atoms = []
+                for at in mol.atoms:
+                    new_atom = import_atom(at, parent=mol)
+                    atoms.append(new_atom)
+                mol.set_atoms(atomlist=atoms)
+
             for idx, a in enumerate(mol.atoms):
                 self.cell.labels.append(a.label)
                 self.cell.pos.append(a.coord)
                 self.cell.coord.append(a.coord)
-                indices.append(a.index)
-                #indices.append(mol.atlist[idx])
+                if hasattr(a,"parent_index"): indices.append(a.parent_index)
+                elif hasattr(a,"index"):      indices.append(a.index)
+                else:                         indices.append(idx)
+
         ## Below is to order the atoms as in the original cell, using the indices stored in the molecule object
         self.cell.labels = [x for _, x in sorted(zip(indices, self.cell.labels), key=lambda pair: pair[0])]
-        self.cell.pos = [x for _, x in sorted(zip(indices, self.cell.pos), key=lambda pair: pair[0])]
-        self.cell.coord = [x for _, x in sorted(zip(indices, self.cell.coord), key=lambda pair: pair[0])]
+        self.cell.pos    = [x for _, x in sorted(zip(indices, self.cell.pos), key=lambda pair: pair[0])]
+        self.cell.coord  = [x for _, x in sorted(zip(indices, self.cell.coord), key=lambda pair: pair[0])]
         assert len(self.cell.labels) == len(self.cell.pos)
 
     def read_cif_data(self, cifpath: str) -> None:
@@ -369,15 +386,16 @@ class crystal(object):
             if mol.iscomplex:
                 keepit = False
                 for met in mol.metals:
-                    if not hasattr(met, "coord_sphere"): met.get_coord_sphere()
-                    if met.coord_sphere == "N6" and hasattr(met,"charge"): keepit = True
-                    elif met.coord_sphere is None: print("No coord_sphere variable in metal object")
+                    coord_sphere = met.get_coord_sphere_formula(debug=1)
+                    if coord_sphere == "N6" and hasattr(met,"charge"): keepit = True
+                    else: print("No coord_sphere variable in metal object")
                 if keepit:
                     ox_state = mol.metals[0].charge
                     mol.scope_FeNdist, mol.scope_FeNangle = geom_sco_from_xyz(mol.labels, mol.coord)
                     mol.scope_guess_spin = guess_spin_state(int(ox_state), mol.scope_FeNdist[0])
                     self.list_of_molecules.append(mol)
                     if debug > 0: print(f"    GET_FeN6: found {mol.scope_guess_spin} molecule of OS: {ox_state}") 
+        return self.list_of_molecules
 
     def get_spin_and_phase_data(self, debug: int=0):
         self.guess_spins = [] 
@@ -486,7 +504,6 @@ def create_sco_system(name, cell2mol_path: str, calcs_path: str, sys_path: str="
     for idx, crys in enumerate(crystal_files):
         if debug > 0: print("Crystal",idx, name, crystal_names[idx], crystal_paths[idx]+crystal_files[idx])
         newcrystal = crystal(name, crystal_names[idx], crystal_paths[idx], crystal_files[idx], sys=newsystem)
-        #newcrystal = crystal(name, crystal_names[idx], crystal_paths[idx], crystal_objects[idx], sys=newsystem)
 
         # Adds coord as variable. Legacy at some point
         #cell_postocoord(newcrystal.cell)
