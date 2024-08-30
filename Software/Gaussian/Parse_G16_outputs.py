@@ -248,9 +248,9 @@ def parse_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
                         line = lines[l2]
                         atom_idx.append(int(line.split()[0]))
                         atnum.append(int(line.split()[1]))
-                        x.append(float(line.split()[5]))
-                        y.append(float(line.split()[6]))
-                        z.append(float(line.split()[7]))
+                        x.append(float(line.split()[8]))
+                        y.append(float(line.split()[9]))
+                        z.append(float(line.split()[10]))
                     new_vnm.eigenvec(atom_idx, atnum, x, y, z)  
                 
                 vnms.append(new_vnm)
