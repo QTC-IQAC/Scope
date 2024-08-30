@@ -97,8 +97,8 @@ class state(object):
         for b in blocklist:
             mol_labels  = extract_from_list(b, self.labels, dimension=1)
             mol_coords  = extract_from_list(b, self.coord, dimension=1)
-            mol_radii   = extract_from_list(b, self.radii, dimension=1)
-            newmolec    = molecule(mol_labels, mol_coords, radii=mol_radii)
+            #mol_radii   = extract_from_list(b, self.radii, dimension=1)
+            newmolec    = molecule(mol_labels, mol_coords)
             if newmolec.iscomplex: newmolec.split_complex()
             if self._subject.type == "cell": newmolec.get_fractional_coord(cell_vector = self._subject.cellvec)
             self.moleclist.append(newmolec)

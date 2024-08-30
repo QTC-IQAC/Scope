@@ -104,7 +104,7 @@ def get_radii(labels: list) -> np.ndarray:
     return np.array(radii)
 
 ####################################
-def get_adjmatrix(labels: list, pos: list, cov_factor: float, radii="default") -> Tuple[int, list, list]:
+def get_adjmatrix(labels: list, pos: list, cov_factor: float=1.3, radii="default", metal_only: bool=False) -> Tuple[int, list, list]:
     isgood = True 
     clash_threshold = 0.3
     natoms = len(labels)
@@ -130,8 +130,16 @@ def get_adjmatrix(labels: list, pos: list, cov_factor: float, radii="default") -
                     isgood = False # invalid molecule
                     print("Adjacency Matrix: Distance", dist, "smaller than clash for atoms", i, j)
                 elif dist <= thres:
-                    adjmat[i, j] = 1
-                    adjmat[j, i] = 1
+                    if not metal_only:
+                        adjmat[i, j] = 1
+                        adjmat[j, i] = 1
+                    if metal_only:
+                        if (elemdatabase.elementblock[labels[i]] == "d"
+                        or elemdatabase.elementblock[labels[i]] == "f"
+                        or elemdatabase.elementblock[labels[j]] == "d"
+                        or elemdatabase.elementblock[labels[j]] == "f"):
+                            adjmat[i, j] = 1
+                            adjmat[j, i] = 1
 
     # Sums the adjacencies of each atom to obtain "adjnum" 
     for i in range(0, natoms):
