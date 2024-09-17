@@ -204,8 +204,7 @@ class sco_system(object):
 
         # Creates "initial" states:
         if hasattr(self,"HS_ref_mol") and hasattr(self,"LS_ref_mol"): 
-            if self.HS_ref_mol.natoms != self.LS_ref_mol.natoms: 
-                print(f"different number of atoms HS: {self.HS_ref_mol.natoms} vs. LS: {self.LS_ref_mol.natoms}"); return False
+            if self.HS_ref_mol.natoms != self.LS_ref_mol.natoms: print(f"Warning: different number of atoms in molecule; HS: {self.HS_ref_mol.natoms} vs. LS: {self.LS_ref_mol.natoms}");
         if hasattr(self,"HS_ref_mol"):
             HS_ini_state = state(self.HS_ref_mol, "initial")
             HS_ini_state.set_geometry(self.HS_ref_mol.labels, self.HS_ref_mol.coord)
@@ -289,9 +288,8 @@ class sco_system(object):
 
         # Creates "initial" states:
         if hasattr(self,"HS_ref_crys") and hasattr(self,"LS_ref_crys"): 
-            if self.HS_ref_crys.cell.natoms != self.LS_ref_crys.cell.natoms:
-                print(f"different number of atoms HS: {self.HS_ref_crys.cell.natoms} vs. LS: {self.LS_ref_crys.cell.natoms}"); return False
-
+            if self.HS_ref_crys.cell.natoms != self.LS_ref_crys.cell.natoms: 
+                print(f"Warning: different number of atoms in crystal; HS: {self.HS_ref_crys.cell.natoms} vs. LS: {self.LS_ref_crys.cell.natoms}")
         if hasattr(self,"HS_ref_crys"):
             HS_ini_state = state(self.HS_ref_crys.cell, "initial")
             #if len(self.HS_ref_crys.cell.labels) > 0:

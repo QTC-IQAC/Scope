@@ -14,6 +14,7 @@ def getangle(v1, v2):
 def geom_sco_from_xyz(labels, pos, debug=0):   
     #Computes Structural Variables for all Fe atoms of a given structure
     #Returns two lists, one for FeN and another for NFeN, with all values.
+    # NFeN is basically Epsylon in eq. 1 of Halcrow's Chem. Soc. Rev., 2011,40, 4119-4142
     
     #Computes Fe-N distances and vectors
     alldist = []
@@ -61,6 +62,8 @@ def geom_sco_from_xyz(labels, pos, debug=0):
                         angle = getangle(v1, v2)*180.0/3.141592 
                         if angle < 120.0 and angle > 60.0: 
                             NFeN_angles.append(angle)
+                        else: 
+                            if debug >= 1: print("Angle between N atoms",idx,"and",jdx,"discarded")
             AvNFeN_angle = np.mean(NFeN_angles)
             
             alldist.append(AvFeN)
