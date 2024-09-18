@@ -49,6 +49,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
     gmol = comp._job._recipe.subject
 
     ## 1-Change some variable names to simplify calls
+    if not hasattr(environment,"PP_Library"): f"PP_Library could not be found. Please set it in the environment"
     PP_Library = environment.PP_Library
     cluster    = environment.cluster
 
@@ -259,6 +260,7 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
 
     cluster = queue._environment.cluster
     user    = queue._environment.user
+    group   = queue._environment.group
 
     if 'portal' in cluster:
         with open(comp.sub_path, 'w+') as sub:
@@ -288,7 +290,7 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
             print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
             os.chmod(comp.sub_path, 0o777)
 
-    elif 'login' in cluster or 'csuc' in cluster:
+    elif ('login' in cluster or 'csuc' in cluster) and group == 'ucsscms':
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
             print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
@@ -339,6 +341,31 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
             print(f"cp -i $JOBDIR/{comp.inp_name} .", file=sub)
             print(f"timeout 71h srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
             print(f"cp -pr {comp.out_name} $JOBDIR/", file=sub)
+            os.chmod(comp.sub_path, 0o777)
+
+    ## Cesga
+    elif 'login' in cluster and group == 'csic':
+        with open(comp.sub_path, 'w+') as sub:
+            print(f"#!/bin/bash", file=sub)
+            print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
+            print(f"#SBATCH -e /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
+            print(f"#SBATCH -o /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
+            print(f"#SBATCH -p {queue.name}", file=sub)
+            print(f"#SBATCH --nodes=1", file=sub)
+            print(f"#SBATCH --ntasks={procs}", file=sub)
+            print(f"#SBATCH --time=10-0", file=sub)
+            print(f"#SBATCH -x pirineus", file=sub)
+            print(f"", file=sub)
+            print(f"module load quantumespresso/6.5", file=sub)
+            print(f"", file=sub)
+            print(f"set OMP_NUM_THREADS=1", file=sub)
+            print(f"ulimit -l unlimited", file=sub)
+            print(f"", file=sub)
+            print(f"WORKDIR=$PWD", file=sub)
+            print(f"cd $TMPDIR", file=sub)
+            print(f"cp $WORKDIR/{comp.inp_name} .", file=sub)
+            print(f"srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
+            print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
             os.chmod(comp.sub_path, 0o777)
 
     else: print("WRITE_QE_INPUTS: Cluster not recognized")
