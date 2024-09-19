@@ -2,7 +2,7 @@ import numpy as np
 from Scope.Adapted_from_cell2mol import * 
 from Scope.Other import get_metal_idxs
 from Scope.Unit_cell_tools import * 
-#from Scope.Reconstruct import * 
+#from Scope.Reconstruct import * #error when loading here 
 
 ################################
 ####  BASIS FOR CELL2MOL 2  ####
