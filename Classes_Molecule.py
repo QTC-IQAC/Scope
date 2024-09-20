@@ -173,9 +173,9 @@ class specie(object):
 
     def check_fragmentation(self, cov_factor: float=1.3, metal_factor: float=None, debug: int=0):
         blocklist = split_species(self.labels, self.coord, cov_factor=cov_factor)
-        if len(blocklist) > 1: self.fragmented == True
-        else:                  self.fragmented == False
-        return self.fragmented
+        if len(blocklist) > 1: self.isfragmented == True
+        else:                  self.isfragmented == False
+        return self.isfragmented
 
     def print_xyz(self):
         print(self.natoms)
