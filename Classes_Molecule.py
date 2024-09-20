@@ -171,6 +171,12 @@ class specie(object):
     def magnetism(self, spin: int) -> None:
         self.spin = spin
 
+    def check_fragmentation(self, cov_factor: float=1.3, metal_factor: float=None, debug: int=0):
+        blocklist = split_species(self.labels, self.coord, cov_factor=cov_factor)
+        if len(blocklist) > 1: self.fragmented == True
+        else:                  self.fragmented == False
+        return self.fragmented
+
     def print_xyz(self):
         print(self.natoms)
         print("")
