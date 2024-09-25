@@ -206,6 +206,8 @@ class job(object):
                     exists, displ_state = find_state(gmol, "displaced")          # Checks if state already exists
                     if not exists: displ_state = state(gmol, "displaced")        # If not, creates it
                     displ_state.set_geometry(initial_state.labels, disp_coord)   # Creates New State with Displaced Coordinates 
+                    if hasattr(initial_state,"cellvec"): 
+                        displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
 
                     ## 2-Initial State of the Computation must be updated, to account for the displacement of geometries
                     exists, comp = self.find_computation()
@@ -221,23 +223,33 @@ class job(object):
         ## 3- Setup for finite Differences
         #####################
         elif self.setup == "findiff": 
-            initial_state = find_state(gmol, self.istate)
+            print(f"SET COMPUTATIONS FROM SETUP: findiff selected")
+            found, initial_state = find_state(gmol, self.istate)
+            if not found: print(f"SET COMPUTATIONS FROM SETUP: initial state not found")
+            else:
+                if hasattr(initial_state,"coord"):
+                    from Scope.Findiff import findiff_displacements
+                    findiff_path = self.path+"findiff"
+                    if not os.path.isdir(findiff_path): os.makedirs(findiff_path); print(f"SET COMPUTATIONS FROM SETUP: findiff folder created")
+                    geoms, names = findiff_displacements(initial_state.coord)
 
-            if hasattr(initial_state,"coord"):
-                from Scope.Findiff import findiff_displacements
-                findiff_path = self.path+"findiff"
-                geoms, names = findiff_displacements(initial_state.coord, debug=debug)
-                for idx, geo in enumerate(geoms):
-                    assert len(geo) == len(initial_state.labels)
-                    exists, displ_state = find_state(gmol, names[idx])          # Checks if state already exists
-                    if not exists: displ_state = state(gmol, names[idx])        # If not, creates it
-                    displ_state.set_geometry(initial_state.labels, geo)         # Creates New State with Displaced Coordinates 
+                    for idx, geo in enumerate(geoms):
+                        assert len(geo) == len(initial_state.labels)
+                        exists, displ_state = find_state(gmol, names[idx])          # Checks if state already exists
+                        if not exists: displ_state = state(gmol, names[idx])        # If not, creates it
+                        displ_state.set_geometry(initial_state.labels, geo)         # Creates New State with Displaced Coordinates 
 
-                    # Initial State of the Computation must be updated, to account for the displacement of geometries
-                    exists, comp = self.find_computation(keyword=names[idx])
-                    if not exists: comp = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
-                    comp.qc_data._add_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
-                    comp.qc_data._add_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
+                        if hasattr(initial_state,"cellvec"): 
+                            displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
+    
+                        # Initial State of the Computation must be updated, to account for the displacement of geometries
+                        exists, comp = self.find_computation(keyword=names[idx])
+                        if not exists: comp = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
+                        comp.qc_data._add_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
+                        comp.qc_data._add_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
+                else: 
+                    print("SET COMPUTATIONS FROM SETUP: ERROR! initial_state for findiff does not have coordinates")
+                    print(initial_state)
 
         else: pass
 

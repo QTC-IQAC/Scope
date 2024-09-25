@@ -6,6 +6,7 @@ speed_light=299792458             ## meter/second
 planck_hs=1.5198300452227972e-16  ## hartree/second
 planck_Js=6.626076e-34            ## J/second == Kg·m2/second
 bohr2angs = 0.529177
+angs2bohr = 1/bohr2angs
 #################
 
 ### Conversion Factor. Always to be applied as multiplications

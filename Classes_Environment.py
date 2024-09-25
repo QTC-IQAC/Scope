@@ -610,6 +610,9 @@ class environment(object):
         else:
             print(f"Cluster {self.cluster} not recognized")
 
+        if not hasattr(self,"scope_home_path"): self.scope_home_path = str(input("Please Specify Scope Home Path: "))
+        if self.scope_home_path[-1]   != '/': self.scope_home_path += '/'
+
         keyword = "4-Merged/"
         if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.cell2mol_path = self.scope_home_path+keyword
         elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.cell2mol_path = self.scope_scratch_path+keyword

@@ -1,29 +1,41 @@
+from Scope import Constants
+
 def apply_coord_displacement(coord, atom, axis, displacement: float=0.01, units: str='angstrom'):
     mod_coord = coord.copy()
     if units == 'angstrom':    mod_coord[atom][axis] += displacement
-    elif units == 'bohr':      mod_coord[atom][axis] += displacement*bohr2angs
-    else: print("APPLY COORD DISPLACEMENT: could not understand the specified units"); return None
+    elif units == 'bohr':      mod_coord[atom][axis] += displacement*Constants.bohr2angs
+    else: print(f"FINDIFF: APPLY COORD DISPLACEMENT: could not understand the specified {units=}"); return None
     return mod_coord
 
 def get_central_difference(f1, f2, displacement: float=0.01, units: str='angstrom', debug: int=0):
     assert np.shape(f1) == np.shape(f2)    
     if units == 'angstrom': pass
-    elif units == 'bohr':   displacement = displacement * bohr2angs
-    else: print("GET CENTRAL: could not understand the specified units"); return None
+    elif units == 'bohr':   displacement = displacement*bohr2angs
+    else: print("FINDIFF: GET CENTRAL: could not understand the specified units"); return None
     cdiff = ( f1 - f2 ) / (2.0 * displacement)
     return cdiff
 
-def findiff_displacements(coord, displacement: float=0.01, units: str='angstrom'):
+def findiff_displacements(coord, units: str='angstrom'):
+#def findiff_displacements(coord, displacement: float=0.01, units: str='angstrom'):
+#    if displacement != 0.01: print("FINDIFF_DISPLACEMENTS: Warning, displacement != 0.01 is not implemented for the hessian evaluation")
+    displacement = float(0.01)
+    if    units.lower() == 'angstrom': pass
+    elif  units.lower() == 'bohr':
+        for idx, at in enumerate(coord):
+            for jdx, axis in enumerate(at):
+                coord[idx,jdx] = coord[idx,jdx]*Constants.bohr2angs
+    else: print(f"FINDIFF_DISPLACEMENT: could not understand the specified {units=}"); return None
+                
     geoms = []
     names = []
     for idx, atom_coord in enumerate(coord):
         for jdx, axis in enumerate(atom_coord):
             ## Positive_Displacement
             geoms.append(apply_coord_displacement(coord, idx, jdx, displacement, units))
-            names.append("_"+idx+"_"+jdx+"_pos")
+            names.append("_"+str(idx)+"_"+str(jdx)+"_pos")
             ## Negative_Displacement
             geoms.append(apply_coord_displacement(coord, idx, jdx, -displacement, units))
-            names.append("_"+idx+"_"+jdx+"_neg")
+            names.append("_"+str(idx)+"_"+str(jdx)+"_neg")
     return geoms, names
 
 def mass_weight_hessian(hessian, masses, debug: int=0):
