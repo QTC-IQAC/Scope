@@ -643,6 +643,13 @@ class environment(object):
         to_print += f' User                  = {self.user}\n'
         to_print += f' Group                 = {self.group}\n'
         to_print += f'\n'
+        if hasattr(self,"scope_home_path"):  
+            to_print += f' Paths:\n'
+            to_print += f'     Scope Main       = {self.scope_home_path}\n'
+            to_print += f'     Cell2mol         = {self.cell2mol_path}\n'
+            to_print += f'     Computations     = {self.calcs_path}\n'
+            to_print += f'     Systems          = {self.sys_path}\n'
+            to_print += f'\n'
         to_print += f' Queue System          = {self.management_type}\n'
         if hasattr(self,"method"): to_print += f' Method of Queue Sel   = {self.method}\n'
         if hasattr(self,"filepath"): to_print += f' Path of saved file    = {self.filepath}\n'
