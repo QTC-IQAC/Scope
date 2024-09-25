@@ -153,7 +153,7 @@ class sco_system(object):
     ##########
     def set_reference_molecs(self, debug: int=0):
  
-        print("HERE")
+        if debug > 0: print("Setting Reference Molecules")
         self.hasLS = False
         self.hasHS = False
 
@@ -163,9 +163,11 @@ class sco_system(object):
         print(len(self.crystals))
         for crys in self.crystals:
             if len(crys.list_of_molecules) == 0: 
-                print("getting_feN6") 
+                if debug > 0: print("Setting Reference Molecules; getting_feN6") 
                 crys.get_FeN6_molecules(debug=debug)
             for mol in crys.list_of_molecules:
+                #mol.check_fragmentation()
+                #if not mol.isfragmented: pool.append(mol)
                 pool.append(mol)
 
         ### Selects reference molecules
@@ -200,7 +202,7 @@ class sco_system(object):
                 self.LS_ref_mol._sys = self   #Duplicate to avoid crashes
                 if debug > 0: print(f"LS reference molecule assumed")
 
-        else: print("Empty pool of reference molecules")
+        else: print("Empty pool of reference molecules"); return False
 
         # Creates "initial" states:
         if hasattr(self,"HS_ref_mol") and hasattr(self,"LS_ref_mol"): 

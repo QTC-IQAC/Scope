@@ -263,9 +263,10 @@ def find_state(subject: object, search_name: str, debug: int=0):
         for idx, sta in enumerate(subject.states):
             if sta.name == search_name: 
                 found = True
-                if debug >= 1: print("FIND STATE: state found")
+                if debug >= 1: print(f"FIND STATE: state {search_name} found")
                 return True, sta
         if not found: 
+            if debug >= 1: print(f"FIND STATE: state {search_name} not found")
             return False, None
 
 

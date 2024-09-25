@@ -1,7 +1,8 @@
 from Scope import Constants
+from copy import deepcopy
 
-def apply_coord_displacement(coord, atom, axis, displacement: float=0.01, units: str='angstrom'):
-    mod_coord = coord.copy()
+def apply_coord_displacement(coord, atom: int, axis: int, displacement: float=0.01, units: str='angstrom'):
+    mod_coord = deepcopy(coord)
     if units == 'angstrom':    mod_coord[atom][axis] += displacement
     elif units == 'bohr':      mod_coord[atom][axis] += displacement*Constants.bohr2angs
     else: print(f"FINDIFF: APPLY COORD DISPLACEMENT: could not understand the specified {units=}"); return None
@@ -16,16 +17,7 @@ def get_central_difference(f1, f2, displacement: float=0.01, units: str='angstro
     return cdiff
 
 def findiff_displacements(coord, units: str='angstrom'):
-#def findiff_displacements(coord, displacement: float=0.01, units: str='angstrom'):
-#    if displacement != 0.01: print("FINDIFF_DISPLACEMENTS: Warning, displacement != 0.01 is not implemented for the hessian evaluation")
     displacement = float(0.01)
-    if    units.lower() == 'angstrom': pass
-    elif  units.lower() == 'bohr':
-        for idx, at in enumerate(coord):
-            for jdx, axis in enumerate(at):
-                coord[idx,jdx] = coord[idx,jdx]*Constants.bohr2angs
-    else: print(f"FINDIFF_DISPLACEMENT: could not understand the specified {units=}"); return None
-                
     geoms = []
     names = []
     for idx, atom_coord in enumerate(coord):
@@ -37,6 +29,7 @@ def findiff_displacements(coord, units: str='angstrom'):
             geoms.append(apply_coord_displacement(coord, idx, jdx, -displacement, units))
             names.append("_"+str(idx)+"_"+str(jdx)+"_neg")
     return geoms, names
+
 
 def mass_weight_hessian(hessian, masses, debug: int=0):
     assert np.shape(hessian)[0] == 3*len(masses)
