@@ -236,17 +236,16 @@ class job(object):
                     for idx, geo in enumerate(geoms):
                         assert len(geo) == len(initial_state.labels)
                         exists, displ_state = find_state(gmol, names[idx])          # Checks if state already exists
-                        if not exists: displ_state = state(gmol, names[idx])        # If not, creates it
+                        if not exists: displ_state = state(gmol, names[idx])        # If not, creates it and adds it to gmol
                         displ_state.set_geometry(initial_state.labels, geo)         # Creates New State with Displaced Coordinates 
-
-                        if hasattr(initial_state,"cellvec"): 
-                            displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
+                        if hasattr(initial_state,"cellvec"): displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
     
                         # Initial State of the Computation must be updated, to account for the displacement of geometries
-                        exists, comp = self.find_computation(keyword=names[idx])
-                        if not exists: comp = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
-                        comp.qc_data._add_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
-                        comp.qc_data._add_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
+                        exists, new_comp = self.find_computation(keyword=names[idx])
+                        if not exists: new_comp = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
+                        new_comp.qc_data = deepcopy(comp.qc_data)
+                        new_comp.qc_data._mod_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
+                        new_comp.qc_data._mod_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
                 else: 
                     print("SET COMPUTATIONS FROM SETUP: ERROR! initial_state for findiff does not have coordinates")
                     print(initial_state)
