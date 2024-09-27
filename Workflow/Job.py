@@ -47,13 +47,16 @@ class job(object):
         old_job_data    = self.job_data 
         if new_job_data != old_job_data: 
             print(f"CHECK_INPUT: identified changes in job_data for job.keyword={self.keyword}")
-            self.update_job_data(new_job_data) 
+            self.update_job_data(old_job_data, new_job_data) 
             new_qc_data    = set_qc_data(job_path, section="&qc_data" , debug=0)
             for comp in self.computations:
                 comp.check_input(job_path=job_path, debug=debug)
+            return True
+        return False
 
-    def update_job_data(self, new_job_data, debug: int=0):
+    def update_job_data(self, old_job_data, new_job_data, debug: int=0):
         self.job_data         = new_job_data
+        self.job_data        += old_job_data
         self.keyword          = new_job_data.keyword.lower()
         self.suffix           = new_job_data.suffix
         self.requisites       = new_job_data.requisites
@@ -229,7 +232,7 @@ class job(object):
             else:
                 if hasattr(initial_state,"coord"):
                     from Scope.Findiff import findiff_displacements
-                    findiff_path = self.path+"findiff"
+                    findiff_path = self.path+"findiff_70"
                     if not os.path.isdir(findiff_path): os.makedirs(findiff_path); print(f"SET COMPUTATIONS FROM SETUP: findiff folder created")
                     geoms, names = findiff_displacements(initial_state.coord)
 
@@ -243,7 +246,7 @@ class job(object):
                         # Initial State of the Computation must be updated, to account for the displacement of geometries
                         exists, new_comp = self.find_computation(keyword=names[idx])
                         if not exists: new_comp = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
-                        new_comp.qc_data = deepcopy(comp.qc_data)
+                        new_comp.qc_data = deepcopy(new_comp.qc_data)
                         new_comp.qc_data._mod_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
                         new_comp.qc_data._mod_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
                 else: 

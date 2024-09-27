@@ -181,7 +181,7 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"is_hubbard"):    data._add_attr("is_hubbard", False)
         if not hasattr(data,"is_grimme"):     data._add_attr("is_grimme", False)
         if not hasattr(data,"uterm"): 
-            if data.is_hubbard:               data._add_attr("uterm", float(2.27))
+            if data.is_hubbard:               data._add_attr("uterm", float(2.35)) ## Was 2.27 for some reason
             else:                             data._add_attr("uterm", None)
         if not hasattr(data,"print_forces"):  data._add_attr("print_forces", False)
         if not hasattr(data,"cutoff"): 

@@ -258,6 +258,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
 ###################################################
 def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", version: str="6.4.1"): 
 
+    version = str(version)
     cluster = queue._environment.cluster
     user    = queue._environment.user
     group   = queue._environment.group
@@ -302,7 +303,9 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
             print(f"#SBATCH --time=10-0", file=sub)
             print(f"#SBATCH -x pirineus", file=sub)
             print(f"", file=sub)
-            print(f"module load apps/quantumespresso/6.4.1", file=sub)
+            if   version == "6.4.1": print(f"module load apps/quantumespresso/6.4.1", file=sub)
+            elif version == "7.0":   print(f"module load quantumespresso/7.0", file=sub)
+            else:                    print(f"UNKNOWN VERSION",version)
             print(f"", file=sub)
             print(f"set OMP_NUM_THREADS=1", file=sub)
             print(f"ulimit -l unlimited", file=sub)
