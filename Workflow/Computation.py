@@ -68,13 +68,17 @@ class computation(object):
     def check_input(self, job_path: str, debug: int=0):
         from Scope.Classes_Input import set_qc_data
         new_qc_data  = set_qc_data(job_path, section="&qc_data" , debug=0)
-        old_qc_data  = self.qc_data 
+        old_qc_data  = deepcopy(self.qc_data)
         if new_qc_data != old_qc_data: 
-            self.update_qc_data(new_qc_data) 
+            self.update_qc_data(old_qc_data, new_qc_data) 
+            return True
+        return False
 
-    def update_qc_data(self, new_qc_data, debug: int=0):
+    def update_qc_data(self, old_qc_data, new_qc_data, debug: int=0):
         self.qc_data          = new_qc_data
         self.software         = new_qc_data.software
+        self.qc_data         += old_qc_data
+        return self.qc_data
 
     def set_run_number(self, debug: int=1) -> int:
         run_number = 0
@@ -199,7 +203,7 @@ class computation(object):
         if options.want_submit: sent_procs, sent_jobs = environment.get_user_requested(debug=debug)
         else:                   sent_procs = 0; sent_jobs = 0
         if sent_procs >= environment.max_procs or sent_jobs >= environment.max_jobs:
-            if debug > 0: print(f"    Over maximum jobs OR cores reached")
+            if debug > 0: print(f"    Over maximum jobs/cores reached")
             return None
 
         ## 1-Gets Resources
@@ -216,7 +220,10 @@ class computation(object):
                 elif self.software == 'qe': gen_QE_input(self, environment, debug=0)
             if not self.subfile_exists or options.overwrite_inputs:
                 if self.software == 'g16':  gen_G16_subfile(self, queue=askqueue, procs=askprocs)
-                elif self.software == 'qe': gen_QE_subfile(self, queue=askqueue, procs=askprocs)
+                elif self.software == 'qe': 
+                    print(f"here with {self.qc_data=}")
+                    if hasattr(self.qc_data,"version"): gen_QE_subfile(self, queue=askqueue, procs=askprocs, version=self.qc_data.version)
+                    else:                               gen_QE_subfile(self, queue=askqueue, procs=askprocs)
 
         ## 2-If output exists, prompts for registration
         if self.output_exists and not self.isregistered:

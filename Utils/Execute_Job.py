@@ -39,6 +39,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
     job_data         = set_job_data(job_path, section="&job_data"           , debug=0)
     qc_data          = set_qc_data(job_path, section="&qc_data"             , debug=0)
 
+    print("1-here with qc_data:", qc_data)
     #### 2a-Enrich Environment with User Choices:
     global_env.read_local_environment(job_path, debug=0)
 
@@ -107,8 +108,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
         ## 5.1 If job does not exist, creates the job
         if not exists: this_job = recipe.add_job(job_data); updated = True
         ## 5.2 If job exists, it checks for input changes (also in qc_data for the computations)
-        else:
-            this_job.check_input(job_path=job_path, debug=debug)
+        else: this_job.check_input(job_path=job_path, debug=debug)
 
         if debug > 1: print("---------------------------------------------------")
         if debug > 1: print(f"EXECUTE_JOB, step 5: job {this_job.keyword} loaded")
@@ -130,6 +130,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
         if debug > 1: print("EXECUTE_JOB, step 7: computations set:")
 
         for jdx, comp in enumerate(this_job.computations):
+            comp.check_input(job_path=job_path, debug=debug)
 
             #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
             if debug > 1: print("")
@@ -153,7 +154,9 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                     if debug > 1: print("EXECUTE_JOB, step 7.3a: checking submission status: isrunning=",comp.isrunning)
                     if debug > 1: print("EXECUTE_JOB, step 7.3a: initial state is", comp.qc_data.istate)
                     if debug > 1: print("EXECUTE_JOB, step 7.3a: is_update:", comp.is_update)
-                    if not comp.isrunning:        comp.run(global_env, options, debug=debug); updated = True
+                    if not comp.isrunning:        
+                        comp.check_input(job_path=job_path, debug=debug)
+                        comp.run(global_env, options, debug=debug); updated = True
                 else: 
                     if debug > 1: print("EXECUTE_JOB, step 7.3a: want_submit is False")
             elif comp.output_exists and not comp.input_exists:  
