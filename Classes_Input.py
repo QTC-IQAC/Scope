@@ -136,6 +136,7 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"target"):        print("WARNING: job_data is missing target"); exit() 
     if not hasattr(data,"hierarchy"):     print("WARNING: job_data is missing hierarchy"); exit() 
     if not hasattr(data,"suffix"):        data._add_attr("suffix", str(data.hierarchy))
+    #if not hasattr(data,"keyword"):       data._add_attr("keyword", str("scf"))  ## In case I implement the available_keywords below
     if not hasattr(data,"keyword"):       data._add_attr("keyword", str(data.suffix))
     if not hasattr(data,"istate"):        data._add_attr("istate", str("initial"))
     if not hasattr(data,"fstate"):        data._add_attr("fstate", str(data.suffix))
@@ -149,6 +150,12 @@ def fill_job_data(data: object, debug: int=0):
     data._mod_attr("keyword",str(data.keyword.lower().replace("-","_").replace(" ","_")))
     data._mod_attr("istate",str(data.istate.lower().replace("-","_").replace(" ","_")))
     data._mod_attr("fstate",str(data.fstate.lower().replace("-","_").replace(" ","_")))
+
+   # available_keywords = ["opt", "relax", "freq", "scf", "vc-relax"]
+   # if data.keyword not in available_keywords:
+   #     print("----------------------------------")
+   #     print("WARNING: job_keyword not available")
+   #     print("----------------------------------"); exit() 
 
     ## Modifies the list of requisites and constrains to avoid blanks and dashes
     tmp_req = []

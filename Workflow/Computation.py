@@ -32,6 +32,7 @@ class computation(object):
         self.has_update       = False
         self.is_update        = is_update
         self.states           = []
+        self.set_paths()
 
         ############
         ### SPIN ###
@@ -43,23 +44,28 @@ class computation(object):
         if not hasattr(self.qc_data,"spin"): self.spin             = self._job._recipe.subject.spin
         else:                                self.spin             = qc_data.spin
         self.spin_config = get_spin_config(self._job._recipe.subject, self.spin, debug=debug)
-        self.suffix           = str("_"+str(_job.suffix)+"_r"+str(self.run_number)+"_"+str(self.spin)+str(self.keyword))
+
+    def set_file_extension(self):
+        if self.software == 'g16':
+            inp = ".com"
+            out = ".log"
+        if self.software == 'qe':
+            inp = ".input"
+            out = ".out"
+        sub = ".sub"
+        return inp, out, sub
+ 
+    def set_paths(self):
+        if not hasattr(self,"run_number"): self.set_run_number() 
+        inp, out, sup = set_file_extension()
 
         if self.path[-1] != '/': self.path += '/'
-
-        # Filenames depend on Software
-        if self.software == 'g16':
-            inp_extension = ".com"
-            out_extension = ".log"
-        if self.software == 'qe':
-            inp_extension = ".input"
-            out_extension = ".out"
-        sub_extension = ".sub"
+        self.suffix      = str("_"+str(_job.suffix)+"_r"+str(rn)+"_"+str(self.spin)+str(self.keyword))
 
         # Filenames
-        self.inp_name = ''.join([self.refcode,self.suffix,inp_extension])
-        self.out_name = ''.join([self.refcode,self.suffix,out_extension])
-        self.sub_name = ''.join([self.refcode,self.suffix,sub_extension])
+        self.inp_name = ''.join([self.refcode,self.suffix,inp])
+        self.out_name = ''.join([self.refcode,self.suffix,out])
+        self.sub_name = ''.join([self.refcode,self.suffix,sub])
         # Paths
         self.inp_path = self.path+self.inp_name
         self.out_path = self.path+self.out_name
@@ -79,6 +85,27 @@ class computation(object):
         self.software         = new_qc_data.software
         self.qc_data         += old_qc_data
         return self.qc_data
+
+    def check_updates(self, debug: int=1) -> int:
+        ## Checks for updates in the computation, but only if ever the computation has been recognised.
+        ## If only the file exists, it is not detected
+        self.has_update = False
+        for idx, comp in enumerate(self._job.computations):  ## Searches in the job it is contained
+            if comp.keyword == self.keyword and hasattr(comp,"run_number"):
+                if comp.run_number > self.run_number: self.has_update = True
+
+        ## Checks for newer files in folder
+        if not self.has_update:
+            inp, out, sup = set_file_extension()
+            for rn in range(self.run_number, 11):
+                if not self.has_update:
+                    search = str("_"+str(_job.suffix)+"_r"+str(rn)+"_"+str(self.spin)+str(self.keyword))
+                    search_inp = ''.join([self.path,self.refcode,search,inp])
+                    search_out = ''.join([self.path,self.refcode,search,out])
+                    inp_exists = os.path.isfile(search_inp)
+                    out_exists = os.path.isfile(search_out)
+                    if out_exists: self.has_update = True
+        return self.has_update
 
     def set_run_number(self, debug: int=1) -> int:
         run_number = 0

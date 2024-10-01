@@ -131,6 +131,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
 
         for jdx, comp in enumerate(this_job.computations):
             comp.check_input(job_path=job_path, debug=debug)
+            comp.check_updates()
 
             #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
             if debug > 1: print("")
@@ -144,32 +145,34 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
             if debug > 1: print("EXECUTE_JOB, step 7.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
             if debug > 1: print("EXECUTE_JOB, step 7.1: out_file:", comp.out_path)
             if debug > 1: print("EXECUTE_JOB, step 7.1: is_update:", comp.is_update)
+            if debug > 1: print("EXECUTE_JOB, step 7.1: has_update:", comp.has_update)
             if debug > 1: print("EXECUTE_JOB, step 7.1: checking files [inp, out, sub]:", comp.input_exists, comp.output_exists, comp.subfile_exists)
             #if debug > 1: print("-----------------------------------------------------------------------------------")
 
             ## 8.2-Evaluates Submission
-            if not comp.output_exists: # and comp.input_exists:
-                if options.want_submit:
+            if not comp.output_exists:
+                if options.want_submit and not comp.has_update:
                     comp.check_submission_status(global_env, debug=debug)
                     if debug > 1: print("EXECUTE_JOB, step 7.3a: checking submission status: isrunning=",comp.isrunning)
                     if debug > 1: print("EXECUTE_JOB, step 7.3a: initial state is", comp.qc_data.istate)
-                    if debug > 1: print("EXECUTE_JOB, step 7.3a: is_update:", comp.is_update)
                     if not comp.isrunning:        
                         comp.check_input(job_path=job_path, debug=debug)
                         comp.run(global_env, options, debug=debug); updated = True
                 else: 
                     if debug > 1: print("EXECUTE_JOB, step 7.3a: want_submit is False")
+
             elif comp.output_exists and not comp.input_exists:  
                 report += f"Investigate {comp.out_path} \n"
                 print(f"Investigate {comp.out_path}")
-            else:
+
+            elif comp.output_exists and comp.input_exists:
                 ## 8.3-If output exists, and is not registered, it does it
                 if not comp.isregistered:
                     worked = comp.register(debug=debug)
 
                     # If registration fails, either...
                     ## 8.4 sets continuation computations. These are added to JOB object 
-                    if comp.status == 'no_scf_convergence':
+                    if comp.status == 'no_scf_convergence' and not comp.has_update:
                     #if comp.isregistered and comp.status == 'scf_convergence':
                         new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
                         if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
@@ -178,7 +181,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                         if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
 
                         # Checks for newer computations of the same kind. If they already exist, no message is printed since it is considered outdated
-                    if not worked:
+                    if not worked and not comp.has_update:
                         if handle_errors:          # ...takes default action 
                             comp.read_lines()
                             if len(comp.output_lines) > 0: comp.store(debug=debug)  # Creates Copy of output 
@@ -186,7 +189,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                             report += f"Errors handled for {comp.out_path}. Please Re-Submit \n"
                             print(f"Errors handled for {comp.out_path}")
                         else:
-                            report += f"Error registering {comp.out_path}. Please Re-Submit \n"
+                            report += f"Error registering {comp.out_path} . Please Re-Submit \n"
                             print(f"Error registering {comp.out_path}")
                     updated = True
 
