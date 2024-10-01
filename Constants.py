@@ -13,6 +13,7 @@ angs2bohr = 1/bohr2angs
 
 har2kJmol=2625.5002
 har2cm=219474.6
+har2eV=27.211399
 eV2har=0.03674930495
 cm2har=0.000004556335281
 ry2har=0.5
