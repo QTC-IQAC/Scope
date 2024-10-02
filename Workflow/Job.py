@@ -249,6 +249,7 @@ class job(object):
                         new_comp.qc_data = deepcopy(new_comp.qc_data)
                         new_comp.qc_data._mod_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
                         new_comp.qc_data._mod_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
+                        new_comp.qc_data._mod_attr("print_forces",True) ## Updates the initial state of the computation, so it takes the displaced geometries
                 else: 
                     print("SET COMPUTATIONS FROM SETUP: ERROR! initial_state for findiff does not have coordinates")
                     print(initial_state)

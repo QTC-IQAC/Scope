@@ -32,7 +32,6 @@ class computation(object):
         self.has_update       = False
         self.is_update        = is_update
         self.states           = []
-        self.set_paths()
 
         ############
         ### SPIN ###
@@ -44,6 +43,11 @@ class computation(object):
         if not hasattr(self.qc_data,"spin"): self.spin             = self._job._recipe.subject.spin
         else:                                self.spin             = qc_data.spin
         self.spin_config = get_spin_config(self._job._recipe.subject, self.spin, debug=debug)
+
+        #############
+        ### PATHS ###
+        #############
+        self.set_paths()
 
     def set_file_extension(self):
         if self.software == 'g16':
@@ -57,10 +61,10 @@ class computation(object):
  
     def set_paths(self):
         if not hasattr(self,"run_number"): self.set_run_number() 
-        inp, out, sup = set_file_extension()
+        inp, out, sub = self.set_file_extension()
 
         if self.path[-1] != '/': self.path += '/'
-        self.suffix      = str("_"+str(_job.suffix)+"_r"+str(rn)+"_"+str(self.spin)+str(self.keyword))
+        self.suffix      = str("_"+str(self._job.suffix)+"_r"+str(self.run_number)+"_"+str(self.spin)+str(self.keyword))
 
         # Filenames
         self.inp_name = ''.join([self.refcode,self.suffix,inp])
@@ -96,10 +100,10 @@ class computation(object):
 
         ## Checks for newer files in folder
         if not self.has_update:
-            inp, out, sup = set_file_extension()
+            inp, out, sub = self.set_file_extension()
             for rn in range(self.run_number, 11):
                 if not self.has_update:
-                    search = str("_"+str(_job.suffix)+"_r"+str(rn)+"_"+str(self.spin)+str(self.keyword))
+                    search = str("_"+str(self._job.suffix)+"_r"+str(rn)+"_"+str(self.spin)+str(self.keyword))
                     search_inp = ''.join([self.path,self.refcode,search,inp])
                     search_out = ''.join([self.path,self.refcode,search,out])
                     inp_exists = os.path.isfile(search_inp)
