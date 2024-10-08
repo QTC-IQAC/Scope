@@ -267,15 +267,20 @@ class job(object):
         if exists:
             print("Set_Continuation_Comp: Continuation Computation exists")
             return new_comp
-        else:
-            if debug > 1: print("Set_Continuation_Comp: Creating new computation to continue job. Type:", typ, "Path:", comp.path)
+
+        if debug > 1: print("Set_Continuation_Comp: Creating new computation to continue job. Type:", typ, "Path:", comp.path)
     
+        ######
+        ## Depending on typ, some changes might be necessary 
+        #####
         if typ == "opt":
             new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
             new_comp.qc_data = deepcopy(comp.qc_data)
+
         elif typ == "scf":
             new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
             new_comp.qc_data = deepcopy(comp.qc_data)
+            # If scf has failed with quantum espresso, it is worth trying a different mixing_beta value 
             if new_comp.qc_data.software == "qe":
                 import random
                 updated = False
@@ -286,7 +291,9 @@ class job(object):
                 new_comp.qc_data._mod_attr("mix_beta",new_value)
                 print("Set_Continuation_Comp: Mixing Beta changed to:", new_comp.qc_data.mix_beta)
         else:
-            print("Set_Continuation_Comp: received unknown type of continuation computation: typ=", typ)
+            print("Set_Continuation_Comp: received unknown type of continuation computation: typ=", typ); return None
+
+        print(f"Set_Continuation_Comp: set new computation with {run_number=}")
     
         ######
         ## Irrespectively of typ, the new computation will continue from the state, which should contain the latest available geometry and properties
@@ -301,6 +308,7 @@ class job(object):
             else: 
                 print("Set_Continuation_Comp: istate of new computation remains as:", new_comp.qc_data.istate)
                 print("Set_Continuation_Comp: fstate of new computation remains as:", new_comp.qc_data.fstate)
+
         elif hasattr(self,"fstate"):
             iscorrect = comp.verify_state(self.fstate, target='opt')
             if iscorrect:
