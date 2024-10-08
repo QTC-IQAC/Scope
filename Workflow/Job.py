@@ -165,7 +165,7 @@ class job(object):
         #####################
         if self.setup == "regular" or self.setup == "reg":
             exists, comp = self.find_computation()
-            if not exists: comp = self.add_computation(int(1), qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
+            if not exists: comp = self.add_computation(len(self.computations)+1, qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
             comp.qc_data._add_attr("istate",self.istate)         
             comp.qc_data._add_attr("fstate",self.fstate)         
 
@@ -214,7 +214,7 @@ class job(object):
 
                     ## 2-Initial State of the Computation must be updated, to account for the displacement of geometries
                     exists, comp = self.find_computation()
-                    if not exists: comp = self.add_computation(int(1), qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
+                    if not exists: comp = self.add_computation(len(self.computations)+1, qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
                     comp.qc_data._add_attr("istate","displaced")  ## Updates the initial state of the computation, so it takes the displaced geometries
                     comp.qc_data._add_attr("fstate",self.fstate)         
 
@@ -245,7 +245,7 @@ class job(object):
     
                         # Initial State of the Computation must be updated, to account for the displacement of geometries
                         exists, new_comp = self.find_computation(keyword=names[idx])
-                        if not exists: new_comp = self.add_computation(idx, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
+                        if not exists: new_comp = self.add_computation(len(self.computations)+1, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
                         new_comp.qc_data = deepcopy(new_comp.qc_data)
                         new_comp.qc_data._mod_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
                         new_comp.qc_data._mod_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
@@ -271,15 +271,18 @@ class job(object):
             if debug > 1: print("Set_Continuation_Comp: Creating new computation to continue job. Type:", typ, "Path:", comp.path)
     
         if typ == "opt":
-            new_comp = self.add_computation(comp.index+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
+            new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
             new_comp.qc_data = deepcopy(comp.qc_data)
         elif typ == "scf":
-            new_comp = self.add_computation(comp.index+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
+            new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
             new_comp.qc_data = deepcopy(comp.qc_data)
             if new_comp.qc_data.software == "qe":
                 import random
+                updated = False
                 old_value = new_comp.qc_data.mix_beta
-                new_value = round(random.uniform(0.2,0.8), 2)
+                while not updated: 
+                    new_value = round(random.uniform(0.2,0.8), 2)
+                    if new_value != old_value: updated = True
                 new_comp.qc_data._mod_attr("mix_beta",new_value)
                 print("Set_Continuation_Comp: Mixing Beta changed to:", new_comp.qc_data.mix_beta)
         else:
