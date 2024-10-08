@@ -6,9 +6,13 @@ class g16_output(object):
     def __init__(self, lines: list, computation: object=None):
         self._computation     = computation
         self.lines            = lines
-        if hasattr(computation,"jobtype"):           self.jobtype        = computation.jobtype
-        elif hasattr(computation.qc_data,"jobtype"): self.jobtype        = computation.qc_data.jobtype
-        self.requisites       = self.get_requisites()
+        if computation is not None:
+            if hasattr(computation,"jobtype"):           self.jobtype        = computation.jobtype
+            elif hasattr(computation.qc_data,"jobtype"): self.jobtype        = computation.qc_data.jobtype
+            self.requisites       = self.get_requisites()
+        else: 
+            self.jobtype        = "unknown"
+            self.requisites     = []
         
     def clear_lines(self):
         self.lines          = []
