@@ -39,7 +39,6 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
     job_data         = set_job_data(job_path, section="&job_data"           , debug=0)
     qc_data          = set_qc_data(job_path, section="&qc_data"             , debug=0)
 
-    print("1-here with qc_data:", qc_data)
     #### 2a-Enrich Environment with User Choices:
     global_env.read_local_environment(job_path, debug=0)
 

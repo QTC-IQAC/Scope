@@ -88,7 +88,9 @@ class environment(object):
 
     def set_commands(self):
         if self.management_type == "slurm":
-            self.command_get_user_usage      = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R"'
+            string_squeue = str('"%.10i %.9P %.50j %.12u %.2t %.12M %.5C %.3D %R"')
+            self.command_get_user_usage      = f"squeue -o {string_squeue}"
+            self.command_get_user_waiting    = f"squeue -o {string_squeue} | grep {self.user} | grep ' PD '"
             self.command_check_job           = 'squeue -o "%.60j %.12u"'
             self.command_submit              = 'sbatch'
         elif self.management_type == "sge":
@@ -261,17 +263,25 @@ class environment(object):
             return self.user_waiting_cpus, self.user_waiting_jobs
 
         ## SGE clusters
-        if self.management_type == "sge":
-            try:
+        try:
+            if self.management_type == "sge":
                 for line in text:
                     blocks = line.split()
                     if len(blocks) == 8:
                         if blocks[4] == 'qw':
                             self.user_waiting_cpus  += int(blocks[7])
                             self.user_waiting_jobs  += 1
-            except Exception as exc:
-                self.user_waiting_cpus = int(0)
-                self.user_waiting_jobs = int(0)
+            elif self.management_type == "slurm":
+                for line in text:
+                    blocks = line.split()
+                    if len(blocks) == 9:
+                        if blocks[4] == 'PD':
+                            self.user_waiting_cpus  += int(blocks[6])
+                            self.user_waiting_jobs  += 1
+        except Exception as exc:
+            self.user_waiting_cpus = int(0)
+            self.user_waiting_jobs = int(0)
+
         return self.user_waiting_cpus, self.user_waiting_jobs
 
 ############## NOW ###
@@ -309,8 +319,8 @@ class environment(object):
         elif self.management_type == "slurm":
             for line in text:
                 blocks = line.split()
-                if len(blocks) == 8:
-                    if blocks[2] == self.user and blocks[3] == 'PD':
+                if len(blocks) == 9:
+                    if blocks[3] == self.user and blocks[4] == 'PD':
                         job_id = int(blocks[0])
                         if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: job {job_id} might go to pending")
                         all_job_id.append(job_id)
@@ -321,40 +331,45 @@ class environment(object):
         ### Assign pending jobs
         for jp in self.jobs_pending[:]: 
             if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: evaluating pending job: {jp}")
-            # Find Queue
-            raw2   = subprocess.check_output(['bash','-c', f"qstat -j {jp} | grep 'hard_queue_list'"])
-            dec2   = raw2.decode("utf-8")
-            text2  = dec2.rstrip().split("\n")[0]
-            blocks = text2.split()
-            if len(blocks) == 2:
-                q_name = text2.split()[1]
-                for aq in self.available_queues: 
-                    if q_name == aq.name or q_name == aq.alter_name:
-                        if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: pending job: {jp}. queue found: {aq.name}")
-                        if not hasattr(aq,"waiting_cpus"): aq.waiting_cpus = 0
-                        if not hasattr(aq,"waiting_jobs"): aq.waiting_jobs = []
-                        queue_to_assign = aq
-            else: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: parsing of hard_queue_list failed. Blocks:{blocks}")
 
-            # Find number of requested processors
-            raw3   = subprocess.check_output(['bash','-c', f"qstat -j {jp} | grep 'parallel environment'"])
-            dec3   = raw3.decode("utf-8")
-            text3  = dec3.rstrip().split("\n")[0]
-            blocks = text3.split()
-            if len(blocks) == 5 and blocks[4].isdigit():
-                queue_to_assign.waiting_cpus += int(blocks[4])
-                queue_to_assign.waiting_jobs.append(jp)
-                self.jobs_assigned.append(jp) 
-                self.jobs_pending.remove(jp) 
-                if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: job: {jp} assigned to {aq.name}")
-                if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: queue has now {queue_to_assign.waiting_cpus} cpus waiting")
-            else: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: parsing of requested processors failed. Blocks:{blocks}")
+            if self.management_type == "sge":
+                # Find Queue
+                raw2   = subprocess.check_output(['bash','-c', f"qstat -j {jp} | grep 'hard_queue_list'"])
+                dec2   = raw2.decode("utf-8")
+                text2  = dec2.rstrip().split("\n")[0]
+                blocks = text2.split()
+                if len(blocks) == 2:
+                    q_name = text2.split()[1]
+                    for aq in self.available_queues: 
+                        if q_name == aq.name or q_name == aq.alter_name:
+                            if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: pending job: {jp}. queue found: {aq.name}")
+                            if not hasattr(aq,"waiting_cpus"): aq.waiting_cpus = 0
+                            if not hasattr(aq,"waiting_jobs"): aq.waiting_jobs = []
+                            queue_to_assign = aq
+                else: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: parsing of hard_queue_list failed. Blocks:{blocks}")
 
-        ### Flushes out old assigned job ids, so that one of the checks above, doesnt get too costly
-        if len(self.jobs_assigned) > 0:
-            min_job_id = np.min(all_job_id)
-            for ja in self.jobs_assigned[:]:
-                if ja < (min_job_id + 5000): self.jobs_assigned.remove(ja)
+                # Find number of requested processors
+                raw3   = subprocess.check_output(['bash','-c', f"qstat -j {jp} | grep 'parallel environment'"])
+                dec3   = raw3.decode("utf-8")
+                text3  = dec3.rstrip().split("\n")[0]
+                blocks = text3.split()
+                if len(blocks) == 5 and blocks[4].isdigit():
+                    queue_to_assign.waiting_cpus += int(blocks[4])
+                    queue_to_assign.waiting_jobs.append(jp)
+                    self.jobs_assigned.append(jp) 
+                    self.jobs_pending.remove(jp) 
+                    if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: job: {jp} assigned to {aq.name}")
+                    if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: queue has now {queue_to_assign.waiting_cpus} cpus waiting")
+                else: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: parsing of requested processors failed. Blocks:{blocks}")
+
+            elif self.management_type == "slurm": 
+                pass
+
+            ### Flushes out old assigned job ids, so that one of the checks above, doesnt get too costly
+            if len(self.jobs_assigned) > 0:
+                min_job_id = np.min(all_job_id)
+                for ja in self.jobs_assigned[:]:
+                    if ja < (min_job_id + 5000): self.jobs_assigned.remove(ja)
 
 ############## NOW ###
 
@@ -401,9 +416,9 @@ class environment(object):
                 try:
                     for line in text:
                         blocks = line.split()
-                        if len(blocks) == 8:
-                            if blocks[2] == self.user and blocks[3] == 'R':
-                                self.user_running_cpus      += int(blocks[5])
+                        if len(blocks) == 9:
+                            if blocks[3] == self.user and blocks[4] == 'R':
+                                self.user_running_cpus      += int(blocks[6])
                                 self.user_running_jobs      += 1
                 except Exception as exc:
                     self.user_running_cpus = int(0)
