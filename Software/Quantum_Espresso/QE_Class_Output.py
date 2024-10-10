@@ -396,13 +396,14 @@ class qe_output(object):
 ##############
 ### FORCES ###
 ##############
-    def get_all_forces(self, debug: int=0):
+    def get_all_forces(self, with_total: bool=False, debug: int=0):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
         self.all_at_forces = []
         self.all_tot_forces = []
         if len(self.opt_blocks) > 0: 
             for idx, b in enumerate(self.opt_blocks):
-                step_at_forces, step_tot_force = parse_forces_from_step(self.lines[b[0]+1:b[1]+1])
+                step_at_forces = parse_forces_from_step(self.lines[b[0]+1:b[1]+1])
+                step_tot_force = parse_total_force_from_step(self.lines[b[0]+1:b[1]+1])
                 self.all_at_forces.append(step_at_forces)
                 self.all_tot_forces.append(step_tot_force)
                 if (step_at_forces is None or step_tot_force is None) and debug > 0: print("GET_ALL_FORCES: error parsing forces between lines", b) 
@@ -410,9 +411,10 @@ class qe_output(object):
             if debug > 0: print("GET_ALL_FORCES: empty list of opt_blocks")
             self.all_at_forces = None
             self.all_tot_forces = None
-        return self.all_at_forces, self.all_tot_forces
+        if with_total: return self.all_at_forces, self.all_tot_forces
+        else:          return self.all_at_forces
 
-    def get_last_forces(self, debug: int=0):
+    def get_last_forces(self, with_total: bool=False, debug: int=0):
         if hasattr(self,"all_at_forces"): 
             if len(self.all_at_forces) > 0 and len(self.all_tot_forces) > 0:  
                 for idx in range(len(self.all_at_forces)-1,-1,-1): 
@@ -421,12 +423,14 @@ class qe_output(object):
                         self.last_tot_forces = self.all_tot_forces[idx]
                 self.last_at_forces = None 
                 self.last_tot_forces = None 
-                return self.last_at_forces, self.last_tot_forces 
+                if with_total: return self.last_at_forces, self.last_tot_forces 
+                else:          return self.last_at_forces
             else: 
                 if debug > 0: print("GET_LAST_FORCES: No all_forces in list")
                 self.last_at_forces = None 
                 self.last_tot_forces = None 
-                return self.last_at_forces, self.last_tot_forces 
+                if with_total: return self.last_at_forces, self.last_tot_forces 
+                else:          return self.last_at_forces
         else:
             if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
             if len(self.opt_blocks) == 0: 
@@ -437,20 +441,24 @@ class qe_output(object):
             for idx in range(len(self.opt_blocks)-1,-1,-1):
                 init_line = self.opt_blocks[idx][0]+1
                 last_line = self.opt_blocks[idx][1]+1
-                tmp1, tmp2 = parse_forces_from_step(self.lines[init_line:last_line])
+                tmp1 = parse_forces_from_step(self.lines[init_line:last_line])
+                tmp2 = parse_total_force_from_step(self.lines[init_line:last_line])
                 if tmp1 is not None and tmp2 is not None:
                     self.last_at_forces = tmp1 
                     self.last_tot_force = tmp2 
-                    return self.last_at_forces, self.last_tot_force
+                    if with_total: return self.last_at_forces, self.last_tot_forces 
+                    else:          return self.last_at_forces
             if debug > 0: print("GET_LAST_FORCES: all forces are None")
             self.last_at_forces = None 
             self.last_tot_forces = None 
-            return self.last_at_forces, self.last_tot_forces 
+            if with_total: return self.last_at_forces, self.last_tot_forces 
+            else:          return self.last_at_forces
 
     def get_forces_last_complete_block(self, debug: int=0):
         if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
         if self.last_complete_block is None: return None, None
-        tmp1, tmp2 = parse_forces_from_step(self.last_complete_block)
+        tmp1 = parse_forces_from_step(self.last_complete_block)
+        tmp2 = parse_total_force_from_step(self.lines[init_line:last_line])
         if tmp1 is not None and tmp2 is not None:
             self.last_at_forces = tmp1 
             self.last_tot_force = tmp2 
@@ -458,7 +466,8 @@ class qe_output(object):
             if debug > 0: print("get_forces_last_complete_block: forces are None")
             self.last_at_forces = None
             self.last_tot_force = None 
-        return self.last_at_forces, self.last_tot_force
+        if with_total: return self.last_at_forces, self.last_tot_forces 
+        else:          return self.last_at_forces
             
 ################
 ### ENERGIES ###

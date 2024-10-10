@@ -117,16 +117,18 @@ def reg_energy(comp: object, debug: int=0):
     print("REG_ENERGY:", energy, comp.isgood)
     if debug > 0: print(f"REG_ENERGY: energy is {energy} a.u.")
 
+    ## 2-Try to parse Forces if they're available, typically for finite differences
+    if comp.qc_data.print_forces: forces = comp.output.get_forces_last_complete_block()
+    else:                         forces = None
+
     ### Storage ###
     worked = False
-    if energy is not None:
-        try:
-            exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated
-            if not exists: fstate = state(gmol, comp.qc_data.fstate)
-            fstate.set_energy(energy, 'au')
-            fstate.add_computation(comp)
-            worked = True
-        except Exception as exc:
-            print(exc)
-            worked = False
+    if energy is not None or forces is not None:
+        exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated
+        if not exists: fstate = state(gmol, comp.qc_data.fstate)
+        if energy is not None: fstate.set_energy(energy, 'au')
+        if forces is not None: fstate.set_forces(forces)
+        fstate.add_computation(comp)
+        worked = True
+
     return worked

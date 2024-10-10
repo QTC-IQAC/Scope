@@ -59,7 +59,7 @@ def parse_geometry_from_step(lines, debug=0):
 
     return labels, coord
 
-def parse_forces_from_step(lines, debug=0):
+def parse_forces_from_step(lines, debug: int=0):
     init_str = "Forces acting on atoms"
     last_str = "Total force ="
     init_linenum, found_init = search_string(init_str, lines, typ="first")
@@ -82,11 +82,22 @@ def parse_forces_from_step(lines, debug=0):
                 if debug >= 1: print(f"PARSE_FORCES: exception {exc} reading line: {l}")
         else:
             if debug >= 1: print(f"PARSE_FORCES: line discarded: {line_data}")
+    return forces
                 
+def parse_total_force_from_step(lines, debug: int=0)
+    init_str = "Forces acting on atoms"
+    last_str = "Total force ="
+    init_linenum, found_init = search_string(init_str, lines, typ="first")
+    last_linenum, found_end  = search_string(last_str, lines, typ="first")
+    if not found_init or not found_end: return None
+
+    init_linenum = init_linenum + 2
+    last_linenum = last_linenum - 1   
+    force_lines = lines[init_linenum:last_linenum]
+
     ### Reads Total Force
     total_force = lines[last_linenum+1].split()[3]
-        
-    return forces, total_force
+    return total_force
 
 #def parse_cell_vectors(lines, debug: int=0):
 #    string = "CELL_PARAMETERS"
