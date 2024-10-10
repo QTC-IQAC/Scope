@@ -66,7 +66,7 @@ class job(object):
 
     def find_computation(self, keyword: str='', run_number: int=1):
         for idx, comp in enumerate(self.computations):
-            if comp.keyword == keyword and comp.run_number == int(run_number) and not found: this_comp = comp; return True, this_comp
+            if comp.keyword == keyword and comp.run_number == int(run_number): this_comp = comp; return True, this_comp
         return False, None
 
     def add_computation(self, index: int, qc_data: object, path: str='', comp_keyword: str='', is_update: bool=False, debug: int=0):
