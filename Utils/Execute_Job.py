@@ -107,7 +107,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
         ## 5.1 If job does not exist, creates the job
         if not exists: this_job = recipe.add_job(job_data); updated = True
         ## 5.2 If job exists, it checks for input changes (also in qc_data for the computations)
-        else: this_job.check_input(job_path=job_path, debug=debug)
+        else: this_job.check_qc_data(job_path=job_path, debug=debug)
 
         if debug > 1: print("---------------------------------------------------")
         if debug > 1: print(f"EXECUTE_JOB, step 5: job {this_job.keyword} loaded")
@@ -129,8 +129,6 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
         if debug > 1: print("EXECUTE_JOB, step 7: computations set:")
 
         for jdx, comp in enumerate(this_job.computations):
-            comp.check_input(job_path=job_path, debug=debug)
-            comp.check_updates()
 
             #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
             if debug > 1: print("")
@@ -139,13 +137,17 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
             if debug > 1: print("########################################################################")
             if debug > 1: print(f"EXECUTE_JOB, step 7.0: evaluating job, and computation with indices: {recipe.jobs.index(this_job)+1}/{len(recipe.jobs)}, {jdx+1}/{len(this_job.computations)}")
 
-            ## 8.1-Checks files
+            ## 7.0-Checks files and updates
+            qc_has_updated = comp.check_qc_data(job_path=job_path, debug=debug)  ## Checks wether the user has updated the qc_data
+            comp.check_updates()                                               ## Checks for not-registered update computations 
             comp.check_files()
+
             if debug > 1: print("EXECUTE_JOB, step 7.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
             if debug > 1: print("EXECUTE_JOB, step 7.1: out_file:", comp.out_path)
             if debug > 1: print("EXECUTE_JOB, step 7.1: is_update:", comp.is_update)
             if debug > 1: print("EXECUTE_JOB, step 7.1: has_update:", comp.has_update)
             if debug > 1: print("EXECUTE_JOB, step 7.1: checking files [inp, out, sub]:", comp.input_exists, comp.output_exists, comp.subfile_exists)
+            if debug > 1: print("EXECUTE_JOB, step 7.1: qc has been updated", qc_has_updated)
             #if debug > 1: print("-----------------------------------------------------------------------------------")
 
             ## 8.2-Evaluates Submission
@@ -155,7 +157,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                     if debug > 1: print("EXECUTE_JOB, step 7.3a: checking submission status: isrunning=",comp.isrunning)
                     if debug > 1: print("EXECUTE_JOB, step 7.3a: initial state is", comp.qc_data.istate)
                     if not comp.isrunning:        
-                        comp.check_input(job_path=job_path, debug=debug)
+                        comp.check_qc_data(job_path=job_path, debug=debug)
                         comp.run(global_env, options, debug=debug); updated = True
                 else: 
                     if debug > 1: print("EXECUTE_JOB, step 7.3a: want_submit is False")

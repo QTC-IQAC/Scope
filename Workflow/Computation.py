@@ -75,19 +75,24 @@ class computation(object):
         self.out_path = self.path+self.out_name
         self.sub_path = self.path+self.sub_name
 
-    def check_input(self, job_path: str, debug: int=0):
+    def check_qc_data(self, job_path: str, debug: int=0):
         from Scope.Classes_Input import set_qc_data
         new_qc_data  = set_qc_data(job_path, section="&qc_data" , debug=0)
-        old_qc_data  = deepcopy(self.qc_data)
-        if new_qc_data != old_qc_data: 
-            self.update_qc_data(old_qc_data, new_qc_data) 
+        current_qc_data  = deepcopy(self.qc_data)
+        if new_qc_data != current_qc_data: 
+            self.update_qc_data(current_qc_data, new_qc_data) 
             return True
         return False
 
     def update_qc_data(self, old_qc_data, new_qc_data, debug: int=0):
+        ## Updates qc_data
         self.qc_data          = new_qc_data
         self.software         = new_qc_data.software
+        ## Adds any old information that is now not present. I'm not sure about this one
         self.qc_data         += old_qc_data
+        ## Exceptions
+        if self.is_update and self.software == 'qe' and old_qc_data.mix_beta != new_qc_data.mix_beta:
+            self.qc_data._mod_attr("mix_beta",old_qc_data.mix_beta)
         return self.qc_data
 
     def check_updates(self, debug: int=1) -> int:

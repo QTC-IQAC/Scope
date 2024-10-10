@@ -40,7 +40,7 @@ class job(object):
         ## Corrects self.setup in case the user forgets to change
         if self.keyword == 'findiff' or self.keyword == 'findif': self.setup == 'findiff'
         
-    def check_input(self, job_path: str, debug: int=0):
+    def check_qc_data(self, job_path: str, debug: int=0):
         from Scope.Classes_Input import set_job_data, set_qc_data
         ## job_data is for JOB
         new_job_data    = set_job_data(job_path, section="&job_data" , debug=0)
@@ -50,7 +50,7 @@ class job(object):
             self.update_job_data(old_job_data, new_job_data) 
             new_qc_data    = set_qc_data(job_path, section="&qc_data" , debug=0)
             for comp in self.computations:
-                comp.check_input(job_path=job_path, debug=debug)
+                comp.check_qc_data(job_path=job_path, debug=debug)
             return True
         return False
 
@@ -64,15 +64,10 @@ class job(object):
         self.setup            = new_job_data.setup.lower()
         self.must_be_good     = new_job_data.must_be_good                
 
-    def find_computation(self, keyword: str='', index=None):
-        found = False
+    def find_computation(self, keyword: str='', run_number: int=1):
         for idx, comp in enumerate(self.computations):
-            if index is None: 
-                if comp.keyword == keyword and not found: this_comp = comp; found = True
-            else:
-                if comp.keyword == keyword and comp.index == int(index) and not found: this_comp = comp; found = True
-        if found:    return found, this_comp
-        else:        return found, None
+            if comp.keyword == keyword and comp.run_number == int(run_number) and not found: this_comp = comp; return True, this_comp
+        return False, None
 
     def add_computation(self, index: int, qc_data: object, path: str='', comp_keyword: str='', is_update: bool=False, debug: int=0):
         if path == '': path == self.path
@@ -263,7 +258,7 @@ class job(object):
         comp.has_update = True
     
         # 0-We make sure that the new_run does not exist. If so, we return it directly:
-        exists, new_comp = self.find_computation(keyword=comp.keyword, index=comp.index+1)
+        exists, new_comp = self.find_computation(keyword=comp.keyword, run_number=comp.run_number+1)
         if exists:
             print("Set_Continuation_Comp: Continuation Computation exists")
             return new_comp
@@ -293,7 +288,7 @@ class job(object):
         else:
             print("Set_Continuation_Comp: received unknown type of continuation computation: typ=", typ); return None
 
-        print(f"Set_Continuation_Comp: set new computation with {run_number=}")
+        print(f"Set_Continuation_Comp: set new computation with {new_comp.run_number=}")
     
         ######
         ## Irrespectively of typ, the new computation will continue from the state, which should contain the latest available geometry and properties

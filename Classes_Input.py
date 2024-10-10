@@ -115,7 +115,6 @@ class input_data(object):
                         if at1 != at2: same = False
                     except: return False
         return same
-          
 
 #######################
 def fill_environment_data(data: object, debug: int=0):
