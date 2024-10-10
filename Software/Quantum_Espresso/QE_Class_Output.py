@@ -454,11 +454,11 @@ class qe_output(object):
             if with_total: return self.last_at_forces, self.last_tot_forces 
             else:          return self.last_at_forces
 
-    def get_forces_last_complete_block(self, debug: int=0):
+    def get_forces_last_complete_block(self, with_total: bool=False, debug: int=0):
         if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
         if self.last_complete_block is None: return None, None
         tmp1 = parse_forces_from_step(self.last_complete_block)
-        tmp2 = parse_total_force_from_step(self.lines[init_line:last_line])
+        tmp2 = parse_total_force_from_step(self.last_complete_block)
         if tmp1 is not None and tmp2 is not None:
             self.last_at_forces = tmp1 
             self.last_tot_force = tmp2 

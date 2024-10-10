@@ -84,7 +84,7 @@ def parse_forces_from_step(lines, debug: int=0):
             if debug >= 1: print(f"PARSE_FORCES: line discarded: {line_data}")
     return forces
                 
-def parse_total_force_from_step(lines, debug: int=0)
+def parse_total_force_from_step(lines, debug: int=0):
     init_str = "Forces acting on atoms"
     last_str = "Total force ="
     init_linenum, found_init = search_string(init_str, lines, typ="first")
