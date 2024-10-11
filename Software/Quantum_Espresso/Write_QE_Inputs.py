@@ -224,9 +224,9 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
         #//////////////////
         if system_type == "cell":
             print("CELL_PARAMETERS angstrom", file=inp)
-            print(f"{gmol.cellvec[0][0]:14.6f} {gmol.cellvec[0][1]:14.6f} {gmol.cellvec[0][2]:14.6f}", file=inp)
-            print(f"{gmol.cellvec[1][0]:14.6f} {gmol.cellvec[1][1]:14.6f} {gmol.cellvec[1][2]:14.6f}", file=inp)
-            print(f"{gmol.cellvec[2][0]:14.6f} {gmol.cellvec[2][1]:14.6f} {gmol.cellvec[2][2]:14.6f}", file=inp)
+            print(f"{istate.cellvec[0][0]:14.6f} {istate.cellvec[0][1]:14.6f} {istate.cellvec[0][2]:14.6f}", file=inp)
+            print(f"{istate.cellvec[1][0]:14.6f} {istate.cellvec[1][1]:14.6f} {istate.cellvec[1][2]:14.6f}", file=inp)
+            print(f"{istate.cellvec[2][0]:14.6f} {istate.cellvec[2][1]:14.6f} {istate.cellvec[2][2]:14.6f}", file=inp)
          
         #///////////////////
         #// Atom Species ///

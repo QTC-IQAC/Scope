@@ -216,6 +216,9 @@ class qe_output(object):
             for idx, b in enumerate(self.opt_blocks):
                 #step_cell_vec  = parse_cell_vectors(self.lines[b[0]+1:b[1]+1])
                 step_cellvec, step_celldim, step_cellparam  = parse_cell_vectors(self.lines[b[0]+1:b[1]+1])
+                if step_cellvec is None:
+                    step_cellvec, step_cellparam = parse_cell_parameters(self.lines[b[0]+1:b[1]+1])
+                    step_celldim = None     ## I'm not sure I can get celldim from cellparameters
                 self.all_cellvec.append(step_cellvec)
                 self.all_celldim.append(step_celldim)
                 self.all_cellparam.append(step_cellparam)
@@ -258,6 +261,9 @@ class qe_output(object):
                 init_line = self.opt_blocks[idx][0]+1
                 last_line = self.opt_blocks[idx][1]+1
                 tmp1, tmp2, tmp3 = parse_cell_vectors(self.lines[init_line:last_line])
+                if tmp1 is None:
+                    tmp1, tmp3 = parse_cell_parameters(self.lines[init_line:last_line])
+                    tmp2 = None # I'm not sure I can get celldim from cellparameters
                 if tmp1 is not None:
                     self.last_cellvec = tmp1 
                     self.last_celldim = tmp2 
@@ -273,6 +279,9 @@ class qe_output(object):
         if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
         if self.last_complete_block is None: return None, None, None
         tmp1, tmp2, tmp3 = parse_cell_vectors(self.last_complete_block)
+        if tmp1 is None:
+            tmp1, tmp3 = parse_cell_parameters(self.last_complete_block)
+            tmp2 = None # I'm not sure I can get celldim from cellparameters
         if tmp1 is not None:
             self.last_cellvec = tmp1 
             self.last_celldim = tmp2 

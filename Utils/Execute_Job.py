@@ -177,31 +177,31 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                     if debug > 1: print(f"EXECUTE_JOB, step 8.1: {options.overwrite_inputs=}")
 
                     # If registration fails, either...
-                    if comp.has_update and not options.overwrite_inputs:
-                        if debug > 1: print(f"EXECUTE_JOB, step 8.1: registration skipped")   ## If we do not overwrite inputs and a continuation already exists, no point in registering
-                    else:
-                        ## 8.2 sets continuation computations. These are added to JOB object 
-                        if comp.status == 'no_scf_convergence': 
-                        #if comp.isregistered and comp.status == 'scf_convergence':
-                            if debug > 1: print(f"EXECUTE_JOB, step 8.2: setting continuation computation with typ=scf")  
-                            new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
-                            if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
-                        elif not comp.isgood and this_job.must_be_good:
-                            if debug > 1: print(f"EXECUTE_JOB, step 8.2: setting continuation computation with typ=opt")  
-                            new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
-                            if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
+                    #if comp.has_update and not options.overwrite_inputs:
+                    #    if debug > 1: print(f"EXECUTE_JOB, step 8.1: further registration skipped")   ## If we do not overwrite inputs and a continuation already exists, no point in registering
+                    #else:
+                    ## 8.2 sets continuation computations. These are added to JOB object 
+                    if comp.status == 'no_scf_convergence': 
+                    #if comp.isregistered and comp.status == 'scf_convergence':
+                        if debug > 1: print(f"EXECUTE_JOB, step 8.2: setting continuation computation with typ=scf")  
+                        new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
+                        if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
+                    elif not comp.isgood and this_job.must_be_good:
+                        if debug > 1: print(f"EXECUTE_JOB, step 8.2: setting continuation computation with typ=opt")  
+                        new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
+                        if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
 
-                        # Checks for common stupid errors and handles files
-                        if not worked:
-                            if handle_errors:          # ...takes default action 
-                                comp.read_lines()
-                                if len(comp.output_lines) > 0: comp.store(debug=debug)  # Creates Copy of output 
-                                else:                          this_job.remove_computation(comp_index=comp.index)
-                                report += f"Errors handled for {comp.out_path}. Please Re-Submit \n"
-                                print(f"Errors handled for {comp.out_path}")
-                            else:
-                                report += f"Error registering {comp.out_path} . Please Re-Submit \n"
-                                print(f"Error registering {comp.out_path}")
+                    # Checks for common stupid errors and handles files
+                    if not worked:
+                        if handle_errors:          # ...takes default action 
+                            comp.read_lines()
+                            if len(comp.output_lines) > 0: comp.store(debug=debug)  # Creates Copy of output 
+                            else:                          this_job.remove_computation(comp_index=comp.index)
+                            report += f"Errors handled for {comp.out_path}. Please Re-Submit \n"
+                            print(f"Errors handled for {comp.out_path}")
+                        else:
+                            report += f"Error registering {comp.out_path} . Please Re-Submit \n"
+                            print(f"Error registering {comp.out_path}")
                     updated = True
 
                 ## Re-reads eigenvectors of a frequency computation 

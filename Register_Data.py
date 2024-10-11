@@ -67,7 +67,7 @@ def reg_optimization(comp: object, debug: int=0):
                 fstate.set_cell(cellvec, cellparam)
                 fstate.get_moleclist()
                 fstate.check_fragmentation(reconstruct=True, debug=debug)
-            fstate.add_computation(comp)
+            #fstate.add_computation(comp)
             worked = True
         except Exception as exc:
             print("Exception storing results for registry optimization", exc)

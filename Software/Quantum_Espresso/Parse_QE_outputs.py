@@ -20,12 +20,12 @@ def parse_end_scf(lines, debug=0):
 
 def parse_geometry_from_step(lines, debug=0):
     init_str = "ATOMIC_POSITIONS"
-    last_str = "Writing output data"
+    last_str = "output data"
     init_linenum, found_init = search_string(init_str, lines, typ="first")
     last_linenum, found_end  = search_string(last_str, lines, typ="first")
     if not found_init or not found_end: return None, None
         
-    last_linenum = last_linenum - 3   ## Writing output data file is written 3 lines after
+    last_linenum = last_linenum - 3   ## output data file is written 3 lines after
     #print(init_linenum, last_linenum)
     geo_lines = lines[init_linenum:last_linenum]
 
@@ -201,7 +201,7 @@ def parse_scf_status(lines):
 
 def parse_coord_status(lines):
     linenum1, found1 = search_string("ATOMIC_POSITIONS"   , lines, typ="last")
-    linenum2, found2 = search_string("Writing output data",   lines, typ="last")
+    linenum2, found2 = search_string("output data",   lines, typ="last")
     if found1 and found2:                 return True
     else:                                 return False
 
@@ -227,10 +227,23 @@ def parse_density_from_step(lines, debug: int=0):
     else:     val = None
     return val
 
+def parse_cell_parameters(lines, debug: int=0):
+    import numpy as np
+    string = "CELL_PARAMETERS (angstrom)"
+    linenum, found = search_string(string, lines, typ="last")
+    if not found: return None, None
+    cellvec = []
+    cellvec.append(list(map(float,lines[linenum+1].split()[0:3])))
+    cellvec.append(list(map(float,lines[linenum+2].split()[0:3])))
+    cellvec.append(list(map(float,lines[linenum+3].split()[0:3])))
+    cellparam = cellvec_2_cellparam(cellvec)
+    return np.array(cellvec), cellparam
+
 def parse_cell_vectors(lines, debug: int=0):
     import numpy as np
     cellvec_lines = []
     cellvec_strings = ["celldm(1)", "celldm(4)", "crystal axes"] #, "unit-cell volume"]
+
     for sdx, s in enumerate(cellvec_strings):
         linenum, found = search_string(s, lines, typ="last")
         if not found: return None, None, None
