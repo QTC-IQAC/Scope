@@ -1,5 +1,6 @@
 from Scope import Constants
 from copy import deepcopy
+import numpy as np
 
 def apply_coord_displacement(coord, atom: int, axis: int, displacement: float=0.01, units: str='angstrom'):
     mod_coord = deepcopy(coord)
@@ -9,14 +10,17 @@ def apply_coord_displacement(coord, atom: int, axis: int, displacement: float=0.
     return mod_coord
 
 def get_central_difference(f1, f2, displacement: float=0.01, units: str='angstrom', debug: int=0):
+    ## displacement is how much the coordinate is displaced from the center point, so the difference between the positive and negative displacements is twice
+    ## Units of the displacement, not units of the forces
     assert np.shape(f1) == np.shape(f2)    
-    if units == 'angstrom': pass
-    elif units == 'bohr':   displacement = displacement*bohr2angs
+    if units == 'angstrom': displacement = displacement*Constants.angs2bohr
+    elif units == 'bohr':   pass
     else: print("FINDIFF: GET CENTRAL: could not understand the specified units"); return None
     cdiff = ( f1 - f2 ) / (2.0 * displacement)
     return cdiff
 
 def findiff_displacements(coord, units: str='angstrom'):
+    ## Default should be bohr instead
     displacement = float(0.01)
     geoms = []
     names = []
@@ -29,7 +33,6 @@ def findiff_displacements(coord, units: str='angstrom'):
             geoms.append(apply_coord_displacement(coord, idx, jdx, -displacement, units))
             names.append("_"+str(idx)+"_"+str(jdx)+"_neg")
     return geoms, names
-
 
 def mass_weight_hessian(hessian, masses, debug: int=0):
     assert np.shape(hessian)[0] == 3*len(masses)
