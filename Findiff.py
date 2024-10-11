@@ -178,7 +178,7 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
         new_VNM.eigenvec(atomidxs,atnums,xs,ys,zs)
         VNMs.append(new_VNM)
 
-    # So far, VNMs have been created in reverse order (from smallest to largest frequency). Here we reverse
+    # So far, VNMs have been created in reverse order (from largest to smallest frequency). Here we reverse
     VNMs.reverse()
 
     return VNMs
