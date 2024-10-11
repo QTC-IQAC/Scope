@@ -64,6 +64,7 @@ def parse_forces_from_step(lines, debug: int=0):
     last_str = "Total force ="
     init_linenum, found_init = search_string(init_str, lines, typ="first")
     last_linenum, found_end  = search_string(last_str, lines, typ="first")
+    if debug >= 1: print(f"PARSE_FORCES: {found_init=} {found_end=}")
     if not found_init or not found_end: return None
     
     init_linenum = init_linenum + 2
