@@ -321,9 +321,9 @@ class ligand(specie):
         if not hasattr(self,"connected_idx"): self.get_connected_idx()
         self.connected_atoms = []
         for idx, at in enumerate(self.atoms):
-            if idx in self.connected_idx and at.mconnec > 0:
+            if idx in self.connected_idx: # and at.mconnec > 0:
                 self.connected_atoms.append(at)
-            elif idx in self.connected_idx and at.mconnec == 0:
+            elif idx in self.connected_idx: # and at.mconnec == 0:
                 print("WARNING: Atom appears in connected_idx, but has mconnec=0")
         return self.connected_atoms
         
