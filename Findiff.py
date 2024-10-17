@@ -21,9 +21,10 @@ def get_central_difference(f1, f2, displacement: float=0.01, units: str='angstro
     cdiff = - ( f1 - f2 ) / (2.0 * displacement)
     return cdiff
 
-def findiff_displacements(coord, units: str='angstrom'):
+def findiff_displacements(coord, displacement: float=0.01, units: str='bohr'):
     ## Default should be bohr instead
-    displacement = float(0.01)
+    if   units == "bohr": pass
+    elif units == "angstrom": displacement = displacement * Constants.angs2bohr
     geoms = []
     names = []
     for idx, atom_coord in enumerate(coord):

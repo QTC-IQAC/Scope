@@ -227,7 +227,7 @@ class job(object):
             else:
                 if hasattr(initial_state,"coord"):
                     from Scope.Findiff import findiff_displacements
-                    findiff_path = self.path+"findiff_70"
+                    findiff_path = self.path+"findiff_test2"
                     if not os.path.isdir(findiff_path): os.makedirs(findiff_path); print(f"SET COMPUTATIONS FROM SETUP: findiff folder created")
                     geoms, names = findiff_displacements(initial_state.coord)
 
