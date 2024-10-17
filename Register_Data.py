@@ -118,7 +118,9 @@ def reg_energy(comp: object, debug: int=0):
     if debug > 0: print(f"REG_ENERGY: energy is {energy} a.u.")
 
     ## 2-Try to parse Forces if they're available, typically for finite differences
-    if comp.qc_data.print_forces: forces = comp.output.get_forces_last_complete_block()
+    if hasattr(comp.qc_data,"print_forces"):
+        if comp.qc_data.print_forces: forces = comp.output.get_forces_last_complete_block()
+        else:                         forces = None
     else:                         forces = None
 
     ### Storage ###
