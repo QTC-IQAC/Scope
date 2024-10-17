@@ -123,7 +123,6 @@ def add_branch_gmol(gmol, keyword: str, calcs_path: str, debug: int=0):
     new_state.set_geometry(gmol.labels, gmol.coord)
 
     return new_branch
-
 ##########
 
 ##########################
