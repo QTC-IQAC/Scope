@@ -715,7 +715,8 @@ class cell(object):
         for b in blocklist:
             mol_labels  = extract_from_list(b, self.labels, dimension=1)
             mol_coords  = extract_from_list(b, self.coord, dimension=1)
-            newmolec    = molecule(mol_labels, mol_coords)
+            mol_indices = extract_from_list(b, range(self.natoms), dimension=1)
+            newmolec    = molecule(mol_labels, mol_coords, parent_indices=mol_indices)
             # If fractional coordinates are available...
             if hasattr(self,"frac_coord"): 
                 mol_frac_coords  = extract_from_list(b, self.frac_coord, dimension=1)
