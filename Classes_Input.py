@@ -197,6 +197,8 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"mix_beta"):      data._add_attr("mix_beta", float(0.7)) 
         if not hasattr(data,"elec_maxstep"):  data._add_attr("elec_maxstep", int(200)) 
         if not hasattr(data,"pressure"):      data._add_attr("pressure", int(0))
+        if not hasattr(data,"forc_conv"):     data._add_attr("forc_conv", float(1e-5))
+        if not hasattr(data,"elec_conv"):     data._add_attr("elec_conv", float(1e-5))
     
     return data
 

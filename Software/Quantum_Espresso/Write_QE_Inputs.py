@@ -140,7 +140,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
             print(f"    wf_collect = .true.", file=inp)
             print(f"    tprnfor = .true.", file=inp)
             print(f"    nstep = 300", file=inp)
-            print(f"    forc_conv_thr = 1.0D-5", file=inp)
+            print(f"    forc_conv_thr = {comp.qc_data.forc_conv}", file=inp)
 
         print("/", file=inp)
 
@@ -189,10 +189,10 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
         #////////////////////////
         #// Electrons control ///
         #////////////////////////
-        print(" &electrons", file=inp)
-        print("    diagonalization='david'", file=inp)
+        print(f" &electrons", file=inp)
+        print(f"    diagonalization='david'", file=inp)
         print(f"    electron_maxstep= {comp.qc_data.elec_maxstep}", file=inp)
-        print("    conv_thr = 1.0e-5", file=inp)
+        print(f"    conv_thr = {comp.qc_data.elec_conv}", file=inp)
         print(f"    mixing_beta = {comp.qc_data.mix_beta}", file=inp)
         print("/", file=inp)
    
