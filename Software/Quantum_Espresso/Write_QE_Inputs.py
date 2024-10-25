@@ -300,8 +300,8 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
             os.chmod(comp.sub_path, 0o777)
 
     elif cluster == "login2" or cluster == "login3":
-        if   cluster == "login2": storage = scratch
-        elif cluster == "login3": storage = data
+        if   cluster == "login2": storage = "scratch"
+        elif cluster == "login3": storage = "data"
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
             print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
