@@ -18,7 +18,13 @@ def set_group():
     return grp.getgrgid(group_id).gr_name
 
 def set_cluster():
-    return os.uname()[1]
+    release = os.uname()[2]
+    if   release == "4.18.0-513.11.1.el8_9.x86_64": cluster = "csuc3"
+    elif release == "3.10.0-693.5.2.el7.x86_6":     cluster = "csuc2"
+    elif release == "4.19.0-10-amd64":              cluster = "portal"
+    elif release == "4.18.0-305.3.1.el8_4.x86_64":  cluster = "cesga"
+    elif release == "23.6.0":                       cluster = "duke"
+    return cluster
 
 ###############
 ### CLUSTER ###
@@ -32,12 +38,12 @@ class environment(object):
         self.available_queues       = [] 
         self.selected_queues        = [] 
         self.method                 = 'weighted'
+
         self.get_management_type() 
         self.set_commands()
 
     def read_user_queue_list(self, line):
         ## Function to digest the queue names assuming that the user will use strange formats
- 
         list_of_user_q = line.strip().split(",")
         for user_q in list_of_user_q:
             user_q = user_q.strip()
@@ -72,20 +78,6 @@ class environment(object):
                 self.read_user_queue_list(at1)
         return self.added_attr
 
-    def check_paths(self, debug: int=0):
-        if not hasattr(self,"cell2mol_path"): self.set_paths()
-        if os.path.isdir(self.cell2mol_path): self.iscell2mol_path   = True 
-        else:                                 self.iscell2mol_path   = False
-        if os.path.exists(self.calcs_path):   self.iscalcs_path      = True
-        else:                                 self.iscalcs_path      = False
-        if os.path.exists(self.sys_path):     self.issys_path        = True 
-        else:                                 self.issys_path        = False
-        if debug > 0 and not os.path.isdir(self.cell2mol_path): print(f"ENVIRONMENT.CHECK_PATHS: {self.cell2mol_path} does not exist")
-        if debug > 0 and not os.path.isdir(self.sys_path):      print(f"ENVIRONMENT.CHECK_PATHS: {self.sys_path} does not exist")
-        if debug > 0 and not os.path.isdir(self.calcs_path):    print(f"ENVIRONMENT.CHECK_PATHS: {self.calcs_path} does not exist")
-        if self.issys_path and self.iscalcs_path and self.iscell2mol_path: return True
-        else:                                                                  return False
-
     def set_commands(self):
         if self.management_type == "slurm":
             string_squeue = str('"%.10i %.9P %.50j %.12u %.2t %.12M %.5C %.3D %R"')
@@ -98,52 +90,6 @@ class environment(object):
             self.command_get_user_waiting    = "qstat -f | grep ' qw '"
             self.command_check_job           = "qstat -xml | grep JB_name"
             self.command_submit              = "qsub"
-
-    def set_PP_Library(self, debug: int=0):
-        if   os.path.isdir(self.scope_home_path+"PP_Library"):       self.PP_Library= self.scope_home_path+"PP_Library/"
-        elif os.path.isdir(self.scope_scratch_path+"PP_Library"):    self.PP_Library= self.scope_scratch_path+"PP_Library/"
-        else:                                                        self.PP_Library= str(input("Please Specify PP_Library Path: ")) 
-        print("PP_Library set to", self.PP_Library)
-        return self.PP_Library
-  
-    def set_paths(self, debug: int=0):
-        if 'login' in self.cluster or 'csuc' in self.cluster:
-            self.scope_home_path    = f"/home/{self.user}/SCOPE/Database_SCO/" 
-            self.scope_scratch_path = f"/scratch/{self.user}/SCOPE/Database_SCO/"
-        elif 'lemma' in self.cluster:
-            self.scope_home_path    = f"/Users/{self.user}/Documents/SCOPE/Database_SCO/"
-            self.scope_scratch_path = None
-        elif 'uam' in self.cluster:
-            self.scope_home_path    = f"/home/proyectos/{self.group}/SCOPE/"
-            self.scope_scratch_path = f"/scratch/{self.group}/"   #does not exist because they use ub100 instead of ub100435
-        elif 'portal' in self.cluster or 'node' in self.cluster or 'visual' in self.cluster:
-            if 'g2vela' in self.user:
-                self.scope_home_path    = f"/home/{self.user}/SCOPE/Database_SCO/"
-                self.scope_scratch_path = f"/scratch/{self.user}/SCOPE/Database_SCO/"
-            elif 'g4vela' in self.user:
-                self.scope_home_path    = f"/home/{self.user}/SCOPE/Database_SCO/"
-                self.scope_scratch_path = f"/scratch/{self.user}/SCOPE/Database_SCO/"
-        else:
-            print(f"Cluster {self.cluster} not recognized")
-
-        keyword = "4-Merged/"
-        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.cell2mol_path = self.scope_home_path+keyword
-        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.cell2mol_path = self.scope_scratch_path+keyword
-        else:                                                                                        self.cell2mol_path = str(input("Please Specify Cell2mol Path: ")) 
-
-        keyword = "5-Complexes_Iso/"
-        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.calcs_path = self.scope_home_path+keyword
-        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.calcs_path = self.scope_scratch_path+keyword
-        else:                                                                                        self.calcs_path = str(input("Please Specify Calcs Path: ")) 
-
-        keyword = "6-Systems_V3/"
-        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.sys_path = self.scope_home_path+keyword
-        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.sys_path = self.scope_scratch_path+keyword
-        else:                                                                                        self.sys_path = str(input("Please Specify Systems Path: ")) 
-        
-        if self.cell2mol_path[-1]   != '/': self.cell2mol_path += '/'
-        if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
-        if self.sys_path[-1]        != '/': self.sys_path  += '/'
 
     def get_management_type(self, debug: int=0):
         self.management_type = "None"
@@ -553,16 +499,19 @@ class environment(object):
                 for mq in self.mqueues:
                     if uq == mq.name or uq == mq.alter_name and not found: 
                         found = True
-                        mq.set_nodes()
-                        self.available_queues.append(mq)
+                        if mq.name not in list(aq.name for aq in self.available_queues):   ## maybe .alter_name should also be checked 
+                            mq.set_nodes()
+                            self.available_queues.append(mq)
+
                     elif uq in mq.name or mq.name in uq and not found:
                         message = f"I found a similar queue as the one you requested. Is {mq.name} your selection: {uq}? Y/N "
                         tmp = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"])
                         if tmp == "Y" or tmp == 'y':
                             found = True
-                            mq.set_nodes()
-                            mq.alter_name = uq
-                            self.available_queues.append(mq)
+                            if mq.name not in list(aq.name for aq in self.available_queues):   ## maybe .alter_name should also be checked 
+                                mq.set_nodes()
+                                mq.alter_name = uq
+                                self.available_queues.append(mq)
                 if not found: print(f"USER_QUEUES: could not find {uq} in the system queues")
         else:
             return self.available_queues
@@ -593,59 +542,78 @@ class environment(object):
                     q.set_priority(prio=int(1))
             return self.available_queues
 
-#########################
-###  Hardcoded Paths  ###
-#########################
+###############
+###  Paths  ###
+###############
+    def set_storage_path(self, debug: int=0):
+        if   self.cluster == "csuc3" : self.storage_path = f"/data/{self.group}/{self.user}"
+        elif self.cluster == "csuc2" : self.storage_path = f"/scratch/{self.user}/"
+        elif self.cluster == "duke"  : self.storage_path = f"/scratch/{self.user}/"
+        elif self.cluster == "portal": self.storage_path = f"/scratch/{self.user}/"
+        else: 
+            print(f"Cluster {self.cluster} not implemented")
+            self.storage_path = str(input("Please Specify Path of Storage Folder (e.g. user scratch):"))
+            if self.storage_path[-1] != '/': self.storage_path += '/'
+        return self.storage_path
+
+    def set_scope_main_path(self, debug: int=0):
+        if   self.cluster == "csuc3" : self.scope_main_path = f"/home/{self.user}/SCOPE/Database_SCO/"
+        elif self.cluster == "csuc2" : self.scope_main_path = f"/home/{self.user}/SCOPE/Database_SCO/" 
+        elif self.cluster == "duke"  : self.scope_main_path = f"/Users/{self.user}/Documents/SCOPE/Database_SCO/"
+        elif self.cluster == "portal": self.scope_main_path = f"/home/{self.user}/SCOPE/Database_SCO/"
+        else: 
+            print(f"Cluster {self.cluster} not implemented")
+            self.scope_main_path = str(input("Please Specify Main Scope Folder:"))
+            if self.scope_main_path[-1] != '/': self.scope_main_path += '/'
+        return self.scope_main_path
+
     def set_PP_Library(self, debug: int=0):
-        if   os.path.isdir(self.scope_home_path+"PP_Library"):       self.PP_Library= self.scope_home_path+"PP_Library/"
-        elif os.path.isdir(self.scope_scratch_path+"PP_Library"):    self.PP_Library= self.scope_scratch_path+"PP_Library/"
-        else:                                                        self.PP_Library= str(input("Please Specify PP_Library Path: "))
+        if not hasattr(self,"storage_path"): self.set_storage_path()
+        if not hasattr(self,"scope_main_path"): self.set_scope_main_path()
+        if   os.path.isdir(self.scope_main_path+"PP_Library"):   self.PP_Library= self.scope_main_path+"PP_Library/"
+        elif os.path.isdir(self.storage_path+"PP_Library"):      self.PP_Library= self.storage_path+"PP_Library/"
+        else:                                                    self.PP_Library= str(input("Please Specify PP_Library Path: ")) 
         # Corrects PP_Library path if necessary
         if self.PP_Library[-1] != '/': self.PP_Library += '/'
         print("PP_Library set to", self.PP_Library)
         return self.PP_Library
 
     def set_paths(self, debug: int=0):
-        if 'login' in self.cluster or 'csuc' in self.cluster:
-            self.scope_home_path    = f"/home/{self.user}/SCOPE/Database_SCO/"
-            self.scope_scratch_path = f"/scratch/{self.user}/SCOPE/Database_SCO/"
-        elif 'lemma' in self.cluster:
-            self.scope_home_path    = f"/Users/{self.user}/Documents/SCOPE/Database_SCO/"
-            self.scope_scratch_path = None
-        elif 'uam' in self.cluster:
-            self.scope_home_path    = f"/home/proyectos/{self.group}/SCOPE/"
-            self.scope_scratch_path = f"/scratch/{self.group}/"   #does not exist because they use ub100 instead of ub100435
-        elif 'portal' in self.cluster or 'node' in self.cluster or 'visual' in self.cluster:
-            if 'g2vela' in self.user:
-                self.scope_home_path    = f"/home/{self.user}/SCOPE/Database_SCO/"
-                self.scope_scratch_path = f"/scratch/{self.user}/SCOPE/Database_SCO/"
-            elif 'g4vela' in self.user:
-                self.scope_home_path    = f"/home/{self.user}/SCOPE/Database_SCO/"
-                self.scope_scratch_path = f"/scratch/{self.user}/SCOPE/Database_SCO/"
-        else:
-            print(f"Cluster {self.cluster} not recognized")
-
-        if not hasattr(self,"scope_home_path"): self.scope_home_path = str(input("Please Specify Scope Home Path: "))
-        if self.scope_home_path[-1]   != '/': self.scope_home_path += '/'
+        if not hasattr(self,"storage_path"): self.set_storage_path()
+        if not hasattr(self,"scope_main_path"): self.set_scope_main_path()
 
         keyword = "4-Merged/"
-        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.cell2mol_path = self.scope_home_path+keyword
-        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.cell2mol_path = self.scope_scratch_path+keyword
-        else:                                                self.cell2mol_path = str(input("Please Specify Cell2mol Path: "))
+        if   self.scope_main_path is not None and os.path.isdir(self.scope_main_path+keyword): self.cell2mol_path = self.scope_main_path+keyword
+        elif self.storage_path is not None and    os.path.isdir(self.storage_path+keyword):    self.cell2mol_path = self.storage_path+keyword
+        else:                                                                                  self.cell2mol_path = str(input("Please Specify Cell2mol Path: "))
 
         keyword = "5-Complexes_Iso/"
-        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.calcs_path = self.scope_home_path+keyword
-        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.calcs_path = self.scope_scratch_path+keyword
-        else:                                                self.calcs_path = str(input("Please Specify Calcs Path: "))
+        if   self.scope_main_path is not None and os.path.isdir(self.scope_main_path+keyword): self.calcs_path = self.scope_main_path+keyword
+        elif self.storage_path is not None and    os.path.isdir(self.storage_path+keyword):    self.calcs_path = self.storage_path+keyword
+        else:                                                                                  self.calcs_path = str(input("Please Specify Calcs Path: "))
 
         keyword = "6-Systems_V3/"
-        if   self.scope_home_path is not None and    os.path.isdir(self.scope_home_path+keyword):    self.sys_path = self.scope_home_path+keyword
-        elif self.scope_scratch_path is not None and os.path.isdir(self.scope_scratch_path+keyword): self.sys_path = self.scope_scratch_path+keyword
-        else:                                                self.sys_path = str(input("Please Specify Systems Path: "))
+        if   self.scope_main_path is not None and os.path.isdir(self.scope_main_path+keyword): self.sys_path = self.scope_main_path+keyword
+        elif self.storage_path is not None and    os.path.isdir(self.storage_path+keyword):    self.sys_path = self.storage_path+keyword
+        else:                                                                                  self.sys_path = str(input("Please Specify Systems Path: "))
 
         if self.cell2mol_path[-1]   != '/': self.cell2mol_path += '/'
         if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
         if self.sys_path[-1]    != '/': self.sys_path  += '/'
+
+    def check_paths(self, debug: int=0):
+        if not hasattr(self,"cell2mol_path"): self.set_paths()
+        if os.path.isdir(self.cell2mol_path): self.iscell2mol_path   = True 
+        else:                                 self.iscell2mol_path   = False
+        if os.path.exists(self.calcs_path):   self.iscalcs_path      = True
+        else:                                 self.iscalcs_path      = False
+        if os.path.exists(self.sys_path):     self.issys_path        = True 
+        else:                                 self.issys_path        = False
+        if debug > 0 and not os.path.isdir(self.cell2mol_path): print(f"ENVIRONMENT.CHECK_PATHS: {self.cell2mol_path} does not exist")
+        if debug > 0 and not os.path.isdir(self.sys_path):      print(f"ENVIRONMENT.CHECK_PATHS: {self.sys_path} does not exist")
+        if debug > 0 and not os.path.isdir(self.calcs_path):    print(f"ENVIRONMENT.CHECK_PATHS: {self.calcs_path} does not exist")
+        if self.issys_path and self.iscalcs_path and self.iscell2mol_path: return True
+        else:                                                              return False
 
 ########################
 ###  Dunder Methods  ###
@@ -658,12 +626,13 @@ class environment(object):
         to_print += f' User                  = {self.user}\n'
         to_print += f' Group                 = {self.group}\n'
         to_print += f'\n'
-        if hasattr(self,"scope_home_path"):  
+        if hasattr(self,"scope_main_path"):  
             to_print += f' Paths:\n'
-            to_print += f'     Scope Main       = {self.scope_home_path}\n'
+            to_print += f'     Scope Main       = {self.scope_main_path}\n'
             to_print += f'     Cell2mol         = {self.cell2mol_path}\n'
             to_print += f'     Computations     = {self.calcs_path}\n'
             to_print += f'     Systems          = {self.sys_path}\n'
+            to_print += f'     Storage          = {self.storage_path}\n'
             to_print += f'\n'
         to_print += f' Queue System          = {self.management_type}\n'
         if hasattr(self,"method"): to_print += f' Method of Queue Sel   = {self.method}\n'

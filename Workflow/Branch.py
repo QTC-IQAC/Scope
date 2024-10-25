@@ -6,7 +6,7 @@ import numpy as np
 from datetime import datetime
 
 from Scope.Adapted_from_cell2mol import labels2formula
-from Scope.Environment import set_cluster, set_user
+from Scope.Classes_Environment import set_cluster, set_user
 
 from Scope.Workflow import Recipe
 from Scope.Workflow.Recipe import *

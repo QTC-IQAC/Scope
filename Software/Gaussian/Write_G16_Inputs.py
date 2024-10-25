@@ -6,10 +6,10 @@ import pickle
 from collections import Counter
 #from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 
-from Scope.Environment import set_user, set_cluster
 from Scope.Elementdata import ElementData
 from Scope.Other import get_metal_idxs
 from Scope.Classes_State import find_state
+from Scope.Classes_Environment import set_user, set_cluster
 
 #######################
 def gen_G16_input(comp, debug: int=0):
@@ -94,18 +94,19 @@ def gen_G16_subfile(comp: object, queue: object, procs: int=1, savechk: bool=Fal
 
     cluster = queue._environment.cluster
     user    = queue._environment.user
+    storage = queue._environment.storage_path
 
-    if 'login' in cluster or 'csuc' in cluster:
+    if cluster == "csuc2" or cluster == "csuc3":
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
             print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
-            print(f"#SBATCH -e /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
-            print(f"#SBATCH -o /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
+            print(f"#SBATCH -e /{storage}/{user}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
+            print(f"#SBATCH -o /{storage}/{user}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
             print(f"#SBATCH -p {queue.name}", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
-            print(f"#SBATCH --time=10-0", file=sub)
-            print(f"#SBATCH -x pirineus", file=sub)
+            if   cluster == "csuc2": print(f"#SBATCH --time=10-0", file=sub)
+            elif cluster == "csuc3": print(f"#SBATCH --time=7-0", file=sub)
             print(f"", file=sub)
             print(f"module load apps/gaussian/g16c2", file=sub)
             print(f"", file=sub)
@@ -121,45 +122,7 @@ def gen_G16_subfile(comp: object, queue: object, procs: int=1, savechk: bool=Fal
             if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)
             os.chmod(comp.sub_path, 0o777)
 
-    elif 'uam' in cluster:
-        project = 'ub100'
-        with open(comp.sub_path, 'w+') as sub:
-            print(f"#!/bin/bash", file=sub)
-            print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
-            print(f"#SBATCH -e /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
-            print(f"#SBATCH -o /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
-            print(f"#SBATCH -p {queue.name}", file=sub)
-            print(f"#SBATCH --exclude=cibeles3-05", file=sub)
-            print(f"#SBATCH -A ub100_serv", file=sub)
-            print(f"#SBATCH --nodes=1", file=sub)
-            print(f"#SBATCH --ntasks={procs}", file=sub)
-            print(f"", file=sub)
-            print(f"source ~/.bashrc", file=sub)
-            print(f"module load gaussian/gaussian16.b1-SSE4", file=sub)
-            print(f"", file=sub)
-            print(f"JOBDIR=$PWD", file=sub)
-            print(f'export RUNDIR="/temporal/{user}/jobs/$SLURM_JOBID"', file=sub)
-            print(f'export GAUSS_SCRDIR="/temporal/{user}/jobs/$SLURM_JOBID"', file=sub)
-#            print(f'export RUNDIR="/scratch/{project}/jobs/$SLURM_JOBID"', file=sub)
-#            print(f'export GAUSS_SCRDIR="/scratch/{project}/jobs/$SLURM_JOBID"', file=sub)
-            print(f"mkdir -p $RUNDIR", file=sub)
-            print(f"cd $RUNDIR", file=sub)
-            print(f"", file=sub)
-            print(f"cp -i $JOBDIR/{comp.inp_name} .", file=sub)
-            print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
-            print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
-            print(f"cat tmp1 {comp.inp_name} > tmp2", file=sub)
-            print(f"rm tmp1", file=sub)
-            print(f"mv -f tmp2 {comp.inp_name}", file=sub)
-            print(f"timeout 71h g16 < {comp.inp_name} > {comp.out_name}", file=sub)
-            print(f"cp -pr *.log $JOBDIR/", file=sub)
-            if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)
-            print(f"cd $JOBDIR/", file=sub)
-            print(f"rm $RUNDIR/Gau.*", file=sub)
-            print(f"rm $RUNDIR/{comp.refcode}*", file=sub)
-            os.chmod(comp.sub_path, 0o777)
-
-    elif 'portal' in cluster:
+    elif cluster == 'portal':
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
             print(f"#$ -N {comp.refcode}{comp.suffix}", file=sub) 
