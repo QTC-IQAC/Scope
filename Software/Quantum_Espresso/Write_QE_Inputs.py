@@ -174,7 +174,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
             if u[1] != 0: print(f"    starting_magnetization({where_in_array(elems,u[0])[0]+1})={u[1]}", file=inp)
 
         ## Hubbard: Here it is assumed that the Hubbard U term will apply to all metals
-        if comp.qc_data.is_hubbard:
+        if comp.qc_data.is_hubbard and comp.qc_data.version <= 7.0:
             print("    lda_plus_u=.true.,", file=inp)
             for idx, u in enumerate(comp.spin_config.magn_uniques):
                 print(f"    Hubbard_U({where_in_array(elems,u[0])[0]+1})={comp.qc_data.uterm}", file=inp)
@@ -255,6 +255,14 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
             print(f"{label:4}        {istate.coord[idx][0]:12.6f}   {istate.coord[idx][1]:12.6f}   {istate.coord[idx][2]:12.6f}", file=inp)
         print("K_POINTS gamma", file=inp)
 
+        #/////////////////////////////
+        #// HUBBARD data after 7.1 ///
+        #/////////////////////////////
+        if comp.qc_data.is_hubbard and comp.qc_data.version > 7.0:
+            print("HUBBARD (atomic)", file=inp)
+            for idx, u in enumerate(comp.spin_config.magn_uniques):
+                print(f"U {u[0]}-3d {comp.qc_data.uterm}", file=inp)
+
 ###################################################
 def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", version: str="6.4.1"): 
 
@@ -291,20 +299,22 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
             print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
             os.chmod(comp.sub_path, 0o777)
 
-    elif ('login' in cluster or 'csuc' in cluster) and group == 'ucsscms':
+    elif cluster == "login2" or cluster == "login3":
+        if   cluster == "login2": storage = scratch
+        elif cluster == "login3": storage = data
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
             print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
-            print(f"#SBATCH -e /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
-            print(f"#SBATCH -o /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
+            print(f"#SBATCH -e /{storage}/{user}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
+            print(f"#SBATCH -o /{storage}/{user}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
             print(f"#SBATCH -p {queue.name}", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
-            print(f"#SBATCH --time=10-0", file=sub)
-            print(f"#SBATCH -x pirineus", file=sub)
+            print(f"#SBATCH --time=7-0", file=sub)
             print(f"", file=sub)
             if   version == "6.4.1": print(f"module load apps/quantumespresso/6.4.1", file=sub)
             elif version == "7.0":   print(f"module load quantumespresso/7.0", file=sub)
+            elif version == "7.2":   print(f"module load quantumespresso/7.2", file=sub)
             else:                    print(f"UNKNOWN VERSION",version)
             print(f"", file=sub)
             print(f"set OMP_NUM_THREADS=1", file=sub)
