@@ -35,7 +35,7 @@ def parse_geometry_from_step(lines, debug=0):
     elif "bohr"   in at_pos_line: units = 'bohr'
     else: print("PARSE_GEOMETRY: error reading units of coordinates:", at_pos_line)
 
-    ### Reads Coordinates
+    ### Reads Coordinates
     coord = []
     tmp_labels = []
     for idx, l in enumerate(geo_lines[1:]):
