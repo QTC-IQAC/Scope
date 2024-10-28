@@ -1,6 +1,5 @@
 import os
 from ast import literal_eval
-from Scope.Environment import set_cluster, set_user
 
 ######################
 def interpret_software(name: str):

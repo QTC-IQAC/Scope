@@ -7,7 +7,7 @@ from collections import Counter
 from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 
 from Scope.Classes_State import find_state
-from Scope.Environment import set_user, set_cluster
+from Scope.Classes_Environment import set_user, set_cluster
 from Scope.Elementdata import ElementData 
 from Scope.Other import get_metal_idxs, get_metal_species, where_in_array
 elemdatabase = ElementData()
@@ -52,6 +52,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
     if not hasattr(environment,"PP_Library"): f"PP_Library could not be found. Please set it in the environment"
     PP_Library = environment.PP_Library
     cluster    = environment.cluster
+    storage    = environment.storage_path
 
     ## 2a-Verify Information in State
     assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in comp.qc_data"
@@ -124,11 +125,6 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
         print( "    restart_mode='from_scratch'", file=inp)
         print(f"    pseudo_dir ='{PP_Library}'", file=inp)
         print( "    disk_io='low'", file=inp)
-
-        if 'uam' in cluster: print( "    max_seconds=61200", file=inp)
-        if 'portal' in cluster: print(f"    outdir='/scratch/g4vela/QE_WFC'", file=inp)
-        elif 'csuc' in cluster or 'login' in cluster: print(f"    outdir='/scratch/svela/QE_WFC/'", file=inp) 
-
         print(f"    prefix='{comp.refcode}{comp.suffix}'", file=inp)
 
         ## Print forces for finite differences computation.
@@ -174,7 +170,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
             if u[1] != 0: print(f"    starting_magnetization({where_in_array(elems,u[0])[0]+1})={u[1]}", file=inp)
 
         ## Hubbard: Here it is assumed that the Hubbard U term will apply to all metals
-        if comp.qc_data.is_hubbard:
+        if comp.qc_data.is_hubbard and comp.qc_data.version <= 7.0:
             print("    lda_plus_u=.true.,", file=inp)
             for idx, u in enumerate(comp.spin_config.magn_uniques):
                 print(f"    Hubbard_U({where_in_array(elems,u[0])[0]+1})={comp.qc_data.uterm}", file=inp)
@@ -255,6 +251,14 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
             print(f"{label:4}        {istate.coord[idx][0]:12.6f}   {istate.coord[idx][1]:12.6f}   {istate.coord[idx][2]:12.6f}", file=inp)
         print("K_POINTS gamma", file=inp)
 
+        #/////////////////////////////
+        #// HUBBARD data after 7.1 ///
+        #/////////////////////////////
+        if comp.qc_data.is_hubbard and comp.qc_data.version > 7.0:
+            print("HUBBARD (atomic)", file=inp)
+            for idx, u in enumerate(comp.spin_config.magn_uniques):
+                print(f"U {u[0]}-3d {comp.qc_data.uterm}", file=inp)
+
 ###################################################
 def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", version: str="6.4.1"): 
 
@@ -262,15 +266,16 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
     cluster = queue._environment.cluster
     user    = queue._environment.user
     group   = queue._environment.group
+    storage = queue._environment.storage_path
 
-    if 'portal' in cluster:
+    if cluster == 'portal': 
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
             print(f"#$ -N {comp.refcode}{comp.suffix}", file=sub) 
             print(f"#$ -pe smp {procs}", file=sub)
             print(f"#$ -cwd", file=sub)
-            print(f"#$ -o /home/{user}/x-stds/{comp.refcode}{comp.suffix}.stdout", file=sub)
-            print(f"#$ -e /home/{user}/x-stds/{comp.refcode}{comp.suffix}.stderr", file=sub)
+            print(f"#$ -o {storage}/x-stds/{comp.refcode}{comp.suffix}.stdout", file=sub)
+            print(f"#$ -e {storage}/x-stds/{comp.refcode}{comp.suffix}.stderr", file=sub)
             print(f"#$ -S /bin/bash", file=sub)
             print(f"#$ -q {queue.name}" , file=sub)
             print(f"", file=sub)
@@ -291,20 +296,20 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
             print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
             os.chmod(comp.sub_path, 0o777)
 
-    elif ('login' in cluster or 'csuc' in cluster) and group == 'ucsscms':
+    elif cluster == "csuc2" or cluster == "csuc3":
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
             print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
-            print(f"#SBATCH -e /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
-            print(f"#SBATCH -o /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
+            print(f"#SBATCH -e {storage}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
+            print(f"#SBATCH -o {storage}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
             print(f"#SBATCH -p {queue.name}", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
-            print(f"#SBATCH --time=10-0", file=sub)
-            print(f"#SBATCH -x pirineus", file=sub)
+            print(f"#SBATCH --time=7-0", file=sub)
             print(f"", file=sub)
             if   version == "6.4.1": print(f"module load apps/quantumespresso/6.4.1", file=sub)
             elif version == "7.0":   print(f"module load quantumespresso/7.0", file=sub)
+            elif version == "7.2":   print(f"module load quantumespresso/7.2", file=sub)
             else:                    print(f"UNKNOWN VERSION",version)
             print(f"", file=sub)
             print(f"set OMP_NUM_THREADS=1", file=sub)
@@ -317,42 +322,13 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
             print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
             os.chmod(comp.sub_path, 0o777)
      
-    elif 'uam' in cluster:
-        project = 'ub100'
+    ### Cesga 
+    elif cluster == "cesga": 
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
             print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
-            print(f"#SBATCH -e /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
-            print(f"#SBATCH -o /scratch/{project}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
-            print(f"#SBATCH -p {queue.name}", file=sub)
-            print(f"#SBATCH --exclude=cibeles3-05", file=sub)
-            print(f"#SBATCH -A ub100_serv", file=sub)
-            print(f"#SBATCH --nodes=1", file=sub)
-            print(f"#SBATCH --ntasks={procs}", file=sub)
-            print(f"", file=sub)
-            print(f"module load espresso/6.5", file=sub)
-            print(f"export SLURM_MPI_TYPE=pmi2", file=sub)
-            print(f"", file=sub)
-            print(f"set OMP_NUM_THREADS=1", file=sub)
-            print(f"ulimit -l unlimited", file=sub)
-            print(f"", file=sub)
-            print(f"JOBDIR=$PWD", file=sub)
-            print(f'export RUNDIR="/temporal/{user}/jobs/$SLURM_JOBID"', file=sub)
-            print(f"mkdir -p $RUNDIR", file=sub)
-            print(f"cd $RUNDIR", file=sub)
-            print(f"", file=sub)
-            print(f"cp -i $JOBDIR/{comp.inp_name} .", file=sub)
-            print(f"timeout 71h srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
-            print(f"cp -pr {comp.out_name} $JOBDIR/", file=sub)
-            os.chmod(comp.sub_path, 0o777)
-
-    ## Cesga
-    elif 'login' in cluster and group == 'csic':
-        with open(comp.sub_path, 'w+') as sub:
-            print(f"#!/bin/bash", file=sub)
-            print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
-            print(f"#SBATCH -e /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
-            print(f"#SBATCH -o /scratch/{user}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
+            print(f"#SBATCH -e {storage}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
+            print(f"#SBATCH -o {storage}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
             print(f"#SBATCH -p {queue.name}", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
