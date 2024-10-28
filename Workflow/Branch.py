@@ -33,6 +33,11 @@ class branch(object):
         ## Corrects self.path in case the user forgets to add '/' 
         if self.path[-1] != '/': self.path += '/'
 
+    def reset_paths_from_environment(self, env: object):
+        self.path = env.calcs_path 
+
+
+
     def reset_recipes(self):
         delattr(self,"recipes"); setattr(self,"recipes", [])
         #self.recipes = []
