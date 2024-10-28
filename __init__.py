@@ -10,7 +10,6 @@ from .Classes_State import *
 from .Constants import *
 from .Database  import *
 from .Elementdata import *
-from .Environment import *
 from .Findiff import *
 from .Generate_Representations import *
 from .Geom_SCO_V1 import *

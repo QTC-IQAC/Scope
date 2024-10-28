@@ -76,8 +76,8 @@ class sco_system(object):
                     for job in rec.jobs:
                         job.path = rec.path
                         for comp in job.computations:
-                            if job.setup == "findiff" and os.path.isdir(job.path+findiff): comp.path = job.path+"findiff/"
-                            else:                                                          comp.path = job.path
+                            if job.setup == "findiff" and os.path.isdir(job.path+"findiff"): comp.path = job.path+"findiff_test2/"
+                            else:                                                            comp.path = job.path
                             comp.inp_path = comp.path+comp.inp_name
                             comp.out_path = comp.path+comp.out_name
                             comp.sub_path = comp.path+comp.sub_name
