@@ -90,9 +90,10 @@ def extract_T12(sys: object, branch_keyword: str, High_E_state: object, Low_E_st
             except Exception as exc: 
                 pass
  
-    if flexible:
-        if not hasattr(High_E_state,"num_neq_freqs"): High_E_state.set_VNMs(High_E_state.VNMs)
-        if not hasattr(Low_E_state,"num_neq_freqs"):  Low_E_state.set_VNMs(Low_E_state.VNMs)
+    ### Not sure why this was necessary. Removed
+    #if flexible:
+    #    if not hasattr(High_E_state,"num_neg_freqs"): High_E_state.set_VNMs(High_E_state.VNMs)
+    #    if not hasattr(Low_E_state,"num_neg_freqs"):  Low_E_state.set_VNMs(Low_E_state.VNMs)
 
     ##############
     ### BRANCH ###
@@ -115,8 +116,8 @@ def extract_T12(sys: object, branch_keyword: str, High_E_state: object, Low_E_st
         if debug > 0: print(f"{High_E_state.name} cannot be used for Thermochemistry")
         return False, None
  
-    if not "Helec" in High_E_state.results: High_E_state.thermal_data()
-    if not "Helec" in Low_E_state.results: Low_E_state.thermal_data()
+    if not "Helec" in High_E_state.results: High_E_state.get_thermal_data()
+    if not "Helec" in Low_E_state.results: Low_E_state.get_thermal_data()
 
     ## dHelec
     if overwrite or not "dHelec" in this_branch.results.keys():
