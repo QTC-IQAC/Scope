@@ -42,10 +42,10 @@ def extract_dH_solid(sys: object, branch_keyword: str, High_E_state: object, Low
     ## 4-Get the number of complexes in the unit cells: this is why we need point 3
     ncomplex1 = 0
     for mol in High_E_state.moleclist:
-        if mol.type == "Complex": ncomplex1 += 1
+        if mol.iscomplex: ncomplex1 += 1
     ncomplex2 = 0
     for mol in Low_E_state.moleclist:
-        if mol.type == "Complex": ncomplex2 += 1
+        if mol.iscomplex: ncomplex2 += 1
         #if mol.type == "Complex" and hasattr(mol,"scope_guess_spin"): ncomplex2 += 1
 
     print("STEP4", ncomplex1, "complexes found in High_E_state")
