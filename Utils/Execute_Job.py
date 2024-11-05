@@ -139,7 +139,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
 
             ## 7.0-Checks files and updates
             qc_has_updated = comp.check_qc_data(job_path=job_path, debug=debug)  ## Checks wether the user has updated the qc_data
-            comp.check_updates()                                               ## Checks for not-registered update computations 
+            comp.check_updates()                                                 ## Checks for not-registered update computations 
             comp.check_files()
 
             if debug > 1: print("EXECUTE_JOB, step 7.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
@@ -150,24 +150,26 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
             if debug > 1: print("EXECUTE_JOB, step 7.1: qc has been updated", qc_has_updated)
             #if debug > 1: print("-----------------------------------------------------------------------------------")
 
-            ## 8.2-Evaluates Submission
+            ## 7.2a-Evaluates Submission
             if not comp.output_exists:
                 if options.want_submit and not comp.has_update:
                     comp.check_submission_status(global_env, debug=debug)
-                    if debug > 1: print("EXECUTE_JOB, step 7.3a: checking submission status: isrunning=",comp.isrunning)
-                    if debug > 1: print("EXECUTE_JOB, step 7.3a: initial state is", comp.qc_data.istate)
+                    if debug > 1: print("EXECUTE_JOB, step 7.2a: checking submission status: isrunning=",comp.isrunning)
+                    if debug > 1: print("EXECUTE_JOB, step 7.2a: initial state is", comp.qc_data.istate)
                     if not comp.isrunning:        
                         comp.check_qc_data(job_path=job_path, debug=debug)
                         comp.run(global_env, options, debug=debug); updated = True
                 else: 
-                    if debug > 1: print("EXECUTE_JOB, step 7.3a: want_submit is False")
+                    if debug > 1: print("EXECUTE_JOB, step 7.2a: want_submit is False")
 
+            ## 7.2b-Warns if output exists but not input
             elif comp.output_exists and not comp.input_exists:  
                 report += f"Investigate {comp.out_path} \n"
                 print(f"Investigate {comp.out_path}")
 
+            ## Step 8: registration
             elif comp.output_exists and comp.input_exists:
-                ## 8.3-If output exists, and is not registered, it does it
+                ## 8.1-If output exists, and is not registered, it does it
                 if not comp.isregistered:
                     if debug > 1: print(f"EXECUTE_JOB, step 8: registration")
                     worked = comp.register(debug=debug)
@@ -176,13 +178,8 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                     if debug > 1: print(f"EXECUTE_JOB, step 8.1: {comp.has_update=}")
                     if debug > 1: print(f"EXECUTE_JOB, step 8.1: {options.overwrite_inputs=}")
 
-                    # If registration fails, either...
-                    #if comp.has_update and not options.overwrite_inputs:
-                    #    if debug > 1: print(f"EXECUTE_JOB, step 8.1: further registration skipped")   ## If we do not overwrite inputs and a continuation already exists, no point in registering
-                    #else:
                     ## 8.2 sets continuation computations. These are added to JOB object 
                     if comp.status == 'no_scf_convergence': 
-                    #if comp.isregistered and comp.status == 'scf_convergence':
                         if debug > 1: print(f"EXECUTE_JOB, step 8.2: setting continuation computation with typ=scf")  
                         new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
                         if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
@@ -190,6 +187,11 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                         if debug > 1: print(f"EXECUTE_JOB, step 8.2: setting continuation computation with typ=opt")  
                         new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
                         if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
+                    
+                    ## 8.3 Cases ment to be repetitive. Next step added to JOB object 
+                    if this_job.setup == "repetitive_opt":
+                        if comp.step <= this_job.max_steps:
+                            new_comp = this_job.set_continuation_computation(comp, "rep_opt", debug=debug)     
 
                     # Checks for common stupid errors and handles files
                     if not worked:

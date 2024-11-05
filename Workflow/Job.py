@@ -64,12 +64,13 @@ class job(object):
         self.setup            = new_job_data.setup.lower()
         self.must_be_good     = new_job_data.must_be_good                
 
-    def find_computation(self, keyword: str='', run_number: int=1):
+    def find_computation(self, keyword: str='', step: int=1, run_number: int=1, debug: int=0):
         for idx, comp in enumerate(self.computations):
-            if comp.keyword == keyword and comp.run_number == int(run_number): this_comp = comp; return True, this_comp
+            if comp.keyword == keyword and comp.step == step and comp.run_number == run_number: this_comp = comp; return True, this_comp
         return False, None
 
     def add_computation(self, index: int, qc_data: object, path: str='', comp_keyword: str='', is_update: bool=False, debug: int=0):
+        ## Name of the computation and file paths are not created automatically. Use self.set_name and self.set_paths
         if path == '': path == self.path
         new_computation       = computation(index, comp_keyword, qc_data, path, _job=self, is_update=is_update, debug=debug)
         self.computations.append(new_computation)
@@ -245,9 +246,25 @@ class job(object):
                         new_comp.qc_data._mod_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
                         new_comp.qc_data._mod_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
                         new_comp.qc_data._mod_attr("print_forces",True) ## Updates the initial state of the computation, so it takes the displaced geometries
+                        new_comp.set_name()
+                        new_comp.set_paths()
+
                 else: 
                     print("SET COMPUTATIONS FROM SETUP: ERROR! initial_state for findiff does not have coordinates")
                     print(initial_state)
+
+        #####################
+        ## 4- Setup for repetitive optimizations: consecutive opt jobs until energy is stable
+        #####################
+        elif self.setup == "repetitive_opt":
+            print(f"SET COMPUTATIONS FROM SETUP: repetitive optimization selected")
+            exists, new_comp = self.find_computation()    # Searches for first step and first run_number computation
+            if not exists: new_comp = self.add_computation(len(self.computations)+1, qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
+            new_comp.qc_data._add_attr("istate",self.istate)         
+            new_comp.qc_data._add_attr("fstate",self.fstate)         
+            new_comp.step = 1
+            new_comp.set_name(use_step=True)
+            new_comp.set_paths()
 
         else: pass
 
@@ -256,25 +273,27 @@ class job(object):
 ###############################
     def set_continuation_computation(self, comp: object, typ: str, debug: int=0):
         comp.has_update = True
-    
-        # 0-We make sure that the new_run does not exist. If so, we return it directly:
-        exists, new_comp = self.find_computation(keyword=comp.keyword, run_number=comp.run_number+1)
-        if exists:
-            print("Set_Continuation_Comp: Continuation Computation exists")
-            return new_comp
-
         if debug > 1: print("Set_Continuation_Comp: Creating new computation to continue job. Type:", typ, "Path:", comp.path)
     
-        ######
-        ## Depending on typ, some changes might be necessary 
-        #####
+        ###############################
+        ## Operates Depending on typ ##
+        ###############################
         if typ == "opt":
+            # 0-We make sure that the new_run does not exist. If so, we return it directly:
+            exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step, run_number=comp.run_number+1)
+            if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
             new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
             new_comp.qc_data = deepcopy(comp.qc_data)
+            new_comp.set_name()
+            new_comp.set_paths()
 
         elif typ == "scf":
+            exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step, run_number=comp.run_number+1)
+            if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
             new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
             new_comp.qc_data = deepcopy(comp.qc_data)
+            new_comp.set_name()
+            new_comp.set_paths()
             # If scf has failed with quantum espresso, it is worth trying a different mixing_beta value 
             if new_comp.qc_data.software == "qe":
                 import random
@@ -285,6 +304,16 @@ class job(object):
                     if new_value != old_value: updated = True
                 new_comp.qc_data._mod_attr("mix_beta",new_value)
                 print("Set_Continuation_Comp: Mixing Beta changed to:", new_comp.qc_data.mix_beta)
+
+        elif typ == "rep_opt":
+            exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step+1, run_number=1)
+            if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
+            new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
+            new_comp.qc_data = deepcopy(comp.qc_data)
+            new_comp.step = comp.step + 1
+            new_comp.set_name(use_step=True)
+            new_comp.set_paths()
+
         else:
             print("Set_Continuation_Comp: received unknown type of continuation computation: typ=", typ); return None
 

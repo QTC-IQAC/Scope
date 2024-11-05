@@ -31,6 +31,7 @@ class computation(object):
         self.has_update       = False
         self.is_update        = is_update
         self.states           = []
+        self.step             = int(1)
 
         ############
         ### SPIN ###
@@ -43,11 +44,9 @@ class computation(object):
         else:                                self.spin             = qc_data.spin
         self.spin_config = get_spin_config(self._job._recipe.subject, self.spin, debug=debug)
 
-        #############
-        ### PATHS ###
-        #############
-        self.set_paths()
-
+    #####################
+    ### Name of Files ###
+    #####################
     def set_file_extension(self):
         if self.software == 'g16':
             inp = ".com"
@@ -58,22 +57,103 @@ class computation(object):
         sub = ".sub"
         return inp, out, sub
  
-    def set_paths(self):
+    def get_new_filename(self, mod_item_vars: list, mod_item_vals: list, debug: int=0):
+        from Scope.Other import where_in_array, extract_from_list
+        if not hasattr(self,"filename"): return None
+        new_filename = deepcopy(self.filename)
+        for idx, item in enumerate(self.filename.items):
+            if debug > 0: print(f"GET_NAME_FROM_CONFIG: doing {v=} in filename")
+            if item.variable in mod_item_vars: item.mod_value(mod_item_vals[idx])
+        return new_filename
+
+    def set_filename(self, use_refcode: bool=True, use_suffix: bool=True, use_step: bool=False, use_run_number: bool=True, use_spin: bool=True, debug: int=0):
+    ### Uses a filename-class object, as defined below, defined as a sum of items
         if not hasattr(self,"run_number"): self.set_run_number() 
-        inp, out, sub = self.set_file_extension()
+        self.filename = filename()   ## Class defined at the end of this file
+        if use_refcode:        new_name = filename_item("refcode",    self.refcode);        self.filename.add_item(new_name)
+        if use_suffix:         new_name = filename_item("suffix",     self.suffix);         self.filename.add_item(new_name)
+        if use_step:           new_name = filename_item("step",       self.step,'s');       self.filename.add_item(new_name)
+        if use_run_number:     new_name = filename_item("run_number", self.run_number,'r'); self.filename.add_item(new_name)
+        if use_spin:           new_name = filename_item("spin",       self.spin);           self.filename.add_item(new_name)
+        if self.keyword != '': new_name = filename_item("keyword",    self.keyword);        self.filename.add_item(new_name)
+        return self.filename
 
+    def set_name(self, spacer: str='_'):
+        if not hasattr(self,"filename"): 
+            print("Computation.set_name: filename not found")
+            if self.step > 1: self.set_filename(use_step=True)
+            else:             self.set_filename(use_step=False)
+        self.name = self.filename.get_name(spacer=spacer)
+        return self.name
+
+    def set_paths(self):
+        if not hasattr(self,"filename"): self.set_name()
         if self.path[-1] != '/': self.path += '/'
-        self.suffix      = str("_"+str(self._job.suffix)+"_r"+str(self.run_number)+"_"+str(self.spin)+str(self.keyword))
-
+        inp, out, sub = self.set_file_extension()
         # Filenames
-        self.inp_name = ''.join([self.refcode,self.suffix,inp])
-        self.out_name = ''.join([self.refcode,self.suffix,out])
-        self.sub_name = ''.join([self.refcode,self.suffix,sub])
+        self.inp_name = ''.join([self.name,inp])
+        self.out_name = ''.join([self.name,out])
+        self.sub_name = ''.join([self.name,sub])
         # Paths
         self.inp_path = self.path+self.inp_name
         self.out_path = self.path+self.out_name
         self.sub_path = self.path+self.sub_name
 
+    def check_updates(self, max_run_number: int=11, debug: int=1) -> int:
+        ## Checks for updates in the computation
+        self.has_update = False
+ 
+        ## 1-Searches in the job it is contained
+        for comp in self._job.computations:  
+            if comp.keyword == self.keyword and comp.step == self.step and hasattr(comp,"run_number"):
+                if comp.run_number > self.run_number: self.has_update = True
+
+        ## 2-Checks for newer files with the same filename in self.path
+        if not self.has_update:
+            inp, out, sub = self.set_file_extension()
+            for rn in range(self.run_number, max_run_number):
+                new_filename = self.get_new_filename(list(["run_number"]),list([rn]))  ## This creates a new version of the filename
+                new_name     = new_filename.get_name()
+                new_path     = new_filename.set_path(self.path)
+                new_outfile  = ''.join([new_path,".out"])
+                out_exists   = os.path.isfile(new_outfile)
+                if out_exists: self.has_update = True
+        return self.has_update
+
+    def set_run_number(self, debug: int=1) -> int:
+        run_number = 0
+        if debug > 0: print("SET_RUN_NUMBER: evaluating computation with keyword", self.keyword)
+        for comp in self._job.computations:               # Searches in the job it is contained
+            if comp.keyword == self.keyword and comp.step == self.step and hasattr(comp,"isfinished") and hasattr(comp,"run_number"):
+                if comp.run_number > run_number: run_number = comp.run_number
+        run_number += 1
+        return run_number
+
+    def check_files(self) -> None:
+        if not hasattr(self,"inp_path"): self.set_paths()
+        self.input_exists     = os.path.isfile(self.inp_path)
+        self.output_exists    = os.path.isfile(self.out_path)
+        self.subfile_exists   = os.path.isfile(self.sub_path)
+
+        if self.input_exists:   self.input_modtime    = os.path.getmtime(self.inp_path)
+        else:                   self.input_modtime    = int(0) 
+        if self.output_exists:  self.output_modtime   = os.path.getmtime(self.out_path)
+        else:                   self.output_modtime   = int(0) 
+        if self.subfile_exists: self.subfile_modtime  = os.path.getmtime(self.sub_path)
+        else:                   self.subfile_modtime  = int(0) 
+        
+    def read_lines(self, flat: bool=True) -> None:        
+        if not hasattr(self,"output_exists"): self.check_files()
+        if self.output_exists: self.output_lines = read_lines_file(self.out_path, flat=flat)
+        else:                  self.output_lines = []
+
+    def delete_lines(self) -> None:
+        if hasattr(self,"output_lines"): delattr(self,"output_lines")
+        #self.output_lines = []
+
+    ###################################
+    #### QC_DATA-related functions ####
+    ###################################
     def check_qc_data(self, job_path: str, debug: int=0):
         from Scope.Classes_Input import set_qc_data
         new_qc_data  = set_qc_data(job_path, section="&qc_data" , debug=0)
@@ -94,75 +174,9 @@ class computation(object):
             self.qc_data._mod_attr("mix_beta",old_qc_data.mix_beta)
         return self.qc_data
 
-    def check_updates(self, debug: int=1) -> int:
-        ## Checks for updates in the computation, but only if ever the computation has been recognised.
-        ## If only the file exists, it is not detected
-        self.has_update = False
-        for idx, comp in enumerate(self._job.computations):  ## Searches in the job it is contained
-            if comp.keyword == self.keyword and hasattr(comp,"run_number"):
-                if comp.run_number > self.run_number: self.has_update = True
-
-        ## Checks for newer files in folder
-        if not self.has_update:
-            inp, out, sub = self.set_file_extension()
-            for rn in range(self.run_number, 11):
-                if not self.has_update:
-                    search = str("_"+str(self._job.suffix)+"_r"+str(rn)+"_"+str(self.spin)+str(self.keyword))
-                    search_inp = ''.join([self.path,self.refcode,search,inp])
-                    search_out = ''.join([self.path,self.refcode,search,out])
-                    inp_exists = os.path.isfile(search_inp)
-                    out_exists = os.path.isfile(search_out)
-                    if out_exists: self.has_update = True
-        return self.has_update
-
-    def set_run_number(self, debug: int=1) -> int:
-        run_number = 0
-        if debug > 0: print("SET_RUN_NUMBER: evaluating computation with keyword", self.keyword)
-        for idx, comp in enumerate(self._job.computations):  ## Searches in the job it is contained
-            #if debug > 0: print("SET_RUN_NUMBER: in job there is:", comp.keyword, comp.run_number) #, comp.isfinished)
-            if comp.keyword == self.keyword and hasattr(comp,"isfinished") and hasattr(comp,"run_number"):
-                if comp.run_number > run_number: run_number = comp.run_number
-                #if comp.isfinished and comp.run_number > run_number: run_number = comp.run_number
-        run_number += 1
-        #if not self._job.job_data.must_be_good: run_number = 1
-        return run_number
-
-    def check_files(self) -> None:
-        self.input_exists     = os.path.isfile(self.inp_path)
-        self.output_exists    = os.path.isfile(self.out_path)
-        self.subfile_exists   = os.path.isfile(self.sub_path)
-        if self.input_exists:   self.input_modtime    = os.path.getmtime(self.inp_path)
-        else:                   self.input_modtime    = int(0) 
-        if self.output_exists:  self.output_modtime   = os.path.getmtime(self.out_path)
-        else:                   self.output_modtime   = int(0) 
-        if self.subfile_exists: self.subfile_modtime  = os.path.getmtime(self.sub_path)
-        else:                   self.subfile_modtime  = int(0) 
-        
-    def read_lines(self, flat: bool=True) -> None:        
-        if not hasattr(self,"output_exists"): self.check_files()
-        if self.output_exists: self.output_lines = read_lines_file(self.out_path, flat=flat)
-        else:                  self.output_lines = []
-
-    def delete_lines(self) -> None:
-        if hasattr(self,"output_lines"): delattr(self,"output_lines")
-        #self.output_lines = []
-            
-    def check_submission_status(self, environment: object, debug: int=0) -> None:
-        key = str(self.refcode+self.suffix)
-        self.isrunning = environment.check_submitted(job_name=key, debug=debug)
-        
-    def add_submission_init(self, nprocs: int, queue: object) -> None:
-        self.nprocs                = nprocs
-        self.submission_queue      = queue.name
-        self.submission_cluster    = queue._environment.cluster
-        self.submission_user       = queue._environment.user
-        ## self.job_id is retrieved in self.submit
-
-    def add_registration_data(self, cluster: str=set_cluster(), user: str=set_user()) -> None:
-        self.registration_time     = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        self.registration_cluster  = cluster
-        self.registration_user     = user
-
+    ##################################
+    #### Output-related functions ####
+    ##################################
     def create_output(self, debug: int=0):
         if not hasattr(self,'output_lines'): self.read_lines()
         if   self.software == 'g16': 
@@ -177,6 +191,9 @@ class computation(object):
     def delete_output(self) -> None:
         if hasattr(self,"output"): delattr(self,"output")
 
+    #################################
+    #### State-related functions ####
+    #################################
     def add_state(self, state):
         if not hasattr(self,'states'): self.states = []
         self.states.append(state)
@@ -190,9 +207,33 @@ class computation(object):
         else: 
             print("COMPUTATION.VERIFY STATE: target not implemented")
             return False 
+
+    ######################################
+    #### Submission-related functions ####
+    ######################################
+    def check_submission_status(self, environment: object, debug: int=0) -> None:
+        #key = str(self.refcode+self.suffix)
+        key = self.name
+        self.isrunning = environment.check_submitted(job_name=key, debug=debug)
+        
+    def add_submission_init(self, nprocs: int, queue: object) -> None:
+        self.nprocs                = nprocs
+        self.submission_queue      = queue.name
+        self.submission_cluster    = queue._environment.cluster
+        self.submission_user       = queue._environment.user
+        ## self.job_id is retrieved in self.submit
+
+    def add_registration_data(self, cluster: str=set_cluster(), user: str=set_user()) -> None:
+        self.registration_time     = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        self.registration_cluster  = cluster
+        self.registration_user     = user
+
             
-###########################################
+    ###################################
+    #### Execute-related functions ####
+    ###################################
     def store(self, debug: int=0) -> None:
+        ### This function should be connected with the new environment.storage variable
         import shutil
         if self.output_exists: new_out_path= self.out_path+'_part'
         shutil.move(self.out_path, new_out_path)
@@ -365,4 +406,60 @@ class computation(object):
         if self.isregistered: to_print += f' self.elapsed_time     = {self.elapsed_time}\n' 
         if hasattr(self,"output"): to_print += f'{self.output}\n'
         return to_print
-###########################################
+
+##############################################################
+### FILENAME Class to facilitate controling the file names ###
+##############################################################
+class filename(object):
+    def __init__(self):
+        self.typ      = 'name_global'
+        self.items    = []
+    
+    def add_item(self, item):    
+        if isinstance(item, name_item): self.items.append(item)
+
+    def get_name(self, spacer: str='_', prefix: str='', suffix: str=''):
+        self.name     = ''
+        for idx, i in enumerate(self.items):
+            if idx == 0: self.name += str(prefix)
+            self.name += i.format()
+            if idx == len(self.items)-1: self.name += str(suffix)
+            else:                        self.name += spacer 
+        return self.name
+
+    def set_path(self, path: str=os.getcwd()): 
+        if not hasattr(self,"name"): self.get_name()
+        if path[-1] != '/': path += '/'
+        self.path = path + self.name 
+        return self.path
+
+#######################
+class name_item(object):
+    def __init__(self, variable: str, value, prefix: str=''):
+        self.typ      = 'name_item'
+        self.variable = variable
+        self.value    = value
+        try:    self.value    = literal_eval(value)
+        except: self.value    = value
+        self.prefix   = prefix 
+
+    def mod_value(self, new_value):
+        try:    self.value    = literal_eval(new_value)
+        except: self.value    = new_value
+        return self.value
+
+    def format(self):
+        to_print = ''
+        if self.prefix != '': to_print += f'{self.prefix}'
+        to_print += f'{str(self.value)}'
+        return to_print
+
+    def __repr__(self) -> None:
+        to_print = ''
+        if self.prefix != '': to_print += f'{self.prefix}'
+        to_print += f'{str(self.value)}'
+        return to_print
+
+    def __add__(self,other) -> None:
+        if not isinstance(other, type(self)): return self
+        return str(self.format()+other.format())

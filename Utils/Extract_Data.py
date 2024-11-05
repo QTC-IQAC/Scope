@@ -12,73 +12,9 @@ from Scope import Constants
 ### Here is where the all protocols to extract system properties, (often) involving more than one system (eg. HS and LS), are collected
 ##############################################################################
 
-def extract_dH_solid(sys: object, branch_keyword: str, High_E_state: object, Low_E_state: object, overwrite: bool=False, global_env: object=None, debug: int=0):
-
-    ## 0-Changes paths if necessary
-    if global_env is not None:
-        if global_env.check_paths(debug=1): 
-            if debug > 1: print(f"EXECUTE_JOB, step 3b: global environment found with correct paths")
-            try: 
-                updated = sys.reset_paths(global_env, debug=0)
-                if updated and debug > 1: print(f"EXECUTE_JOB, step 3b: system paths reset")
-            except Exception as exc: 
-                pass
-
-    ### 1-Branch is loaded
-    exists, this_branch = sys.find_branch(branch_keyword, debug=debug)
-    if exists: print("Branch loaded with keyword", this_branch.keyword)
-    if not exists: return False
-
-    ### 2-Checks that energies have been parsed
-    assert "energy" in High_E_state.results.keys()
-    assert "energy" in Low_E_state.results.keys()
-
-    ### 3-Verify properties of the state. Necessary for point 4
-    if not hasattr(High_E_state,"fragmented"): High_E_state.check_fragmentation(reconstruct=True, debug=debug)
-    if not hasattr(Low_E_state,"fragmented"): Low_E_state.check_fragmentation(reconstruct=True, debug=debug)
-    assert not High_E_state.fragmented, f"Fragmented molecules in the geometry of High_E_state"
-    assert not Low_E_state.fragmented, f"Fragmented molecules in the geometry of Low_E_state"
-     
-    ## 4-Get the number of complexes in the unit cells: this is why we need point 3
-    ncomplex1 = 0
-    for mol in High_E_state.moleclist:
-        if mol.iscomplex: ncomplex1 += 1
-    ncomplex2 = 0
-    for mol in Low_E_state.moleclist:
-        if mol.iscomplex: ncomplex2 += 1
-        #if mol.type == "Complex" and hasattr(mol,"scope_guess_spin"): ncomplex2 += 1
-
-    print("STEP4", ncomplex1, "complexes found in High_E_state")
-    print("STEP4", ncomplex2, "complexes found in High_E_state")
-
-    ## 5-Store Helec per molecule ##
-    if overwrite or not "Helec" in High_E_state.results.keys():
-        key = "Helec"
-        units = High_E_state.results["energy"].units
-        value = High_E_state.results["energy"].value / ncomplex1 
-        High_E_state.add_result(data(key,value,str(units+"/molec"),"extract_dH_solid"), overwrite=overwrite)
-    if overwrite or not "Helec" in Low_E_state.results.keys():
-        key = "Helec"
-        units = Low_E_state.results["energy"].units
-        value = Low_E_state.results["energy"].value / ncomplex2 
-        Low_E_state.add_result(data(key,value,str(units+"/molec"),"extract_dH_solid"), overwrite=overwrite)
-
-    ## 6-Compute dHelec and store it in branch
-    if overwrite or not "dHelec" in this_branch.results.keys():
-        assert High_E_state.results["Helec"].units == Low_E_state.results["Helec"].units 
-        key = "dHelec" 
-        value = High_E_state.results["Helec"].value - Low_E_state.results["Helec"].value 
-        units = High_E_state.results["Helec"].units
-        function = "extract_dH_solid"
-        this_branch.add_result(data(key,value,units,function), overwrite=overwrite) 
-
-    if "dHelec" in this_branch.results.keys(): 
-        this_branch.remove_output_lines()
-
-    return True, this_branch.results["dHelec"]
-
-
 def extract_T12(sys: object, branch_keyword: str, High_E_state: object, Low_E_state: object, Trange: range=range(10,501,1), flexible: bool=True, overwrite: bool=False, global_env: object=None, debug: int=0):
+
+    ## Uses data stored in state-class objects. More information can be found in Classes_State
 
     ## 0-Changes paths if necessary
     if global_env is not None:
