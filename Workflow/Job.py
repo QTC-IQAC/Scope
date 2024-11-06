@@ -160,10 +160,12 @@ class job(object):
         ## 1- Setup for regular computations: "1 job => 1 computation"
         #####################
         if self.setup == "regular" or self.setup == "reg":
-            exists, comp = self.find_computation()
-            if not exists: comp = self.add_computation(len(self.computations)+1, qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
-            comp.qc_data._add_attr("istate",self.istate)         
-            comp.qc_data._add_attr("fstate",self.fstate)         
+            exists, new_comp = self.find_computation()
+            if not exists: new_comp = self.add_computation(len(self.computations)+1, qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
+            new_comp.qc_data._add_attr("istate",self.istate)         
+            new_comp.qc_data._add_attr("fstate",self.fstate)         
+            new_comp.set_name()
+            new_comp.set_paths()
 
         #####################
         ## 2- Setup to create displaced geometries using VNM to escape from local minima
@@ -209,10 +211,12 @@ class job(object):
                         displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
 
                     ## 2-Initial State of the Computation must be updated, to account for the displacement of geometries
-                    exists, comp = self.find_computation()
-                    if not exists: comp = self.add_computation(len(self.computations)+1, qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
-                    comp.qc_data._add_attr("istate","displaced")  ## Updates the initial state of the computation, so it takes the displaced geometries
-                    comp.qc_data._add_attr("fstate",self.fstate)         
+                    exists, new_comp = self.find_computation()
+                    if not exists: new_comp = self.add_computation(len(self.computations)+1, qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
+                    new_comp.qc_data._add_attr("istate","displaced")  ## Updates the initial state of the computation, so it takes the displaced geometries
+                    new_comp.qc_data._add_attr("fstate",self.fstate)         
+                    new_comp.set_name()
+                    new_comp.set_paths()
 
             else:     
                 print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' does not have the properties required to apply the displacement")
@@ -264,10 +268,10 @@ class job(object):
             if not exists: new_comp = self.add_computation(len(self.computations)+1, qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
             new_comp.qc_data._add_attr("istate",self.istate)         
             new_comp.qc_data._add_attr("fstate",self.fstate)         
-            new_comp.set_filename(use_step=True)
+            #new_comp.set_filename(use_step=True)
             new_comp.set_name()
             new_comp.set_paths()
-            if not hasattr(self,"energies"): self.energies = np.array((self.qc_data.max_steps))
+            if not hasattr(self,"energies"): self.energies = np.zeros((self.job_data.max_steps))
 
         else: print(f"SET COMPUTATIONS FROM SETUP: {self.setup=} not recognized. No computations were created")
 
@@ -313,7 +317,7 @@ class job(object):
             if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
             new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=False, debug=debug)
             new_comp.qc_data    = deepcopy(comp.qc_data)
-            new_comp.filename() = deepcopy(comp.filename)   # Filename contains how the file must be named (e.g. refcode+suffix+step+run_number...)
+            #new_comp.filename   = deepcopy(comp.filename)   # Filename contains how the file must be named (e.g. refcode+suffix+step+run_number...)
             new_comp.step       = comp.step + 1
             new_comp.set_name()
             new_comp.set_paths()
@@ -426,7 +430,7 @@ class job(object):
         to_print += '----------------------------------------------------\n'
         return to_print
 
-def check_convergence(thres: float=1e-5, energies, current_step):
+def check_convergence(energies, current_step, thres: float=1e-5):
     if np.abs(energies[current_step-1]-energies[current_step]) > thres: return False
     else: return True
 

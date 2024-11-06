@@ -125,7 +125,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
         print( "    restart_mode='from_scratch'", file=inp)
         print(f"    pseudo_dir ='{PP_Library}'", file=inp)
         print( "    disk_io='low'", file=inp)
-        print(f"    prefix='{comp.refcode}{comp.suffix}'", file=inp)
+        print(f"    prefix='{comp.name}'", file=inp)
 
         ## Print forces for finite differences computation.
         if hasattr(comp.qc_data,"print_forces"):
@@ -271,11 +271,11 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
     if cluster == 'portal': 
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
-            print(f"#$ -N {comp.refcode}{comp.suffix}", file=sub) 
+            print(f"#$ -N {comp.name}", file=sub) 
             print(f"#$ -pe smp {procs}", file=sub)
             print(f"#$ -cwd", file=sub)
-            print(f"#$ -o {storage}/x-stds/{comp.refcode}{comp.suffix}.stdout", file=sub)
-            print(f"#$ -e {storage}/x-stds/{comp.refcode}{comp.suffix}.stderr", file=sub)
+            print(f"#$ -o {storage}/x-stds/{comp.name}.stdout", file=sub)
+            print(f"#$ -e {storage}/x-stds/{comp.name}.stderr", file=sub)
             print(f"#$ -S /bin/bash", file=sub)
             print(f"#$ -q {queue.name}" , file=sub)
             print(f"", file=sub)
@@ -299,9 +299,9 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
     elif cluster == "csuc2" or cluster == "csuc3":
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
-            print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
-            print(f"#SBATCH -e {storage}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
-            print(f"#SBATCH -o {storage}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
+            print(f"#SBATCH -J {comp.name}", file=sub)
+            print(f"#SBATCH -e {storage}/std_files/{comp.name}.stderr", file=sub)
+            print(f"#SBATCH -o {storage}/std_files/{comp.name}.stdout", file=sub)
             print(f"#SBATCH -p {queue.name}", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
@@ -326,9 +326,9 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
     elif cluster == "cesga": 
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
-            print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
-            print(f"#SBATCH -e {storage}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
-            print(f"#SBATCH -o {storage}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
+            print(f"#SBATCH -J {comp.name}", file=sub)
+            print(f"#SBATCH -e {storage}/std_files/{comp.name}.stderr", file=sub)
+            print(f"#SBATCH -o {storage}/std_files/{comp.name}.stdout", file=sub)
             print(f"#SBATCH -p {queue.name}", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)

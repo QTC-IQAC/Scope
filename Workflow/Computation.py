@@ -20,18 +20,19 @@ class computation(object):
         self.type             = "computation"
         self._job             = _job       
         self.index            = index      
-        self.keyword          = keyword  ## Not the software, but a string used to identify the computation
+        self.keyword          = keyword               ## Not the software, but a string used to identify the type of job computation
+        self.suffix           = _job.suffix           ## A string to add to the file name. This should be eliminated 
         self.qc_data          = qc_data
         self.software         = qc_data.software
-        self.jobtype          = qc_data.jobtype
+        self.jobtype          = qc_data.jobtype       ## Type of computation (opt, scf, vc-relax)
         self.path             = path
         self.refcode          = _job._recipe.subject._sys.refcode
-        self.run_number       = self.set_run_number(debug=1)
         self.isregistered     = False
         self.has_update       = False
         self.is_update        = is_update
         self.states           = []
         self.step             = int(1)
+        self.run_number       = self.set_run_number(debug=1)  ## Must be run after defining self.step
 
         ############
         ### SPIN ###
@@ -59,23 +60,32 @@ class computation(object):
  
     def get_mod_filename(self, mod_item_vars: list, mod_item_vals: list, debug: int=0):
         from Scope.Other import where_in_array, extract_from_list
-        if not hasattr(self,"filename"): return None
+        if not hasattr(self,"filename"): self.set_filename()
+        #if not hasattr(self,"filename"): return None
         new_filename = deepcopy(self.filename)
-        for idx, item in enumerate(self.filename.items):
-            if debug > 0: print(f"GET_NAME_FROM_CONFIG: doing {v=} in filename")
-            if item.variable in mod_item_vars: item.mod_value(mod_item_vals[idx])
+        found = False
+        for idx, mod in enumerate(mod_item_vars):
+            for jdx, item in enumerate(new_filename.items):
+                if item.variable == mod_item_vars: 
+                    item.mod_value(mod_item_vals[idx])
+                    if debug > 0: print(f"GET_NAME_FROM_CONFIG: modifying {mod=} in new_filename")
         return new_filename
 
     def set_filename(self, use_refcode: bool=True, use_suffix: bool=True, use_step: bool=False, use_run_number: bool=True, use_spin: bool=True, debug: int=0):
-    ### Uses a filename-class object, as defined below, defined as a sum of items
+
+        ### Here is the convention I'm using to name files. It is better not to change once computations have been submitted
+        ### Uses a filename-class object, as defined below, defined as a sum of items
         if not hasattr(self,"run_number"): self.set_run_number() 
         self.filename = filename()   ## Class defined at the end of this file
-        if use_refcode:        new_name = filename_item("refcode",    self.refcode);        self.filename.add_item(new_name)
-        if use_suffix:         new_name = filename_item("suffix",     self.suffix);         self.filename.add_item(new_name)
-        if use_step:           new_name = filename_item("step",       self.step,'s');       self.filename.add_item(new_name)
-        if use_run_number:     new_name = filename_item("run_number", self.run_number,'r'); self.filename.add_item(new_name)
-        if use_spin:           new_name = filename_item("spin",       self.spin);           self.filename.add_item(new_name)
-        if self.keyword != '': new_name = filename_item("keyword",    self.keyword);        self.filename.add_item(new_name)
+        if use_refcode:        new_item = filename_item("refcode",    self.refcode);        self.filename.add_item(new_item)
+        if use_suffix:         new_item = filename_item("suffix",     self._job.suffix);    self.filename.add_item(new_item)
+        if use_step:           # Only step=2 and above are printed in name 
+            new_item = filename_item("step",       self.step,'s')
+            new_item.set_min_value(int(2))
+            self.filename.add_item(new_item)
+        if use_run_number:     new_item = filename_item("run_number", self.run_number,'r'); self.filename.add_item(new_item)
+        if use_spin:           new_item = filename_item("spin",       self.spin);           self.filename.add_item(new_item)
+        if self.keyword != '': new_item = filename_item("keyword",    self.keyword);        self.filename.add_item(new_item)
         return self.filename
 
     def set_name(self, spacer: str='_'):
@@ -399,6 +409,8 @@ class computation(object):
         else:                      to_print += f' Job Final State       = {self._job.fstate}\n'
         to_print += f' self.software         = {self.software}\n'
         to_print += f' self.index            = {self.index}\n' 
+        to_print += f' self.step             = {self.step}\n' 
+        to_print += f' self.run_number       = {self.run_number}\n' 
         to_print += f' self.spin             = {self.spin}\n'
         to_print += f' self.keyword          = {self.keyword}\n' 
         to_print += f' self.inp_path         = {self.inp_path}\n' 
@@ -419,7 +431,7 @@ class filename(object):
         self.items    = []
     
     def add_item(self, item):    
-        if isinstance(item, name_item): self.items.append(item)
+        if isinstance(item, filename_item): self.items.append(item)
 
     def get_name(self, spacer: str='_', prefix: str='', suffix: str=''):
         self.name     = ''
@@ -427,7 +439,8 @@ class filename(object):
             if idx == 0: self.name += str(prefix)
             self.name += i.format()
             if idx == len(self.items)-1: self.name += str(suffix)
-            else:                        self.name += spacer 
+            else:                        
+                if i.format() != '': self.name += spacer 
         return self.name
 
     def set_path(self, path: str=os.getcwd()): 
@@ -437,14 +450,17 @@ class filename(object):
         return self.path
 
 #######################
-class name_item(object):
+class filename_item(object):
     def __init__(self, variable: str, value, prefix: str=''):
-        self.typ      = 'name_item'
+        self.typ      = 'filename_item'
         self.variable = variable
         self.value    = value
         try:    self.value    = literal_eval(value)
         except: self.value    = value
         self.prefix   = prefix 
+
+    def set_min_value(self, min_value):
+        self.min_value = min_value
 
     def mod_value(self, new_value):
         try:    self.value    = literal_eval(new_value)
@@ -453,15 +469,29 @@ class name_item(object):
 
     def format(self):
         to_print = ''
-        if self.prefix != '': to_print += f'{self.prefix}'
-        to_print += f'{str(self.value)}'
+        if (type(self.value) == int or type(self.value) == float) and hasattr(self,"min_value"):
+            if self.value >= self.min_value:
+                if self.prefix != '': to_print += f'{self.prefix}'
+                to_print += f'{str(self.value)}'
+        else:
+            if self.prefix != '': to_print += f'{self.prefix}'
+            to_print += f'{str(self.value)}'
         return to_print
 
     def __repr__(self) -> None:
         to_print = ''
-        if self.prefix != '': to_print += f'{self.prefix}'
-        to_print += f'{str(self.value)}'
+        if type(self.value) == int or type(self.value) == float and hasattr(self,"min_value"):
+            if self.value >= self.min_value:
+                if self.prefix != '': to_print += f'{self.prefix}'
+                to_print += f'{str(self.value)}'
+        else:
+            if self.prefix != '': to_print += f'{self.prefix}'
+            to_print += f'{str(self.value)}'
         return to_print
+        #to_print = ''
+        #if self.prefix != '': to_print += f'{self.prefix}'
+        #to_print += f'{str(self.value)}'
+        #return to_print
 
     def __add__(self,other) -> None:
         if not isinstance(other, type(self)): return self
