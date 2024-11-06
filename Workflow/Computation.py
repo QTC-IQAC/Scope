@@ -57,7 +57,7 @@ class computation(object):
         sub = ".sub"
         return inp, out, sub
  
-    def get_new_filename(self, mod_item_vars: list, mod_item_vals: list, debug: int=0):
+    def get_mod_filename(self, mod_item_vars: list, mod_item_vals: list, debug: int=0):
         from Scope.Other import where_in_array, extract_from_list
         if not hasattr(self,"filename"): return None
         new_filename = deepcopy(self.filename)
@@ -99,36 +99,6 @@ class computation(object):
         self.out_path = self.path+self.out_name
         self.sub_path = self.path+self.sub_name
 
-    def check_updates(self, max_run_number: int=11, debug: int=1) -> int:
-        ## Checks for updates in the computation
-        self.has_update = False
- 
-        ## 1-Searches in the job it is contained
-        for comp in self._job.computations:  
-            if comp.keyword == self.keyword and comp.step == self.step and hasattr(comp,"run_number"):
-                if comp.run_number > self.run_number: self.has_update = True
-
-        ## 2-Checks for newer files with the same filename in self.path
-        if not self.has_update:
-            inp, out, sub = self.set_file_extension()
-            for rn in range(self.run_number, max_run_number):
-                new_filename = self.get_new_filename(list(["run_number"]),list([rn]))  ## This creates a new version of the filename
-                new_name     = new_filename.get_name()
-                new_path     = new_filename.set_path(self.path)
-                new_outfile  = ''.join([new_path,".out"])
-                out_exists   = os.path.isfile(new_outfile)
-                if out_exists: self.has_update = True
-        return self.has_update
-
-    def set_run_number(self, debug: int=1) -> int:
-        run_number = 0
-        if debug > 0: print("SET_RUN_NUMBER: evaluating computation with keyword", self.keyword)
-        for comp in self._job.computations:               # Searches in the job it is contained
-            if comp.keyword == self.keyword and comp.step == self.step and hasattr(comp,"isfinished") and hasattr(comp,"run_number"):
-                if comp.run_number > run_number: run_number = comp.run_number
-        run_number += 1
-        return run_number
-
     def check_files(self) -> None:
         if not hasattr(self,"inp_path"): self.set_paths()
         self.input_exists     = os.path.isfile(self.inp_path)
@@ -142,14 +112,38 @@ class computation(object):
         if self.subfile_exists: self.subfile_modtime  = os.path.getmtime(self.sub_path)
         else:                   self.subfile_modtime  = int(0) 
         
-    def read_lines(self, flat: bool=True) -> None:        
-        if not hasattr(self,"output_exists"): self.check_files()
-        if self.output_exists: self.output_lines = read_lines_file(self.out_path, flat=flat)
-        else:                  self.output_lines = []
+    ##################################
+    #### Update-related functions ####
+    ##################################
+    def check_updates(self, max_run_number: int=11, debug: int=1) -> int:
+        ## Checks for updates in the computation
+        self.has_update = False
 
-    def delete_lines(self) -> None:
-        if hasattr(self,"output_lines"): delattr(self,"output_lines")
-        #self.output_lines = []
+        ## 1-Searches in the job it is contained
+        for comp in self._job.computations:
+            if comp.keyword == self.keyword and comp.step == self.step and hasattr(comp,"run_number"):
+                if comp.run_number > self.run_number: self.has_update = True
+
+        ## 2-Checks for newer files with a similar filename in self.path
+        if not self.has_update:
+            inp, out, sub = self.set_file_extension()
+            for rn in range(self.run_number, max_run_number):
+                mod_filename = self.get_mod_filename(list(["run_number"]),list([rn]))  ## This creates a new version of the filename
+                mod_name     = mod_filename.get_name()
+                mod_path     = mod_filename.set_path(self.path)
+                mod_outfile  = ''.join([mod_path,".out"])
+                mod_exists   = os.path.isfile(mod_outfile)
+                if mod_exists: self.has_update = True
+        return self.has_update
+
+    def set_run_number(self, debug: int=1) -> int:
+        run_number = 0
+        if debug > 0: print("SET_RUN_NUMBER: evaluating computation with keyword", self.keyword)
+        for comp in self._job.computations:               # Searches in the job it is contained
+            if comp.keyword == self.keyword and comp.step == self.step and hasattr(comp,"isfinished") and hasattr(comp,"run_number"):
+                if comp.run_number > run_number: run_number = comp.run_number
+        run_number += 1
+        return run_number
 
     ###################################
     #### QC_DATA-related functions ####
@@ -191,6 +185,15 @@ class computation(object):
     def delete_output(self) -> None:
         if hasattr(self,"output"): delattr(self,"output")
 
+    def read_lines(self, flat: bool=True) -> None:        
+        if not hasattr(self,"output_exists"): self.check_files()
+        if self.output_exists: self.output_lines = read_lines_file(self.out_path, flat=flat)
+        else:                  self.output_lines = []
+
+    def delete_lines(self) -> None:
+        if hasattr(self,"output_lines"): delattr(self,"output_lines")
+        #self.output_lines = []
+
     #################################
     #### State-related functions ####
     #################################
@@ -201,7 +204,8 @@ class computation(object):
     def verify_state(self, name, target: str='opt'):
         subject = self._job._recipe.subject
         found, state = find_state(subject, name)
-        if not found: return None
+        if not found: return False
+        #if not found: return None
         if target == 'opt':
             if hasattr(state,'coord') and hasattr(state,'labels'): return True
         else: 
@@ -227,7 +231,6 @@ class computation(object):
         self.registration_time     = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
         self.registration_cluster  = cluster
         self.registration_user     = user
-
             
     ###################################
     #### Execute-related functions ####

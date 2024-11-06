@@ -188,10 +188,25 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                         new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
                         if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
                     
-                    ## 8.3 Cases ment to be repetitive. Next step added to JOB object 
-                    if this_job.setup == "repetitive_opt":
-                        if comp.step <= this_job.max_steps:
+                    ## 8.3 Cases meant to be repetitive. Next step added to JOB object 
+                    if this_job.setup == "rep_opt" and comp.isgood:
+ 
+                        ## 8.3.1 Collects energies from state in this step
+                        if hasattr(comp.qc_data,"fstate"): fstate = comp.qc_data.fstate
+                        else:                              fstate = comp._job.fstate
+                        exists, state = find_state(comp._job._recipe.subject, fstate)
+                        this_job.energies[int(comp.step)] = state.results['energy'].value
+
+                        ## 8.3.2 Checks the energy convergence
+                        isconverged = False
+                        if comp.step > 1: isconverged = check_convergence(comp.qc_data.energy_thres, this_job.energies, comp.step)
+
+                        ## 8.3.3 Continutes if not converged and below max_steps
+                        if isconverged: pass
+                        elif not isconverged and comp.step <= this_job.max_steps:
                             new_comp = this_job.set_continuation_computation(comp, "rep_opt", debug=debug)     
+                        else:
+                            print(f"EXECUTE_JOB, step 8.3: maximum steps reached without convergence")  
 
                     # Checks for common stupid errors and handles files
                     if not worked:

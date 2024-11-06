@@ -143,9 +143,10 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"constrains"):    data._add_attr("constrains", ['self'])
     if not hasattr(data,"must_be_good"):  data._add_attr("must_be_good", False)
 
-    ## Adds defaults for repetitive_opt job setup type
-    if data.setup == 'repetitive_opt' and not hasattr(data,"energy_thres"): data._add_attr("energy_thres",float(1e-5))
-    if data.setup == 'repetitive_opt' and not hasattr(data,"max_steps"):    data._add_attr("max_steps",int(5))
+    ## Adds defaults for rep_opt job setup type
+    if data.setup == 'rep_opt' and not hasattr(data,"energy_thres"): data._add_attr("energy_thres",float(1e-5))
+    if data.setup == 'rep_opt' and not hasattr(data,"max_steps"):    data._add_attr("max_steps",int(5))
+    #if data.setup == 'rep_opt' and not hasattr(data,"energiess"):    data._add_attr("energies",list([]))
 
     ## Modifies some attributes to avoid blank spaces and dashes, and to use lower letters
     data._mod_attr("keyword",str(data.keyword.lower().replace("-","_").replace(" ","_")))

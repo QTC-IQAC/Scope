@@ -254,19 +254,22 @@ class job(object):
                     print(initial_state)
 
         #####################
-        ## 4- Setup for repetitive optimizations: consecutive opt jobs until energy is stable
+        ## 4- Setup for repetitive optimizations (rep_opt): consecutive opt jobs until energy is stable
+        ##    Here, it only needs to create the first computation. 
+        ##    Following ones are created in "self.set_continuation_computation()"
         #####################
-        elif self.setup == "repetitive_opt":
-            print(f"SET COMPUTATIONS FROM SETUP: repetitive optimization selected")
+        elif self.setup == "rep_opt":
+            print(f"SET COMPUTATIONS FROM SETUP: repetitive optimization (rep_opt) selected")
             exists, new_comp = self.find_computation()    # Searches for first step and first run_number computation
             if not exists: new_comp = self.add_computation(len(self.computations)+1, qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
             new_comp.qc_data._add_attr("istate",self.istate)         
             new_comp.qc_data._add_attr("fstate",self.fstate)         
-            new_comp.step = 1
-            new_comp.set_name(use_step=True)
+            new_comp.set_filename(use_step=True)
+            new_comp.set_name()
             new_comp.set_paths()
+            if not hasattr(self,"energies"): self.energies = np.array((self.qc_data.max_steps))
 
-        else: pass
+        else: print(f"SET COMPUTATIONS FROM SETUP: {self.setup=} not recognized. No computations were created")
 
 ###############################
 ## Continuation Computations ##
@@ -308,19 +311,21 @@ class job(object):
         elif typ == "rep_opt":
             exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step+1, run_number=1)
             if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
-            new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
-            new_comp.qc_data = deepcopy(comp.qc_data)
-            new_comp.step = comp.step + 1
-            new_comp.set_name(use_step=True)
+            new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=False, debug=debug)
+            new_comp.qc_data    = deepcopy(comp.qc_data)
+            new_comp.filename() = deepcopy(comp.filename)   # Filename contains how the file must be named (e.g. refcode+suffix+step+run_number...)
+            new_comp.step       = comp.step + 1
+            new_comp.set_name()
             new_comp.set_paths()
+            print(f"Set_Continuation_Comp: Repetitive Optimization Created with {new_comp.name=}")
 
         else:
-            print("Set_Continuation_Comp: received unknown type of continuation computation: typ=", typ); return None
+            print(f"Set_Continuation_Comp: received unknown type of continuation computation: {typ=}"); return None
 
-        print(f"Set_Continuation_Comp: set new computation with {new_comp.run_number=}")
+        print(f"Set_Continuation_Comp: set new computation with {new_comp.run_number=} and {new_comp.step=}")
     
         ######
-        ## Irrespectively of typ, the new computation will continue from the state, which should contain the latest available geometry and properties
+        ## Irrespectively of typ, the new computation will continue from the fstate, which should contain the latest available geometry and properties
         #####
         if  hasattr(comp.qc_data,"fstate"):
             iscorrect = comp.verify_state(comp.qc_data.fstate, target='opt')
@@ -333,6 +338,7 @@ class job(object):
                 print("Set_Continuation_Comp: istate of new computation remains as:", new_comp.qc_data.istate)
                 print("Set_Continuation_Comp: fstate of new computation remains as:", new_comp.qc_data.fstate)
 
+        ## In theory, this elif block could be removed
         elif hasattr(self,"fstate"):
             iscorrect = comp.verify_state(self.fstate, target='opt')
             if iscorrect:
@@ -419,3 +425,8 @@ class job(object):
         to_print += f' self.isfinished   (Temp) = {self.isfinished}\n' 
         to_print += '----------------------------------------------------\n'
         return to_print
+
+def check_convergence(thres: float=1e-5, energies, current_step):
+    if np.abs(energies[current_step-1]-energies[current_step]) > thres: return False
+    else: return True
+
