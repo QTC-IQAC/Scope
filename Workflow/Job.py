@@ -69,10 +69,10 @@ class job(object):
             if comp.keyword == keyword and comp.step == step and comp.run_number == run_number: this_comp = comp; return True, this_comp
         return False, None
 
-    def add_computation(self, index: int, qc_data: object, path: str='', comp_keyword: str='', is_update: bool=False, debug: int=0):
+    def add_computation(self, qc_data: object, step: int=1, path: str='', comp_keyword: str='', is_update: bool=False, debug: int=0):
         ## Name of the computation and file paths are not created automatically. Use self.set_name and self.set_paths
         if path == '': path == self.path
-        new_computation       = computation(index, comp_keyword, qc_data, path, _job=self, is_update=is_update, debug=debug)
+        new_computation       = computation(self, qc_data, step, path, comp_keyword, is_update=is_update, debug=debug)
         self.computations.append(new_computation)
         return new_computation 
     
@@ -161,7 +161,7 @@ class job(object):
         #####################
         if self.setup == "regular" or self.setup == "reg":
             exists, new_comp = self.find_computation()
-            if not exists: new_comp = self.add_computation(len(self.computations)+1, qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
+            if not exists: new_comp = self.add_computation(qc_data, 1, self.path, comp_keyword="", is_update=False, debug=debug)
             new_comp.qc_data._add_attr("istate",self.istate)         
             new_comp.qc_data._add_attr("fstate",self.fstate)         
             new_comp.set_name()
@@ -212,7 +212,7 @@ class job(object):
 
                     ## 2-Initial State of the Computation must be updated, to account for the displacement of geometries
                     exists, new_comp = self.find_computation()
-                    if not exists: new_comp = self.add_computation(len(self.computations)+1, qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
+                    if not exists: new_comp = self.add_computation(qc_data, 1, self.path, comp_keyword="", is_update=False, debug=debug)
                     new_comp.qc_data._add_attr("istate","displaced")  ## Updates the initial state of the computation, so it takes the displaced geometries
                     new_comp.qc_data._add_attr("fstate",self.fstate)         
                     new_comp.set_name()
@@ -232,7 +232,7 @@ class job(object):
             else:
                 if hasattr(initial_state,"coord"):
                     from Scope.Findiff import findiff_displacements
-                    findiff_path = self.path+"findiff_test3"
+                    findiff_path = self.path+"findiff_test4"
                     if not os.path.isdir(findiff_path): os.makedirs(findiff_path); print(f"SET COMPUTATIONS FROM SETUP: findiff folder created")
                     geoms, names = findiff_displacements(initial_state.coord)
 
@@ -245,7 +245,7 @@ class job(object):
     
                         # Initial State of the Computation must be updated, to account for the displacement of geometries
                         exists, new_comp = self.find_computation(keyword=names[idx])
-                        if not exists: new_comp = self.add_computation(len(self.computations)+1, qc_data, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
+                        if not exists: new_comp = self.add_computation(qc_data, 1, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
                         new_comp.qc_data = deepcopy(new_comp.qc_data)
                         new_comp.qc_data._mod_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
                         new_comp.qc_data._mod_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
@@ -265,10 +265,9 @@ class job(object):
         elif self.setup == "rep_opt":
             print(f"SET COMPUTATIONS FROM SETUP: repetitive optimization (rep_opt) selected")
             exists, new_comp = self.find_computation()    # Searches for first step and first run_number computation
-            if not exists: new_comp = self.add_computation(len(self.computations)+1, qc_data, self.path, comp_keyword="", is_update=False, debug=debug)
+            if not exists: new_comp = self.add_computation(qc_data, 1, self.path, comp_keyword="", is_update=False, debug=debug)
             new_comp.qc_data._add_attr("istate",self.istate)         
             new_comp.qc_data._add_attr("fstate",self.fstate)         
-            #new_comp.set_filename(use_step=True)
             new_comp.set_name()
             new_comp.set_paths()
             if not hasattr(self,"energies"): self.energies = np.zeros((self.job_data.max_steps))
@@ -289,7 +288,7 @@ class job(object):
             # 0-We make sure that the new_run does not exist. If so, we return it directly:
             exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step, run_number=comp.run_number+1)
             if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
-            new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
+            new_comp = self.add_computation(comp.qc_data, comp.step, comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
             new_comp.qc_data = deepcopy(comp.qc_data)
             new_comp.set_name()
             new_comp.set_paths()
@@ -297,7 +296,7 @@ class job(object):
         elif typ == "scf":
             exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step, run_number=comp.run_number+1)
             if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
-            new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
+            new_comp = self.add_computation(comp.qc_data, comp.step, comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
             new_comp.qc_data = deepcopy(comp.qc_data)
             new_comp.set_name()
             new_comp.set_paths()
@@ -315,7 +314,7 @@ class job(object):
         elif typ == "rep_opt":
             exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step+1, run_number=1)
             if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
-            new_comp = self.add_computation(len(self.computations)+1, comp.qc_data, path=comp.path, comp_keyword=comp.keyword, is_update=False, debug=debug)
+            new_comp = self.add_computation(comp.qc_data, comp.step+1, comp.path, comp_keyword=comp.keyword, is_update=False, debug=debug)
             new_comp.qc_data    = deepcopy(comp.qc_data)
             #new_comp.filename   = deepcopy(comp.filename)   # Filename contains how the file must be named (e.g. refcode+suffix+step+run_number...)
             new_comp.step       = comp.step + 1

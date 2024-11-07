@@ -73,9 +73,47 @@ class data(object):
         elif type(self.value) == str: self.formatted = str(self.key+": "+self.value+" "+self.units)
         elif self.value is None:      self.formatted = str(self.key+": None")
 
+    def convert_to_units(self, new_units: str):
+        if   self.units == 'au' and (new_units.lower() == 'kj' or new_units.lower() == 'kj/mol'):
+            self.value = self.value * Constants.har2kJmol
+        elif self.units == 'kj' and new_units.lower() == 'au':
+            self.value = self.value / Constants.har2kJmol
+        elif self.units == 'ry' and new_units.lower() == 'au':
+            self.value = self.value * Constants.ry2har
+        elif self.units == 'au' and new_units.lower() == 'ry':
+            self.value = self.value / Constants.ry2har
+        elif self.units == 'au' and new_units.lower() == 'ev':
+            self.value = self.value * Constants.har2eV
+        elif self.units == 'ev' and new_units.lower() == 'au':
+            self.value = self.value / Constants.har2ev
+        elif self.units == 'au' and new_units.lower() == 'cm':
+            self.value = self.value * Constants.har2cm
+        elif self.units == 'cm' and new_units.lower() == 'au':
+            self.value = self.value / Constants.har2cm
+        self.units = new_units
+        return self
+
     def print_in_units(self, new_units: str):
-        if self.units == 'au' and (new_units.lower() == 'kj' or new_units.lower() == 'kj/mol'): print(f"{self.value * Constants.har2kJmol:12.8f} {new_units}")
-        if self.units == 'kj' and new_units.lower() == 'au':                                    print(f"{self.value / Constants.har2kJmol:12.8f} {new_units}")
+        if new_units.lower() != self.units:
+            if   self.units == 'au' and (new_units.lower() == 'kj' or new_units.lower() == 'kj/mol'):
+                print(f"{self.value * Constants.har2kJmol:12.8f} {new_units}")
+            elif self.units == 'kj' and new_units.lower() == 'au':
+                print(f"{self.value / Constants.har2kJmol:12.8f} {new_units}")
+            elif self.units == 'ry' and new_units.lower() == 'au':
+                print(f"{self.value * Constants.r2har:12.8f} {new_units}")
+            elif self.units == 'au' and new_units.lower() == 'ry':
+                print(f"{self.value / Constants.r2har:12.8f} {new_units}")
+            elif self.units == 'au' and new_units.lower() == 'ev':
+                print(f"{self.value * Constants.har2ev:12.8f} {new_units}")
+            elif self.units == 'ev' and new_units.lower() == 'au':
+                print(f"{self.value / Constants.har2ev:12.8f} {new_units}")
+            elif self.units == 'au' and new_units.lower() == 'cm':
+                print(f"{self.value * Constants.har2cm:12.8f} {new_units}")
+            elif self.units == 'cm' and new_units.lower() == 'au':
+                print(f"{self.value / Constants.har2cm:12.8f} {new_units}")
+        else:
+            print(self)
+
          
     def __repr__(self) -> None:
         if not hasattr(self,"formatted"): self.format()
