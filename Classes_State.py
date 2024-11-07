@@ -168,8 +168,8 @@ class state(object):
                 indices.append(mol.atlist[idx])
         self.atoms = [x for _, x in sorted(zip(indices, self.atoms), key=lambda pair: pair[0])]
 
-    def set_energy(self, energy, units):
-        self.add_result(data("energy",energy,units,"state.set_energy"))
+    def set_energy(self, energy, units, overwrite: bool=True):
+        self.add_result(data("energy",energy,units,"state.set_energy"), overwrite=overwrite)
         #self.energy     = energy
 
     def add_computation(self, computation: object):

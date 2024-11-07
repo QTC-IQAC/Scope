@@ -199,15 +199,16 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                         if hasattr(comp.qc_data,"fstate"): fstate = comp.qc_data.fstate
                         else:                              fstate = comp._job.fstate
                         exists, state = find_state(comp._job._recipe.subject, fstate)
-                        print('energies:', this_job.energies)
                         this_job.energies[int(comp.step)-1] = state.results['energy'].value
+                        print('energies:', this_job.energies)
 
                         ## 8.3.2 Checks the energy convergence
                         isconverged = False
                         if comp.step > 1: isconverged = check_convergence(this_job.energies, comp.step-1, this_job.job_data.energy_thres)
 
                         ## 8.3.3 Continutes if not converged and below max_steps
-                        if isconverged: pass
+                        if isconverged: 
+                            print(f"EXECUTE_JOB, step 8.3: repetitive opt reached convergence")  
                         elif not isconverged and comp.step <= this_job.job_data.max_steps:
                             new_comp = this_job.set_continuation_computation(comp, "rep_opt", debug=debug)     
                         else:
