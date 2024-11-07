@@ -204,7 +204,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
 
                         ## 8.3.2 Checks the energy convergence
                         isconverged = False
-                        if comp.step > 1: isconverged = check_convergence(this_job.energies, comp.step, this_job.job_data.energy_thres)
+                        if comp.step > 1: isconverged = check_convergence(this_job.energies, comp.step-1, this_job.job_data.energy_thres)
 
                         ## 8.3.3 Continutes if not converged and below max_steps
                         if isconverged: pass
