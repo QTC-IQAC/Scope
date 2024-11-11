@@ -116,7 +116,7 @@ class sco_system(object):
                 return True, br
         return False, None
 
-    def find_computation(self, branch_keyword: str, recipe_keyword: str, job_keyword: str, comp_keyword: str='', comp_run_number: int=1, debug: int=0):
+    def find_computation(self, branch_keyword: str, recipe_keyword: str, job_keyword: str, comp_keyword: str='', comp_step: int=1, comp_run_number: int=1, debug: int=0):
         if len(self.branches) == 0: return False, None
         for br in self.branches:
             if br.keyword == branch_keyword:
@@ -128,7 +128,7 @@ class sco_system(object):
                             if job.keyword == job_keyword:
                                 if len(job.computations) == 0: return False, None
                                 for idx, comp in enumerate(job.computations):
-                                    if comp.run_number == comp_run_number and comp.keyword == comp_keyword: return True, comp
+                                    if comp.run_number == comp_run_number and comp.step == comp_step and comp.keyword == comp_keyword: return True, comp
         return False, None
 
     ##########
