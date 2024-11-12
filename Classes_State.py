@@ -126,8 +126,12 @@ class state(object):
 #        return self.Z
 
     def check_fragmentation(self, reconstruct: bool = False, debug: int=0):
-        assert hasattr(self,"cellvec")
-        assert hasattr(self._subject,"refmoleclist")
+        if self._subject.type == "cell": 
+            assert hasattr(self,"cellvec")
+            assert hasattr(self._subject,"refmoleclist")
+        else:
+            self.fragmented = False
+            return self.fragmented
 
         if not hasattr(self,"moleclist"): self.get_moleclist()
         self.fragmented = False
@@ -177,6 +181,7 @@ class state(object):
         computation.add_state(self)
 
     def reconstruct(self, debug: int=0):
+        assert hasattr(self,"cellvec")
         if not hasattr(self._subject,"refmoleclist"): print("CLASS STATE.RECONSTRUCT: _subject does not have refmoleclist"); return None
         from Scope.Other import HiddenPrints
         if debug > 0: print("CLASS_STATE.RECONSTRUCT: reconstructing cell of state", self)
