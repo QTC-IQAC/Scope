@@ -136,7 +136,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
             #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
             if debug > 1: print("")
             if debug > 1: print("########################################################################")
-            if debug > 1: print(f"    {sys.refcode} -> {this_job._recipe.subject.spin} -> {this_job.keyword} -> {comp.run_number}")
+            if debug > 1: print(f"    {sys.refcode} -> {this_job._recipe.subject.spin} -> {this_job.keyword} -> {comp.step} -> {comp.run_number}")
             if debug > 1: print("########################################################################")
             if debug > 1: print(f"EXECUTE_JOB, step 7.0: evaluating job, and computation with indices: {recipe.jobs.index(this_job)+1}/{len(recipe.jobs)}, {jdx+1}/{len(this_job.computations)}")
 
@@ -199,16 +199,24 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                         if hasattr(comp.qc_data,"fstate"): fstate = comp.qc_data.fstate
                         else:                              fstate = comp._job.fstate
                         exists, state = find_state(comp._job._recipe.subject, fstate)
-                        print('energies:', this_job.energies)
+                        #print('energies:', this_job.energies)
+                        #print('len:', len(this_job.energies))
+                        #print('step:', comp.step)
+                        if comp.step > len(this_job.energies): 
+                            #print('appending in energies')
+                            this_job.energies = np.append(this_job.energies,int(0))
+                        #print('energies:', this_job.energies)
                         this_job.energies[int(comp.step)-1] = state.results['energy'].value
+                        #print('energies:', this_job.energies)
 
                         ## 8.3.2 Checks the energy convergence
-                        isconverged = False
-                        if comp.step > 1: isconverged = check_convergence(this_job.energies, comp.step-1, this_job.job_data.energy_thres)
+                        this_job.isconverged = False
+                        if comp.step > 1: this_job.isconverged = check_convergence(this_job.energies, comp.step-1, this_job.job_data.energy_thres)
 
                         ## 8.3.3 Continutes if not converged and below max_steps
-                        if isconverged: pass
-                        elif not isconverged and comp.step <= this_job.job_data.max_steps:
+                        if this_job.isconverged: 
+                            print(f"EXECUTE_JOB, step 8.3: repetitive opt reached convergence")  
+                        elif not this_job.isconverged and comp.step <= this_job.job_data.max_steps:
                             new_comp = this_job.set_continuation_computation(comp, "rep_opt", debug=debug)     
                         else:
                             print(f"EXECUTE_JOB, step 8.3: maximum steps reached without convergence")  

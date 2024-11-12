@@ -146,6 +146,7 @@ class environment(object):
                     name, avail, time_limit, num_nodes, state, name_nodes = line.split()
                     new_queue = queue(name, self, avail=avail, time_limit=time_limit, state=state)
                     self.add_mqueue(new_queue) 
+           ## It should be possible to get the queue memory or mem-per-cpu doing: "sinfo -o "%15N %10c %10m  %25f %10G""
         return self.mqueues
 
     def add_mqueue(self, new_queue: object):

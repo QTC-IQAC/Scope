@@ -172,13 +172,20 @@ class state(object):
                 indices.append(mol.atlist[idx])
         self.atoms = [x for _, x in sorted(zip(indices, self.atoms), key=lambda pair: pair[0])]
 
-    def set_energy(self, energy, units):
-        self.add_result(data("energy",energy,units,"state.set_energy"))
+    def set_energy(self, energy, units, overwrite: bool=True):
+        self.add_result(data("energy",energy,units,"state.set_energy"), overwrite=overwrite)
         #self.energy     = energy
 
+    def find_computation(self, keyword: str='', step: int=1, run_number: int=1, debug: int=0):
+        for idx, comp in enumerate(self.computations):
+            if comp.keyword == keyword and comp.step == step and comp.run_number == run_number: this_comp = comp; return True, this_comp
+        return False, None
+
     def add_computation(self, computation: object):
-        self.computations.append(computation)
-        computation.add_state(self)
+        found, comp = self.find_computation(computation.keyword, computation.step, computation.run_number)
+        if not found: 
+            self.computations.append(computation)
+            computation.add_state(self)
 
     def reconstruct(self, debug: int=0):
         assert hasattr(self,"cellvec")
@@ -218,7 +225,7 @@ class state(object):
             assert hasattr(self,"isminimum"), f"I can't compute thermal data on this state. Missing VNMs"
     
         ############## Helec ##############
-        if Helec is None:   ### One can provide fixed values for Helec, Selec, Hvib, Svib and Gtot 
+        if Helec is None:   ### One can provide specific values for Helec, Selec, Hvib, Svib and Gtot 
             if overwrite or not "Helec" in self.results.keys():
                 self.add_result(data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.get_thermal_data"), overwrite=overwrite)
         else: 

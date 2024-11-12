@@ -20,6 +20,21 @@ class queue(object):
         self._environment        = _environment
 
         self.set_commands()
+        #self.set_max_mem()
+
+## test function to retrieve mem-per-cpu. Should be done at the node level
+    #def set_max_mem(self):
+    #    if self._environment.management_type == 'slurm':
+    #        try:
+    #            raw = subprocess.check_output(['bash','-c', self.command_get_max_mem])
+    #            dec = raw.decode("utf-8")
+    #            text = dec.rstrip().split("\n")
+    #        except: text = ""
+    #        for idx, line in enumerate(text):
+    #            blocks = line.split()
+    #            if len(blocks) == 5 or len(blocks) == 9:
+    #                tot_mem         = float(blocks[2])
+    #    elif self._environment.management_type == 'sge': return None
 
     def set_nodes(self):
         self.nodes = []
@@ -79,6 +94,7 @@ class queue(object):
             self.command_get_user_usage      = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+self.name  ## The rest shouldnt be necessary
             self.command_check_queue_state   = 'sinfo -o "%n %P %C" | grep '+self.name 
             self.command_job_count           = 'squeue | grep '+self.name+' | wc -l'
+            self.command_get_max_mem         = 'sinfo -o "%15N %10c %10m  %25f %10G" | grep '+self.name
         elif self._environment.management_type == "sge":
             self.command_get_user_usage      = "qstat | grep "+self.name
             self.command_check_queue_state   = "qstat -f | grep "+self.name

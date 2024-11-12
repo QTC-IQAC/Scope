@@ -16,23 +16,23 @@ from Scope.Parse_General import read_lines_file
 ###### COMPUTATION ######
 #########################
 class computation(object):
-    def __init__(self, index: int, keyword: str, qc_data: object, path: str, _job: object, is_update: bool=False, debug: int=0):        
+    def __init__(self, _job: object, qc_data: object, step: int, path: str, keyword: str, is_update: bool=False, debug: int=0):        
         self.type             = "computation"
         self._job             = _job       
-        self.index            = index      
-        self.keyword          = keyword               ## Not the software, but a string used to identify the type of job computation
-        self.suffix           = _job.suffix           ## A string to add to the file name. This should be eliminated 
         self.qc_data          = qc_data
         self.software         = qc_data.software
         self.jobtype          = qc_data.jobtype       ## Type of computation (opt, scf, vc-relax)
+        self.step             = step
+        self.keyword          = keyword               ## Not the software, but a string used to identify the type of job computation
+        self.suffix           = _job.suffix           ## A string to add to the file name. This should be eliminated 
         self.path             = path
+        self.index            = len(_job.computations)+1
         self.refcode          = _job._recipe.subject._sys.refcode
         self.isregistered     = False
         self.has_update       = False
         self.is_update        = is_update
+        self.run_number       = self.set_run_number(debug=1) 
         self.states           = []
-        self.step             = int(1)
-        self.run_number       = self.set_run_number(debug=1)  ## Must be run after defining self.step
 
         ############
         ### SPIN ###
@@ -209,7 +209,10 @@ class computation(object):
     #################################
     def add_state(self, state):
         if not hasattr(self,'states'): self.states = []
-        self.states.append(state)
+        found = False
+        for st in self.states:
+            if state.name == st.name: found = True
+        if not found: self.states.append(state)
 
     def verify_state(self, name, target: str='opt'):
         subject = self._job._recipe.subject

@@ -30,7 +30,7 @@ def gen_G16_input(comp, debug: int=0):
 
     ### 2-Starts printing input 
     with open(comp.inp_path, 'w') as inp:
-        print(f"%chk={comp.refcode}{comp.suffix}.chk", file=inp)
+        print(f"%chk={comp.name}.chk", file=inp)
         
         ## 2.1-General keywords
         commandline = []
@@ -99,16 +99,15 @@ def gen_G16_subfile(comp: object, queue: object, procs: int=1, savechk: bool=Fal
     if cluster == "csuc2" or cluster == "csuc3":
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
-            print(f"#SBATCH -J {comp.refcode}{comp.suffix}", file=sub)
-            print(f"#SBATCH -e /{storage}/{user}/std_files/{comp.refcode}{comp.suffix}.stderr", file=sub)
-            print(f"#SBATCH -o /{storage}/{user}/std_files/{comp.refcode}{comp.suffix}.stdout", file=sub)
+            print(f"#SBATCH -J {comp.name}", file=sub)
+            print(f"#SBATCH -e {storage}/std_files/{comp.name}.stderr", file=sub)
+            print(f"#SBATCH -o {storage}/std_files/{comp.name}.stdout", file=sub)
             print(f"#SBATCH -p {queue.name}", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
-            if   cluster == "csuc2": print(f"#SBATCH --time=10-0", file=sub)
-            elif cluster == "csuc3": print(f"#SBATCH --time=7-0", file=sub)
+            print(f"#SBATCH --time={queue.time_limit_plain}", file=sub)
             print(f"", file=sub)
-            print(f"module load apps/gaussian/g16c2", file=sub)
+            print(f"module load gaussian/16c2", file=sub)
             print(f"", file=sub)
             print(f"JOBDIR=$PWD", file=sub)
             print(f"cd $TMPDIR", file=sub)
@@ -125,11 +124,11 @@ def gen_G16_subfile(comp: object, queue: object, procs: int=1, savechk: bool=Fal
     elif cluster == 'portal':
         with open(comp.sub_path, 'w+') as sub:
             print(f"#!/bin/bash", file=sub)
-            print(f"#$ -N {comp.refcode}{comp.suffix}", file=sub) 
+            print(f"#$ -N {comp.name}", file=sub) 
             print(f"#$ -pe smp {procs}", file=sub)
             print(f"#$ -cwd", file=sub)
-            print(f"#$ -o /home/{user}/x-stds/{comp.refcode}{comp.suffix}.stdout", file=sub)
-            print(f"#$ -e /home/{user}/x-stds/{comp.refcode}{comp.suffix}.stderr", file=sub)
+            print(f"#$ -o /home/{user}/x-stds/{comp.name}.stdout", file=sub)
+            print(f"#$ -e /home/{user}/x-stds/{comp.name}.stderr", file=sub)
             print(f"#$ -q {queue.name}" , file=sub)
             print(f"", file=sub)
             print(f"source /etc/profile.d/modules.csh", file=sub)
@@ -144,8 +143,6 @@ def gen_G16_subfile(comp: object, queue: object, procs: int=1, savechk: bool=Fal
             print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
             print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
             print(f"cat tmp1 {comp.inp_name} > tmp2 | mv -f tmp2 {comp.inp_name}", file=sub)
-#            print(f"sed -i '1s/^/%mem={mem}gb\n' {name}{suffix}.com", file=sub)
-#            print(f"sed -i '1s/^/%nprocs={procs}\n' {name}{suffix}.com", file=sub)
             print(f"g16 < {comp.inp_name} > {comp.out_name}", file=sub)
             print(f"cp -pr *.log $WORKDIR", file=sub)
             if savechk: print(f"cp -pr *.chk $WORKDIR", file=sub)
