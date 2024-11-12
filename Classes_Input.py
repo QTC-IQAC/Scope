@@ -184,12 +184,14 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"loose_opt"):     data._add_attr("loose_opt", False)
         if not hasattr(data,"tight_opt"):     data._add_attr("tight_opt", False)
         if not hasattr(data,"is_grimme"):     data._add_attr("is_grimme", False)
+        if not hasattr(data,"grimme_type"):   data._add_attr("grimme_type", "d2")
 
     elif data.software == "qe":
         if not hasattr(data,"jobtype"):       data._add_attr("jobtype", "scf")
         if not hasattr(data,"functional"):    data._add_attr("functional", "pbe")
         if not hasattr(data,"is_hubbard"):    data._add_attr("is_hubbard", False)
         if not hasattr(data,"is_grimme"):     data._add_attr("is_grimme", False)
+        if not hasattr(data,"grimme_type"):   data._add_attr("grimme_type", "d3bj")
         if not hasattr(data,"uterm"): 
             if data.is_hubbard:               data._add_attr("uterm", float(2.35)) ## Was 2.27 for some reason
             else:                             data._add_attr("uterm", None)

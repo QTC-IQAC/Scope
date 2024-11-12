@@ -176,8 +176,21 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
                 print(f"    Hubbard_U({where_in_array(elems,u[0])[0]+1})={comp.qc_data.uterm}", file=inp)
 
         if comp.qc_data.is_grimme:
-            print("    vdw_corr='grimme-d3'", file=inp)
-            print("    dftd3_version=4", file=inp)
+            if comp.qc_data.grimme_type == "d2":
+                print("    vdw_corr='grimme-d2'", file=inp)
+                print("    dftd3_version=2", file=inp)
+            elif comp.qc_data.grimme_type == "d3":
+                print("    vdw_corr='grimme-d3'", file=inp)
+                print("    dftd3_version=3", file=inp)
+            elif comp.qc_data.grimme_type == "d3bj":
+                print("    vdw_corr='grimme-d3'", file=inp)
+                print("    dftd3_version=4", file=inp)
+            elif comp.qc_data.grimme_type == "d3m":
+                print("    vdw_corr='grimme-d3'", file=inp)
+                print("    dftd3_version=5", file=inp)
+            elif comp.qc_data.grimme_type == "d3mbj":
+                print("    vdw_corr='grimme-d3'", file=inp)
+                print("    dftd3_version=6", file=inp)
             
         if system_type == "molecule": print("    assume_isolated='mp'", file=inp)
         print("/", file=inp)
