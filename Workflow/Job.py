@@ -429,7 +429,13 @@ class job(object):
         to_print += '----------------------------------------------------\n'
         return to_print
 
-def check_convergence(energies, current_step, thres: float=1e-5):
+def check_convergence(energies, current_step=None, thres: float=1e-5, debug: int=0):
+    if current_step is None:
+        ## None when you want the overall convergence, not that of a given step
+        current_step = -1
+        for e in energies:
+            if e != float(0.0): current_step += 1
+        if debug > 0: print("job.CHECK_CONVERGENCE: curr_step:", current_step)
+        if debug > 0: print("job.en_diff:", energies[current_step-1]-energies[current_step])
     if np.abs(energies[current_step-1]-energies[current_step]) > thres: return False
     else: return True
-

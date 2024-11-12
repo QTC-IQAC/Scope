@@ -209,7 +209,10 @@ class computation(object):
     #################################
     def add_state(self, state):
         if not hasattr(self,'states'): self.states = []
-        self.states.append(state)
+        found = False
+        for st in self.states:
+            if state.name == st.name: found = True
+        if not found: self.states.append(state)
 
     def verify_state(self, name, target: str='opt'):
         subject = self._job._recipe.subject

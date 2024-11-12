@@ -305,6 +305,7 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
             print(f"#SBATCH -p {queue.name}", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
+            print(f"#SBATCH --mem-per-cpu=1900MB", file=sub)
             print(f"#SBATCH --time={queue.time_limit_plain}", file=sub)
             print(f"", file=sub)
             if   version == "6.4.1": print(f"module load apps/quantumespresso/6.4.1", file=sub)
