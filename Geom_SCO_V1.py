@@ -24,17 +24,17 @@ def geom_sco_from_xyz(labels, pos, debug=0):
     for idx, p1 in enumerate(pos):
         if labels[idx] == 'Fe':
             
-            if debug >= 1: print(f"Atom {idx} is an Iron: {p1}")
+            if debug >= 2: print(f"Atom {idx} is an Iron: {p1}")
             dist_FeX = []
             vec_FeX = []
             for jdx, p2 in enumerate(pos):
                 if labels[jdx] == 'N':
                 #if jdx >= idx and labels[jdx] == 'N':
-                    if debug >= 1: print(f"Atom {jdx} is a Nitrogen: {p2}")
+                    if debug >= 2: print(f"Atom {jdx} is a Nitrogen: {p2}")
                     dist_FeX.append(np.linalg.norm(np.subtract(p1,p2)))
                     vec_FeX.append(np.subtract(p1,p2))
                     
-            if debug >= 1: print("dist_FeX", dist_FeX)
+            if debug >= 2: print("dist_FeX", dist_FeX)
             
             # Checks that it detected 6 N atoms
             if len(vec_FeX) < 6: 
@@ -58,12 +58,12 @@ def geom_sco_from_xyz(labels, pos, debug=0):
             for idx, v1 in enumerate(vec_FeN):
                 for jdx, v2 in enumerate(vec_FeN):
                     if jdx > idx:
-                        if debug >= 1: print("Computing angles between N atoms",idx,"and",jdx)
+                        if debug >= 2: print("Computing angles between N atoms",idx,"and",jdx)
                         angle = getangle(v1, v2)*180.0/3.141592 
                         if angle < 120.0 and angle > 60.0: 
                             NFeN_angles.append(angle)
                         else: 
-                            if debug >= 1: print("Angle between N atoms",idx,"and",jdx,"discarded")
+                            if debug >= 2: print("Angle between N atoms",idx,"and",jdx,"discarded")
             AvNFeN_angle = np.mean(NFeN_angles)
             
             alldist.append(AvFeN)
