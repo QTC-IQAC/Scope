@@ -43,10 +43,11 @@ class job(object):
     def check_qc_data(self, job_path: str, debug: int=0):
         from Scope.Classes_Input import set_job_data, set_qc_data
         ## job_data is for JOB
+        print(f"CHECK_QC_DATA: reading job_data from path: {job_path}")
         new_job_data    = set_job_data(job_path, section="&job_data" , debug=0)
         old_job_data    = self.job_data 
         if new_job_data != old_job_data: 
-            print(f"CHECK_INPUT: identified changes in job_data for job.keyword={self.keyword}")
+            print(f"CHECK_QC_DATA: identified changes in job_data for job.keyword={self.keyword}")
             self.update_job_data(old_job_data, new_job_data) 
             new_qc_data    = set_qc_data(job_path, section="&qc_data" , debug=0)
             for comp in self.computations:
@@ -57,12 +58,14 @@ class job(object):
     def update_job_data(self, old_job_data, new_job_data, debug: int=0):
         self.job_data         = new_job_data
         self.job_data        += old_job_data
+        ## This is done to mimic the __init of a job class
         self.keyword          = new_job_data.keyword.lower()
         self.suffix           = new_job_data.suffix
         self.requisites       = new_job_data.requisites
         self.constrains       = new_job_data.constrains
         self.setup            = new_job_data.setup.lower()
         self.must_be_good     = new_job_data.must_be_good                
+        self.check_requisites()
 
     def find_computation(self, keyword: str='', step: int=1, run_number: int=1, debug: int=0):
         for idx, comp in enumerate(self.computations):
@@ -76,13 +79,15 @@ class job(object):
         self.computations.append(new_computation)
         return new_computation 
     
-    def remove_computation(self, comp_keyword=None, comp_index=None):
+    def remove_computation(self, comp_keyword=None, comp_step=None, comp_index=None):
         found = False
         for idx, comp in enumerate(self.computations):
-            if comp_index is None and comp_keyword is not None: 
+            if comp_index is None and comp_step is None and comp_keyword is not None: 
                 if comp.keyword == str(comp_keyword): found = True; found_idx = idx
-            elif comp_index is not None and comp_keyword is None: 
+            elif comp_index is not None and comp_step is None and comp_keyword is None: 
                 if comp.index == int(comp_index): found = True; found_idx = idx
+            elif comp_index is None and comp_step is not None and comp_keyword is None: 
+                if comp.step == int(comp_step): found = True; found_idx = idx
         if found: 
             to_delete = self.computations[found_idx]
             to_delete.check_files() 
@@ -412,8 +417,8 @@ class job(object):
         if hasattr(self._recipe.subject,"refcode"):          to_print += f' Crystal               = {self._recipe.subject.refcode}\n'
         elif hasattr(self._recipe.subject.parent,"refcode"): to_print += f' Crystal               = {self._recipe.subject.parent.refcode}\n'
         to_print += f' Type of Object        = {self._recipe.subject.type}\n'
-        to_print += f' Spin                  = {self._recipe.subject.spin}\n'
-        to_print += f' Recipe                = {self._recipe.keyword}\n'
+        to_print += f' Spin (Recipe Name)    = {self._recipe.subject.spin}\n'
+        to_print += f' Branch                = {self._recipe._branch.keyword}\n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' self.path             = {self.path}\n'
         to_print += f' self.keyword          = {self.keyword}\n'

@@ -331,7 +331,7 @@ class computation(object):
                 can_submit = False
                 if debug > 0: print("Output exists and not overwriting logs")
 
-            ## 3.2-Evaluates if output is running
+            ## 3.2-Evaluates if output is running, or ignores it if user sets options.ignore_submitted
             if can_submit and not options.ignore_submitted:
                 self.check_submission_status(environment)   ### retrieves self.isrunning
                 if self.isrunning:
@@ -403,7 +403,8 @@ class computation(object):
         if hasattr(self._job._recipe.subject,"refcode"):          to_print += f' Crystal               = {self._job._recipe.subject.refcode}\n'
         elif hasattr(self._job._recipe.subject.parent,"refcode"): to_print += f' Crystal               = {self._job._recipe.subject.parent.refcode}\n'
         if hasattr(self._job._recipe.subject,"type"):    to_print += f' Type of Object        = {self._job._recipe.subject.type}\n'
-        to_print += f' Recipe                = {self._job._recipe.keyword}\n'
+        to_print += f' Spin (Recipe Name)    = {self._job._recipe.keyword}\n'
+        to_print += f' Branch                = {self._job._recipe._branch.keyword}\n'
         to_print += f' Job                   = {self._job.keyword}\n'
         to_print += f'---------------------------------------------------\n'
         if hasattr(self,"istate"): to_print += f' self.istate           = {self.istate}\n'
