@@ -183,6 +183,86 @@ class specie(object):
         for idx, l in enumerate(self.labels):
             print("%s  %.6f  %.6f  %.6f" % (l, self.coord[idx][0], self.coord[idx][1], self.coord[idx][2]))
 
+    def view(self):
+        import plotly.graph_objects as go
+        from Scope.Read_Write import set_scene
+        from Scope.Elementdata import ElementData  
+        elemdatabase = ElementData()
+
+        if not hasattr(self,"adjmat"): self.get_adjmatrix()
+        fig             = go.Figure()
+
+        # Gather Data
+        positions       = np.array(self.coord)
+        symbols         = self.labels
+        adjacencies     = self.adjmat
+
+        # Gets bonds from adjacency matrix
+        indices = np.argwhere(self.adjmat >0)
+        unique_bonds    = set()
+
+        for i in indices:
+            unique_bonds.add(tuple(i))
+
+        # Plot atoms as markers
+        fig.add_trace(go.Scatter3d(
+            x           = positions[:, 0],
+            y           = positions[:, 1],
+            z           = positions[:, 2],
+            mode        ='markers',
+            marker      = dict(
+                size        = 10,
+                color       = [elemdatabase.cpk_colors[l] for l in symbols],
+                line        = dict(color='black', width=1),
+            ),
+            hoverinfo   = 'text',
+            text        = symbols,
+            showlegend  = False
+        ))
+
+        # Label atom + indices
+        fig.add_trace(go.Scatter3d(
+            x           = positions[:, 0],
+            y           = positions[:, 1],
+            z           = positions[:, 2],
+            mode        = 'text',
+            text        = self.labels,
+            #text        = [str(i) for i in range(len(positions))],
+            textfont    = dict(color='black', size=12),
+            hoverinfo   = 'none',
+            showlegend  = False
+        ))
+
+        ## Plot bonds as lines and calculate midpoints
+        #midpoints   = []
+        bond_pairs  = []
+
+        for i, j in unique_bonds:
+            # Add bond trace
+            fig.add_trace(go.Scatter3d(
+                x           = [positions[i, 0], positions[j, 0]],
+                y           = [positions[i, 1], positions[j, 1]],
+                z           = [positions[i, 2], positions[j, 2]],
+                mode        = 'lines',
+                line        = dict(color='gray', width=5),
+                hoverinfo   = 'none',
+                showlegend  = False
+            ))
+
+        #    # Calculate midpoints
+        #    midpoint = (positions[i] + positions[j]) / 2
+        #    midpoints.append(midpoint)
+            bond_pairs.append((i, j))
+
+        #midpoints = np.array(midpoints)
+
+        set_scene(fig, np.array(self.coord))
+        fig.show()
+
+
+      
+
+
     ## To be implemented
     def __add__(self, other):
         if not isinstance(other, type(self)): return self
@@ -702,6 +782,16 @@ class cell(object):
     def set_fractional_coord(self, frac_coord: list) -> None:
         self.frac_coord = frac_coord 
 
+    def get_adjmatrix(self):
+        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord, 1.3, get_radii(self.labels))
+        if isgood:
+            self.adjmat = adjmat
+            self.adjnum = adjnum
+        else:
+            self.adjmat = None
+            self.adjnum = None
+        return self.adjmat, self.adjnum
+
     def set_moleclist(self, moleclist: list) -> None:
         self.moleclist = moleclist
 
@@ -768,6 +858,82 @@ class cell(object):
         if Warning:      self.is_fragmented = True;  self.error_reconstruction = True
         else:            self.is_fragmented = False; self.error_reconstruction = False
         return self.moleclist
+
+    def view(self):
+        import plotly.graph_objects as go
+        from Scope.Read_Write import set_scene
+        from Scope.Elementdata import ElementData  
+        elemdatabase = ElementData()
+
+        if not hasattr(self,"adjmat"): self.get_adjmatrix()
+        fig             = go.Figure()
+
+        # Gather Data
+        positions       = np.array(self.coord)
+        symbols         = self.labels
+        adjacencies     = self.adjmat
+
+        # Gets bonds from adjacency matrix
+        indices = np.argwhere(self.adjmat >0)
+        unique_bonds    = set()
+
+        for i in indices:
+            unique_bonds.add(tuple(i))
+
+        # Plot atoms as markers
+        fig.add_trace(go.Scatter3d(
+            x           = positions[:, 0],
+            y           = positions[:, 1],
+            z           = positions[:, 2],
+            mode        ='markers',
+            marker      = dict(
+                size        = 10,
+                color       = [elemdatabase.cpk_colors[l] for l in symbols],
+                line        = dict(color='black', width=1),
+            ),
+            hoverinfo   = 'text',
+            text        = symbols,
+            showlegend  = False
+        ))
+
+        # Label atom + indices
+        fig.add_trace(go.Scatter3d(
+            x           = positions[:, 0],
+            y           = positions[:, 1],
+            z           = positions[:, 2],
+            mode        = 'text',
+            text        = self.labels,
+            #text        = [str(i) for i in range(len(positions))],
+            textfont    = dict(color='black', size=12),
+            hoverinfo   = 'none',
+            showlegend  = False
+        ))
+
+        ## Plot bonds as lines and calculate midpoints
+        #midpoints   = []
+        bond_pairs  = []
+
+        for i, j in unique_bonds:
+            # Add bond trace
+            fig.add_trace(go.Scatter3d(
+                x           = [positions[i, 0], positions[j, 0]],
+                y           = [positions[i, 1], positions[j, 1]],
+                z           = [positions[i, 2], positions[j, 2]],
+                mode        = 'lines',
+                line        = dict(color='gray', width=5),
+                hoverinfo   = 'none',
+                showlegend  = False
+            ))
+
+        #    # Calculate midpoints
+        #    midpoint = (positions[i] + positions[j]) / 2
+        #    midpoints.append(midpoint)
+            bond_pairs.append((i, j))
+
+        #midpoints = np.array(midpoints)
+
+        set_scene(fig, np.array(self.coord))
+        fig.show()
 
     def __repr__(self):
         to_print  = f'---------------------------------------------------\n'

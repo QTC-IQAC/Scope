@@ -2247,3 +2247,116 @@ Valen  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  1  0  0
             "Ds": "label=Rn nc=16 c=1s2s2p3s3p4s4p3d5s4d5p4f6s5d6p5f nv=3 v=7s6p6d",
             "Rg": "label=Rn nc=16 c=1s2s2p3s3p4s4p3d5s4d5p4f6s5d6p5f nv=3 v=7s6p6d",
         }
+
+        self.cpk_colors = {
+            "H": "#FFFFFF",   # Hidrógeno - Blanco
+            "He": "#D9FFFF",  # Helio - Azul claro
+            "Li": "#CC80FF",  # Litio - Violeta claro
+            "Be": "#C2FF00",  # Berilio - Verde
+            "B": "#FFB5B5",   # Boro - Rosado
+            "C": "#909090",   # Carbono - Gris
+            "N": "#3050F8",   # Nitrógeno - Azul
+            "O": "#FF0D0D",   # Oxígeno - Rojo
+            "F": "#90E050",   # Flúor - Verde claro
+            "Ne": "#B3E3F5",  # Neón - Azul verdoso
+            "Na": "#AB5CF2",  # Sodio - Púrpura
+            "Mg": "#8AFF00",  # Magnesio - Verde claro
+            "Al": "#BFA6A6",  # Aluminio - Gris claro
+            "Si": "#F0C8A0",  # Silicio - Amarillo claro
+            "P": "#FF8000",   # Fósforo - Naranja
+            "S": "#FFFF30",   # Azufre - Amarillo
+            "Cl": "#1FF01F",  # Cloro - Verde
+            "Ar": "#80D1E3",  # Argón - Azul claro
+            "K": "#8F40D4",   # Potasio - Violeta
+            "Ca": "#3DFF00",  # Calcio - Verde amarillento
+            "Sc": "#E6E6E6",  # Escandio - Gris
+            "Ti": "#BFC2C7",  # Titanio - Gris claro
+            "V": "#A6A6AB",   # Vanadio - Gris
+            "Cr": "#8A99C7",  # Cromo - Azul grisáceo
+            "Mn": "#9C7AC7",  # Manganeso - Lila
+            "Fe": "#E06633",  # Hierro - Naranja oscuro
+            "Co": "#F090A0",  # Cobalto - Rosado
+            "Ni": "#50D050",  # Níquel - Verde
+            "Cu": "#C88033",  # Cobre - Marrón
+            "Zn": "#7D80B0",  # Zinc - Azul grisáceo
+            "Ga": "#C28F8F",  # Galio - Marrón rosado
+            "Ge": "#668F8F",  # Germanio - Verde oscuro
+            "As": "#BD80E3",  # Arsénico - Violeta
+            "Se": "#FFA100",  # Selenio - Naranja
+            "Br": "#A62929",  # Bromo - Rojo oscuro
+            "Kr": "#5CB8D1",  # Kriptón - Azul claro
+            "Rb": "#702EB0",  # Rubidio - Púrpura oscuro
+            "Sr": "#00FF00",  # Estroncio - Verde claro
+            "Y": "#94FFFF",   # Itrio - Azul claro
+            "Zr": "#94E0E0",  # Circonio - Azul grisáceo
+            "Nb": "#73C2C9",  # Niobio - Azul claro
+            "Mo": "#54B5B5",  # Molibdeno - Verde azulado
+            "Tc": "#3B9E9E",  # Tecnecio - Verde azulado oscuro
+            "Ru": "#248F8F",  # Rutenio - Verde oscuro
+            "Rh": "#0A7D8C",  # Rodio - Azul grisáceo oscuro
+            "Pd": "#006985",  # Paladio - Azul oscuro
+            "Ag": "#C0C0C0",  # Plata - Gris claro
+            "Cd": "#FFD98F",  # Cadmio - Amarillo claro
+            "In": "#A67573",  # Indio - Rosado marrón
+            "Sn": "#668080",  # Estaño - Verde oscuro
+            "Sb": "#9E63B5",  # Antimonio - Púrpura
+            "Te": "#D47A00",  # Telurio - Naranja oscuro
+            "I": "#940094",   # Yodo - Púrpura oscuro
+            "Xe": "#429EB0",  # Xenón - Azul grisáceo
+            "Cs": "#57178F",  # Cesio - Púrpura oscuro
+            "Ba": "#00C900",  # Bario - Verde claro
+            "La": "#70D4FF",  # Lantano - Azul claro
+            "Ce": "#FFFFC7",  # Cerio - Amarillo claro
+            "Pr": "#D9FFC7",  # Praseodimio - Verde claro
+            "Nd": "#C7FFC7",  # Neodimio - Verde claro
+            "Pm": "#A3FFC7",  # Prometio - Verde claro
+            "Sm": "#8FFFC7",  # Samario - Verde claro
+            "Eu": "#61FFC7",  # Europio - Verde claro
+            "Gd": "#45FFC7",  # Gadolinio - Verde claro
+            "Tb": "#30FFC7",  # Terbio - Verde claro
+            "Dy": "#1FFFC7",  # Disprosio - Verde claro
+            "Ho": "#00FF9C",  # Holmio - Verde azulado claro
+            "Er": "#00E675",  # Erbio - Verde azulado
+            "Tm": "#00D452",  # Tulio - Verde
+            "Yb": "#00BF38",  # Iterbio - Verde oscuro
+            "Lu": "#00AB24",  # Lutecio - Verde oscuro
+            "Hf": "#4DC2FF",  # Hafnio - Azul claro
+            "Ta": "#4DA6FF",  # Tantalio - Azul claro
+            "W": "#2194D6",   # Wolframio - Azul
+            "Re": "#267DAB",  # Renio - Azul grisáceo
+            "Os": "#266696",  # Osmio - Azul grisáceo oscuro
+            "Ir": "#175487",  # Iridio - Azul oscuro
+            "Pt": "#D0D0E0",  # Platino - Gris claro
+            "Au": "#FFD123",  # Oro - Dorado
+            "Hg": "#B8B8D0",  # Mercurio - Azul grisáceo claro
+            "Tl": "#A6544D",  # Talio - Marrón rojizo
+            "Pb": "#575961",  # Plomo - Gris oscuro
+            "Bi": "#9E4FB5",  # Bismuto - Púrpura
+            "Po": "#AB5C00",  # Polonio - Marrón
+            "At": "#754F45",  # Astato - Marrón
+            "Rn": "#428296",  # Radón - Azul grisáceo
+            "Fr": "#420066",  # Francio - Púrpura oscuro
+            "Ra": "#007D00",  # Radio - Verde oscuro
+            "Ac": "#70ABFA",  # Actinio - Azul claro
+            "Th": "#00BAFF",  # Torio - Azul claro
+            "Pa": "#00A1FF",  # Protactinio - Azul claro
+            "U": "#008FFF",   # Uranio - Azul
+            "Np": "#0080FF",  # Neptunio - Azul
+            "Pu": "#006BFF",  # Plutonio - Azul oscuro
+            "Am": "#545CF2",  # Americio - Púrpura
+            "Cm": "#785CE3",  # Curio - Púrpura oscuro
+            "Bk": "#8A4FE3",  # Berkelio - Púrpura oscuro
+            "Cf": "#A136D4",  # Californio - Púrpura oscuro
+            "Es": "#B31FD4",  # Einstenio - Púrpura oscuro
+            "Fm": "#B31FBA",  # Fermio - Púrpura oscuro
+            "Md": "#B30DA6",  # Mendelevio - Púrpura oscuro
+            "No": "#BD0D87",  # Nobelio - Rojo púrpura
+            "Lr": "#C70066",  # Lawrencio - Rojo púrpura oscuro
+            "Rf": "#CC0059",  # Rutherfordio - Rojo
+            "Db": "#D1004F",  # Dubnio - Rojo oscuro
+            "Sg": "#D90045",  # Seaborgio - Rojo oscuro
+            "Bh": "#E00038",  # Bohrio - Rojo oscuro
+            "Hs": "#E6002E",  # Hassio - Rojo oscuro
+            "Mt": "#EB0026",  # Meitnerio - Rojo oscuro
+        }
+
