@@ -150,6 +150,15 @@ class sco_system(object):
         self.branches.append(new_branch)
         return new_branch
 
+    def remove_branch(self, br_keyword=None):
+        found = False
+        for idx, br in enumerate(self.branches):
+            if br.keyword == str(br_keyword): found = True; found_idx = idx
+        if found:
+            to_delete = self.branches[found_idx]
+            del self.branches[found_idx]
+
+
     ##########
     def set_reference_molecs(self, debug: int=0):
  

@@ -119,7 +119,9 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
         ## 6-Checks that all requisites and constrains of the job are fulfilled
         cancontinue = this_job.check_requisites(debug=debug)
         if not cancontinue:
-            if debug > 1:   print("EXECUTE_JOB, step 6: requisites NOT met or job already run!")
+            if debug > 1:   
+                print("EXECUTE_JOB, step 6: requisites NOT met or job already run. Printing job")
+                print(this_job)
             continue        # I know if might seem misleading. Here, "continue" means "skip this one"
         else:
             if debug > 1:   print("EXECUTE_JOB, step 6: requisites fulfilled")
@@ -141,7 +143,6 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
             if debug > 1: print(f"EXECUTE_JOB, step 7.0: evaluating job, and computation with indices: {recipe.jobs.index(this_job)+1}/{len(recipe.jobs)}, {jdx+1}/{len(this_job.computations)}")
 
             ## 7.0-Checks files and updates
-            print(comp)
             qc_has_updated = comp.check_qc_data(job_path=job_path, debug=debug)  ## Checks wether the user has updated the qc_data
             comp.check_updates()                                                 ## Checks for not-registered update computations 
             comp.check_files()
@@ -159,8 +160,9 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                 if options.want_submit and not comp.has_update:
                     comp.check_submission_status(global_env, debug=debug)
                     if debug > 1: print("EXECUTE_JOB, step 7.2a: checking submission status: isrunning=",comp.isrunning)
+                    if debug > 1: print("EXECUTE_JOB, step 7.2a: ignore_submitted=", options.ignore_submitted)
                     if debug > 1: print("EXECUTE_JOB, step 7.2a: initial state is", comp.qc_data.istate)
-                    if not comp.isrunning:        
+                    if not comp.isrunning or options.ignore_submitted:       ## options.ignore_submitted will also be checked in comp.run 
                         comp.check_qc_data(job_path=job_path, debug=debug)
                         comp.run(global_env, options, debug=debug); updated = True
                 else: 
