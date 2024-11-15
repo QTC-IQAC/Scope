@@ -50,7 +50,7 @@ def geom_sco_from_xyz(labels, pos, debug=0):
                 dist_FeN.append(dist_FeX[targ])
                 vec_FeN.append(vec_FeX[targ])        
                 
-            if debug >= 1: print("dist_FeN", dist_FeN)
+            if debug >= 1: print(f"dist_FeN=", dist_FeN)
             AvFeN = np.mean(dist_FeN)
             
             # Takes vec_FeN vectors and computes angles
