@@ -145,3 +145,96 @@ def read_user_input(message: str, rtext: bool=False, rtext_options: list=[], rty
             if not correct: print(f"Please, try again. Options are: {rtext_options}")
         if correct: return opt
         else:       return None
+
+
+#####################
+### VISUALIZATION ###
+#####################
+def set_scene(fig, positions, padding=1.0):
+    xmin, xmax = positions[:,0].min() - padding, positions[:,0].max() + padding
+    ymin, ymax = positions[:,1].min() - padding, positions[:,1].max() + padding
+    zmin, zmax = positions[:,2].min() - padding, positions[:,2].max() + padding
+
+    fig.update_layout(scene=dict(
+        xaxis  = dict(title='X (Å)', range=[xmin, xmax]),
+        yaxis  = dict(title='Y (Å)', range=[ymin, ymax]),
+        zaxis  = dict(title='Z (Å)', range=[zmin, zmax]),
+    ))
+
+    fig.update_layout(width  = 800,height = 800)
+
+def prepare_specie_figure(specie, bond_thr):
+    import plotly.graph_objects as go
+    from scipy.spatial.distance import cdist
+    from Scope.Elementdata import ElementData  
+    elemdatabase = ElementData()
+
+    fig             = go.Figure()
+
+    # Gather Data
+    positions       = specie.positions
+    symbols         = specie.symbols
+
+    # Calculate bonds
+    distances       = cdist(positions, positions)
+    bond_indices    = np.where((distances < bond_thr) & (distances > 0))
+    unique_bonds    = set()
+
+    for i, j in zip(*bond_indices):
+        if i < j:
+            unique_bonds.add((i, j))
+
+    # Plot atoms as markers
+    fig.add_trace(go.Scatter3d(
+        x           = positions[:, 0],
+        y           = positions[:, 1],
+        z           = positions[:, 2],
+        mode        ='markers',
+        marker      = dict(
+            size        = 10,
+            color       = [atom_colors.get(sym, 'gray') for sym in symbols],
+            line        = dict(color='black', width=1),
+        ),
+        hoverinfo   = 'text',
+        text        = symbols,
+        showlegend  = False
+    ))
+
+    # Label atom indices
+    fig.add_trace(go.Scatter3d(
+        x           = positions[:, 0],
+        y           = positions[:, 1],
+        z           = positions[:, 2],
+        mode        = 'text',
+        text        = [str(i) for i in range(len(positions))],
+        textfont    = dict(color='black', size=12),
+        hoverinfo   = 'none',
+        showlegend  = False
+    ))
+
+    # Plot bonds as lines and calculate midpoints
+    midpoints   = []
+    bond_pairs  = []
+
+    for i, j in unique_bonds:
+        # Add bond trace
+        fig.add_trace(go.Scatter3d(
+            x           = [positions[i, 0], positions[j, 0]],
+            y           = [positions[i, 1], positions[j, 1]],
+            z           = [positions[i, 2], positions[j, 2]],
+            mode        = 'lines',
+            line        = dict(color='gray', width=5),
+            hoverinfo   = 'none',
+            showlegend  = False
+        ))
+
+        # Calculate midpoints
+        midpoint = (positions[i] + positions[j]) / 2
+        midpoints.append(midpoint)
+        bond_pairs.append((i, j))
+
+    midpoints = np.array(midpoints)
+
+
+    # Return figure, midpoints, and bond pairs (for bond-related data plotting)
+    return fig, midpoints, bond_pairs
