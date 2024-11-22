@@ -187,6 +187,7 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"grimme_type"):   data._add_attr("grimme_type", "d2")
 
     elif data.software == "qe":
+        if not hasattr(data,"PP_Library"):    data._add_attr("PP_Library", "efficiency")
         if not hasattr(data,"jobtype"):       data._add_attr("jobtype", "scf")
         if not hasattr(data,"functional"):    data._add_attr("functional", "pbe")
         if not hasattr(data,"is_hubbard"):    data._add_attr("is_hubbard", False)
@@ -196,10 +197,10 @@ def fill_qc_data(data: object, debug: int=0):
             if data.is_hubbard:               data._add_attr("uterm", float(2.35)) ## Was 2.27 for some reason
             else:                             data._add_attr("uterm", None)
         if not hasattr(data,"print_forces"):  data._add_attr("print_forces", False)
-        if not hasattr(data,"cutoff"): 
-            if data.jobtype == "scf":         data._add_attr("cutoff", int(25))
-            elif data.jobtype == "relax":     data._add_attr("cutoff", int(25))
-            elif data.jobtype == "vc-relax":  data._add_attr("cutoff", int(60))
+        #if not hasattr(data,"cutoff"): 
+        #    if data.jobtype == "scf":         data._add_attr("cutoff", int(25))
+        #    elif data.jobtype == "relax":     data._add_attr("cutoff", int(25))
+        #    elif data.jobtype == "vc-relax":  data._add_attr("cutoff", int(60))
         if not hasattr(data,"mix_beta"):      data._add_attr("mix_beta", float(0.7)) 
         if not hasattr(data,"elec_maxstep"):  data._add_attr("elec_maxstep", int(200)) 
         if not hasattr(data,"pressure"):      data._add_attr("pressure", int(0))

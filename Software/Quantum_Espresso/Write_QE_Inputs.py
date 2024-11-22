@@ -13,44 +13,27 @@ from Scope.Other import get_metal_idxs, get_metal_species, where_in_array
 elemdatabase = ElementData()
 
 #######################
-def get_pp(ppfolder, elem):
-
-    Found = False
-    while not Found:
-        for file in os.listdir(ppfolder):
-            with open(ppfolder+file, 'rb') as pp:
-                splitpp = file.split(".")
-                if (len(splitpp) == 3):
-                    element=splitpp[0]
-                    functional=splitpp[1]
-                    typ=splitpp[2]
-                elif (len(splitpp) == 4):
-                    element=splitpp[0]
-                    functional=splitpp[1]
-                    typ1=splitpp[2]
-                    typ2=splitpp[3]
-                else:
-                    print("Can't interpret pp name for", file)
-
-                if (element == elem):
-                    Found = True
-                    sendpp = file
-                    break
-
-        if file == os.listdir(ppfolder)[-1] and not Found:
-            sendpp = "Not found"
-            break
-
-    return sendpp
+def get_pp(elem: str, path: str):
+    import json
+    try: 
+        with open(path+"config.json", 'r') as cfg:
+            data = json.load(cfg)
+            elemdata = data[elem]
+            pp_name = elemdata["filename"]
+            cutoff_wfc = elemdata["cutoff_wfc"]
+            cutoff_rho = elemdata["cutoff_rho"]
+    except Exception as exc: 
+        print(f"GET_PP: error reading JSON or parsing element {elem}. Printing Exception")
+        print(exc)
+        exit()
+    return pp_name, cutoff_wfc, cutoff_rho
 
 #######################
 def gen_QE_input(comp: object, environment: object, debug: int=0):
 
     gmol = comp._job._recipe.subject
 
-    ## 1-Change some variable names to simplify calls
-    if not hasattr(environment,"PP_Library"): f"PP_Library could not be found. Please set it in the environment"
-    PP_Library = environment.PP_Library
+    ## 1a-Change some variable names to simplify calls
     cluster    = environment.cluster
     storage    = environment.storage_path
 
@@ -64,7 +47,14 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
     ## 2b-Cell or Molecule?
     if hasattr(gmol,"cellparam"): system_type = "cell"
     else:                         system_type = "molecule"
-    
+
+    ## 3-Determines the PP_Library path
+    if not hasattr(comp.qc_data,"PP_Library"): f"PP_Library could not be found. Please set it in the qc_data.section of the Job"
+    PP_path = os.path.abspath(Scope.__file__).replace("__init__.py","Software/Quantum_Espresso/PP_Libraries/")
+    if   comp.qc_data.PP_Library == "Efficiency": PP_path += "Efficiency/"
+    elif comp.qc_data.PP_Library == "Precision":  PP_path += "Precision/"
+    else: print(f"GEN_QE_INPUT: could not recognise PP_library: {comp.qc_data.PP_Library}. Exitting"); exit()
+
     ## Charge of System
     if system_type == "cell":
         if hasattr(gmol,"type"): 
@@ -123,7 +113,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
         print(" &control", file=inp)
         print(f"    calculation='{comp.qc_data.jobtype}'", file=inp)
         print( "    restart_mode='from_scratch'", file=inp)
-        print(f"    pseudo_dir ='{PP_Library}'", file=inp)
+        print(f"    pseudo_dir ='{PP_path}'", file=inp)
         print( "    disk_io='low'", file=inp)
         print(f"    prefix='{comp.name}'", file=inp)
 
@@ -143,26 +133,26 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
         #/////////////////////
         #// System control ///
         #/////////////////////
+
+        min_cowfc = 25
+        min_corho = 200
+        ### Determines cutoffs using the info contained in the Pseudopotentials
+        for idx, spec in enumerate(species):
+            if spec[-1].isdigit(): label = spec[:-1]
+            else: label = spec
+            pp, cutoff_wfc, cutoff_rho = get_pp(label, PP_path)
+            if cutoff_wfc > min_cowfc: min_cowfc = cutoff_wfc # updates
+            if cutoff_rho > min_corho: min_corho = cutoff_rho # updates
+
         print(" &system", file=inp)
         if system_type == "molecule": print(f"    ibrav=1, celldm(1)={comp.qc_data.cubeside}", file=inp)
         elif system_type == "cell":   print(f"    ibrav=0,", file=inp)
-        print(f"    nat={natoms}, ntyp={nspecies}, ecutwfc={int(comp.qc_data.cutoff)}, ecutrho={float(comp.qc_data.cutoff)*8}", file=inp)
+        print(f"    nat={natoms}, ntyp={nspecies}, ecutwfc={int(min_cowfc)}, ecutrho={float(min_corho)}", file=inp)
         if not hasattr(comp.spin_config,"ismagnetic"): comp.spin_config.get_total_magnetization()
         if comp.spin_config.ismagnetic: print(f"    nspin=2,", file=inp)
         else:          print(f"    nspin=1,", file=inp)
-
         print(f"    tot_charge={system_charge}", file=inp)
         
-        #if system_type == "molecule" and hasattr(gmol, 'totcharge'):
-        #    print(f"    tot_charge={gmol.totcharge}", file=inp)
-        #else:
-        #    print("    tot_charge=0", file=inp)
-        
-        ## Total Magnetization
-        #tot_magn = 0      
-        #if len(spin_config) != 0:
-        #    for t in spin_config:
-        #        tot_magn += t[1]
         if comp.spin_config.ismagnetic: print(f"    tot_magnetization={comp.spin_config.total_magnetization}", file=inp)
   
         ## Starting Magnetization
@@ -247,7 +237,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
             if spec[-1].isdigit(): label = spec[:-1]
             else: label = spec
             weight = elemdatabase.elementweight[label]
-            pp = get_pp(PP_Library, label)
+            pp, cutoff_wfc, cutoff_rho = get_pp(label, PP_path)
             print(f"{spec} {weight:6.4f} {pp}", file=inp)
         
         #///////////////////////////////////////////////////////////////////////////
