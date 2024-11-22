@@ -1,0 +1,386 @@
+{
+    "Ag": {
+        "filename": "ag_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Al": {
+        "filename": "al_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "As": {
+        "filename": "as_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Au": {
+        "filename": "au_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "B": {
+        "filename": "b_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Ba": {
+        "filename": "ba_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Be": {
+        "filename": "be_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Bi": {
+        "filename": "bi_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Br": {
+        "filename": "br_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "C": {
+        "filename": "c_pbe_v1.2.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Ca": {
+        "filename": "ca_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Cd": {
+        "filename": "cd_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Cl": {
+        "filename": "cl_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Co": {
+        "filename": "co_pbe_v1.2.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Cr": {
+        "filename": "cr_pbe_v1.5.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Cs": {
+        "filename": "cs_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Cu": {
+        "filename": "cu_pbe_v1.2.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "F": {
+        "filename": "f_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Fe": {
+        "filename": "fe_pbe_v1.5.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Ga": {
+        "filename": "ga_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Ge": {
+        "filename": "ge_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "H": {
+        "filename": "h_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Hf": {
+        "filename": "hf_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Hg": {
+        "filename": "hg_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "I": {
+        "filename": "i_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "In": {
+        "filename": "in_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Ir": {
+        "filename": "ir_pbe_v1.2.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "K": {
+        "filename": "k_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "La": {
+        "filename": "la_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Li": {
+        "filename": "li_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Mg": {
+        "filename": "mg_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Mn": {
+        "filename": "mn_pbe_v1.5.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Mo": {
+        "filename": "mo_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "N": {
+        "filename": "n_pbe_v1.2.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Na": {
+        "filename": "na_pbe_v1.5.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Nb": {
+        "filename": "nb_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Ni": {
+        "filename": "ni_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "O": {
+        "filename": "o_pbe_v1.2.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Os": {
+        "filename": "os_pbe_v1.2.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "P": {
+        "filename": "p_pbe_v1.5.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Pb": {
+        "filename": "pb_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Pd": {
+        "filename": "pd_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Pt": {
+        "filename": "pt_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Rb": {
+        "filename": "rb_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Re": {
+        "filename": "re_pbe_v1.2.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Rh": {
+        "filename": "rh_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Ru": {
+        "filename": "ru_pbe_v1.2.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "S": {
+        "filename": "s_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Sb": {
+        "filename": "sb_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Sc": {
+        "filename": "sc_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Se": {
+        "filename": "se_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Si": {
+        "filename": "si_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Sn": {
+        "filename": "sn_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Sr": {
+        "filename": "sr_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Ta": {
+        "filename": "ta_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Tc": {
+        "filename": "tc_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Te": {
+        "filename": "te_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Ti": {
+        "filename": "ti_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Tl": {
+        "filename": "tl_pbe_v1.2.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "V": {
+        "filename": "v_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "W": {
+        "filename": "w_pbe_v1.2.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Y": {
+        "filename": "y_pbe_v1.4.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Zn": {
+        "filename": "zn_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    },
+    "Zr": {
+        "filename": "zr_pbe_v1.uspp.F.UPF",
+        "pseudopotential": "GBRV-1.5",
+        "cutoff_wfc": 40.0,
+        "cutoff_rho": 200.0
+    }
+}

@@ -187,7 +187,7 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"grimme_type"):   data._add_attr("grimme_type", "d2")
 
     elif data.software == "qe":
-        if not hasattr(data,"PP_Library"):    data._add_attr("PP_Library", "efficiency")
+        if not hasattr(data,"PP_Library"):    data._add_attr("PP_Library", "vanderbilt")
         if not hasattr(data,"jobtype"):       data._add_attr("jobtype", "scf")
         if not hasattr(data,"functional"):    data._add_attr("functional", "pbe")
         if not hasattr(data,"is_hubbard"):    data._add_attr("is_hubbard", False)

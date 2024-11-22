@@ -51,8 +51,9 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
     ## 3-Determines the PP_Library path
     if not hasattr(comp.qc_data,"PP_Library"): f"PP_Library could not be found. Please set it in the qc_data.section of the Job"
     PP_path = os.path.abspath(Scope.__file__).replace("__init__.py","Software/Quantum_Espresso/PP_Libraries/")
-    if   comp.qc_data.PP_Library == "Efficiency": PP_path += "Efficiency/"
-    elif comp.qc_data.PP_Library == "Precision":  PP_path += "Precision/"
+    if   comp.qc_data.PP_Library.lower() == "efficiency": PP_path += "Efficiency/"
+    elif comp.qc_data.PP_Library.lower() == "precision":  PP_path += "Precision/"
+    elif comp.qc_data.PP_Library.lower() == "vanderbilt":  PP_path += "Vanderbilt_USPP/"
     else: print(f"GEN_QE_INPUT: could not recognise PP_library: {comp.qc_data.PP_Library}. Exitting"); exit()
 
     ## Charge of System
@@ -143,6 +144,8 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
             pp, cutoff_wfc, cutoff_rho = get_pp(label, PP_path)
             if cutoff_wfc > min_cowfc: min_cowfc = cutoff_wfc # updates
             if cutoff_rho > min_corho: min_corho = cutoff_rho # updates
+
+        if comp.qc_data.jobtype == "vc-relax": min_cowfc *= 2; min_corho *= 2  ## In vc-relax it is convenient to minimize pulay stress
 
         print(" &system", file=inp)
         if system_type == "molecule": print(f"    ibrav=1, celldm(1)={comp.qc_data.cubeside}", file=inp)
