@@ -88,9 +88,9 @@ class computation(object):
         if self.keyword != '': new_item = filename_item("keyword",    self.keyword);        self.filename.add_item(new_item)
         return self.filename
 
-    def set_name(self, spacer: str='_'):
+    def set_name(self, spacer: str='_', debug: int=0):
         if not hasattr(self,"filename"): 
-            print("Computation.set_name: filename not found")
+            if debug > 0: print("COMPUTATION.set_name: filename not found. Creating it")
             if self.step > 1: self.set_filename(use_step=True)
             else:             self.set_filename(use_step=False)
         self.name = self.filename.get_name(spacer=spacer)

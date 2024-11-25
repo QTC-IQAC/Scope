@@ -50,6 +50,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
 
     ## 3-Determines the PP_Library path
     if not hasattr(comp.qc_data,"PP_Library"): f"PP_Library could not be found. Please set it in the qc_data.section of the Job"
+    import Scope
     PP_path = os.path.abspath(Scope.__file__).replace("__init__.py","Software/Quantum_Espresso/PP_Libraries/")
     if   comp.qc_data.PP_Library.lower() == "efficiency": PP_path += "Efficiency/"
     elif comp.qc_data.PP_Library.lower() == "precision":  PP_path += "Precision/"
