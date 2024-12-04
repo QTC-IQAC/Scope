@@ -191,7 +191,12 @@ def parse_status_finished(lines):
 
 def parse_opt_status(lines):
     linenum, found = search_string("End of BFGS Geometry Optimization", lines, typ="last")
-    return found
+    if found: return 'finished'
+    linenum, found = search_string("history already reset at previous step: exiting", lines, typ="last")
+    if found: 
+        print("PARSE_QE_OUTPUTS. Optimization Stuck. --Assuming isfinished--")
+        return 'stucked'
+    return 'not finished' 
 
 def parse_scf_status(lines):
     linenum1, found1 = search_string("convergence has been achieved", lines, typ="last")

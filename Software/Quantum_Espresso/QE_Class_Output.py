@@ -34,7 +34,10 @@ class qe_output(object):
         return self.status_finished
 
     def get_optimization_finished(self, debug: int=0):
-        self.optimization_finished = parse_opt_status(self.lines)
+        status = parse_opt_status(self.lines)
+        if   status == 'finished':      self.optimization_finished = True
+        elif status == 'stucked' :      self.optimization_finished = True
+        elif status == 'not finished' : self.optimization_finished = False
         return self.optimization_finished
 
     def get_scf_finished(self, debug: int=0):
