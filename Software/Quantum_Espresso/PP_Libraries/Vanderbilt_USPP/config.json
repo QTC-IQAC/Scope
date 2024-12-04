@@ -108,9 +108,9 @@
         "cutoff_rho": 200.0
     },
     "Fe": {
-        "filename": "fe_pbe_v1.5.uspp.F.UPF",
-        "pseudopotential": "GBRV-1.5",
-        "cutoff_wfc": 40.0,
+        "filename": "Fe.pbe-sp-van_ak.UPF",
+        "pseudopotential": "Legacy QE PPs",
+        "cutoff_wfc": 25.0,
         "cutoff_rho": 200.0
     },
     "Ga": {
