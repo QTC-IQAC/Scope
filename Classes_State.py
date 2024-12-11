@@ -115,6 +115,15 @@ class state(object):
         if debug > 0: print(f"State.get_ncomplex {self.ncomplex} complexes found in state: {self.name}")
         return self.ncomplex
 
+    def get_SCO_geom(self, debug: int=0):
+        from Scope.Geom_SCO_V1 import geom_sco_from_xyz
+        if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
+        assert not self.fragmented, f"Found Fragmented molecules in the geometry of state: {self.name}"
+         
+        if not hasattr(self,"moleclist"): self.get_moleclist()
+        for mol in self.moleclist:
+            if mol.iscomplex: print(geom_sco_from_xyz(self.labels, self.coord, debug=debug)) 
+
 #######
 #    Not sure it is correct to extract Z like that
 #######

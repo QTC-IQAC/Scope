@@ -182,7 +182,7 @@ class specie(object):
         for idx, l in enumerate(self.labels):
             print("%s  %.6f  %.6f  %.6f" % (l, self.coord[idx][0], self.coord[idx][1], self.coord[idx][2]))
 
-    def view(self):
+    def view(self, show_indices: bool=False):
         import plotly.graph_objects as go
         from Scope.Read_Write import set_scene
         from Scope.Elementdata import ElementData  
@@ -195,6 +195,7 @@ class specie(object):
         positions       = np.array(self.coord)
         symbols         = self.labels
         adjacencies     = self.adjmat
+        atom_indices    = list(range(len(self.labels)))
 
         # Gets bonds from adjacency matrix
         indices = np.argwhere(self.adjmat >0)
@@ -219,18 +220,28 @@ class specie(object):
             showlegend  = False
         ))
 
-        # Label atom + indices
-        fig.add_trace(go.Scatter3d(
-            x           = positions[:, 0],
-            y           = positions[:, 1],
-            z           = positions[:, 2],
-            mode        = 'text',
-            text        = self.labels,
-            #text        = [str(i) for i in range(len(positions))],
-            textfont    = dict(color='black', size=12),
-            hoverinfo   = 'none',
-            showlegend  = False
-        ))
+        if show_indices:
+            fig.add_trace(go.Scatter3d(
+                x           = positions[:, 0],
+                y           = positions[:, 1],
+                z           = positions[:, 2],
+                mode        = 'text',
+                text        = [str(i) for i in range(len(positions))],
+                textfont    = dict(color='black', size=12),
+                hoverinfo   = 'none',
+                showlegend  = False
+            ))
+        else:            
+            fig.add_trace(go.Scatter3d(
+                x           = positions[:, 0],
+                y           = positions[:, 1],
+                z           = positions[:, 2],
+                mode        = 'text',
+                text        = self.labels,
+                textfont    = dict(color='black', size=12),
+                hoverinfo   = 'none',
+                showlegend  = False
+            ))
 
         ## Plot bonds as lines and calculate midpoints
         #midpoints   = []
@@ -270,7 +281,7 @@ class specie(object):
         if not indirect: to_print  += f'------------- Cell2mol SPECIE Object --------------\n'
         to_print += f' Version               = {self.version}\n'
         to_print += f' Type                  = {self.type}\n'
-        if hasattr(self,'subtype'): to_print += f' Sub-Type               = {self.subtype}\n'
+        if hasattr(self,'subtype'): to_print += f' Sub-Type              = {self.subtype}\n'
         to_print += f' Number of Atoms       = {self.natoms}\n'
         to_print += f' Formula               = {self.formula}\n'
         if hasattr(self,"adjmat"):     to_print += f' Has Adjacency Matrix  = YES\n'

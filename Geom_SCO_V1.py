@@ -14,12 +14,14 @@ def getangle(v1, v2):
 def geom_sco_from_xyz(labels, pos, debug=0):   
     #Computes Structural Variables for all Fe atoms of a given structure
     #Returns two lists, one for FeN and another for NFeN, with all values.
-    # NFeN is basically Epsylon in eq. 1 of Halcrow's Chem. Soc. Rev., 2011,40, 4119-4142
+    # Epsylon is eq. 1 of Halcrow's Chem. Soc. Rev., 2011,40, 4119-4142
+    # Angle is the average of cis angles, without the deviation from 90º
     
-    #Computes Fe-N distances and vectors
     alldist = []
     allangle = []
+    allepsylon = []
     
+    #Computes Fe-N distances and vectors
     NFe = labels.count("Fe")
     for idx, p1 in enumerate(pos):
         if labels[idx] == 'Fe':
@@ -29,7 +31,6 @@ def geom_sco_from_xyz(labels, pos, debug=0):
             vec_FeX = []
             for jdx, p2 in enumerate(pos):
                 if labels[jdx] == 'N':
-                #if jdx >= idx and labels[jdx] == 'N':
                     if debug >= 2: print(f"Atom {jdx} is a Nitrogen: {p2}")
                     dist_FeX.append(np.linalg.norm(np.subtract(p1,p2)))
                     vec_FeX.append(np.subtract(p1,p2))
@@ -39,6 +40,7 @@ def geom_sco_from_xyz(labels, pos, debug=0):
             # Checks that it detected 6 N atoms
             if len(vec_FeX) < 6: 
                 print("less than 6 N atoms in the Fe coord sphere. Found", len(vec_FeX))
+                print("printing coordinates to debug:")
                 for idx, at in enumerate(labels):
                     print("%s   %.6f   %.6f   %.6f" % (labels[idx], pos[idx][0], pos[idx][1], pos[idx][2]))
                  
@@ -64,12 +66,20 @@ def geom_sco_from_xyz(labels, pos, debug=0):
                             NFeN_angles.append(angle)
                         else: 
                             if debug >= 2: print("Angle between N atoms",idx,"and",jdx,"discarded")
+
+            assert len(NFeN_angles) == 12
+            epsylon = 0
+            for a in NFeN_angles:
+                epsylon += np.abs(90-a)
+
             AvNFeN_angle = np.mean(NFeN_angles)
+            if debug >= 2: print(f"{NFeN_angles=}")
             
             alldist.append(AvFeN)
             allangle.append(AvNFeN_angle)
+            allepsylon.append(epsylon)
     
-    return alldist, allangle
+    return alldist, allangle, allepsylon
 
 def readxyz(file):
     labels = []

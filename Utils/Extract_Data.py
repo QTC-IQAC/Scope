@@ -109,6 +109,9 @@ def extract_T12(sys: object, branch_keyword: str, High_E_state: object, Low_E_st
         print(this_branch.results["dGtot"])
         print(this_branch.results["T12"])
 
+    #if debug > 1:
+    #    for t in Trange: 
+
     # Set branch_status_finished
     if "T12" in this_branch.results.keys(): 
         this_branch.set_status("finished", debug=debug)

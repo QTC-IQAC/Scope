@@ -12,6 +12,7 @@ from Scope.Geom_SCO_V1 import geom_sco_from_xyz, guess_spin_state
 from Scope.Read_Write import save_binary, load_binary
 from Scope.Classes_State import state
 from Scope.Classes_Molecule import *
+from Scope.Bibliography import *
 
 from Scope.Workflow import Branch
 from Scope.Workflow.Branch import *
@@ -426,8 +427,16 @@ class crystal(object):
 
     ####### Bibliography options:
     def get_abstract(self, debug: int=0):
-        from Scope.Bibliography import get_abstract
-        return get_abstract(self, debug=debug) 
+        query = get_query(self, debug=debug)
+        return get_abstract(query, debug=debug) 
+
+    def get_title(self, debug: int=0):
+        query = get_query(self, debug=debug)
+        return get_title(query, debug=debug) 
+
+    def get_doi(self, debug: int=0):
+        query = get_query(self, debug=debug)
+        return get_doi(query, debug=debug) 
     ####### 
 
     def __repr__(self) -> None:
