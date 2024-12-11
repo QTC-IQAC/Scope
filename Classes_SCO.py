@@ -424,6 +424,12 @@ class crystal(object):
             self.HSmolarfraction = float(self.guess_spins.count("HS")/len(self.guess_spins))
         if debug > 0: print(f"    Get_Spin&Phase: phase:{self.phase} and molar_frac: {self.HSmolarfraction}")
 
+    ####### Bibliography options:
+    def get_abstract(self, debug: int=0):
+        from Scope.Bibliography import get_abstract
+        return get_abstract(self, debug=debug) 
+    ####### 
+
     def __repr__(self) -> None:
         to_print  = f'---------------------------------------------------\n'
         to_print += f' Formatted input interpretation of Crystal()\n'
