@@ -182,11 +182,17 @@ class specie(object):
         for idx, l in enumerate(self.labels):
             print("%s  %.6f  %.6f  %.6f" % (l, self.coord[idx][0], self.coord[idx][1], self.coord[idx][2]))
 
-    def view(self, show_indices: bool=False):
+    def view(self, show_indices: bool=False, size: str='default'):
         import plotly.graph_objects as go
         from Scope.Read_Write import set_scene
         from Scope.Elementdata import ElementData  
         elemdatabase = ElementData()
+
+        ### Adjusts size
+        if   size.lower() == 'default': width=600; height=600;   marker_size=8;  text_size=9
+        elif size.lower() == 'small':   width=400; height=400;   marker_size=6;  text_size=7 
+        elif size.lower() == 'large':   width=800; height=800;   marker_size=10; text_size=12
+        elif size.lower() == 'ultra':   width=1000; height=1000; marker_size=11; text_size=13
 
         if not hasattr(self,"adjmat"): self.get_adjmatrix()
         fig             = go.Figure()
@@ -211,7 +217,7 @@ class specie(object):
             z           = positions[:, 2],
             mode        ='markers',
             marker      = dict(
-                size        = 10,
+                size        = marker_size,
                 color       = [elemdatabase.cpk_colors[l] for l in symbols],
                 line        = dict(color='black', width=1),
             ),
@@ -227,7 +233,7 @@ class specie(object):
                 z           = positions[:, 2],
                 mode        = 'text',
                 text        = [str(i) for i in range(len(positions))],
-                textfont    = dict(color='black', size=12),
+                textfont    = dict(color='black', size=text_size),
                 hoverinfo   = 'none',
                 showlegend  = False
             ))
@@ -238,7 +244,7 @@ class specie(object):
                 z           = positions[:, 2],
                 mode        = 'text',
                 text        = self.labels,
-                textfont    = dict(color='black', size=12),
+                textfont    = dict(color='black', size=text_size),
                 hoverinfo   = 'none',
                 showlegend  = False
             ))
@@ -266,7 +272,7 @@ class specie(object):
 
         #midpoints = np.array(midpoints)
 
-        set_scene(fig, np.array(self.coord))
+        set_scene(fig, np.array(self.coord), width=width, height=height)
         fig.show()
 
 
@@ -866,11 +872,17 @@ class cell(object):
         else:            self.is_fragmented = False; self.error_reconstruction = False
         return self.moleclist
 
-    def view(self):
+    def view(self, size: str='default'):
         import plotly.graph_objects as go
         from Scope.Read_Write import set_scene
         from Scope.Elementdata import ElementData  
         elemdatabase = ElementData()
+
+        ### Adjusts size
+        if   size.lower() == 'default': width=600; height=600;   marker_size=8;  text_size=9
+        elif size.lower() == 'small':   width=400; height=400;   marker_size=6;  text_size=7 
+        elif size.lower() == 'large':   width=800; height=800;   marker_size=10; text_size=12
+        elif size.lower() == 'ultra':   width=1000; height=1000; marker_size=11; text_size=13
 
         if not hasattr(self,"adjmat"): self.get_adjmatrix()
         fig             = go.Figure()
@@ -939,7 +951,7 @@ class cell(object):
 
         #midpoints = np.array(midpoints)
 
-        set_scene(fig, np.array(self.coord))
+        set_scene(fig, np.array(self.coord), width=width, height=height)
         fig.show()
 
     def __repr__(self):

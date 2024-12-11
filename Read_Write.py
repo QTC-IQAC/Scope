@@ -150,7 +150,7 @@ def read_user_input(message: str, rtext: bool=False, rtext_options: list=[], rty
 #####################
 ### VISUALIZATION ###
 #####################
-def set_scene(fig, positions, padding=1.0):
+def set_scene(fig, positions, padding=1.0, width: int=500, height: int=500):
     xmin, xmax = positions[:,0].min() - padding, positions[:,0].max() + padding
     ymin, ymax = positions[:,1].min() - padding, positions[:,1].max() + padding
     zmin, zmax = positions[:,2].min() - padding, positions[:,2].max() + padding
@@ -161,7 +161,7 @@ def set_scene(fig, positions, padding=1.0):
         zaxis  = dict(title='Z (Å)', range=[zmin, zmax]),
     ))
 
-    fig.update_layout(width  = 800,height = 800)
+    fig.update_layout(width=width,height=height)
 
 def prepare_specie_figure(specie, bond_thr):
     import plotly.graph_objects as go
