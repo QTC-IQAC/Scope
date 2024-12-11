@@ -19,7 +19,6 @@ class specie(object):
         if radii   is not None: self.radii   = radii
         else:                   self.radii   = get_radii(labels)
         if parent  is not None: self.parent = parent
-#        if parent  is not None: self.occurence = parent.get_occurrence(self)
 
         self.type      = "specie"
         self.version   = "0.1"
@@ -258,9 +257,6 @@ class specie(object):
 
         set_scene(fig, np.array(self.coord))
         fig.show()
-
-
-      
 
 
     ## To be implemented

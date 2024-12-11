@@ -153,11 +153,13 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
         elif system_type == "cell":   print(f"    ibrav=0,", file=inp)
         print(f"    nat={natoms}, ntyp={nspecies}, ecutwfc={int(min_cowfc)}, ecutrho={float(min_corho)}", file=inp)
         if not hasattr(comp.spin_config,"ismagnetic"): comp.spin_config.get_total_magnetization()
-        if comp.spin_config.ismagnetic: print(f"    nspin=2,", file=inp)
-        else:          print(f"    nspin=1,", file=inp)
+        print(f"    nspin=2,", file=inp)
+        #if comp.spin_config.ismagnetic: print(f"    nspin=2,", file=inp)
+        #else:          print(f"    nspin=1,", file=inp)
         print(f"    tot_charge={system_charge}", file=inp)
         
-        if comp.spin_config.ismagnetic: print(f"    tot_magnetization={comp.spin_config.total_magnetization}", file=inp)
+        print(f"    tot_magnetization={comp.spin_config.total_magnetization}", file=inp)
+        #if comp.spin_config.ismagnetic: print(f"    tot_magnetization={comp.spin_config.total_magnetization}", file=inp)
   
         ## Starting Magnetization
         for idx, u in enumerate(comp.spin_config.magn_uniques):
