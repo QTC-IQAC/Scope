@@ -20,8 +20,6 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
             print("Svin: can't understand input units of frequencies")
             sys.exit()
         
-    #if temp == 10: print("temp, idx, f, Svib_FR, Svib_HO, total, weight_HO")
-    
     # Converts Frequencies to s-1
     freqs_adapted = []
     for f in freqs:
@@ -66,7 +64,6 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     
             ## Sums both Contributions
             total += (Svib_FR + Svib_HO)
-            #if temp == 10: print(f"{temp} {idx} {freqs[idx]} {Svib_FR:.3e} {Svib_HO:.3e} {total:.3e} {weight}")
         
     ## Arranges units 
     if outunits.lower() == 'kj':  total = total*Constants.har2kJmol
