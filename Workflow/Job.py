@@ -237,8 +237,8 @@ class job(object):
             else:
                 if hasattr(initial_state,"coord"):
                     from Scope.Findiff import findiff_displacements
-                    findiff_path = self.path+"findiff_test4"
-                    if not os.path.isdir(findiff_path): os.makedirs(findiff_path); print(f"SET COMPUTATIONS FROM SETUP: findiff folder created")
+                    self.path = self.path+"findiff_test4"
+                    if not os.path.isdir(self.path): os.makedirs(self.path); print(f"SET COMPUTATIONS FROM SETUP: findiff folder created")
                     geoms, names = findiff_displacements(initial_state.coord)
 
                     for idx, geo in enumerate(geoms):
@@ -250,7 +250,7 @@ class job(object):
     
                         # Initial State of the Computation must be updated, to account for the displacement of geometries
                         exists, new_comp = self.find_computation(keyword=names[idx])
-                        if not exists: new_comp = self.add_computation(qc_data, 1, findiff_path, comp_keyword=names[idx], is_update=False, debug=debug)
+                        if not exists: new_comp = self.add_computation(qc_data, 1, self.path, comp_keyword=names[idx], is_update=False, debug=debug)
                         new_comp.qc_data = deepcopy(new_comp.qc_data)
                         new_comp.qc_data._mod_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
                         new_comp.qc_data._mod_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries

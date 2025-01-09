@@ -143,7 +143,9 @@ class computation(object):
                 mod_path     = mod_filename.set_path(self.path)
                 mod_outfile  = ''.join([mod_path,".out"])
                 mod_exists   = os.path.isfile(mod_outfile)
-                if mod_exists: self.has_update = True
+                if mod_exists: 
+                    print("CHECK UPDATES: found file with larger run number:", mod_path, rn)
+                    self.has_update = True
         return self.has_update
 
     def set_run_number(self, debug: int=1) -> int:
