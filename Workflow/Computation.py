@@ -125,7 +125,7 @@ class computation(object):
     ##################################
     #### Update-related functions ####
     ##################################
-    def check_updates(self, max_run_number: int=11, debug: int=1) -> int:
+    def check_updates(self, max_run_number: int=11, debug: int=0) -> int:
         ## Checks for updates in the computation
         self.has_update = False
         if debug > 0: print(f"CHECK UPDATES: entering part 1: {self.has_update=}")
