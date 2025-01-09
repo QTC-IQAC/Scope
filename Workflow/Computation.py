@@ -61,12 +61,12 @@ class computation(object):
     def get_mod_filename(self, mod_item_vars: list, mod_item_vals: list, debug: int=0):
         from Scope.Other import where_in_array, extract_from_list
         if not hasattr(self,"filename"): self.set_filename()
-        #if not hasattr(self,"filename"): return None
         new_filename = deepcopy(self.filename)
         found = False
         for idx, mod in enumerate(mod_item_vars):
             for jdx, item in enumerate(new_filename.items):
-                if item.variable == mod_item_vars: 
+                if debug > 0: print(f"GET_MOD_FILENAME: comparing {item.variable.lower()=} and {mod.lower()=}")
+                if item.variable.lower() == mod.lower():
                     item.mod_value(mod_item_vals[idx])
                     if debug > 0: print(f"GET_NAME_FROM_CONFIG: modifying {mod=} in new_filename")
         return new_filename
@@ -128,23 +128,26 @@ class computation(object):
     def check_updates(self, max_run_number: int=11, debug: int=1) -> int:
         ## Checks for updates in the computation
         self.has_update = False
+        if debug > 0: print(f"CHECK UPDATES: entering part 1: {self.has_update=}")
 
         ## 1-Searches in the job it is contained
         for comp in self._job.computations:
             if comp.keyword == self.keyword and comp.step == self.step and hasattr(comp,"run_number"):
                 if comp.run_number > self.run_number: self.has_update = True
 
+        if debug > 0: print(f"CHECK UPDATES: entering part 2: {self.has_update=}")
         ## 2-Checks for newer files with a similar filename in self.path
         if not self.has_update:
             inp, out, sub = self.set_file_extension()
             for rn in range(self.run_number, max_run_number):
-                mod_filename = self.get_mod_filename(list(["run_number"]),list([rn]))  ## This creates a new version of the filename
+                if debug > 0: print(f"CHECK UPDATES: in part 2, trying: {rn=}")
+                mod_filename = self.get_mod_filename(list(["run_number"]),list([rn]), debug=debug)  ## This creates a new version of the filename
                 mod_name     = mod_filename.get_name()
+                if debug > 0: print(f"CHECK UPDATES: in part 2, searching: {mod_name=}")
                 mod_path     = mod_filename.set_path(self.path)
                 mod_outfile  = ''.join([mod_path,".out"])
                 mod_exists   = os.path.isfile(mod_outfile)
                 if mod_exists: 
-                    print("CHECK UPDATES: found file with larger run number:", mod_path, rn)
                     self.has_update = True
         return self.has_update
 
