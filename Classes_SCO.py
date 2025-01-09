@@ -401,7 +401,7 @@ class crystal(object):
                     else: print("No coord_sphere variable in metal object")
                 if keepit:
                     ox_state = mol.metals[0].charge
-                    mol.scope_FeNdist, mol.scope_FeNangle = geom_sco_from_xyz(mol.labels, mol.coord)
+                    mol.scope_FeNdist, mol.scope_FeNangle, mol.scope_epsylon = geom_sco_from_xyz(mol.labels, mol.coord)
                     mol.scope_guess_spin = guess_spin_state(int(ox_state), mol.scope_FeNdist[0])
                     self.list_of_molecules.append(mol)
                     if debug > 0: print(f"    GET_FeN6: found {mol.scope_guess_spin} molecule of OS: {ox_state}") 
