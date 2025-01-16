@@ -65,10 +65,10 @@ class computation(object):
         found = False
         for idx, mod in enumerate(mod_item_vars):
             for jdx, item in enumerate(new_filename.items):
-                if debug > 0: print(f"GET_MOD_FILENAME: comparing {item.variable.lower()=} and {mod.lower()=}")
+                if debug > 2: print(f"comp.GET_MOD_FILENAME: comparing {item.variable.lower()=} and {mod.lower()=}")
                 if item.variable.lower() == mod.lower():
                     item.mod_value(mod_item_vals[idx])
-                    if debug > 0: print(f"GET_NAME_FROM_CONFIG: modifying {mod=} in new_filename")
+                    if debug > 2: print(f"comp.GET_NAME_FROM_CONFIG: modifying {mod=} in new_filename")
         return new_filename
 
     def set_filename(self, use_refcode: bool=True, use_suffix: bool=True, use_step: bool=False, use_run_number: bool=True, use_spin: bool=True, debug: int=0):
@@ -125,30 +125,31 @@ class computation(object):
     ##################################
     #### Update-related functions ####
     ##################################
-    def check_updates(self, max_run_number: int=11, debug: int=0) -> int:
+    def check_updates(self, max_run_number: int=100, debug: int=0) -> int:
         ## Checks for updates in the computation
         self.has_update = False
-        if debug > 0: print(f"CHECK UPDATES: entering part 1: {self.has_update=}")
+        if debug > 1: print(f"comp.CHECK_UPDATES: entering part 1: {self.has_update=}")
 
         ## 1-Searches in the job it is contained
         for comp in self._job.computations:
             if comp.keyword == self.keyword and comp.step == self.step and hasattr(comp,"run_number"):
                 if comp.run_number > self.run_number: self.has_update = True
 
-        if debug > 0: print(f"CHECK UPDATES: entering part 2: {self.has_update=}")
+        if debug > 1: print(f"comp.CHECK_UPDATES: entering part 2: {self.has_update=}")
         ## 2-Checks for newer files with a similar filename in self.path
         if not self.has_update:
             inp, out, sub = self.set_file_extension()
             for rn in range(self.run_number, max_run_number):
-                if debug > 0: print(f"CHECK UPDATES: in part 2, trying: {rn=}")
+                if debug > 1: print(f"comp.CHECK_UPDATES: in part 2, trying: {rn=}")
                 mod_filename = self.get_mod_filename(list(["run_number"]),list([rn]), debug=debug)  ## This creates a new version of the filename
                 mod_name     = mod_filename.get_name()
-                if debug > 0: print(f"CHECK UPDATES: in part 2, searching: {mod_name=}")
+                if debug > 1: print(f"comp.CHECK_UPDATES: in part 2, searching: {mod_name=}")
                 mod_path     = mod_filename.set_path(self.path)
                 mod_outfile  = ''.join([mod_path,".out"])
                 mod_exists   = os.path.isfile(mod_outfile)
                 if mod_exists: 
                     self.has_update = True
+                    if debug > 0: print(f"comp.CHECK_UPDATES: found update with {mod_name=}")
         return self.has_update
 
     def set_run_number(self, debug: int=1) -> int:
