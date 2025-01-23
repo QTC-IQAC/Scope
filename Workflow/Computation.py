@@ -132,6 +132,7 @@ class computation(object):
 
         ## 1-Searches in the job it is contained
         for comp in self._job.computations:
+            if not hasattr(comp,"step"): comp.step = 1
             if comp.keyword == self.keyword and comp.step == self.step and hasattr(comp,"run_number"):
                 if comp.run_number > self.run_number: self.has_update = True
 

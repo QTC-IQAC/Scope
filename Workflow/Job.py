@@ -69,6 +69,7 @@ class job(object):
 
     def find_computation(self, keyword: str='', step: int=1, run_number: int=1, debug: int=0):
         for idx, comp in enumerate(self.computations):
+            if not hasattr(comp,"step"): comp.step = 1
             if comp.keyword == keyword and comp.step == step and comp.run_number == run_number: this_comp = comp; return True, this_comp
         return False, None
 
