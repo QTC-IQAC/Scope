@@ -47,6 +47,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
 
     #### 2b-Forces some options in case the environment is not that of a computation cluster
     if global_env.management_type == 'None':
+        print("WARNING!!! No Queue Management has been detected in cluster, disabling submission")
         options._mod_attr('want_submit',False)      
         options._mod_attr('overwrite_inputs',False)  
         options._mod_attr('overwrite_logs',False)     
@@ -166,7 +167,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                         comp.check_qc_data(job_path=job_path, debug=debug)
                         comp.run(global_env, options, debug=debug); updated = True
                 else: 
-                    if debug > 1: print("EXECUTE_JOB, step 7.2a: want_submit is False")
+                    if debug > 1: print("EXECUTE_JOB, step 7.2a: want_submit is False or comp.has_update")
 
             ## 7.2b-Warns if output exists but not input
             elif comp.output_exists and not comp.input_exists:  

@@ -77,9 +77,12 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
     #########################
     ### DETERMINE SPECIES ###
     #########################
+#    metal_indices = get_metal_idxs(gmol.labels)
+#    metal_species = get_metal_species(gmol.labels)
+
     comp.spin_config.get_QE_data()
-    metal_indices = get_metal_idxs(gmol.labels)
-    metal_species = get_metal_species(gmol.labels)
+    metal_indices = get_metal_idxs(istate.labels)
+    metal_species = get_metal_species(istate.labels)
     elems = comp.spin_config.elems
     nelems = comp.spin_config.nelems
 
@@ -328,7 +331,8 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
             print(f"WORKDIR=$PWD", file=sub)
             print(f"cd $TMPDIR", file=sub)
             print(f"cp $WORKDIR/{comp.inp_name} .", file=sub)
-            print(f"srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
+            if procs >= 128: print(f"srun pw.x < {comp.inp_name} > {comp.out_name} -pd .true.", file=sub)
+            else:            print(f"srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
             print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
             os.chmod(comp.sub_path, 0o777)
      
