@@ -1,5 +1,6 @@
 import numpy as np
 
+
 def write_vnm_dyn(initial_coord: list, vnm: object, amplitude: int=10, index: int=0, outfolder: str='./', labels: None=list):
     filename: str="dyn_vnm_"+str(index)+".xyz"
     initial_coord = np.array(initial_coord)
@@ -16,10 +17,18 @@ def write_vnm_dyn(initial_coord: list, vnm: object, amplitude: int=10, index: in
                 print(f"{label}  {coord[0]:.5f}  {coord[1]:.5f}  {coord[2]:.5f}", file=output_file)
 
 def vnm_displacement(VNMs: list, initial_coord: list, which: list=[], which_side: str='positive', amplitude: int=6, debug: int=0):
-    # Applies a displacement from the initial geometry using either 'all negative normal modes whose index is in 'which'
-    if len(which) == 0: which = [vnm.index for vnm in VNMs]
+    # Applies a displacement from the initial geometry using either 'all' negative normal modes whose index is in 'which'
+    if not hasattr(VNMs[0],'xs'):
+        print("VNMs do not have eigenvectors. Stopping"); return None 
+
+    ## Store Initial Coord
     new_coord = initial_coord.copy()    
     if debug >= 1: print("initial coord:", new_coord[0])
+
+    ## If empty which, then takes all
+    if len(which) == 0: which = [vnm.index for vnm in VNMs]
+
+    ## Applies Displacement
     for vnm in VNMs:
         if vnm.index in which:
             if debug >= 1: print("displacing VNM with frequency:", vnm.freq_cm)

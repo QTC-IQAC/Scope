@@ -185,16 +185,19 @@ class state(object):
         self.add_result(data("energy",energy,units,"state.set_energy"), overwrite=overwrite)
         #self.energy     = energy
 
-    def find_computation(self, keyword: str='', step: int=1, run_number: int=1, debug: int=0):
+    def find_computation(self, job_keyword: str='', step: int=1, run_number: int=1, debug: int=0):
         for idx, comp in enumerate(self.computations):
-            if comp.keyword == keyword and comp.step == step and comp.run_number == run_number: this_comp = comp; return True, this_comp
+            if comp._job.keyword == job_keyword and comp.step == step and comp.run_number == run_number: this_comp = comp; return True, this_comp
         return False, None
 
-    def add_computation(self, computation: object):
-        found, comp = self.find_computation(computation.keyword, computation.step, computation.run_number)
+    def add_computation(self, computation: object, debug: int=0):
+        found, comp = self.find_computation(computation._job.keyword, computation.step, computation.run_number)
         if not found: 
+            if debug > 0: print("STATE.ADD_COMPUTATION: same computation wasn't found. So adding it to state")
             self.computations.append(computation)
             computation.add_state(self)
+        else:
+            if debug > 0: print("STATE.ADD_COMPUTATION: same computation was already found in state. Ignoring")
 
     def reconstruct(self, debug: int=0):
         assert hasattr(self,"cellvec")

@@ -42,14 +42,14 @@ def reg_optimization(comp: object, debug: int=0):
     ### 0-In Case Reg_General hasn't been run:
     if not hasattr(comp,"output"): reg_general(comp)
 
-    ### 1-Retrieve the last geometry, and evaluate if it is the converged one (or if it needs to run more)
+    ### 1-Retrieve the last geometry, and evaluate if it is the converged one (or if it needs to run more)
     labels, new_coord = comp.output.get_geometry_last_complete_block()
     comp.isgood = comp.output.get_optimization_finished()
     if labels is not None:
         assert len(labels) == len(new_coord)
         assert len(labels) > 0
 
-    ### 2-If it is a periodic objecet, gets the cell vectors as well
+    ### 2-If it is a periodic object, gets the cell vectors as well
     if gmol.type == "cell": 
         cellvec, celldim, cellparam = comp.output.get_cell_vectors_last_complete_block()
         if cellvec is None: cellvec, celldim, cellparam = comp.output.get_last_cell_vectors()
@@ -85,6 +85,8 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
     worked = False
     ### 1-Parsing ###
     VNMs = comp.output.get_vnms(witheigen=witheigen)
+    if VNMs is None:
+        print("REG_FREQUENCIES: could not parse frequencies")
 
     ### 2-Storage ###
     if VNMs is not None:

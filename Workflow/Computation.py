@@ -236,7 +236,7 @@ class computation(object):
     #### Submission-related functions ####
     ######################################
     def check_submission_status(self, environment: object, debug: int=0) -> None:
-        #key = str(self.refcode+self.suffix)
+        if not hasattr(self,"name"): self.set_name() #key = str(self.refcode+self.suffix)
         key = self.name
         self.isrunning = environment.check_submitted(job_name=key, debug=debug)
         
@@ -380,10 +380,8 @@ class computation(object):
 
         ## 3-Registration of Optimization of Frequency Tasks 
         if 'opt' in self._job.keyword or 'relax' in self._job.keyword:
-        #if ('opt' in self._job.keyword or 'relax' in self._job.keyword) and worked1:
             worked = reg_optimization(self, debug=debug)
         elif 'freq' in self._job.keyword: 
-        #elif self.isgood and 'freq' in self._job.keyword and worked1:
             worked = reg_frequencies(self, witheigen=False, debug=debug)
         #else: 
         #    worked = True

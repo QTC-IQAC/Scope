@@ -182,20 +182,21 @@ class job(object):
             exists, initial_state = find_state(gmol, self.istate)
             if not exists: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' was not found")
 
-            #### Only applies to geometries that are not minimum
-            if hasattr(initial_state,"coord") and hasattr(initial_state,"VNMs") and hasattr(initial_state,"isminimum"):
-                if initial_state.isminimum: 
-                    if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' is already a minimum")
-                    self._recipe.remove_job(keyword=self.keyword)    # not sure if this is possible
-                else: 
+            if hasattr(initial_state,"VNMs") and hasattr(initial_state,"coord"):
+                #### Only applies to geometries that are not minimum
 
-
-                    ## 0-Checks that the VNM exists, and that they have eigenvalues. If not, registers those eigenvalues.
-                    if hasattr(initial_state,"VNMs"):
+                if hasattr(initial_state,"isminimum"):
+                    if initial_state.isminimum: 
+                        if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' is already a minimum")
+                        self._recipe.remove_job(keyword=self.keyword)    # not sure if this is possible
+                    else: 
+                        ## 0-Checks that the VNM exists, and that they have eigenvalues. If not, registers those eigenvalues.
                         if not hasattr(initial_state.VNMs[0],"atomidxs"):  #Actually only checking for the first one, but its ok
                             print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' does not have VNMs with eigenvectors.") 
+                            print(f"SET COMPUTATIONS FROM SETUP: now searching a job with frequencies in the state class object")
                             found = False
                             for idx, comp in enumerate(initial_state.computations):
+                                print(idx, comp._job.keyword, comp.isgood)
                                 if "freq" in comp._job.keyword and comp.isgood and not found:
                                     print(f"SET COMPUTATIONS FROM SETUP: I will try to read the eigenvectors from", idx, comp.out_path)
                                     ### 1-Parsing and storage (this block is similar to register_frequencies)
@@ -207,22 +208,22 @@ class job(object):
                                         found = True
                                         print(f"SET COMPUTATIONS FROM SETUP: Worked!")
 
-                    ## 1-Displaces Coordinates Following Negative Freqs ###
-                    from Scope.Gmol_ops import displace_neg_freqs 
-                    disp_coord = displace_neg_freqs(initial_state.coord, initial_state.VNMs,debug=debug)
-                    exists, displ_state = find_state(gmol, "displaced")          # Checks if state already exists
-                    if not exists: displ_state = state(gmol, "displaced")        # If not, creates it
-                    displ_state.set_geometry(initial_state.labels, disp_coord)   # Creates New State with Displaced Coordinates 
-                    if hasattr(initial_state,"cellvec"): 
-                        displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
+                        ## 1-Displaces Coordinates Following Negative Freqs ###
+                        from Scope.Gmol_ops import displace_neg_freqs 
+                        disp_coord = displace_neg_freqs(initial_state.coord, initial_state.VNMs,debug=debug)
+                        exists, displ_state = find_state(gmol, "displaced")          # Checks if state already exists
+                        if not exists: displ_state = state(gmol, "displaced")        # If not, creates it
+                        displ_state.set_geometry(initial_state.labels, disp_coord)   # Creates New State with Displaced Coordinates 
+                        if hasattr(initial_state,"cellvec"): 
+                            displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
 
-                    ## 2-Initial State of the Computation must be updated, to account for the displacement of geometries
-                    exists, new_comp = self.find_computation()
-                    if not exists: new_comp = self.add_computation(qc_data, 1, self.path, comp_keyword="", is_update=False, debug=debug)
-                    new_comp.qc_data._add_attr("istate","displaced")  ## Updates the initial state of the computation, so it takes the displaced geometries
-                    new_comp.qc_data._add_attr("fstate",self.fstate)         
-                    new_comp.set_name()
-                    new_comp.set_paths()
+                        ## 2-Initial State of the Computation must be updated, to account for the displacement of geometries
+                        exists, new_comp = self.find_computation()
+                        if not exists: new_comp = self.add_computation(qc_data, 1, self.path, comp_keyword="", is_update=False, debug=debug)
+                        new_comp.qc_data._add_attr("istate","displaced")  ## Updates the initial state of the computation, so it takes the displaced geometries
+                        new_comp.qc_data._add_attr("fstate",self.fstate)         
+                        new_comp.set_name()
+                        new_comp.set_paths()
 
             else:     
                 print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' does not have the properties required to apply the displacement")

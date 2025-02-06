@@ -86,18 +86,18 @@ class sco_system(object):
                             if debug > 0: print(f"RESET_PATHS_OUT: new computation path: {comp.inp_path}")
         return reset
 
-    def reset_calculations(self) -> None:
+    def remove_all_branches(self) -> None:
         if hasattr(self,"branches"): delattr(self,"branches"); setattr(self,"branches",[])
+        return self.branches
        
-    ##############################################
-    ### THIS FUNCTION DOESNT SEEM TO WORK WELL ###
-    ##############################################
-    #def reset_branch(self, keyword: str) -> None:
-    #    if hasattr(self,"branches"): 
-    #        for idx, b in enumerate(branches):
-    #            if b.keyword == keyword: del(self.branches[idx]) 
-    #        #exists, branch = self.find_branch(keyword)
-    #        #if exists: branch.reset_recipes() 
+    ## to make it work, target must be an attribute of branch, and recipes created at branch level, not at system level as in def add_branch below
+    ###def reset_branch(self, keyword: str) -> None:
+    ###    exists, old_branch = self.find_branch(keyword)
+    ###    if exists:
+    ###        target = old_branch.target
+    ###    self.remove_branch(self, br_keyword=keyword):
+    ###    new_branch = self.add_branch(keyword, target: str, debug: int=0):
+    ###    return new_branch
 
     def reset_crystals(self) -> None:
         if hasattr(self,"crystals"): delattr(self,"crystals"); setattr(self,"crystals",[])
@@ -158,7 +158,6 @@ class sco_system(object):
         if found:
             to_delete = self.branches[found_idx]
             del self.branches[found_idx]
-
 
     ##########
     def set_reference_molecs(self, debug: int=0):

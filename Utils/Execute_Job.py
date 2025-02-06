@@ -237,18 +237,21 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                             print(f"Error registering {comp.out_path}")
                     updated = True
 
-                ## Re-reads eigenvectors of a frequency computation 
-                if comp.isregistered and "freq" in comp._job.keyword and (hasattr(comp.qc_data,"fstate") or hasattr(comp._job,"fstate")):
-                    if hasattr(comp.qc_data,"fstate"): fstate = comp.qc_data.fstate
-                    else:                              fstate = comp._job.fstate
-                    exists, state = find_state(comp._job._recipe.subject, fstate)
-                    print("State",fstate,"exist=", exists)
-                    if exists and hasattr(state,"VNMs"):
-                        if not hasattr(state.VNMs,"xs"): 
-                            print("RE-REGISTERING:", comp.out_path)
-                            worked = comp.register(debug=debug)
-                    else:
-                        print("State",fstate,"does not exist")
+                ### 
+                ### Re-reads eigenvectors of a frequency computation 
+                ### Not sure I need this
+                ### 
+                #if comp.isregistered and "freq" in comp._job.keyword and (hasattr(comp.qc_data,"fstate") or hasattr(comp._job,"fstate")):
+                #    if hasattr(comp.qc_data,"fstate"): fstate = comp.qc_data.fstate
+                #    else:                              fstate = comp._job.fstate
+                #    exists, state = find_state(comp._job._recipe.subject, fstate)
+                #    print("State",fstate,"exist=", exists)
+                #    if exists and hasattr(state,"VNMs"):
+                #        if not hasattr(state.VNMs,"xs"): 
+                #            print("RE-REGISTERING:", comp.out_path)
+                #            worked = comp.register(debug=debug)
+                #    else:
+                #        print("State",fstate,"does not exist")
 
         # Updates Job Registry information
         this_job.register(debug=0)
