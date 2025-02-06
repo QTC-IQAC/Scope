@@ -426,17 +426,24 @@ class crystal(object):
         if debug > 0: print(f"    Get_Spin&Phase: phase:{self.phase} and molar_frac: {self.HSmolarfraction}")
 
     ####### Bibliography options:
+    def get_search(self, verbose: bool=False, download: bool=True, debug: int=0):
+        self.search = get_search(self, verbose=verbose, download=download, debug=debug) 
+        return self.search
+
     def get_abstract(self, debug: int=0):
-        query = get_query(self, debug=debug)
-        return get_abstract(query, debug=debug) 
+        if not hasattr(self,"search"): self.get_search(debug=debug)
+        self.abstract = get_abstract(self.search, debug=debug)
+        return self.abstract
 
     def get_title(self, debug: int=0):
-        query = get_query(self, debug=debug)
-        return get_title(query, debug=debug) 
+        if not hasattr(self,"search"): self.get_search(debug=debug)
+        self.title = get_title(self.search, debug=debug) 
+        return self.title
 
     def get_doi(self, debug: int=0):
-        query = get_query(self, debug=debug)
-        return get_doi(query, debug=debug) 
+        if not hasattr(self,"search"): self.get_search(debug=debug)
+        self.doi = get_doi(self.search, debug=debug) 
+        return self.doi
     ####### 
 
     def __repr__(self) -> None:

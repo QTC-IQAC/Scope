@@ -12,7 +12,7 @@ def write_vnm_dyn(initial_coord: list, vnm: object, amplitude: int=10, index: in
                 vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]])
                 coord  = initial_coord[idx] + vector*f*0.1
                 if labels is None: label = elemdatabase.elementsym[vnm.atnums[idx]]
-                else:              label = labels[idx]
+                else:              label = vnm.labels[idx]
                 print(f"{label}  {coord[0]:.5f}  {coord[1]:.5f}  {coord[2]:.5f}", file=output_file)
 
 def vnm_displacement(VNMs: list, initial_coord: list, which: list=[], which_side: str='positive', amplitude: int=6, debug: int=0):
