@@ -9,9 +9,14 @@ elemdatabase = ElementData()
 
 #from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 
+
 ################################
 def extract_from_list(entrylist: list, old_array: list, dimension: int=2, debug: int=0) -> list:
-    #if debug >= 0: print("EXTRACT_FROM_LIST. received:", len(entrylist), np.max(entrylist)+1, len(old_array))
+    if debug >= 1: print(f"EXTRACT_FROM_LIST. received: {entrylist=}")
+    if debug >= 1: print(f"EXTRACT_FROM_LIST. received: {old_array=}")
+    if debug >= 1: print(f"EXTRACT_FROM_LIST. maximum value received in entrylist: {np.max(entrylist)+1}")
+    if debug >= 1: print(f"EXTRACT_FROM_LIST. length of old_array: {len(old_array)}")
+    assert len(old_array) >= np.max(entrylist)+1
     length = len(entrylist)
     if dimension == 2:
         new_array = np.empty((length, length), dtype=object)

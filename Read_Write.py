@@ -85,7 +85,7 @@ def write_data_MACE_extxyz(fdir, fname, labels, coord, forces, energy, charge: i
     total_fmt  = '{:6}' + frmt_atoms + '{:8}' + frmt_atoms 
     with open(fullname, mode) as fil:
         print(natoms, file=fil)
-        print(f'Properties=species:S:1:pos:R:3:molID:I:1:forces:R:3 Nmols=1 Comp={fname.split("_")[0]}_{other} energy={energy} pbc="F F F"', file=fil)
+        print(f'Properties=species:S:1:pos:R:3:molID:I:1:forces:R:3 Nmols=1 Comp={fname.split("_")[0]}_{other} charge={charge} energy={energy} pbc="F F F"', file=fil)
         for idx, l in enumerate(labels):
             print(total_fmt.format(l, *coord[idx], 0, *forces[idx]), file=fil)
             

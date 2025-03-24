@@ -311,18 +311,28 @@ class molecule(specie):
         specie.__init__(self, labels, coord, parent_indices, radii, parent)
 
     def split_complex(self, debug: int=0):
-         if not hasattr(self,"atoms"): self.set_atoms()
+         ## If atoms do not exist. Then it creates them using the info in labels and coordinates.
+         ## With create_adjacencies=True, it will also use the molecule's adjacency matrix to assign atom.connec and atom.mconnec
+         if not hasattr(self,"atoms"):           
+             if debug >= 1: print("MOLECULE.SPLIT_COMPLEX: setting atoms with adjacencies")
+             self.set_atoms(create_adjacencies=True)
+         ## If atoms do exist, but mconnec is not available (typically because the atoms were created with create_adjacencies=False)
+         ## Then it uses the current atomlist, but updates the create_adjacencies in this atomlist
+         elif not hasattr(self.atoms[0],"mconnec"):  
+             if debug >= 1: print("MOLECULE.SPLIT_COMPLEX: updating atoms to add adjacencies")
+             self.set_atoms(atomlist=self.atoms, create_adjacencies=True) 
+
          if not self.iscomplex:        self.ligands = None; self.metals = None
          else:
              self.ligands = []
              self.metals  = []
-             # Identify Metals and the rest
+             # Splits indices of Metal atoms and the rest
              metal_idx = list([self.indices[idx] for idx in get_metal_idxs(self.labels, debug=debug)])
              rest_idx  = list(idx for idx in self.indices if idx not in metal_idx)
-             if debug > 0 :  print(f"MOLECULE.SPLIT COMPLEX: labels={self.labels}")
-             if debug > 0 :  print(f"MOLECULE.SPLIT COMPLEX: parent_indices={self.parent_indices}")
-             if debug > 0 :  print(f"MOLECULE.SPLIT COMPLEX: metal_idx={metal_idx}")
-             if debug > 0 :  print(f"MOLECULE.SPLIT COMPLEX: rest_idx={rest_idx}")
+             if debug >= 1:  print(f"MOLECULE.SPLIT COMPLEX: labels={self.labels}")
+             if debug >= 1:  print(f"MOLECULE.SPLIT COMPLEX: parent_indices={self.parent_indices}")
+             if debug >= 1:  print(f"MOLECULE.SPLIT COMPLEX: {metal_idx=}")
+             if debug >= 1:  print(f"MOLECULE.SPLIT COMPLEX: {rest_idx=}")
 
              # Split the "rest" to obtain the ligands
              rest_labels  = extract_from_list(rest_idx, self.labels, dimension=1)
@@ -330,7 +340,7 @@ class molecule(specie):
              rest_indices = extract_from_list(rest_idx, self.indices, dimension=1)
              rest_radii   = extract_from_list(rest_idx, self.radii, dimension=1)
              rest_atoms   = extract_from_list(rest_idx, self.atoms, dimension=1)
-             if debug > 0:
+             if debug >= 1:
                  print(f"SPLIT COMPLEX: rest labels: {rest_labels}")
                  print(f"SPLIT COMPLEX: rest coord: {rest_coord}")
                  print(f"SPLIT COMPLEX: rest indices: {rest_indices}")
@@ -354,6 +364,8 @@ class molecule(specie):
                  if debug > 0: print(f"CREATING LIGAND with atoms: {lig_atoms}")
                  newligand   = ligand(lig_labels, lig_coord, parent_indices=lig_indices, radii=lig_radii, parent=self)
                  # We pass the molecule atoms to the ligand, and create an intermediate parent (ligand)
+                 # Here, we use the default create_adjacencies=False, since we want to use... 
+                 # ...the atom.connec and atom.mconnec as it is in the molecule.  
                  newligand.set_atoms(atomlist=lig_atoms, overwrite_parent=True)
                  # If fractional coordinates are available...
                  if hasattr(self,"frac_coord"):
@@ -435,20 +447,22 @@ class ligand(specie):
         conn_coord   = extract_from_list(conn_idx, self.coord, dimension=1)
         conn_radii   = extract_from_list(conn_idx, self.radii, dimension=1)
         conn_atoms   = extract_from_list(conn_idx, self.atoms, dimension=1)
+        if debug > 0: print(f"LIGAND.SPLIT_LIGAND: {conn_labels=}")
         if hasattr(self,"cov_factor"): blocklist = split_species(conn_labels, conn_coord, cov_factor=self.cov_factor, debug=debug)
         else:                          blocklist = split_species(conn_labels, conn_coord, debug=debug)
+        if debug > 0: print(f"LIGAND.SPLIT_LIGAND: {len(blocklist)} blocks found in ligand")
 
         ## Arranges Groups
         for b in blocklist:
-            if debug > 0: print(f"LIGAND.SPLIT_LIGAND: block={b}")
-            gr_indices = extract_from_list(b, conn_idx, dimension=1)
-            if debug > 0: print(f"LIGAND.SPLIT_LIGAND: {gr_indices=}")
-            gr_labels  = extract_from_list(gr_indices, conn_labels, dimension=1)
-            gr_coord   = extract_from_list(gr_indices, conn_coord, dimension=1)
-            gr_radii   = extract_from_list(gr_indices, conn_radii, dimension=1)
-            gr_atoms   = extract_from_list(gr_indices, conn_atoms, dimension=1)
-            newgroup = group(gr_labels, gr_coord, parent_indices=gr_indices, radii=gr_radii, parent=self)
+            if debug > 0: print(f"LIGAND.SPLIT_LIGAND: doing block={b}")
+            gr_labels  = extract_from_list(b, conn_labels, dimension=1)
+            gr_coord   = extract_from_list(b, conn_coord, dimension=1)
+            gr_radii   = extract_from_list(b, conn_radii, dimension=1)
+            gr_atoms   = extract_from_list(b, conn_atoms, dimension=1)
+            newgroup = group(gr_labels, gr_coord, parent_indices=b, radii=gr_radii, parent=self)
             ## For group, we do not update parent. Atoms remain at the ligand level
+            # Same as in split_complex, here we also use the default create_adjacencies=False, since we want to use... 
+            # ...the atom.connec and atom.mconnec as it is in the molecule.  
             newgroup.set_atoms(atomlist=gr_atoms, overwrite_parent=False)
             newgroup.get_closest_metal()
             self.groups.append(newgroup)
@@ -468,7 +482,7 @@ class ligand(specie):
 
     #######################################################
     def get_denticity(self, debug: int=0):
-        if not hasattr(self,"groups"):      self.split_ligand(debug=2)
+        if not hasattr(self,"groups"):      self.split_ligand(debug=debug)
         if debug > 0: print(f"LIGAND.Get_denticity: checking connectivity of ligand {self.formula}")
         if debug > 0: print(f"LIGAND.Get_denticity: initial connectivity is {len(self.connected_idx)}")
         self.denticity = 0
@@ -547,6 +561,7 @@ class group(specie):
 
     #######################################################
     def get_denticity(self, debug: int=0):
+        if not hasattr(self.atoms[0],"mconnec"): print("GROUP.GET_DENTICITY: atoms do not have mconnec. It is likely that you need to run set_atoms(get_adjacencies=True) at the molecule level to fix it") 
         self.denticity = 0
         for a in self.atoms:
             self.denticity += a.mconnec
