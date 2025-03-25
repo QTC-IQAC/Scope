@@ -9,6 +9,7 @@ elemdatabase = ElementData()
 ##############
 ### STATES ###
 ##############
+
 class state(object):
     def __init__(self, _subject: object, name: str, debug: int=0):
         self.type         = "state"
@@ -135,12 +136,19 @@ class state(object):
 #        return self.Z
 
     def check_fragmentation(self, reconstruct: bool = False, debug: int=0):
+
+        ## If the subject is a specie, then in principle there should only be one. So with moleclist is enough to find
+        if self._subject.type == "specie":
+            if not hasattr(self,"moleclist"): self.get_moleclist()
+            if len(self.moleclist) > 0: self.fragmented = True
+            else:                       self.fragmented = False
+            return self.fragmented
+
+        ## If it is a unit cell, then we need a list of molecules that should in principle be there. This is refmoleclist
+        ## If the cell is created by cell2mol, then this list is already stored in the .cell object
         if self._subject.type == "cell": 
             assert hasattr(self,"cellvec")
             assert hasattr(self._subject,"refmoleclist")
-        else:
-            self.fragmented = False
-            return self.fragmented
 
         if not hasattr(self,"moleclist"): self.get_moleclist()
         self.fragmented = False
