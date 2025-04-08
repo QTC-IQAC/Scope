@@ -14,11 +14,12 @@ from Scope.Workflow.Job import *
 ###### RECIPE ######
 ####################
 class recipe(object):
-    def __init__(self, subject: object, _branch: object, debug: int=0) -> None:
+    def __init__(self, keyword: str, subject: object, _branch: object, debug: int=0) -> None:
         self.type             = "recipe"
         self._branch          = _branch
         self.path             = _branch.path
-        self.keyword          = _branch.keyword
+        self.keyword          = keyword
+        #self.keyword          = _branch.keyword
         self.subject          = subject
         self.jobs             = []
         self.isregistered     = False
@@ -29,11 +30,10 @@ class recipe(object):
     def add_result(self, result: object, overwrite: bool=False):
         result._object = self
         if overwrite or result.key not in self.results.keys():  self.results[result.key] = result
-        #if result.type == "collection":
-        #    if overwrite or result.key not in self.results.keys():  self.results[result.key] = result.datas
-        #elif result.type == "data":
-        #    if overwrite or result.key not in self.results.keys():  self.results[result.key] = result
 
+    #####################################
+    ### Add // Remove // ------- Jobs ###
+    #####################################
     def add_job(self, job_data, debug: int=0):
         new_job               = job(job_data, _recipe=self)
         if debug > 1: print("Job created")
@@ -102,18 +102,6 @@ class recipe(object):
 
         if found_job: return found_job, this_job
         else: return found_job, None
-#########################
-
-#    def find_job(self, job_data: object, debug: int=0):
-#        found_job = False
-#        if debug > 1: print(f"Searching Job with keyword: '{job_data.keyword}' and hierarchy '{job_data.hierarchy}'")
-#        for idx, jb in enumerate(self.jobs):
-#            if jb.keyword == job_data.keyword and jb.hierarchy== job_data.hierarchy and not found_job:
-#                this_job = jb
-#                found_job = True
-#                if debug > 1: print(f"Job found")
-#        if found_job: return found_job, this_job
-#        else: return found_job, None
 
 ####################
 ### Registration ###

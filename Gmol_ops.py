@@ -91,6 +91,7 @@ def gmol2sys(gmol: object, spin: str, name: str):
     gmol.refcode     = name
     gmol.branches    = []
     gmol._sys        = gmol
+    gmol._sys.gmol   = gmol
     gmol.spin        = 'LS'
     return gmol
 
@@ -116,7 +117,8 @@ def add_branch_gmol(gmol, keyword: str, calcs_path: str, debug: int=0):
              print(exc)
 
     ## Creates recipes for the branch. One for each object.
-    new_recipe = new_branch.add_recipe(gmol)
+    #new_recipe = new_branch.add_recipe("LS",gmol)
+    new_recipe = new_branch.add_recipe("LS","gmol")
     gmol.branches.append(new_branch)
 
     new_state = state(gmol,"initial") 
