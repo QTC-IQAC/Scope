@@ -79,15 +79,15 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
     # Here, it depends on the type of system that is sent for computation
     if sys.type.lower() == "sco_system":
         exists, this_branch = sys.find_branch(job_data.branch, debug=0)
-        if not exists: this_branch = sys.add_branch(job_data.branch, job_data.target, debug=debug); updated = True
+        if not exists: this_branch = sys.add_branch(job_data.branch, debug=debug); updated = True
 
         ## For SCO, it automatically creates HS and LS recipes
         if job_data.target.lower() == "ref_mol":
-            this_branch.add_recipe('HS','HS_ref_mol')
-            this_branch.add_recipe('LS','LS_ref_mol')
+            this_branch.add_recipe('HS',sys.HS_ref_mol)
+            this_branch.add_recipe('LS',sys.LS_ref_mol)
         elif job_data.target.lower() == "ref_crys":
-            this_branch.add_recipe('HS','HS_ref_crys.cell')
-            this_branch.add_recipe('LS','LS_ref_crys.cell')
+            this_branch.add_recipe('HS',sys.HS_ref_crys.cell)
+            this_branch.add_recipe('LS',sys.LS_ref_crys.cell)
         else: 
             print(f"EXECUTE_JOB, step 3c: {job_data.target=} could not be identified in system. Recipes were not created")
 

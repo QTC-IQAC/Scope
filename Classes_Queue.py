@@ -257,27 +257,30 @@ class node(object):
         dec = raw.decode("utf-8")
         text = dec.rstrip().split("\n")
 
-        if self._queue._environment.management_type == 'slurm':
-            for line in text:
-                blocks = line.replace('/',' ').split()
-                if len(blocks) == 6:
-                    total      = int(blocks[5])
-                    allocated  = int(blocks[2])
-                    free       = total - allocated
-                    self.set_occupation(total, allocated, free)
-                else:
-                    print("NODE.CHECK_USAGE: Unexpected length of block list", blocks)
+        if dec == '':  ## It means the node is not active
+            self.set_occupation(0, 0, 0)
+        else: 
+            if self._queue._environment.management_type == 'slurm':
+                for line in text:
+                    blocks = line.replace('/',' ').split()
+                    if len(blocks) == 6:
+                        total      = int(blocks[5])
+                        allocated  = int(blocks[2])
+                        free       = total - allocated
+                        self.set_occupation(total, allocated, free)
+                    else:
+                        print("NODE.CHECK_USAGE: Unexpected length of block list", blocks)
 
-        elif self._queue._environment.management_type == 'sge':
-            for line in text:
-                blocks = line.replace("@"," ").replace("/"," ").split()
-                if len(blocks) == 8 or len(blocks) == 9:
-                    free       = int(blocks[4])
-                    total      = int(blocks[5])
-                    allocated  = total - free
-                    self.set_occupation(total, allocated, free)
-                else:
-                    print("NODE.CHECK_USAGE: Unexpected length of block list", blocks)
+            elif self._queue._environment.management_type == 'sge':
+                for line in text:
+                    blocks = line.replace("@"," ").replace("/"," ").split()
+                    if len(blocks) == 8 or len(blocks) == 9:
+                        free       = int(blocks[4])
+                        total      = int(blocks[5])
+                        allocated  = total - free
+                        self.set_occupation(total, allocated, free)
+                    else:
+                        print("NODE.CHECK_USAGE: Unexpected length of block list", blocks)
 
     def __repr__(self) -> None:
         to_print  = f'\n------------------------------------------------------\n'

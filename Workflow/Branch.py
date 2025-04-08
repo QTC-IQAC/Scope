@@ -44,14 +44,11 @@ class branch(object):
         result._object = self
         if overwrite or result.key not in self.results.keys():  self.results[result.key] = result
 
-    def add_recipe(self, keyword: str, target: str, debug: int=0):
+    def add_recipe(self, keyword: str, subject: object, debug: int=0):
         exists, new_recipe = self.find_recipe(keyword)
         if not exists: 
-            if hasattr(self._sys,target): 
-                subject = getattr(self._sys,target)
-                #new_recipe = recipe(subject, _branch=self)
-                new_recipe = recipe(keyword, subject, _branch=self)
-                self.recipes.append(new_recipe)
+            new_recipe = recipe(keyword, subject, _branch=self)
+            self.recipes.append(new_recipe)
         return new_recipe
     
     ########################################

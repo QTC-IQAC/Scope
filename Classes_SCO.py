@@ -139,7 +139,7 @@ class sco_system(object):
         return False, None
 
     ################################
-    def add_branch(self, keyword: str, target: str, debug: int=0):
+    def add_branch(self, keyword: str, debug: int=0):
         new_branch = branch(self.calcs_path+keyword, keyword, self, debug=debug)
         if not os.path.isdir(self.calcs_path+keyword): 
             try: os.makedirs(self.calcs_path+keyword)
@@ -147,13 +147,13 @@ class sco_system(object):
                  print(f"Error creating branch folder in {self.calcs_path+keyword}")
                  print(exc)
 
-        if   target.lower()  == "ref_mol"  and hasattr(self,"HS_ref_mol")  and hasattr(self,"LS_ref_mol"):   object_list = list([self.HS_ref_mol,self.LS_ref_mol])
-        elif target.lower()  == "ref_crys" and hasattr(self,"HS_ref_crys") and hasattr(self,"LS_ref_crys"):  object_list = list([self.HS_ref_crys.cell,self.LS_ref_crys.cell])
-        else: print("Get_Branch: target could not be identified or not available. Recipes were not created")
-
-        ## Creates recipes for the branch. One for each object. 
-        for idx, gmol in enumerate(object_list):
-            new_recipe = new_branch.add_recipe(gmol)
+#        if   target.lower()  == "ref_mol"  and hasattr(self,"HS_ref_mol")  and hasattr(self,"LS_ref_mol"):   object_list = list([self.HS_ref_mol,self.LS_ref_mol])
+#        elif target.lower()  == "ref_crys" and hasattr(self,"HS_ref_crys") and hasattr(self,"LS_ref_crys"):  object_list = list([self.HS_ref_crys.cell,self.LS_ref_crys.cell])
+#        else: print("Get_Branch: target could not be identified or not available. Recipes were not created")
+#
+#        ## Creates recipes for the branch. One for each object. 
+#        for idx, gmol in enumerate(object_list):
+#            new_recipe = new_branch.add_recipe(gmol)
         self.branches.append(new_branch)
         return new_branch
 
