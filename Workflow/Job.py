@@ -416,8 +416,9 @@ class job(object):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> >>> JOB                                 \n'
         to_print += f'---------------------------------------------------\n'
-        if hasattr(self._recipe.subject,"refcode"):          to_print += f' Crystal               = {self._recipe.subject.refcode}\n'
-        elif hasattr(self._recipe.subject.parent,"refcode"): to_print += f' Crystal               = {self._recipe.subject.parent.refcode}\n'
+        gmol = self._recipe.subject
+        if hasattr(gmol,"refcode"):                      to_print += f' Crystal               = {gmol.refcode}\n'
+        elif hasattr(gmol.get_parent("cell"),"refcode"): to_print += f' Crystal               = {gmol.get_parent("cell").refcode}\n'
         to_print += f' Type of Object        = {self._recipe.subject.type}\n'
         to_print += f' Spin (Recipe Name)    = {self._recipe.subject.spin}\n'
         to_print += f' Branch                = {self._recipe._branch.keyword}\n'

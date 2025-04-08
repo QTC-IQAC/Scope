@@ -195,73 +195,64 @@ def assign_subtype(molecule: object, references: list) -> str:
     else:                  return "Other"
 
 #######################################################
-def fragments_reconstruct(moleclist: list, fraglist: list, Hlist: list, refmoleclist: list, cellvec: list, factor: float=1.3, metal_factor: float=1.0, debug: int=0):
-
+def fragments_reconstruct(moleclist: list, fraglist: list, Hlist: list, refmoleclist: list, cell_vector: list, factor: float=1.3, metal_factor: float=1.0, debug: int=0):
+    ## Moleclist is the list of species which have been identified as 'complete' molecules
+    ## Fraglist is the list of species which are not 'complete' molecules
+    ## Hlist is the list of species that are only H atoms
+    ## Refmoleclist is the list of species that are identified as reference molecules (that is, molecules that will appear in the unit cell once reconstructed)
     Warning = False
     # Reconstruct Heavy Fragments
     if len(fraglist) > 1:
         print("")
         print("##############################################")
-        print(len(fraglist), "molecules submitted to SEQUENTIAL with Heavy")
+        print("FRAG_RECONSTRUCT.", len(fraglist), "molecules submitted to SEQUENTIAL with Heavy")
         print("##############################################")
-        newmols, remfrag = sequential(fraglist, refmoleclist, cellvec, factor, metal_factor, "Heavy", debug)
-        print(f"{len(newmols)} molecules and {len(remfrag)} fragments out of SEQUENTIAL with Heavy")
+        newmols, remfrag = sequential(fraglist, refmoleclist, cell_vector, factor, metal_factor, "Heavy", debug)
+        print(f"FRAG_RECONSTRUCT. {len(newmols)} molecules and {len(remfrag)} fragments out of SEQUENTIAL with Heavy")
         moleclist.extend(newmols)
+        print(f"FRAG_RECONSTRUCT. {remfrag=}")
+        # After the first step, fraglist is made of the remaining molecules in the first step, and the list of H atoms
         fraglist = []
         fraglist.extend(remfrag)
         fraglist.extend(Hlist)
-
-        # For debugging
-        if debug >= 1:
-            print(" ")
-            # Prints molecules after Heavy Fragment Reconstruction
-            if len(newmols) > 0:
-                for mol in newmols:
-                    print("Molec reconstructed after Heavy", mol.natoms, mol.formula, mol.type)
-            else:
-                print("NO Molecules reconstructed after Heavy")
-            if len(remfrag) > 0:
-                for rem in remfrag:
-                    print("Remaining after Heavy", rem.natoms, rem.formula, rem.subtype)
-            else:
-                print("NO remaining Molecules after Heavy")
-            print(" ")
-    else:
-        print("Only 0 or 1 heavy fragments. Skipping Heavy")
-        remfrag = fraglist.copy()
+    else:  print(f"Only {len(fraglist)} heavy fragments. Skipping Heavy"); remfrag = fraglist.copy()
 
     # Reconstruct Hydrogens with remaining Fragments
     if len(remfrag) > 0 and len(Hlist) > 0:
-        print("")
-        print("##############################################")
-        print(len(fraglist), "molecules submitted to sequential with All")
-        print("##############################################")
-        finalmols, remfrag = sequential(fraglist, refmoleclist, cellvec, factor, metal_factor, "All", debug)
-        if len(remfrag) > 0:
-            Warning = True
-            for rem in remfrag:
-                print("Remaining after Hydrogen reconstruction",rem.natoms,rem.formula,rem.subtype)
-        else:
-            print("NO remaining Molecules after Hydrogen reconstruction")
-            Warning = False
-        print(" ")
-    else:
-        if len(remfrag) > 0 and len(Hlist) == 0:
-            Warning = True
-            print("There are remaining Fragments and no H in list")
-            finalmols = []
-            remfrag = []
-        elif len(remfrag) == 0 and len(Hlist) > 0:
-            Warning = True
-            print("There are isolated H atoms in cell")
-            finalmols = []
-            remfrag = []
-        elif len(remfrag) == 0 and len(Hlist) == 0:
-            print("Not necessary to reconstruct Hydrogens")
-            finalmols = fraglist.copy()  # IF not Hidrogen fragments, then is done
-            remfrag = []
+        print("FRAG_RECONSTRUCT.", len(fraglist), "fragments submitted to sequential with All")
+        if debug >= 2: 
+            for frag in fraglist:
+                print("FRAG_RECONSTRUCT.", frag.formula, frag.subtype, frag.labels)
 
-    return moleclist, finalmols, Warning
+        finalmols, remfrag = sequential(fraglist, refmoleclist, cell_vector, factor, metal_factor, "All", debug=2)
+        moleclist.extend(finalmols)
+        print(f"FRAG_RECONSTRUCT. {moleclist=}")
+        print(f"FRAG_RECONSTRUCT. {remfrag=}")
+        # if len(remfrag) > 0:
+        #     for i, mol in enumerate(moleclist):
+        #         writexyz(os.getcwd(), f"moleclist_{i}.xyz", mol.labels, mol.coord)
+        #     for i, rem in enumerate(remfrag):
+        #         writexyz(os.getcwd(), f"remfrag_{i}.xyz", rem.labels, rem.coord)
+        if len(remfrag) > 0:        Warning = True;  print("FRAG_RECONSTRUCT. Remaining after Hydrogen reconstruction",remfrag)
+        elif len(moleclist) == 0:   Warning = True; print("FRAG_RECONSTRUCT. No Molecules after Hydrogen reconstruction", moleclist)
+        else:                       Warning = False; print("FRAG_RECONSTRUCT. No remaining Molecules after Hydrogen reconstruction")
+    elif len(remfrag) > 0 and len(Hlist) == 0:
+        Warning = True
+        print("FRAG_RECONSTRUCT. WARNING: There are remaining Fragments and no H in list")
+    elif len(remfrag) == 0 and len(Hlist) > 0:
+        Warning = True
+        print("FRAG_RECONSTRUCT. WARNING: There are isolated H atoms in cell")
+
+    # In moleclist, now there is a mix between molecules that were already complete (non-fragmented), and molecules that have been reconstructed
+    # The former were identified in the cell.get_moleclist() function, and have cell as parent. 
+    # The latter have been constructed by merging fragments, and do not have cell as parent, but have the cell_indices stored in mol.cell_indices
+    # Here we homogenize the situation by adding the cell_indices variable to all molecules
+    for mol in moleclist:
+        if not hasattr(mol,"cell_indices"): 
+            if mol.check_parent("cell"):
+                mol.cell_indices = mol.get_parent_indices("cell")
+
+    return moleclist, Warning
 
 #######################################################
 def translate(vector, coords, cellvec):
@@ -326,7 +317,7 @@ def cart2frac(cartCoords, cellvec):
     return fracCoords
 
 #######################################################
-def sequential(fragmentlist: list, refmoleclist: list, cellvec: list, factor: float=1.3, metal_factor: float=1.0, typ: str="All", debug: int=1):
+def sequential(fragmentlist: list, refmoleclist: list, cellvec: list, factor: float=1.3, metal_factor: float=1.0, typ: str="All", debug: int=2):
     # Crappy function that controls the reconstruction process. It is called sequential because pairs of fragments are sent one by one. Ideally, a parallel version would be desirable.
     # Given a list of fragments(fragmentlist), a list of reference molecules(refmoleclist), and some other minor parameters, the function sends pairs of fragments and evaluates if they...
     # ...form a bigger fragment. If so, the bigger fragment is evaluated. If it coincides with one of the molecules in refmoleclist, than it means that it is a full molecule that requires no further work.
@@ -351,11 +342,8 @@ def sequential(fragmentlist: list, refmoleclist: list, cellvec: list, factor: fl
     ###################################################
     threshold_tmat = 0.40
     increase_tmat = 0.20
-    fragtoallocate = 0
-    Htoallocate = 0
     niter = 1
     maxiter = 3000
-    mixsize = 1
     lastiter = 0
     lastitermargin = maxiter
     ###################################################
@@ -436,7 +424,13 @@ def sequential(fragmentlist: list, refmoleclist: list, cellvec: list, factor: fl
             for i in range(0, len(list2)):
                 if i == Frag2_toallocate:   sublist.append(list2[i])
                 elif i != Frag2_toallocate: keeplist2.append(list2[i])
-
+            if debug >= 2:    
+                print(f"sublist", len(sublist), [s.formula for s in sublist] )
+                print("list1", len(list1), [s.formula for s in list1])
+                print("list2", len(list2),[s.formula for s in list2])
+                print(f"keeplist1", len(keeplist1), [s.formula for s in keeplist1])
+                print(f"keeplist2", len(keeplist2), [s.formula for s in keeplist2])
+                print("")
         #################
         #  This part evaluates that the fragments that are going to be combined, can form one of the reference molecules. The resulting number of atoms is used.
         #################
@@ -450,7 +444,10 @@ def sequential(fragmentlist: list, refmoleclist: list, cellvec: list, factor: fl
             #  Here, the function "combine" is called. It will try cell translations of one fragment, and check whether it eventually combines with the second fragment into either a bigger fragment or a molecule
             #################
             goodlist, avglist, badlist = combine(sublist, refmoleclist, cellvec, threshold_tmat, factor, metal_factor, debug=debug)
-
+            if debug >=2 :
+                print("SEQUENTIAL: goodlist", len(goodlist), [g.formula for g in goodlist])
+                print("SEQUENTIAL: avglist", len(avglist), [a.formula for a in avglist])
+                print("SEQUENTIAL: badlist", len(badlist), [b.formula for b in badlist])
             #################
             #  This part handles the results of combine
             #################
@@ -551,7 +548,7 @@ def combine(tobemerged: list, references: list, cellvec: list, threshold_tmat: f
     badlist = []    ## List of fragments as they entered the function
 
     ## Merges the coordinates of both fragments, and finds species
-    newmolec = merge_fragments(tobemerged, references, cellvec, cov_factor, metal_factor, debug=debug)
+    newmolec = merge_fragments(tobemerged, cellvec, cov_factor, metal_factor, debug=debug)
     if newmolec is not None and debug >= 1: print("COMBINE. received molecule:", newmolec, "from merge fragments")
 
     ## Steric Clashes, or more than one fragment retrieved
@@ -568,12 +565,37 @@ def combine(tobemerged: list, references: list, cellvec: list, threshold_tmat: f
         found = False 
         for ref in references:
             if not found: 
-                issame = compare_species(newmolec, ref)
-                if issame:    ## Then is a molecule that appears in the reference list 
-                    found = True 
-                    newmolec.subtype = ref.subtype
-                    goodlist.append(newmolec)
-                    if debug >= 1: print("COMBINE: Fragment",newmolec.formula,"added to goodlist")
+                if (newmolec.natoms == ref.natoms) and (newmolec.eleccount == ref.eleccount) and (newmolec.formula == ref.formula):
+                    dummy1, dummy2, map12 = reorder(ref.labels, newmolec.labels, ref.coord, newmolec.coord)
+                    
+                    reordered_labels = [newmolec.labels[i] for i in map12]
+                    reordered_coord  = [newmolec.coord[i] for i in map12]
+                    reordered_radii  = [newmolec.radii[i] for i in map12]
+                    reordered_frac_cood = [newmolec.frac_coord[i] for i in map12]
+                    reordered_cell_indices = [newmolec.cell_indices[i] for i in map12]
+
+                    reordered_newmolec = molecule(reordered_labels, reordered_coord, reordered_radii)
+                    reordered_newmolec.cell_indices = reordered_cell_indices
+                    reordered_newmolec.set_fractional_coord(reordered_frac_cood)
+                    reordered_newmolec.set_adjacency_parameters(cov_factor, metal_factor)
+                    reordered_newmolec.set_atoms(create_adjacencies=True, debug=2)
+                    
+                    if reordered_newmolec.iscomplex: 
+                        reordered_newmolec.split_complex()
+                        reordered_newmolec.get_hapticity(debug=debug)
+                        for lig in reordered_newmolec.ligands:
+                            lig.get_denticity(debug=debug)
+                        #for met in reordered_newmolec.metals:                         
+                        #    met.get_coordination_geometry(debug=debug)  ## function not imported to scope
+                    if debug >= 1: print(f"COMBINE: {reordered_newmolec.formula=}")
+                    if debug >= 1: print(f"COMBINE: {reordered_newmolec=}")
+
+                    issame = compare_species(reordered_newmolec, ref, debug=debug)
+                    if issame:    ## Then is a molecule that appears in the reference list 
+                        found = True 
+                        reordered_newmolec.subtype = ref.subtype
+                        goodlist.append(reordered_newmolec)
+                        if debug >= 1: print(f"COMBINE: Fragment {reordered_newmolec.formula} added to goodlist with {reordered_newmolec.cell_indices=}")
         if not found:        ## Then it is a fragment. A bigger one, but still a fragment
             newmolec.subtype = "Rec. Fragment"
             avglist.append(newmolec)
@@ -582,7 +604,7 @@ def combine(tobemerged: list, references: list, cellvec: list, threshold_tmat: f
     return goodlist, avglist, badlist
 
 #######################################################
-def merge_fragments(frags: list, refs: list, cellvec: list, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
+def merge_fragments(frags: list, cellvec: list, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
     # finds biggest fragment and keeps it in the original cell
     sizes = []
     for f in frags:
@@ -622,11 +644,13 @@ def merge_fragments(frags: list, refs: list, cellvec: list, cov_factor: float=1.
             if len(blocklist) != 1: continue
             if len(blocklist) == 1: 
                 newmolec = molecule(reclabels, reccoord)
+                newmolec.cell_indices = blocklist[0]
                 newmolec.set_adjacency_parameters(cov_factor, metal_factor)
                 newmolec.set_adj_types()
                 newmolec.set_element_count()
                 newmolec.get_adjmatrix()
                 newmolec.get_centroid()
+                newmolec.get_metal_adjmatrix()
                 return newmolec
     return None
 
@@ -694,4 +718,69 @@ def getradii(labels: list) -> np.ndarray:
     for l in labels:
         radii.append(elemdatabase.CovalentRadius2[l])
     return np.array(radii)
-################################
+
+##############################
+## Hungarian.py in cell2mol ##
+##############################
+
+import numpy as np
+from scipy.spatial.distance import cdist
+from scipy.optimize import linear_sum_assignment as lsa
+
+def center(X):
+    X = np.array(X)
+    C = X.mean(axis=0)
+    X -= C
+    return X, C
+
+def reorder_hungarian(z1, z2, coord1, coord2):
+    unique_atoms = np.unique(z1)
+    map12 = np.zeros_like(z1, dtype=int)
+    map12 -= 1
+    for atom in unique_atoms:
+        (aidx1,) = np.where(z1 == atom)
+        (aidx2,) = np.where(z2 == atom)
+        acoord1 = coord1[aidx1]
+        acoord2 = coord2[aidx2]
+        v = hungarian(acoord1, acoord2)
+        map12[aidx1] = aidx2[v]
+    return map12
+
+def hungarian(a, b):
+    distances = cdist(a, b, "euclidean")
+    ia, ib = lsa(distances)
+    return ib
+
+def reorder(z1, z2, coord1, coord2):
+    z1 = np.array(z1)
+    z2 = np.array(z2)
+    coord1, c1 = center(coord1)
+    coord2, c2 = center(coord2)
+    assert len(z1) == len(z2)
+    assert coord1.shape == coord2.shape
+    map12 = reorder_hungarian(z1, z2, coord1, coord2)
+    z2 = z2[map12]
+    coord2 = coord2[map12, :]
+    return list(z2), list(coord2 + c2), map12
+
+def test_reorder():
+    # Two water molecules with different order!
+    A = np.array([[1.5, 1.0], [1.0, 2.0], [2.0, 1.5]])
+    B = np.array([[1.0, 2.0], [1.5, 1.0], [2.0, 1.5]])
+    rn = np.random.random(3)
+    for i in range(3):
+        A[i] *= 1 + (0.1 * rn[i])
+    rn = np.random.random(3)
+    for i in range(3):
+        B[i] *= 1 + (0.1 * rn[i])
+    za = ["O", "H", "H"]
+    zb = ["H", "O", "H"]
+    # We attempt to reorder them
+    zb2, B2, mapab = reorder(za, zb, A, B)
+    assert za == zb2
+    for i, idx in enumerate(mapab):
+        print(za[i], zb2[i], zb[idx])
+        print(A[i], B2[i], B[idx])
+
+if __name__ == "__main__":
+    test_reorder()

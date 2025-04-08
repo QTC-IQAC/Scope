@@ -9,6 +9,58 @@ class HiddenPrints:
         sys.stdout.close()
         sys.stdout = self._original_stdout
 
+###########
+def correct_smiles_ligand(lig: object):
+    ## Receives a ligand class object and constructs the smiles and the rdkit_mol object from scratch, using atoms and bond information
+
+    Chem.rdmolops.SanitizeFlags.SANITIZE_NONE
+    #### Creates an empty editable molecule
+    rwlig = Chem.RWMol()
+
+    # Adds atoms with their formal charge
+    for jdx, a in enumerate(lig.atoms):
+        rdkit_atom = Chem.Atom(lig.atnums[jdx])
+        rdkit_atom.SetFormalCharge(int(a.charge))
+        rdkit_atom.SetNoImplicit(True)
+        rwlig.AddAtom(rdkit_atom)
+
+    # Sets bond information and hybridization
+    for jdx, a in enumerate(lig.atoms):
+        nbonds = 0
+        for bond in a.bond:
+            nbonds += 1
+            isaromatic = False
+            if bond[2] == 1.0: btype = Chem.BondType.SINGLE
+            elif bond[2] == 2.0: btype = Chem.BondType.DOUBLE
+            elif bond[2] == 3.0: btype = Chem.BondType.TRIPLE
+            elif bond[2] == 1.5:
+                btype = Chem.BondType.AROMATIC
+                rdkit_atom.SetIsAromatic(True)
+            if bond[0] == jdx and bond[1] > jdx: rwlig.AddBond(bond[0], bond[1], btype)
+    
+        if nbonds == 1: hyb = Chem.HybridizationType.S
+        elif nbonds == 2: hyb = Chem.HybridizationType.SP
+        elif nbonds == 3: hyb = Chem.HybridizationType.SP2
+        elif nbonds == 4: hyb = Chem.HybridizationType.SP3
+        else: hyb = Chem.HybridizationType.UNSPECIFIED
+        rdkit_atom.SetHybridization(hyb)
+
+    # Creates Molecule
+    obj = rwlig.GetMol()
+    smiles = Chem.MolToSmiles(obj)
+    
+    Chem.SanitizeMol(obj)
+    Chem.DetectBondStereochemistry(obj, -1)
+    Chem.AssignStereochemistry(obj, flagPossibleStereoCenters=True, force=True)
+    Chem.AssignAtomChiralTagsFromStructure(obj, -1)
+    
+    return smiles, obj
+
+#######################################################
+def get_dist (atom1_pos: list, atom2_pos: list) -> float :
+    dist = np.linalg.norm(np.array(atom1_pos) - np.array(atom2_pos))
+    return round(dist, 3)
+
 def extract_from_list(entrylist: list, old_array: np.ndarray, dimension: int=2) -> np.ndarray:
     length = len(entrylist)
     if dimension == 2:

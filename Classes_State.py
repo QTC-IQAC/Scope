@@ -14,6 +14,7 @@ class state(object):
     def __init__(self, _subject: object, name: str, debug: int=0):
         self.type         = "state"
         self._subject     = _subject
+        self.subtype      = _subject.subtype
         self.name         = name
         self.results      = dict()
         self.computations = []
@@ -44,7 +45,7 @@ class state(object):
         self.radii       = get_radii(labels)
         assert len(self.labels) == len(self.pos)
 
-    def set_geometry_from_moleclist(self):
+    def set_geometry_from_moleclist(self, debug: int=0):
         self.labels      = []
         self.pos         = []
         self.coord       = []
@@ -64,12 +65,25 @@ class state(object):
         self.formula = labels2formula(self.labels)
         assert len(self.labels) == len(self.pos)
          
-    def set_cell(self, cellvec, cellparam):
-        self.cellvec     = cellvec
-        self.cellparam   = cellparam
+    def set_cell(self, cell_vector, cell_param):
+        self.cell_vector  = cell_vector
+        self.cell_param   = cell_param
 
     def set_forces(self, forces):
         self.forces      = forces
+
+    def check_minimum(self):
+        if hasattr(self,"isminimum"): 
+            if self.isminimum or self.almost_minimum: return True
+            else:                                     return False
+        else:
+            if not hasattr(self,"VNMs"): 
+                print(f"STATE.check_minimum: state does not have VNMs")
+                return False
+            else:
+                self.set_VNMs(self,self.VNMs)
+                if self.isminimum or self.almost_minimum: return True
+                else:                                     return False
 
     def set_VNMs(self, VNMs):
         self.VNMs = VNMs
@@ -85,31 +99,64 @@ class state(object):
             if self.num_neg_freqs <= 3 and VNMs[0].freq_cm > -50: self.almost_minimum = True
             else:                                                 self.almost_minimum = False
         
-    def get_moleclist(self):
-        from Scope.Classes_Molecule import specie, molecule
+    def get_moleclist(self, overwrite: bool=False, debug: int=0):
+        from Scope.Classes_Molecule import molecule
+
+        # Overwrite
+        if not overwrite and hasattr(self,"moleclist"): 
+            if debug > 0: print(f"STATE.GET_MOLECLIST. Moleclist already exists and default is overwrite=False")
+            return self.moleclist
+
+        # Security
         if not hasattr(self,"labels") or not hasattr(self,"pos"): return None
         if len(self.labels) == 0 or len(self.pos) == 0: return None
+        # Covalent Factor
         if hasattr(self._subject,"factor"):       cov_factor = self._subject.factor
         elif hasattr(self._subject,"cov_factor"): cov_factor = self._subject.cov_factor
         else: cov_factor = 1.3
+        # Metal Factor
+        if hasattr(self._subject,"metal_factor"):   metal_factor = self._subject.metal_factor
+        else: metal_factor = 1.0
 
-        blocklist = split_species(self.labels, self.pos, cov_factor=cov_factor)
+        if debug > 0: print(f"STATE.GET_MOLECLIST. Sending split_species with {cov_factor=} and {metal_factor=}") 
+        blocklist = split_species(self.labels, self.pos, cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
         self.moleclist = [] 
         for b in blocklist:
-            mol_labels  = extract_from_list(b, self.labels, dimension=1)
-            mol_coords  = extract_from_list(b, self.coord, dimension=1)
-            #mol_radii   = extract_from_list(b, self.radii, dimension=1)
-            newmolec    = molecule(mol_labels, mol_coords)
-            if newmolec.iscomplex: newmolec.split_complex()
-            if self._subject.type == "cell": newmolec.get_fractional_coord(cell_vector = self._subject.cellvec)
+            if debug > 0: print(f"STATE.GET_MOLECLIST: doing block={b}")
+            mol_labels      = extract_from_list(b, self.labels, dimension=1)
+            mol_coord       = extract_from_list(b, self.coord, dimension=1)
+            if hasattr(self,"frac_coord"): mol_frac_coord  = extract_from_list(b, self.frac_coord, dimension=1)
+            else:                          mol_frac_coord  = None
+            # Creates Molecule Object
+            newmolec    = molecule(mol_labels, mol_coord, mol_frac_coord)
+            # For debugging
+            newmolec.origin = "state.get_moleclist"
+            # Adds State as parent of the molecule, with indices b
+            newmolec.add_parent(self._subject, indices=b, debug=debug)            
+            # Store Adjacency Parameters
+            newmolec.set_factors(cov_factor, metal_factor)
+            # Creates The atom objects with adjacencies
+            newmolec.set_atoms(create_adjacencies=True, debug=debug)
+            # Sets Fractional Coordinates
+            if hasattr(self,"frac_coord"): 
+                newmolec.set_fractional_coord(mol_frac_coord)
+            elif self._subject.type == "cell": 
+                if debug > 0: print(f"STATE.GET_MOLECLIST: getting frac_coord from _subject of type=cell")
+                newmolec.get_fractional_coord(cell_vector = self._subject.cell_vector)
+            # The split_complex must be below the frac_coord, so they are carried on to the ligands    
+            if newmolec.iscomplex: 
+                if debug > 0: print(f"STATE.GET_MOLECLIST: splitting complex")
+                newmolec.split_complex(debug=debug)
             self.moleclist.append(newmolec)
         return self.moleclist
 
     def get_ncomplex(self, debug: int=0):
+        if debug > 0: print(f"STATE.GET_NCOMPLEX checking fragmentation")
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"Found Fragmented molecules in the geometry of state: {self.name}"
          
-        if not hasattr(self,"moleclist"): self.get_moleclist()
+        if debug > 0: print(f"STATE.GET_NCOMPLEX getting moleclist")
+        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
         self.ncomplex = 0
         for mol in self.moleclist:
             if mol.iscomplex: self.ncomplex += 1
@@ -139,9 +186,10 @@ class state(object):
 
         ## If the subject is a specie, then in principle there should only be one. So with moleclist is enough to find
         if self._subject.type == "specie":
-            if not hasattr(self,"moleclist"): self.get_moleclist()
-            if len(self.moleclist) > 0: self.fragmented = True
+            if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+            if len(self.moleclist) > 1: self.fragmented = True
             else:                       self.fragmented = False
+            if debug > 0: print(f"STATE.CHECK_FRAGMENTATION: subject type=specie. {self.fragmented=}")
             return self.fragmented
 
         ## If it is a unit cell, then we need a list of molecules that should in principle be there. This is refmoleclist
@@ -150,9 +198,8 @@ class state(object):
             assert hasattr(self,"cellvec")
             assert hasattr(self._subject,"refmoleclist")
 
-        if not hasattr(self,"moleclist"): self.get_moleclist()
+        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
         self.fragmented = False
-
         # First comparison with current moleclist
         for mol in self.moleclist:
             found = False
@@ -172,7 +219,7 @@ class state(object):
                 if not found: self.fragmented = True
             if not self.fragmented: 
                 self.moleclist = new_moleclist
-                self.set_geometry_from_moleclist()
+                self.set_geometry_from_moleclist(debug=debug)
 
         return self.fragmented
 
@@ -240,6 +287,7 @@ class state(object):
         from Scope.Thermal_Corrections import get_Selec, get_Hvib, get_Svib, get_Gibbs
 
         if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
+        if debug > 0: print(f"STATE.GET_THERMAL_DATA: found {self.ncomplex} complex molecules")
 
         if Hvib is None and Svib is None:
             assert hasattr(self,"isminimum"), f"I can't compute thermal data on this state. Missing VNMs"

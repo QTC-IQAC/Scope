@@ -48,31 +48,39 @@ def geom_sco_from_xyz(labels, pos, debug=0):
             dist_FeN = []
             vec_FeN = []
             for idx in range(0,6):
-                targ = np.argpartition(dist_FeX, idx)[idx]
+                targ = sorted(range(len(dist_FeX)), key=lambda k: dist_FeX[k])[idx]
+                #targ = np.argpartition(dist_FeX, idx)[idx]
                 dist_FeN.append(dist_FeX[targ])
                 vec_FeN.append(vec_FeX[targ])        
+                if debug >= 1: print(f"Target: {targ=} {dist_FeX[targ]=} {vec_FeX[targ]}") 
                 
             if debug >= 1: print(f"dist_FeN=", dist_FeN)
-            AvFeN = np.mean(dist_FeN)
+            AvFeN = np.round(np.mean(dist_FeN),3)
             
             # Takes vec_FeN vectors and computes angles
-            NFeN_angles = []
+            all_NFeN_angles = []
             for idx, v1 in enumerate(vec_FeN):
                 for jdx, v2 in enumerate(vec_FeN):
                     if jdx > idx:
-                        if debug >= 2: print("Computing angles between N atoms",idx,"and",jdx)
                         angle = getangle(v1, v2)*180.0/3.141592 
-                        if angle < 120.0 and angle > 60.0: 
-                            NFeN_angles.append(angle)
-                        else: 
-                            if debug >= 2: print("Angle between N atoms",idx,"and",jdx,"discarded")
+                        all_NFeN_angles.append(angle)
+            if debug >= 2: print(f"GEOM_SCO: {all_NFeN_angles=}")
 
-            assert len(NFeN_angles) == 12
+            # Stores the 12th angles closest to 90 degrees
+            all_NFeN_angles = np.array(all_NFeN_angles) - 90
+            if debug >= 2: print(f"GEOM_SCO: {all_NFeN_angles=} - 90")
+
+            NFeN_angles = [] 
             epsylon = 0
-            for a in NFeN_angles:
-                epsylon += np.abs(90-a)
+            for idx in range(0,12):
+                targ = sorted(range(len(all_NFeN_angles)), key=lambda k: all_NFeN_angles[k])[idx]
+                NFeN_angles.append(all_NFeN_angles[targ] + 90)
+                epsylon += np.abs(all_NFeN_angles[targ])
+                if debug >= 1: print(f"Target: {targ=} {all_NFeN_angles[targ]=} {epsylon=}") 
+            epsylon = np.round(epsylon,3)
+            if debug >= 2: print(f"GEOM_SCO: {NFeN_angles=}")
 
-            AvNFeN_angle = np.mean(NFeN_angles)
+            AvNFeN_angle = np.round(np.mean(NFeN_angles),3)
             if debug >= 2: print(f"{NFeN_angles=}")
             
             alldist.append(AvFeN)

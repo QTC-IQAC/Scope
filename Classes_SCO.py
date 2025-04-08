@@ -9,7 +9,7 @@ from copy import deepcopy
 from Scope.Parse_Cif import get_cif_diffraction_data, get_cif_authors, get_cif_journal 
 from Scope.Parse_General import search_string, read_lines_file 
 from Scope.Geom_SCO_V1 import geom_sco_from_xyz, guess_spin_state
-from Scope.Read_Write import save_binary, load_binary
+from Scope.Read_Write import save_binary, load_binary, print_xyz
 from Scope.Classes_State import state
 from Scope.Classes_Molecule import *
 from Scope.Bibliography import *
@@ -65,13 +65,17 @@ class sco_system(object):
             self.sys_path             = target_sys_path
             self.calcs_path           = target_calcs_path 
             self.cell2mol_path        = target_cell2mol_path 
-            if debug > 0: print(f"RESET_PATHS_OUT: new system paths: {self.cell2mol_path}, {self.calcs_path}, {self.sys_path}")
+            if debug > 0: print(f"RESET_PATHS: new system paths: {self.cell2mol_path}, {self.calcs_path}, {self.sys_path}")
+
+            for crys in self.crystals:
+                if debug > 0: print(f"RESET_PATHS: new cell2mol path for crystal {crys.name}")
+                crys.reset_paths(target_cell2mol_path)
 
             ## We go down the hierarchy to change branch, recipe, jobs, and calculation paths:
             for br in self.branches:
                 tmp = target_calcs_path+br.keyword+'/'
                 if os.path.isdir(tmp): br.path = tmp 
-                else: print(f"RESET_PATHS_OUT: {tmp} path does not exist")
+                else: print(f"RESET_PATHS: {tmp} path does not exist")
                 for rec in br.recipes:
                     rec.path = br.path
                     for job in rec.jobs:
@@ -83,9 +87,10 @@ class sco_system(object):
                             comp.out_path = comp.path+comp.out_name
                             comp.sub_path = comp.path+comp.sub_name
                             comp.check_files()
-                            if debug > 0: print(f"RESET_PATHS_OUT: new computation path: {comp.inp_path}")
+                            if debug > 0: print(f"RESET_PATHS: new computation path: {comp.inp_path}")
         return reset
 
+    ################################
     def remove_all_branches(self) -> None:
         if hasattr(self,"branches"): delattr(self,"branches"); setattr(self,"branches",[])
         return self.branches
@@ -99,40 +104,41 @@ class sco_system(object):
     ###    new_branch = self.add_branch(keyword, target: str, debug: int=0):
     ###    return new_branch
 
+    ################################
     def reset_crystals(self) -> None:
         if hasattr(self,"crystals"): delattr(self,"crystals"); setattr(self,"crystals",[])
-###################################
 
+    ################################
     def find_branch(self, keyword: str, debug: int=0):
         if debug > 1: print("finding branch with keyword:", keyword)
         if debug > 1: print("there are", len(self.branches), "branches in system")
         if len(self.branches) == 0: return False, None
         for idx, br in enumerate(self.branches):
             if debug > 1: print("evaluating branch with keyword:", br.keyword, "and path:", br.path)
-            if br.keyword == keyword:
+            if br.keyword.lower() == keyword.lower():
                 if not os.path.isdir(br.path): 
-                    print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
-                    print(f"WARNING: branch path {br.path} does not exist. Loading the branch anyway")
-                    print(f"!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!")
+                    print(f"WARNING: The path associated with the computations of this branch (below) does not exist. Loading the branch anyway")
+                    print(f"WARNING: {br.path=}")
                 return True, br
         return False, None
 
+    ################################
     def find_computation(self, branch_keyword: str, recipe_keyword: str, job_keyword: str, comp_keyword: str='', comp_step: int=1, comp_run_number: int=1, debug: int=0):
         if len(self.branches) == 0: return False, None
         for br in self.branches:
-            if br.keyword == branch_keyword:
+            if br.keyword.lower() == branch_keyword.lower():
                 if len(br.recipes) == 0: return False, None
                 for rec in br.recipes:
-                    if rec.subject.spin == recipe_keyword:
+                    if rec.subject.spin.lower() == recipe_keyword.lower():
                         if len(rec.jobs) == 0: return False, None
                         for job in rec.jobs:
-                            if job.keyword == job_keyword:
+                            if job.keyword.lower() == job_keyword.lower():
                                 if len(job.computations) == 0: return False, None
                                 for idx, comp in enumerate(job.computations):
-                                    if comp.run_number == comp_run_number and comp.step == comp_step and comp.keyword == comp_keyword: return True, comp
+                                    if comp.run_number == comp_run_number and comp.step == comp_step and comp.keyword.lower() == comp_keyword.lower(): return True, comp
         return False, None
 
-    ##########
+    ################################
     def add_branch(self, keyword: str, target: str, debug: int=0):
         new_branch = branch(self.calcs_path+keyword, keyword, self, debug=debug)
         if not os.path.isdir(self.calcs_path+keyword): 
@@ -151,6 +157,7 @@ class sco_system(object):
         self.branches.append(new_branch)
         return new_branch
 
+    ################################
     def remove_branch(self, br_keyword=None):
         found = False
         for idx, br in enumerate(self.branches):
@@ -159,7 +166,7 @@ class sco_system(object):
             to_delete = self.branches[found_idx]
             del self.branches[found_idx]
 
-    ##########
+    ################################
     def set_reference_molecs(self, debug: int=0):
  
         if debug > 0: print("Setting Reference Molecules")
@@ -186,27 +193,31 @@ class sco_system(object):
                 if mol.scope_guess_spin == 'HS' and not self.hasHS:
                     self.hasHS = True
                     self.HS_ref_mol_id = idx
-                    self.HS_ref_mol = import_molecule(mol, parent=self)
+                    self.HS_ref_mol = deepcopy(mol)
+                    #self.HS_ref_mol = import_molecule(mol, parent=self)
                     self.HS_ref_mol.spin = 'HS'
                     self.HS_ref_mol._sys = self  #Duplicate with parent to avoid crashes
                     if debug > 0: print(f"HS reference molecule found")
                 elif mol.scope_guess_spin == 'LS' and not self.hasLS:
                     self.hasLS = True
                     self.LS_ref_mol_id = idx
-                    self.LS_ref_mol = import_molecule(mol, parent=self)
+                    self.LS_ref_mol = deepcopy(mol)
+                    #self.LS_ref_mol = import_molecule(mol, parent=self)
                     self.LS_ref_mol.spin = 'LS'
                     self.LS_ref_mol._sys = self   #Duplicate with parent to avoid crashes
                     if debug > 0: print(f"LS reference molecule found")
             ### If it hasn't found any molecule that can be classified as HS and LS... then takes anything
             if not self.hasHS:
                 self.HS_ref_mol_id = 0
-                self.HS_ref_mol = import_molecule(pool[0], parent=self)
+                #self.HS_ref_mol = import_molecule(pool[0], parent=self)
+                self.HS_ref_mol = deepcopy(pool[0])
                 self.HS_ref_mol.spin = 'HS'
                 self.HS_ref_mol._sys = self  #Duplicate to avoid crashes
                 if debug > 0: print(f"HS reference molecule assumed")
             if not self.hasLS:
                 self.LS_ref_mol_id = 0
-                self.LS_ref_mol = import_molecule(pool[0], parent=self)
+                self.LS_ref_mol = deepcopy(pool[0])
+                #self.LS_ref_mol = import_molecule(pool[0], parent=self)
                 self.LS_ref_mol.spin = 'LS'
                 self.LS_ref_mol._sys = self   #Duplicate to avoid crashes
                 if debug > 0: print(f"LS reference molecule assumed")
@@ -224,7 +235,7 @@ class sco_system(object):
             LS_ini_state.set_geometry(self.LS_ref_mol.labels, self.LS_ref_mol.coord)
         return True
         
-    ##########
+    ################################
     def set_reference_crystals(self, debug: int=0):
         self.has_HS_ref_crys = False
         self.has_LS_ref_crys = False
@@ -301,22 +312,23 @@ class sco_system(object):
         if hasattr(self,"HS_ref_crys") and hasattr(self,"LS_ref_crys"): 
             if self.HS_ref_crys.cell.natoms != self.LS_ref_crys.cell.natoms: 
                 print(f"Warning: different number of atoms in crystal; HS: {self.HS_ref_crys.cell.natoms} vs. LS: {self.LS_ref_crys.cell.natoms}")
+
         if hasattr(self,"HS_ref_crys"):
+            if debug > 0: print(f"SCO.SET_REF_CRYS: creating initial_state for HS crystal")
             HS_ini_state = state(self.HS_ref_crys.cell, "initial")
-            #if len(self.HS_ref_crys.cell.labels) > 0:
             HS_ini_state.set_geometry(self.HS_ref_crys.cell.labels, self.HS_ref_crys.cell.coord)
-            HS_ini_state.set_cell(self.HS_ref_crys.cell.cellvec, self.HS_ref_crys.cell.cellparam)
+            HS_ini_state.set_cell(self.HS_ref_crys.cell.cell_vector, self.HS_ref_crys.cell.cell_param)
             HS_ini_state.get_moleclist()
         
         if hasattr(self,"LS_ref_crys"):
+            if debug > 0: print(f"SCO.SET_REF_CRYS: creating initial_state for LS crystal")
             LS_ini_state = state(self.LS_ref_crys.cell, "initial")
-            #if len(self.LS_ref_crys.cell.labels) > 0:
             LS_ini_state.set_geometry(self.LS_ref_crys.cell.labels, self.LS_ref_crys.cell.coord)
-            LS_ini_state.set_cell(self.LS_ref_crys.cell.cellvec, self.LS_ref_crys.cell.cellparam)
+            LS_ini_state.set_cell(self.LS_ref_crys.cell.cell_vector, self.LS_ref_crys.cell.cell_param)
             LS_ini_state.get_moleclist()
         return True
 
-###########################################
+    ################################
     def __repr__(self) -> None:
         to_print  = f'---------------------------------------------------\n'
         to_print += f' Formatted input interpretation of SCO System()\n'
@@ -334,40 +346,46 @@ class sco_system(object):
 ###### Class Crystal ######
 ###########################
 class crystal(object):
-    def __init__(self, refcode: str, name: str, cell2mol_path: str, cell_path: str, sys: object) -> None:
+    def __init__(self, refcode: str, name: str, cell2mol_path: str, cell_name: str, sys: object) -> None:
         self.type              = "crystal" 
         self.version           = "V3" 
         self.refcode           = refcode
         self.name              = name
-        self.cell_path         = cell2mol_path+cell_path
-        self.cell              = import_cell(load_binary(self.cell_path))
-        self._sys              = sys
         self.cell2mol_path     = cell2mol_path
+        self.cell_name         = cell_name
+        self.cell_path         = cell2mol_path+cell_name
+        self.cell              = import_cell(load_binary(self.cell_path))
         self.list_of_molecules = []
+        self._sys              = sys
 
         self.fix_cell_coord()
 
-    def reload_cell(self) -> None:
-        self.cell              = import_cell(self.cell_path)
+    ################################
+    def reset_paths(self, new_path) -> None:
+        if os.path.isdir(new_path): self.cell2mol_path = new_path
+        if os.path.isfile(new_path+self.cell_name): self.cell_path = new_path+self.cell_name
 
+    ################################
+    def reload_cell(self) -> None:
+        self.cell              = import_cell(load_binary(self.cell_path))
+
+    ################################
     ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell. 
     ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
-    def fix_cell_coord(self) -> None:
+    def fix_cell_coord(self, debug: int=0) -> None:
         self.cell.labels = []
         self.cell.pos    = []
         self.cell.coord  = []
         indices          = []
         for mol in self.cell.moleclist:
-
-            if not hasattr(mol,"atoms"): 
-                mol.set_atoms() 
-            else:
-                atoms = []
-                for at in mol.atoms:
-                    new_atom = import_atom(at, parent=mol)
-                    atoms.append(new_atom)
-                mol.set_atoms(atomlist=atoms)
-
+            #if not hasattr(mol,"atoms"): 
+            #    mol.set_atoms(create_adjacencies=True, debug=debug) 
+            #else:
+            #    atoms = []
+            #    for at in mol.atoms:
+            #        new_atom = import_atom(at, parent=mol)
+            #        atoms.append(new_atom)
+            #    mol.set_atoms(atomlist=atoms)
             for idx, a in enumerate(mol.atoms):
                 self.cell.labels.append(a.label)
                 self.cell.pos.append(a.coord)
@@ -382,6 +400,7 @@ class crystal(object):
         self.cell.coord  = [x for _, x in sorted(zip(indices, self.cell.coord), key=lambda pair: pair[0])]
         assert len(self.cell.labels) == len(self.cell.pos)
 
+    ################################
     def read_cif_data(self, cifpath: str) -> None:
         self.diff_temp         = get_cif_diffraction_data(cifpath) 
         self.authors           = get_cif_authors(cifpath)
@@ -390,22 +409,30 @@ class crystal(object):
         self.journal_volume    = get_cif_journal(cifpath)[2]
         self.journal_page      = get_cif_journal(cifpath)[3]
 
+    ################################
     def get_FeN6_molecules(self, debug: int=0):
         for idx, mol in enumerate(self.cell.moleclist):
             if mol.iscomplex:
                 keepit = False
                 for met in mol.metals:
-                    coord_sphere = met.get_coord_sphere_formula(debug=1)
-                    if coord_sphere == "N6" and hasattr(met,"charge"): keepit = True
-                    else: print("No coord_sphere variable in metal object")
+                    if hasattr(met,"charge"):
+                        if debug > 0: print(f"    GET_FeN6: Evaluating metal: {met}")
+                        coord_sphere = met.get_coord_sphere_formula(debug=debug)
+                        if debug > 0: print(f"    GET_FeN6: Received {coord_sphere=}")
+                        if coord_sphere == "N6": keepit = True
+                    else:
+                        print(f"    GET_FeN6: Metal does not have charge variable")
                 if keepit:
                     ox_state = mol.metals[0].charge
-                    mol.scope_FeNdist, mol.scope_FeNangle, mol.scope_epsylon = geom_sco_from_xyz(mol.labels, mol.coord)
-                    mol.scope_guess_spin = guess_spin_state(int(ox_state), mol.scope_FeNdist[0])
+                    if debug > 1: print(f"    GET_FeN6: Entering geom_sco with:")
+                    if debug > 1: print_xyz(mol.labels, mol.coord)
+                    mol.scope_FeNdist, mol.scope_FeNangle, mol.scope_epsylon = geom_sco_from_xyz(mol.labels, mol.coord, debug=0)
+                    mol.scope_guess_spin = guess_spin_state(int(ox_state), mol.scope_FeNdist[0], debug=debug)
                     self.list_of_molecules.append(mol)
-                    if debug > 0: print(f"    GET_FeN6: found {mol.scope_guess_spin} molecule of OS: {ox_state}") 
+                    if debug > 0: print(f"    GET_FeN6: found {mol.scope_guess_spin} molecule with {ox_state=}") 
         return self.list_of_molecules
 
+    ################################
     def get_spin_and_phase_data(self, debug: int=0):
         self.guess_spins = [] 
         self.phase = ''
@@ -540,8 +567,11 @@ def create_sco_system(name, cell2mol_path: str, calcs_path: str, sys_path: str="
         # Stores reconstructed coordinates as a new coord and label variables. Original ones are stored separately
         #cell_reconstructed_coord(newcrystal.cell)
 
+        if debug > 0: print(f"CREATE_SCO_SYSTEM: reading .cif data")
         newcrystal.read_cif_data(cif_paths[idx])
+        if debug > 0: print(f"CREATE_SCO_SYSTEM: Getting FeN6 mols")
         newcrystal.get_FeN6_molecules(debug=debug)
+        if debug > 0: print(f"CREATE_SCO_SYSTEM: Getting Phase data")
         newcrystal.get_spin_and_phase_data(debug=debug)
                             
         # If it worked, at the end it stores the data in the system object
@@ -555,26 +585,27 @@ def create_sco_system(name, cell2mol_path: str, calcs_path: str, sys_path: str="
     else:                   return None
 ##############################
 
-###################################
-### Functions to restart system ###
-###################################
-def reset_paths_out(sys: object, cell2mol_path: str, calcs_path: str, sys_path: str, debug: int=0) -> None:
-    if os.path.isdir(cell2mol_path): sys.cell2mol_path        = cell2mol_path
-    if os.path.isdir(calcs_path):    sys.calcs_path           = calcs_path
-    if os.path.isdir(sys_path):      sys.sys_path             = sys_path
-    if debug > 0: print(f"RESET_PATHS_OUT: new system paths: {sys.cell2mol_path}, {sys.calcs_path}, {sys.sys_path}")
-    for br in sys.branches:
-        if os.path.isdir(calcs_path+br.keyword+'/'): br.path = calcs_path+br.keyword+'/'
-        else: print(f"RESET_PATHS_OUT: {calcs_path+br.keyword+'/'} path does not exist")
-        for rec in br.recipes:
-            rec.path = br.path
-            for job in rec.jobs:
-                job.path = rec.path
-                for comp in job.computations:
-                    if job.setup == "findiff" and os.path.isdir(job.path+findiff): comp.path = job.path+"findiff/"
-                    else:                                                          comp.path = job.path
-                    comp.inp_path = comp.path+comp.inp_name
-                    comp.out_path = comp.path+comp.out_name
-                    comp.sub_path = comp.path+comp.sub_name
-                    comp.check_files()
-                    if debug > 0: print(f"RESET_PATHS_OUT: new computation path: {comp.inp_path}")  
+####################################
+#### Functions to restart system ###
+####################################
+#def reset_paths_out(sys: object, cell2mol_path: str, calcs_path: str, sys_path: str, debug: int=0) -> None:
+#    if os.path.isdir(cell2mol_path): sys.cell2mol_path        = cell2mol_path
+#    if os.path.isdir(calcs_path):    sys.calcs_path           = calcs_path
+#    if os.path.isdir(sys_path):      sys.sys_path             = sys_path
+#    if debug > 0: print(f"RESET_PATHS_OUT: new system paths: {sys.cell2mol_path}, {sys.calcs_path}, {sys.sys_path}")
+#    for br in sys.branches:
+#        if os.path.isdir(calcs_path+br.keyword+'/'): br.path = calcs_path+br.keyword+'/'
+#        else: print(f"RESET_PATHS_OUT: {calcs_path+br.keyword+'/'} path does not exist")
+#        for rec in br.recipes:
+#            rec.path = br.path
+#            for job in rec.jobs:
+#                job.path = rec.path
+#                for comp in job.computations:
+#                    if job.setup == "findiff" and os.path.isdir(job.path+"findiff"): comp.path = job.path+"findiff/"
+#                    else:                                                            comp.path = job.path
+#                    comp.inp_path = comp.path+comp.inp_name
+#                    comp.out_path = comp.path+comp.out_name
+#                    comp.sub_path = comp.path+comp.sub_name
+#                    comp.check_files()
+#                    if debug > 0: print(f"RESET_PATHS_OUT: new computation path: {comp.inp_path}")  
+#
