@@ -42,7 +42,8 @@ class queue(object):
 
         if not hasattr(self,"command_check_nodes_state"): self.set_commands()
         try:
-            raw = subprocess.check_output(['bash','-c', self.command_check_queue_state])
+            #raw = subprocess.check_output(['bash','-c', self.command_check_queue_state]) ## raises error when node is not active
+            raw = subprocess.run(['bash', '-c', self.command_queue_state], capture_output=True).stdout
             dec = raw.decode("utf-8")
             text = dec.rstrip().split("\n")
         except: text = ""
@@ -127,7 +128,8 @@ class queue(object):
         self.user_running_jobs = 0
 
         try: 
-            raw = subprocess.check_output(['bash','-c', self.command_get_user_usage])
+            #raw = subprocess.check_output(['bash','-c', self.command_get_user_usage]) ## raises error when node is not active
+            raw = subprocess.run(['bash', '-c', self.command_get_user_usage], capture_output=True).stdout
             dec = raw.decode("utf-8")
             text = dec.rstrip().split("\n")
         except Exception as exc:
@@ -250,7 +252,8 @@ class node(object):
 
     def get_overall_usage(self): # , user: str='all'):
         if not hasattr(self,"command_check_state"): self.set_commands()
-        raw = subprocess.check_output(['bash','-c', self.command_check_state])
+        #raw = subprocess.check_output(['bash','-c', self.command_check_state]) ## raises error when node is not active
+        raw = subprocess.run(['bash', '-c', self.command_check_state], capture_output=True).stdout
         dec = raw.decode("utf-8")
         text = dec.rstrip().split("\n")
 
