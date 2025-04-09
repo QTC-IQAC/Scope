@@ -132,7 +132,7 @@ class recipe(object):
         to_print +=  '   >>> >>> RECIPE                                  \n'
         to_print += f'---------------------------------------------------\n'
         if hasattr(self.subject,"refcode"):                      to_print += f' Crystal               = {self.subject.refcode}\n'
-        elif self.check_parent("cell"): 
+        elif self.subject.check_parent("cell"): 
             if hasattr(self.subject.get_parent("cell"),"refcode"): to_print += f' Crystal               = {self.subject.get_parent("cell").refcode}\n'
         if hasattr(self.subject,"spin"):             to_print += f' Spin                  = {self.subject.spin}\n'
         if hasattr(self.subject,"phase"):            to_print += f' Phase                 = {self.subject.phase}\n'

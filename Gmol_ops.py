@@ -115,12 +115,9 @@ def add_branch_gmol(gmol, keyword: str, calcs_path: str, debug: int=0):
         except Exception as exc:
              print(f"Error creating branch folder in {calcs_path+keyword}")
              print(exc)
-
-    ## Creates recipes for the branch. One for each object.
-    #new_recipe = new_branch.add_recipe("LS",gmol)
-    new_recipe = new_branch.add_recipe("LS","gmol")
     gmol.branches.append(new_branch)
 
+    ## Sets initial State
     new_state = state(gmol,"initial") 
     new_state.set_geometry(gmol.labels, gmol.coord)
 

@@ -1908,10 +1908,17 @@ def import_gmol(gmol: object, debug: int=0) -> object:
     elif hasattr(gmol,"smiles"): new_gmol.smiles = gmol.smiles        
     elif debug > 0: print(f"IMPORT GMOL: SMILES could not be imported")
 
-    ## Atoms
+    ## Atoms
     if not hasattr(gmol,"atoms"):  
         if debug > 0: print(f"IMPORT GMOL: Creating Atoms")
         new_gmol.set_atoms(create_adjacencies=True, debug=debug)
+    else:
+        if debug > 0: print(f"IMPORT GMOL: importing atoms from old_molecule")
+        atoms = []
+        for kdx, at in enumerate(gmol.atoms):
+            new_atom = import_atom(at, parent=new_gmol, index=kdx, debug=debug)
+            atoms.append(new_atom)
+        new_molec.set_atoms(atomlist=atoms, debug=debug)
     if debug > 0: print(f"IMPORT GMOL: Example of imported atom")
     if debug > 0: print(new_gmol.atoms[0])
 
@@ -1977,21 +1984,21 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
     elif hasattr(mol,"smiles"): new_molec.smiles = mol.smiles        
     elif debug > 0: print(f"IMPORT MOLEC: SMILES could not be imported")
 
-    ## Atoms
+    ## Atoms
     if not hasattr(mol,"atoms"):  
         if debug > 0: print(f"IMPORT MOLEC: Creating Atoms")
         new_molec.set_atoms(create_adjacencies=True, debug=debug)
     else: 
         if debug > 0: print(f"IMPORT MOLEC: importing atoms from old_molecule")
         atoms = []
-        for at in mol.atoms: 
-            new_atom = import_atom(at, parent=new_molec, debug=debug)
+        for kdx, at in enumerate(mol.atoms): 
+            new_atom = import_atom(at, parent=new_molec, index=kdx, debug=debug)
             atoms.append(new_atom)
         new_molec.set_atoms(atomlist=atoms, debug=debug)
     if debug > 0: print(f"IMPORT MOLEC: Example of imported atom")
     if debug > 0: print(new_molec.atoms[0])
 
-    ## Substructures
+    ## Substructures
     if debug > 0: print(f"IMPORT MOLEC: Importing Substructures")
     if not hasattr(mol,"ligandlist") or not hasattr(mol,"metalist"):
         if debug > 0: print(f"IMPORT MOLEC: splitting complex")
@@ -2075,7 +2082,7 @@ def import_ligand(lig: object, parent: object=None, debug: int=0) -> object:
     else:
         if debug > 0: print(f"IMPORT LIGAND: RDKIT OBJECT could not be imported")
     
-    ## Substructures
+    ## Substructures
     if not hasattr(lig,"grouplist"): new_ligand.split_ligand()
     else: 
         new_ligand.groups = []
@@ -2083,7 +2090,7 @@ def import_ligand(lig: object, parent: object=None, debug: int=0) -> object:
             new_group = import_group(gr, parent=new_ligand, debug=debug)
             new_ligand.groups.append(new_group)
     
-    ## Atoms
+    ## Atoms
     #if not hasattr(lig,"atoms"):  
     if new_ligand.check_parent("molecule"):
         if debug > 0: print(f"IMPORT LIGAND: importing atoms from molecule")
@@ -2168,28 +2175,22 @@ def import_group(old_group: object, parent: object=None, debug: int=0) -> object
         new_group.set_atoms(debug=debug)
         if debug > 0: print(f"IMPORT GROUP: {len(new_group.atoms)} atoms created. Printed below")
         if debug > 0: print(new_group.atoms)
-    #else: 
-    #    if debug > 0: print(f"IMPORT GROUP: importing atoms from old group")
-    #    atoms = []
-    #    for at in old_group.atoms: 
-    #        new_atom = import_atom(at, parent=new_group, debug=debug)
-    #        atoms.append(new_atom)
-    #    new_group.set_atoms(atomlist=atoms, debug=debug)
             
     return new_group
 
 ################################
-def import_atom(old_atom: object, parent: object=None, debug: int=0) -> object:
+def import_atom(old_atom: object, parent: object=None, index: int=None, debug: int=0) -> object:
     assert hasattr(old_atom,"label") and (hasattr(old_atom,"coord") or hasattr(old_atom,"pos"))
     label     = old_atom.label
     
     if   hasattr(old_atom,"coord"):      coord      = old_atom.coord
     elif hasattr(old_atom,"pos"):        coord      = old_atom.pos
 
-    if   hasattr(old_atom,"parent_index"): index    = old_atom.parent_index
-    elif hasattr(old_atom,"atlist"):       index    = old_atom.atlist
-    elif hasattr(old_atom,"index"):        index    = old_atom.index
-    else:                                  index    = None
+    if index is None:
+        if   hasattr(old_atom,"parent_index"): index    = old_atom.parent_index
+        elif hasattr(old_atom,"atlist"):       index    = old_atom.atlist
+        elif hasattr(old_atom,"index"):        index    = old_atom.index
+        else:                                  index    = None
 
     if   hasattr(old_atom,"radii"):      radii      = old_atom.radii
     else:                                radii      = None          
@@ -2231,7 +2232,8 @@ def import_atom(old_atom: object, parent: object=None, debug: int=0) -> object:
 
     ## Connectivity
     if debug > 0: print(f"IMPORT ATOM: inheriting connectivity for {new_atom.subtype=}")
-    new_atom.inherit_connectivity("molecule", debug=debug)
+    if index is not None: new_atom.inherit_connectivity("molecule", debug=debug)
+    else:         print(f"IMPORT ATOM: connectivity could not be imported since Index=None")
 
     ## Factors for connectivity calculation
     ## In cell2mol version 1, atoms do not carry factors. Metals do
