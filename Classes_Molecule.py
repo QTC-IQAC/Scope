@@ -1870,6 +1870,68 @@ def import_cell(old_cell: object, debug: int=0) -> object:
     return new_cell
 
 ################################
+def import_gmol(gmol: object, debug: int=0) -> object:
+    assert hasattr(gmol,"labels") 
+    assert hasattr(gmol,"coord") or hasattr(gmol,"pos")
+
+    labels     = gmol.labels
+
+    if   hasattr(gmol,"coord"):             coord      = gmol.coord
+    elif hasattr(gmol,"pos"):               coord      = gmol.pos
+
+    if   hasattr(gmol,"parent_indices"):    indices    = gmol.parent_indices
+    elif hasattr(gmol,"atlist"):            indices    = gmol.atlist
+    else:                                   indices    = None
+
+    if   hasattr(gmol,"radii"):             radii      = gmol.radii
+    else:                                   radii      = None          
+
+    if hasattr(gmol,"factor") and hasattr(gmol,"metal_factor"): 
+        cov_factor   = gmol.factor
+        metal_factor = gmol.metal_factor
+    elif hasattr(gmol,"cov_factor") and hasattr(gmol,"metal_factor"): 
+        cov_factor   = gmol.cov_factor
+        metal_factor = gmol.metal_factor
+    else:
+        cov_factor   = 1.3
+        metal_factor = 1.0
+
+    new_gmol = specie(labels, coord, radii)
+    new_gmol.origin = "import_gmol"
+    new_gmol.set_factors(cov_factor, metal_factor)
+    new_gmol.get_adjmatrix()           ## Necessary when importing atoms
+    new_gmol.get_metal_adjmatrix()     ## Necessary when importing atoms
+    if debug > 0: print(f"IMPORT GMOL: importing gmol {new_gmol.formula}")
+
+    ## Smiles
+    if   hasattr(gmol,"Smiles"): new_gmol.smiles = gmol.Smiles
+    elif hasattr(gmol,"smiles"): new_gmol.smiles = gmol.smiles        
+    elif debug > 0: print(f"IMPORT GMOL: SMILES could not be imported")
+
+    ## Atoms
+    if not hasattr(gmol,"atoms"):  
+        if debug > 0: print(f"IMPORT GMOL: Creating Atoms")
+        new_gmol.set_atoms(create_adjacencies=True, debug=debug)
+    if debug > 0: print(f"IMPORT GMOL: Example of imported atom")
+    if debug > 0: print(new_gmol.atoms[0])
+
+    ## Charges
+    if hasattr(gmol,"totcharge") and hasattr(gmol,"atcharge"):
+        if debug > 0: print(f"IMPORT gmolEC: imported total charge and atomic charges")
+        new_gmol.set_charges(gmol.totcharge, gmol.atcharge)
+    elif hasattr(gmol,"totcharge") and not hasattr(gmol,"atcharge"):
+        if debug > 0: print(f"IMPORT gmolEC: imported total charge but no atomic charges")
+        new_gmol.set_charges(gmol.totcharge)
+
+    ## Fractional coordinates
+    if debug > 0: print(f"IMPORT gmolEC: trying to import fractional coordinates")
+    if   hasattr(gmol,"frac_coord"):   new_gmol.set_fractional_coord(gmol.frac_coord, debug=debug)
+    elif hasattr(gmol,"frac"):         new_gmol.set_fractional_coord(gmol.frac, debug=debug)
+    else:                              new_gmol.get_fractional_coord(debug=debug)
+
+    return new_gmol
+
+################################
 def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
     assert hasattr(mol,"labels") 
     assert hasattr(mol,"coord") or hasattr(mol,"pos")
