@@ -27,7 +27,7 @@ class computation(object):
         self.suffix           = _job.suffix           ## A string to add to the file name. This should be eliminated 
         self.path             = path
         self.index            = len(_job.computations)+1
-        self.refcode          = _job._recipe.subject._sys.refcode
+        #self.refcode          = _job._recipe.subject._sys.refcode
         self.isregistered     = False
         self.has_update       = False
         self.is_update        = is_update

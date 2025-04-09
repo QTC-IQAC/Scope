@@ -2091,7 +2091,7 @@ def import_group(old_group: object, parent: object=None, debug: int=0) -> object
         new_group.set_charges(old_group.totcharge)
         if debug > 0: print(f"IMPORT GROUP: imported total charge but no atomic charges")
 
-    ## Atoms
+    ## Atoms
     #if not hasattr(old_group,"atoms"):  
     if new_group.check_parent("molecule"):
         if debug > 0: print(f"IMPORT GROUP: importing atoms from molecule")
