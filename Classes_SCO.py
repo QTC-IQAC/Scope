@@ -8,7 +8,7 @@ from copy import deepcopy
 
 from Scope.Parse_Cif import get_cif_diffraction_data, get_cif_authors, get_cif_journal 
 from Scope.Parse_General import search_string, read_lines_file 
-from Scope.Geom_SCO_V1 import geom_sco_from_xyz, guess_spin_state
+from Scope.Structure_SCO import geom_sco_from_xyz, guess_spin_state
 from Scope.Read_Write import save_binary, load_binary, print_xyz
 from Scope.Classes_State import state
 from Scope.Classes_Molecule import *

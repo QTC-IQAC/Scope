@@ -262,14 +262,14 @@ def compute_centroid(coord: list) -> list:
 #########################
 
 #########################
-def count_species(labels: list, pos: list, radii: list=None, indices: list=None, cov_factor: float=1.3, debug: int=0) -> Tuple[bool, list]:
+def count_species(labels: list, pos: list, radii: list=None, indices: list=None, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0) -> Tuple[bool, list]:
     # Gets the covalent radii
     if radii is None:    radii = get_radii(labels)
     if indices is None:  indices = [*range(0,len(labels),1)]
 
     # Computes the adjacency matrix of what is received
     # isgood indicates whether the adjacency matrix could be built normally, or errors were detected. Typically, those errors are steric clashes
-    isgood, adjmat, adjnum = get_adjmatrix(labels, pos, cov_factor, radii)
+    isgood, adjmat, adjnum = get_adjmatrix(labels, pos, cov_factor, metal_factor, radii)
     if not isgood: return int(0)
 
     degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
