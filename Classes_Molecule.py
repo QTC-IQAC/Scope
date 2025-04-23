@@ -610,10 +610,10 @@ class ligand(specie):
         if not hasattr(self,"connected_idx"): self.get_connected_idx()
         self.connected_atoms = []
         for idx, at in enumerate(self.atoms):
-            if idx in self.connected_idx and at.mconnec > 0: 
+            if idx in self.connected_idx and at.madjnum > 0: 
                 self.connected_atoms.append(at) 
-            elif idx in self.connected_idx and at.mconnec == 0:
-                print("WARNING: Atom appears in connected_idx, but has mconnec=0")
+            elif idx in self.connected_idx and at.madjnum == 0:
+                print("WARNING: Atom appears in connected_idx, but has madjnum=0")
         return self.connected_atoms
 
     #######################################################
@@ -664,6 +664,7 @@ class ligand(specie):
             newgroup.get_connected_metals(debug=debug)
             newgroup.get_closest_metal(debug=debug)
             newgroup.get_hapticity(debug=debug)
+            self.groups.append(newgroup)
         if debug > 0 : print(f"\tLIGAND.SPLIT_LIGAND: found groups {[ group.formula for group in self.groups]}")
         if debug > 2 : print(f"{self.groups}")
         return self.groups
@@ -957,8 +958,8 @@ class atom(object):
 
     #######################################################
     def set_adjacencies(self, adjmat, madjmat, connectivity: int, metal_connectivity: int=0):
-        self.connec  = int(connectivity)
-        self.mconnec = int(metal_connectivity)
+        self.adjnum  = int(connectivity)
+        self.madjnum = int(metal_connectivity)
         self.adjacency       = []
         self.metal_adjacency = []
         for idx, c in enumerate(adjmat):   ## The atom only receives one row of adjmat, so this is not a matrix anymore. Keep in mind that the idx are the indices of parent
@@ -1008,10 +1009,10 @@ class atom(object):
         if hasattr(self,"charge"):     to_print += f' Atom Charge                  = {self.charge}\n'
 
         # Adjacency and Metal Adjacency
-        if hasattr(self,"mconnec"):    to_print += f' Metal Adjacency (mconnec)    = {self.mconnec}\n'
+        if hasattr(self,"madjnum"):    to_print += f' Metal Adjacency (madjnum)    = {self.madjnum}\n'
         elif hasattr(self,"madjnum"):  to_print += f' Metal Adjacency (madjnum)    = {self.madjnum}\n'
         else:                          to_print += f' No Metal Adjacency Info\n'
-        if hasattr(self,"connec"):     to_print += f' Regular Adjacencies (connec) = {self.connec}\n'
+        if hasattr(self,"connec"):     to_print += f' Regular Adjacencies (connec) = {self.adjnum}\n'
         elif hasattr(self,"adjnum"):   to_print += f' Regular Adjacencies (adjnum) = {self.adjnum}\n'
         else:                          to_print += f' No Adjacency Info\n'
 
@@ -1019,19 +1020,19 @@ class atom(object):
         return to_print
 
     #######################################################
-    def reset_mconnec(self, met, diff: int=-1, debug: int=0):
-        if debug > 0: print(f"ATOM.RESET_MCONN: resetting mconnec (and connec) for atom {self.label=}")
-        if debug > 0: print(f"ATOM.RESET_MCONN: initial {self.connec=} {self.mconnec=}")
+    def reset_madjnum(self, met, diff: int=-1, debug: int=0):
+        if debug > 0: print(f"ATOM.RESET_MCONN: resetting madjnum (and connec) for atom {self.label=}")
+        if debug > 0: print(f"ATOM.RESET_MCONN: initial {self.adjnum=} {self.madjnum=}")
         if debug > 0 : print(f"ATOM.RESET_MCONN: initial = {self.adjacency=} {self.metal_adjacency=}")
-        self.mconnec += diff
-        self.connec  += diff
+        self.madjnum += diff
+        self.adjnum  += diff
 
-        if debug > 0: print(f"ATOM.RESET_MCONN: initial {met.connec=} {met.mconnec=}")
+        if debug > 0: print(f"ATOM.RESET_MCONN: initial {met.adjnum=} {met.madjnum=}")
         if debug > 0 : print(f"ATOM.RESET_MCONN: initial = {met.adjacency=} {met.metal_adjacency=}")
 
         # Correct Metal Data
-        met.mconnec += diff                             # Corrects data of metal object
-        met.connec  += diff                             # Corrects data of metal object
+        met.madjnum += diff                             # Corrects data of metal object
+        met.adjnum  += diff                             # Corrects data of metal object
 
 
         exists = self.check_parent("ligand")
@@ -1039,7 +1040,7 @@ class atom(object):
             lig     = self.get_parent("ligand")
             lig_idx = self.get_parent_index("ligand")
 
-            if debug > 0: print(f"ATOM.RESET_MCONN: resetting mconnec (and connec) for atom {self.label=} in ligadn {lig_idx=}")
+            if debug > 0: print(f"ATOM.RESET_MCONN: resetting madjnum (and connec) for atom {self.label=} in ligadn {lig_idx=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: updating ligand atoms and madjnum")
             if debug > 0: print(f"ATOM.RESET_MCONN: {lig.natoms=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: {lig.labels=}")
@@ -1049,10 +1050,10 @@ class atom(object):
             if debug > 0: print(f"ATOM.RESET_MCONN: updating ligand atoms and adjnum")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.adjnum=} {len(lig.adjnum)}") 
             # if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.adjmat=} {(lig.adjmat).shape}")
-            if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.atoms[lig_idx].connec=} {lig.atoms[lig_idx].mconnec=}")
+            if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.atoms[lig_idx].adjnum=} {lig.atoms[lig_idx].madjnum=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.madjnum[lig_idx]=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.adjnum[lig_idx]=}")
-            if debug > 0: print(f"ATOM.RESET_MCONN: initial {met.connec=} {met.mconnec=}")
+            if debug > 0: print(f"ATOM.RESET_MCONN: initial {met.adjnum=} {met.madjnum=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.madjmat[lig_idx]=} {lig.adjmat[lig_idx]=}")
             # Correct Ligand Data
             lig.madjnum[lig_idx] += diff                    # Corrects data in metal_adjacency number of the ligand class
@@ -1069,7 +1070,7 @@ class atom(object):
             # if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.madjmat=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.adjnum=}")  
             # if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.adjmat=}")
-            if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.atoms[lig_idx].connec=} {lig.atoms[lig_idx].mconnec=}")
+            if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.atoms[lig_idx].adjnum=} {lig.atoms[lig_idx].madjnum=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.atoms[lig_idx].adjacency=} {lig.atoms[lig_idx].metal_adjacency=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.madjnum[lig_idx]=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.adjnum[lig_idx]=}")
@@ -1081,7 +1082,7 @@ class atom(object):
             mol     = self.get_parent("molecule")
             mol_idx = self.get_parent_index("molecule")
             met_idx = met.get_parent_index("molecule")
-            if debug > 0: print(f"ATOM.RESET_MCONN: resetting mconnec (and connec) for atom {self.label=} in molecule {mol_idx=} with metal {met_idx=}")
+            if debug > 0: print(f"ATOM.RESET_MCONN: resetting madjnum (and connec) for atom {self.label=} in molecule {mol_idx=} with metal {met_idx=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: updating molecule atoms and madjnum")
             if debug > 0: print(f"ATOM.RESET_MCONN: {mol.natoms=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: {mol.labels=}")
@@ -1090,8 +1091,8 @@ class atom(object):
             if debug > 0: print(f"ATOM.RESET_MCONN: updating molecule atoms and adjnum")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {mol.adjnum=} {len(mol.adjnum)}") 
             #if debug > 0: print(f"ATOM.RESET_MCONN: initial {mol.adjmat=} {(mol.adjmat).shape}")
-            if debug > 0: print(f"ATOM.RESET_MCONN: initial {mol.atoms[mol_idx].mconnec=} {mol.atoms[mol_idx].connec=}")
-            if debug > 0: print(f"ATOM.RESET_MCONN: initial {met.mconnec=} {met.connec=}")
+            if debug > 0: print(f"ATOM.RESET_MCONN: initial {mol.atoms[mol_idx].madjnum=} {mol.atoms[mol_idx].adjnum=}")
+            if debug > 0: print(f"ATOM.RESET_MCONN: initial {met.madjnum=} {met.adjnum=}")
 
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {mol.madjnum[mol_idx]=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {mol.adjnum[mol_idx]=}")
@@ -1101,8 +1102,6 @@ class atom(object):
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {mol.adjmat[met_idx,mol_idx]=} {mol.adjmat[mol_idx,met_idx]=}")
 
             # Correct Molecule Data
-            # mol.atoms[mol_idx].mconnec += diff              # Corrects data of atom object in molecule class
-            # mol.atoms[mol_idx].connec  += diff              # Corrects data of atom object in molecule class
             mol.madjnum[mol_idx] += diff                    # Corrects data in metal_adjacency number of the molecule class
             mol.madjnum[met_idx] += diff                    # Corrects data in metal_adjacency number of the molecule class
 
@@ -1119,9 +1118,9 @@ class atom(object):
 
             met.set_adjacencies(mol.adjmat[met_idx], mol.madjmat[met_idx], mol.adjnum[met_idx], mol.madjnum[met_idx])
 
-            if debug > 0: print(f"ATOM.RESET_MCONN: final {mol.atoms[mol_idx].connec=} {mol.atoms[mol_idx].mconnec=}")
+            if debug > 0: print(f"ATOM.RESET_MCONN: final {mol.atoms[mol_idx].adjnum=} {mol.atoms[mol_idx].madjnum=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {mol.atoms[mol_idx].adjacency=} {mol.atoms[mol_idx].metal_adjacency=}")
-            if debug > 0: print(f"ATOM.RESET_MCONN: final {met.connec=} {met.mconnec=}")
+            if debug > 0: print(f"ATOM.RESET_MCONN: final {met.adjnum=} {met.madjnum=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {met.adjacency=} {met.metal_adjacency=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {mol.madjnum[mol_idx]=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {mol.adjnum[mol_idx]=}")
