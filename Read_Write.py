@@ -37,6 +37,7 @@ def save_binary(variable, pathfile, backup: bool=False):
 
 #######################
 def load_binary(pathfile):
+    import pickle
     with open(pathfile, "rb") as pickle_file:
         binary = pickle.load(pickle_file)
     return binary

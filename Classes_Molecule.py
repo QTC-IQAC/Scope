@@ -318,98 +318,42 @@ class specie(object):
         from Scope.Elementdata import ElementData  
         elemdatabase = ElementData()
 
-        ### Adjusts size
-        if   size.lower() == 'default': width=600; height=600;   marker_size=8;  text_size=9
-        elif size.lower() == 'small':   width=400; height=400;   marker_size=6;  text_size=7 
-        elif size.lower() == 'large':   width=800; height=800;   marker_size=10; text_size=12
-        elif size.lower() == 'ultra':   width=1000; height=1000; marker_size=11; text_size=13
+        size_map = {'default': (600, 600, 8, 9), 'small': (400, 400, 6, 7), 
+                    'large': (800, 800, 10, 12), 'ultra': (1000, 1000, 11, 13)}
+        width, height, marker_size, text_size = size_map.get(size.lower(), size_map['default'])
 
-        if not hasattr(self,"adjmat"): self.get_adjmatrix()
-        fig             = go.Figure()
+        if not hasattr(self, "adjmat"): self.get_adjmatrix()
+        fig = go.Figure()
+        positions, symbols = np.array(self.coord), self.labels
+        unique_bonds = {tuple(i) for i in np.argwhere(self.adjmat > 0)}
 
-        # Gather Data
-        positions       = np.array(self.coord)
-        symbols         = self.labels
-        adjacencies     = self.adjmat
-        atom_indices    = list(range(len(self.labels)))
-
-        # Gets bonds from adjacency matrix
-        indices = np.argwhere(self.adjmat >0)
-        unique_bonds    = set()
-
-        for i in indices:
-            unique_bonds.add(tuple(i))
-
-        # Plot atoms as markers
         fig.add_trace(go.Scatter3d(
-            x           = positions[:, 0],
-            y           = positions[:, 1],
-            z           = positions[:, 2],
-            mode        ='markers',
-            marker      = dict(
-                size        = marker_size,
-                color       = [elemdatabase.cpk_colors[l] for l in symbols],
-                line        = dict(color='black', width=1),
-            ),
-            hoverinfo   = 'text',
-            text        = symbols,
-            showlegend  = False
-        ))
+            x=positions[:, 0], y=positions[:, 1], z=positions[:, 2],
+            mode='markers', marker=dict(size=marker_size, 
+            color=[elemdatabase.cpk_colors[l] for l in symbols], 
+            line=dict(color='black', width=1)), hoverinfo='text', text=symbols, showlegend=False))
 
-        if show_indices:
-            fig.add_trace(go.Scatter3d(
-                x           = positions[:, 0],
-                y           = positions[:, 1],
-                z           = positions[:, 2],
-                mode        = 'text',
-                text        = [str(i) for i in range(len(positions))],
-                textfont    = dict(color='black', size=text_size),
-                hoverinfo   = 'none',
-                showlegend  = False
-            ))
-        else:            
-            fig.add_trace(go.Scatter3d(
-                x           = positions[:, 0],
-                y           = positions[:, 1],
-                z           = positions[:, 2],
-                mode        = 'text',
-                text        = self.labels,
-                textfont    = dict(color='black', size=text_size),
-                hoverinfo   = 'none',
-                showlegend  = False
-            ))
-
-        ## Plot bonds as lines and calculate midpoints
-        #midpoints   = []
-        bond_pairs  = []
+        fig.add_trace(go.Scatter3d(
+            x=positions[:, 0], y=positions[:, 1], z=positions[:, 2],
+            mode='text', text=[str(i) for i in range(len(positions))] if show_indices else symbols,
+            textfont=dict(color='black', size=text_size), hoverinfo='none', showlegend=False))
 
         for i, j in unique_bonds:
-            # Add bond trace
             fig.add_trace(go.Scatter3d(
-                x           = [positions[i, 0], positions[j, 0]],
-                y           = [positions[i, 1], positions[j, 1]],
-                z           = [positions[i, 2], positions[j, 2]],
-                mode        = 'lines',
-                line        = dict(color='gray', width=5),
-                hoverinfo   = 'none',
-                showlegend  = False
-            ))
+                x=[positions[i, 0], positions[j, 0]], y=[positions[i, 1], positions[j, 1]],
+                z=[positions[i, 2], positions[j, 2]], mode='lines',
+                line=dict(color='gray', width=5), hoverinfo='none', showlegend=False))
 
-        #    # Calculate midpoints
-        #    midpoint = (positions[i] + positions[j]) / 2
-        #    midpoints.append(midpoint)
-            bond_pairs.append((i, j))
-
-        #midpoints = np.array(midpoints)
-
-        set_scene(fig, np.array(self.coord), width=width, height=height)
+        set_scene(fig, positions, width=width, height=height)
         fig.show()
-
 
     ## To be implemented
     def __add__(self, other):
         if not isinstance(other, type(self)): return self
         return self
+
+    def __len__(self):
+        return self.natoms
 
     ############
     def __repr__(self, indirect: bool=False):
@@ -1146,19 +1090,48 @@ class metal(atom):
         return self.valence_elec
 
     #######################################################
-    def get_coord_sphere(self, debug: int=0):
+    def get_cshm(self, ref_shape: str='OC-6', debug: int=0):
+        import cosymlib as cml
+        from Scope.CShM import get_CShM_ref
+        # Prepares coordiantes of the coordination sphere
+        coord_sphere_coords = [self.coord]
+        coord_sphere_coords += [at.coord for at in self.get_coord_sphere()]
+        # Gets Coordinates of the reference shape
+        ref_coords = get_CShM_ref(ref_shape)
+
+        class CustomShape(cml.shape.Shape):
+            def get_positions(self):
+                return self._coordinates
+
+        ## Validate formula match
+        #if self.get_coord_sphere_formula() != "N6":
+        #    raise ValueError("Coordination sphere formula is not N6.")
+
+        # Wrap in shape objects
+        shape_current = CustomShape(np.array(coord_sphere_coords))
+        shape_reference = CustomShape(np.array(ref_coords))
+
+        return shape_current.measure(shape_reference)
+
+    #######################################################
+    def get_coord_sphere_idx(self, debug: int=0):
         if not self.check_parent("molecule"): 
-            print(f"METAL.Get_coord_sphere. Metal does not have parent molecule")
+            print(f"METAL.Get_coord_sphere_idx. Metal does not have parent molecule")
             return None
         mol = self.get_parent("molecule")
         pidx = self.get_parent_index("molecule")
         if not hasattr(mol,"adjmat"): mol.get_adjmatrix()
         adjmat = mol.adjmat.copy()
-        
-        ## Cordination sphere defined as a collection of atoms
-        self.coord_sphere = []
-        for idx, at in enumerate(adjmat[pidx]):
-            if at >= 1: self.coord_sphere.append(mol.atoms[idx])
+        ## Collect Cordination sphere idx as a collection of indice
+        self.coord_sphere_idx = [idx for idx, at in enumerate(adjmat[pidx]) if at >= 1]
+        return self.coord_sphere_idx
+
+    #######################################################
+    def get_coord_sphere(self, debug: int=0):
+        if not hasattr(self,"coord_sphere_idx"): self.get_coord_sphere_idx(debug=debug)
+        mol = self.get_parent("molecule")
+        ## Collect Cordination sphere defined as a collection of atoms
+        self.coord_sphere = [at for idx, at in enumerate(mol.atoms) if idx in self.coord_sphere_idx]
         return self.coord_sphere
 
     #######################################################
@@ -1671,82 +1644,36 @@ class cell(object):
         from Scope.Elementdata import ElementData  
         elemdatabase = ElementData()
 
-        ### Adjusts size
-        if   size.lower() == 'default': width=600; height=600;   marker_size=8;  text_size=9
-        elif size.lower() == 'small':   width=400; height=400;   marker_size=6;  text_size=7 
-        elif size.lower() == 'large':   width=800; height=800;   marker_size=10; text_size=12
-        elif size.lower() == 'ultra':   width=1000; height=1000; marker_size=11; text_size=13
+        size_map = {'default': (600, 600, 8, 9), 'small': (400, 400, 6, 7), 
+                    'large': (800, 800, 10, 12), 'ultra': (1000, 1000, 11, 13)}
+        width, height, marker_size, text_size = size_map.get(size.lower(), size_map['default'])
 
-        if not hasattr(self,"adjmat"): self.get_adjmatrix()
-        fig             = go.Figure()
+        if not hasattr(self, "adjmat"): self.get_adjmatrix()
+        fig = go.Figure()
+        positions, symbols = np.array(self.coord), self.labels
+        unique_bonds = {tuple(i) for i in np.argwhere(self.adjmat > 0)}
 
-        # Gather Data
-        positions       = np.array(self.coord)
-        symbols         = self.labels
-        adjacencies     = self.adjmat
-
-        # Gets bonds from adjacency matrix
-        indices = np.argwhere(self.adjmat >0)
-        unique_bonds    = set()
-
-        for i in indices:
-            unique_bonds.add(tuple(i))
-
-        # Plot atoms as markers
         fig.add_trace(go.Scatter3d(
-            x           = positions[:, 0],
-            y           = positions[:, 1],
-            z           = positions[:, 2],
-            mode        ='markers',
-            marker      = dict(
-                size        = 10,
-                color       = [elemdatabase.cpk_colors[l] for l in symbols],
-                line        = dict(color='black', width=1),
-            ),
-            hoverinfo   = 'text',
-            text        = symbols,
-            showlegend  = False
-        ))
+            x=positions[:, 0], y=positions[:, 1], z=positions[:, 2],
+            mode='markers', marker=dict(size=marker_size, 
+            color=[elemdatabase.cpk_colors[l] for l in symbols], 
+            line=dict(color='black', width=1)), hoverinfo='text', text=symbols, showlegend=False))
 
-        # Label atom + indices
         fig.add_trace(go.Scatter3d(
-            x           = positions[:, 0],
-            y           = positions[:, 1],
-            z           = positions[:, 2],
-            mode        = 'text',
-            text        = self.labels,
-            #text        = [str(i) for i in range(len(positions))],
-            textfont    = dict(color='black', size=12),
-            hoverinfo   = 'none',
-            showlegend  = False
-        ))
-
-        ## Plot bonds as lines and calculate midpoints
-        #midpoints   = []
-        bond_pairs  = []
+            x=positions[:, 0], y=positions[:, 1], z=positions[:, 2],
+            mode='text', text=symbols, textfont=dict(color='black', size=text_size), 
+            hoverinfo='none', showlegend=False))
 
         for i, j in unique_bonds:
-            # Add bond trace
             fig.add_trace(go.Scatter3d(
-                x           = [positions[i, 0], positions[j, 0]],
-                y           = [positions[i, 1], positions[j, 1]],
-                z           = [positions[i, 2], positions[j, 2]],
-                mode        = 'lines',
-                line        = dict(color='gray', width=5),
-                hoverinfo   = 'none',
-                showlegend  = False
-            ))
+                x=[positions[i, 0], positions[j, 0]], y=[positions[i, 1], positions[j, 1]],
+                z=[positions[i, 2], positions[j, 2]], mode='lines',
+                line=dict(color='gray', width=5), hoverinfo='none', showlegend=False))
 
-        #    # Calculate midpoints
-        #    midpoint = (positions[i] + positions[j]) / 2
-        #    midpoints.append(midpoint)
-            bond_pairs.append((i, j))
-
-        #midpoints = np.array(midpoints)
-
-        set_scene(fig, np.array(self.coord), width=width, height=height)
+        set_scene(fig, positions, width=width, height=height)
         fig.show()
 
+    #######################################################
     def __repr__(self):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> CELL >>>                                    \n'
