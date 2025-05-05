@@ -65,15 +65,12 @@ class specie(object):
                     if p.subtype == p2.subtype:
                         if overwrite: 
                             self.parents[idx]         = p2
-                            #self.parents_indices[idx] = parent.get_parent_indices(p2.subtype)
                             self.parents_indices[idx] = new_indices
                         append = False
                 if append: 
                     self.parents.append(p2)
-                    #self.parents_indices.append(parent.get_parent_indices(p2.subtype))
                     self.parents_indices.append(new_indices)
                     if debug > 0: print(f"SPECIE.ADD_PARENT: added parent of parent with subtype {p2.subtype}. Indices are {new_indices}")
-                    #if debug > 0: print(f"SPECIE.ADD_PARENT: added parent of parent with {p2.subtype=}. Indices are {parent.get_parent_indices(p2.subtype)}")
 
     ############
     def check_parent(self, subtype: str):
@@ -150,13 +147,6 @@ class specie(object):
         if not hasattr(self,"adjmat"): self.get_adjmatrix()
         self.adj_types = get_adjacency_types(self.labels, self.adjmat)
         return self.adj_types
-
-    ############
-    # Replaces by set_factors
-    #def set_adjacency_parameters(self, cov_factor: float, metal_factor: float) -> None:
-    #    # Stores the covalentradii factor and metal factor that were used to generate the molecule
-    #    self.cov_factor   = cov_factor
-    #    self.metal_factor = metal_factor
 
     ############
     def reset_charge(self):
@@ -468,10 +458,6 @@ class molecule(specie):
 
             ## Arranges Metals
             for m in metal_idx:
-                ## We were creating the metal again, but it is already in the list of molecule.atoms
-                # newmetal    = metal(self.labels[m], self.coord[m], self.frac_coord[m], self.radii[m])
-                # newmetal.add_parent(self, index=self.indices[m])
-                # self.metals.append(newmetal)                            
                 self.metals.append(self.atoms[m])                            
         return self.ligands, self.metals
         
@@ -886,12 +872,6 @@ class atom(object):
         if not found: self.bonds.append(newbond)
 
     #######################################################
-    # Replaced by set_factors
-    #def set_adjacency_parameters(self, cov_factor: float, metal_factor: float) -> None:
-    #    self.cov_factor   = cov_factor
-    #    self.metal_factor = metal_factor
-
-    #######################################################
     def reset_charge(self) -> None:
         if hasattr(self,"charge"):    delattr(self,"charge")
         if hasattr(self,"poscharges"): delattr(self,"charge")
@@ -990,10 +970,8 @@ class atom(object):
             if debug > 0: print(f"ATOM.RESET_MCONN: {lig.labels=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.madjnum=} {len(lig.madjnum)}") 
             # Nothing in madjmat of the ligand object, all zeros
-            # if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.madjmat=} {(lig.madjmat).shape}")
             if debug > 0: print(f"ATOM.RESET_MCONN: updating ligand atoms and adjnum")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.adjnum=} {len(lig.adjnum)}") 
-            # if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.adjmat=} {(lig.adjmat).shape}")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.atoms[lig_idx].adjnum=} {lig.atoms[lig_idx].madjnum=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.madjnum[lig_idx]=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.adjnum[lig_idx]=}")
@@ -1001,19 +979,13 @@ class atom(object):
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {lig.madjmat[lig_idx]=} {lig.adjmat[lig_idx]=}")
             # Correct Ligand Data
             lig.madjnum[lig_idx] += diff                    # Corrects data in metal_adjacency number of the ligand class
-            #lig.madjmat[lig_idx,met_idx] += diff            # Corrects data in metal_adjacency matrix
-            #lig.madjmat[met_idx,lig_idx] += diff            # Corrects data in metal_adjacency matrix
             lig.adjnum[lig_idx]  += diff                    # Corrects data in adjacency number of the ligand class
 
             lig.atoms[lig_idx].set_adjacencies(lig.adjmat[lig_idx], lig.madjmat[lig_idx], lig.adjnum[lig_idx], lig.madjnum[lig_idx])
 
-            # lig.adjmat[lig_idx,met_idx]  += diff            # Corrects data in adjacency matrix
-            # lig.adjmat[met_idx,lig_idx]  += diff            # Corrects data in adjacency matrix
             # we should delete the adjacencies, but not a priority 
             if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.madjnum=}")
-            # if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.madjmat=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.adjnum=}")  
-            # if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.adjmat=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.atoms[lig_idx].adjnum=} {lig.atoms[lig_idx].madjnum=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.atoms[lig_idx].adjacency=} {lig.atoms[lig_idx].metal_adjacency=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {lig.madjnum[lig_idx]=}")
@@ -1031,10 +1003,8 @@ class atom(object):
             if debug > 0: print(f"ATOM.RESET_MCONN: {mol.natoms=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: {mol.labels=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {mol.madjnum=} {len(mol.madjnum)}") 
-            #if debug > 0: print(f"ATOM.RESET_MCONN: initial {mol.madjmat=} {(mol.madjmat).shape}") # Nothing in madjmat of the ligand object, all zeros
             if debug > 0: print(f"ATOM.RESET_MCONN: updating molecule atoms and adjnum")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {mol.adjnum=} {len(mol.adjnum)}") 
-            #if debug > 0: print(f"ATOM.RESET_MCONN: initial {mol.adjmat=} {(mol.adjmat).shape}")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {mol.atoms[mol_idx].madjnum=} {mol.atoms[mol_idx].adjnum=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: initial {met.madjnum=} {met.adjnum=}")
 
@@ -1229,13 +1199,13 @@ class metal(atom):
         atom.reset_charge(self)     ## First uses the generic atom class function for itself
         if hasattr(self,"poscharges"):   delattr(self,"poscharge")
 
+    ############
     def __repr__(self):
         to_print = ""
         to_print += f'------------- SCOPE METAL Object --------------\n'
         to_print += atom.__repr__(self, indirect=True)
         to_print += '-------------------------------------------------\n'
         return to_print
-
 
 ##############
 #### CELL ####
@@ -1697,48 +1667,6 @@ class cell(object):
                 to_print += f'    {idx}: {ref.formula} \n'
         return to_print
 
-
-#####################
-### SPLIT SPECIES ### 
-#####################
-#def split_species_from_object(obj: object, debug: int=0):
-#
-#    if not hasattr(obj,"adjmat"): obj.get_adjmatrix()
-#    if obj.adjmat is None: return None
-#
-#    degree = np.diag(self.adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
-#    lap = obj.adjmat - degree     # computes laplacian
-#
-#    # creates block matrix
-#    graph = csr_matrix(lap)
-#    perm = reverse_cuthill_mckee(graph)
-#    gp1 = graph[perm, :]
-#    gp2 = gp1[:, perm]
-#    dense = gp2.toarray()
-#
-#    # detects blocks in the block diagonal matrix called "dense"
-#    startlist, endlist = get_blocks(dense)
-#
-#    nblocks = len(startlist)
-#    # keeps track of the atom movement within the matrix. Needed later
-#    atomlist = np.zeros((len(dense)))
-#    for b in range(0, nblocks):
-#        for i in range(0, len(dense)):
-#            if (i >= startlist[b]) and (i <= endlist[b]):
-#                atomlist[i] = b + 1
-#    invperm = inv(perm)
-#    atomlistperm = [int(atomlist[i]) for i in invperm]
-#
-#    # assigns atoms to molecules
-#    blocklist = []
-#    for b in range(0, nblocks):
-#        atlist = []    # atom indices in the original ordering
-#        for i in range(0, len(atomlistperm)):
-#            if atomlistperm[i] == b + 1:
-#                atlist.append(indices[i])
-#        blocklist.append(atlist)
-#    return blocklist
-
 ######################
 ####    IMPORT    ####
 ######################
@@ -2031,13 +1959,6 @@ def import_ligand(lig: object, parent: object=None, debug: int=0) -> object:
         new_ligand.set_atoms(debug=debug)
         if debug > 0: print(f"IMPORT LIGAND: {len(new_ligand.atoms)} atoms created. Printed below")
         if debug > 0: print(new_ligand.atoms)
-    #else: 
-    #    if debug > 0: print(f"IMPORT LIGAND: importing atoms from old ligand")
-    #    atoms = []
-    #    for at in lig.atoms: 
-    #        new_atom = import_atom(at, parent=new_ligand, debug=debug)
-    #        atoms.append(new_atom)
-    #    new_ligand.set_atoms(atomlist=atoms, debug=debug)
             
     return new_ligand
 
@@ -2087,7 +2008,6 @@ def import_group(old_group: object, parent: object=None, debug: int=0) -> object
         if debug > 0: print(f"IMPORT GROUP: imported total charge but no atomic charges")
 
     ## Atoms
-    #if not hasattr(old_group,"atoms"):  
     if new_group.check_parent("molecule"):
         if debug > 0: print(f"IMPORT GROUP: importing atoms from molecule")
         ## Tries to get them from parent molecule if exists:
