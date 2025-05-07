@@ -194,32 +194,34 @@ class state(object):
 
         ## If it is a unit cell, then we need a list of molecules that should in principle be there. This is refmoleclist
         ## If the cell is created by cell2mol, then this list is already stored in the .cell object
-        if self._subject.type == "cell": 
+        elif self._subject.type == "cell": 
             assert hasattr(self,"cellvec")
             assert hasattr(self._subject,"refmoleclist")
 
-        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
-        self.fragmented = False
-        # First comparison with current moleclist
-        for mol in self.moleclist:
-            found = False
-            for rmol in self._subject.refmoleclist:
-                issame = compare_species(mol, rmol)  
-                if issame: found = True
-            if not found: self.fragmented = True
-        # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
-        if self.fragmented and reconstruct:
-            new_moleclist = self.reconstruct(debug=debug)
+            if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
             self.fragmented = False
-            for mol in new_moleclist:
+            # First comparison with current moleclist
+            for mol in self.moleclist:
                 found = False
                 for rmol in self._subject.refmoleclist:
                     issame = compare_species(mol, rmol)  
                     if issame: found = True
                 if not found: self.fragmented = True
-            if not self.fragmented: 
-                self.moleclist = new_moleclist
-                self.set_geometry_from_moleclist(debug=debug)
+            # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
+            if self.fragmented and reconstruct:
+                new_moleclist = self.reconstruct(debug=debug)
+                self.fragmented = False
+                for mol in new_moleclist:
+                    found = False
+                    for rmol in self._subject.refmoleclist:
+                        issame = compare_species(mol, rmol)  
+                        if issame: found = True
+                    if not found: self.fragmented = True
+                if not self.fragmented: 
+                    self.moleclist = new_moleclist
+                    self.set_geometry_from_moleclist(debug=debug)
+        else:
+            print(f"STATE.CHECK_FRAGMENTATION: Unknown Subject Type {self._subject.type}")
 
         return self.fragmented
 

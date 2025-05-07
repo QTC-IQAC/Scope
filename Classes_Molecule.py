@@ -36,6 +36,9 @@ class specie(object):
         ## Defaults
         self.cov_factor   = 1.3
         self.metal_factor = 1.0
+        
+        ## Bonds
+        self.has_bonds = False
 
     ############
     def add_parent(self, parent: object, indices: list, overwrite: bool=True, debug: int=0):
@@ -193,11 +196,19 @@ class specie(object):
                 if ismetal and debug > 0: print(f"SPECIE.SET_ATOMS: {l}")
                 if debug > 0:             print(f"SPECIE.SET_ATOMS: {ismetal=}")
 
-                # Prepares fractional coordiantes
-                if not hasattr(self,"frac_coord"): self.get_fractional_coord(debug=debug)
+                #################################
+                # Prepares fractional coordinates
+                #################################
+                # First tries to get it from parent cell, if exists
+                if not hasattr(self,"frac_coord"): 
+                    if self.check_parent("cell"):
+                       par = self.get_parent("cell")
+                       if hasattr(par,"cell_vector"): self.get_fractional_coord(debug=debug)
+                # If it managed, then it established the frac_coord to atoms 
                 if hasattr(self,"frac_coord"):
                     if ismetal: newatom = metal(l, self.coord[idx], self.frac_coord[idx], radii=self.radii[idx])
                     else:       newatom =  atom(l, self.coord[idx], self.frac_coord[idx],radii=self.radii[idx])
+                # Otherwise, frac_coord is empty
                 else :
                     if ismetal: newatom = metal(l, self.coord[idx], radii=self.radii[idx])
                     else:       newatom =  atom(l, self.coord[idx], radii=self.radii[idx])
@@ -473,7 +484,71 @@ class molecule(specie):
                 for entry in lig.haptic_type:
                     if entry not in self.haptic_type: self.haptic_type.append(entry)
         return self.haptic_type
+
+    ######################################################
+    def set_bonds(self, debug: int=0):
+        self.has_bonds = True
+        if self.iscomplex: 
+            if not hasattr(self,"metals") or not hasattr(self,"ligands"): self.split_complex(debug=debug)
+            for lig in self.ligands:
+                lig.set_bonds(debug=debug)   
+            self.set_metal_ligand_bonds(debug=debug)
+            self.set_metal_metal_bonds(debug=debug)
+        return True
+
+    ######################################################
+    def set_metal_ligand_bonds(self, debug: int=0):
+        if not self.iscomplex: return False
+        if not hasattr(self,"metals") or not hasattr(self,"ligands"): self.split_complex(debug=debug)
+        for lig in self.ligands:
+            for at in lig.atoms:
+                count = 0
+                for met in self.metals: 
+                    isconnected = at.check_connectivity(met, debug=debug)
+                    if isconnected:
+                        index_1 = at.get_parent_index("molecule")
+                        index_2 = met.get_parent_index("molecule")
+                        if index_1 < index_2 : 
+                            bond_startatom = at
+                            bond_endatom   = met
+                        else:
+                            bond_startatom = met
+                            bond_endatom   = at
+                        newbond = bond(bond_startatom, bond_endatom, 0.5, subtype="metal-ligand")
+
+                        at.add_bond(newbond)
+                        met.add_bond(newbond)
+                        count += 1 
+                if count != at.madjnum: 
+                    if debug >= 1: print(f"MOL.CREATE_BONDS: error creating bonds for atom: \n{at}\n of ligand: \n{lig}\n")
+                    if debug >= 1: print(f"MOL.CREATE_BONDS: count differs from atom.mconnec: {count}, {at.madjnum}")
+        return True
+
+    ######################################################
+    def set_metal_metal_bonds(self, debug: int=0):
+        if not self.iscomplex: return False
+        if not hasattr(self,"metals") or not hasattr(self,"ligands"): self.split_complex(debug=debug)
+        if len(self.metals) < 2: return False
+        if debug >= 1: print(f"MOL.CREATE_BONDS: Creating Metal-Metal Bonds for selfecule {self.formula}")
+        if debug >= 2: print(f"MOL.CREATE_BONDS: Metals: {self.metals}")
+        for idx, met1 in enumerate(self.metals):
+            for jdx, met2 in enumerate(self.metals):
+                if jdx > idx: 
+                    if met1.check_connectivity(met2, debug=debug):
+                        index_1 = met1.get_parent_index("molecule")
+                        index_2 = met2.get_parent_index("molecule")
+                        if index_1 < index_2 : 
+                            bond_startatom = met1
+                            bond_endatom   = met2
+                        else:
+                            bond_startatom = met2
+                            bond_endatom   = met1
+                        newbond = bond(bond_startatom, bond_endatom, 0, subtype="metal-metal")
+                        met1.add_bond(newbond) 
+                        met2.add_bond(newbond) 
+        return True
    
+    ######################################################
     def save(self, path):
         import pickle
         print(f"SAVING Molecule object to {path}")
@@ -624,6 +699,386 @@ class ligand(specie):
         return self.denticity 
 
     #######################################################
+    def fix_rdkit_obj(self, debug: int=0):
+        ## This function is used to fix the rdkit object of the ligand, which contained some errors if if comes from cell2mol
+        ## Eventually, this function could be move to specie class, provided that we can generate rdkit objects reliably using xyz2mol...
+        ## ... for any specie. 
+        ## Also, not it only fixes 4 types of patterns:
+        ## - N2-CSe+
+        ## - N-CSe+
+        ## - N2-CS+
+        ## - N-CS+
+        ## But more could be added in the future 
+        from rdkit import Chem
+        if not hasattr(self,"rdkit_obj"): return None
+
+        ## Initializes the rdkit object as mol
+        mol = self.rdkit_obj
+
+        #########################
+        # Fixes N2-CSe+ pattern # 
+        #########################
+        pattern = Chem.MolFromSmarts("[N--]C#[Se+]")
+        # Check if the substructure exists in the molecule
+        if mol.HasSubstructMatch(pattern):
+            matches = mol.GetSubstructMatches(pattern)
+            for match in matches:
+                atom_indices = {mol.GetAtomWithIdx(idx).GetAtomicNum(): idx for idx in match}
+                n_idx = atom_indices[7]    # Atomic number of nitrogen
+                c_idx = atom_indices[6]    # Atomic number of carbon
+                se_idx = atom_indices[34]  # Atomic number of selenium
+
+                # Get the editable version of the molecule
+                rw_mol = Chem.RWMol(mol)
+
+                # Replace the triple bond between C and Se with a double bond
+                rw_mol.RemoveBond(c_idx, se_idx)
+                rw_mol.AddBond(c_idx, se_idx, Chem.BondType.DOUBLE)
+
+                # Replace the single bond between N and C with a double bond
+                rw_mol.RemoveBond(n_idx, c_idx)
+                rw_mol.AddBond(n_idx, c_idx, Chem.BondType.DOUBLE)
+
+                if hasattr(self,"bonds"):
+                    # Also in the atoms object, using ligand indices
+                    bond = self.atoms[c_idx].find_bond(se_idx, "ligand")
+                    if bond is not None: bond.order = 2.0
+                    bond = self.atoms[n_idx].find_bond(c_idx, "ligand")
+                    if bond is not None: bond.order = 2.0
+
+                # Get Current Charges
+                fcharge_N  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
+                fcharge_Se = rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge()
+
+                # Update formal charges
+                rw_mol.GetAtomWithIdx(n_idx).SetFormalCharge(fcharge_N+1)   
+                rw_mol.GetAtomWithIdx(c_idx).SetFormalCharge(0)             
+                rw_mol.GetAtomWithIdx(se_idx).SetFormalCharge(fcharge_Se-1) 
+
+                # Also in ligand object
+                self.atoms[n_idx].charge  = fcharge_N+1
+                self.atoms[se_idx].charge = fcharge_Se-1
+
+                # Update the molecule
+                mol = rw_mol.GetMol()
+
+        #########################
+        # Fixes N-CSe+ pattern # 
+        #########################
+        pattern = Chem.MolFromSmarts("[N-]C#[Se+]")
+
+        # Check if the substructure exists in the molecule
+        if mol.HasSubstructMatch(pattern):
+            matches = mol.GetSubstructMatches(pattern)
+            for match in matches:
+                atom_indices = {mol.GetAtomWithIdx(idx).GetAtomicNum(): idx for idx in match}
+                n_idx = atom_indices[7]    # Atomic number of nitrogen
+                c_idx = atom_indices[6]    # Atomic number of carbon
+                se_idx = atom_indices[34]  # Atomic number of selenium
+
+                # Get the editable version of the molecule
+                rw_mol = Chem.RWMol(mol)
+
+                # Replace the triple bond between C and Se with a double bond
+                rw_mol.RemoveBond(c_idx, se_idx)
+                rw_mol.AddBond(c_idx, se_idx, Chem.BondType.DOUBLE)
+
+                # Replace the single bond between N and C with a double bond
+                rw_mol.RemoveBond(n_idx, c_idx)
+                rw_mol.AddBond(n_idx, c_idx, Chem.BondType.DOUBLE)
+
+                if hasattr(self,"bonds"):
+                    # Also in the atoms object, using ligand indices
+                    bond = self.atoms[c_idx].find_bond(se_idx, "ligand")
+                    bond.order = 2.0
+                    bond = self.atoms[n_idx].find_bond(c_idx, "ligand")
+                    bond.order = 2.0
+
+                # Get Current Charges
+                fcharge_N  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
+                fcharge_Se = rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge()
+
+                # Update formal charges
+                rw_mol.GetAtomWithIdx(n_idx).SetFormalCharge(fcharge_N+1)   
+                rw_mol.GetAtomWithIdx(c_idx).SetFormalCharge(0)             
+                rw_mol.GetAtomWithIdx(se_idx).SetFormalCharge(fcharge_Se-1) 
+
+                # Also in ligand object
+                self.atoms[n_idx].charge  = fcharge_N+1
+                self.atoms[se_idx].charge = fcharge_Se-1
+
+                # Update the molecule
+                mol = rw_mol.GetMol()
+
+        ########################
+        # Fixes N2-CS+ pattern # 
+        ########################
+        pattern = Chem.MolFromSmarts("[N--]C#[S+]")
+
+        # Check if the substructure exists in the molecule
+        if mol.HasSubstructMatch(pattern):
+            matches = mol.GetSubstructMatches(pattern)
+            for match in matches:
+                atom_indices = {mol.GetAtomWithIdx(idx).GetAtomicNum(): idx for idx in match}
+                n_idx = atom_indices[7]   # Atomic number of nitrogen
+                c_idx = atom_indices[6]   # Atomic number of carbon
+                s_idx = atom_indices[16]  # Atomic number of sulfur
+
+                # Get the editable version of the molecule
+                rw_mol = Chem.RWMol(mol)
+
+                # Replace the triple bond between C and Se with a double bond
+                rw_mol.RemoveBond(c_idx, s_idx)
+                rw_mol.AddBond(c_idx, s_idx, Chem.BondType.DOUBLE)
+
+                # Replace the single bond between N and C with a double bond
+                rw_mol.RemoveBond(n_idx, c_idx)
+                rw_mol.AddBond(n_idx, c_idx, Chem.BondType.DOUBLE)
+
+                if hasattr(self,"bonds"):
+                    # Also in the atoms object, using ligand indices
+                    bond = self.atoms[c_idx].find_bond(s_idx, "ligand")
+                    bond.order = 2.0
+                    bond = self.atoms[n_idx].find_bond(c_idx, "ligand")
+                    bond.order = 2.0
+
+                # Get Current Charges
+                fcharge_N  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
+                fcharge_S  = rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge()
+
+                # Update formal charges
+                rw_mol.GetAtomWithIdx(n_idx).SetFormalCharge(fcharge_N+1)   
+                rw_mol.GetAtomWithIdx(c_idx).SetFormalCharge(0)             
+                rw_mol.GetAtomWithIdx(s_idx).SetFormalCharge(fcharge_S-1) 
+
+                # Also in ligand object
+                self.atoms[n_idx].charge  = fcharge_N+1
+                self.atoms[s_idx].charge  = fcharge_S-1
+
+                # Update the molecule
+                mol = rw_mol.GetMol()
+
+        #######################
+        # Fixes N-CS+ pattern # 
+        #######################
+        pattern = Chem.MolFromSmarts("[N-]C#[S+]")
+
+        # Check if the substructure exists in the molecule
+        if mol.HasSubstructMatch(pattern):
+            matches = mol.GetSubstructMatches(pattern)
+            for match in matches:
+                atom_indices = {mol.GetAtomWithIdx(idx).GetAtomicNum(): idx for idx in match}
+                n_idx = atom_indices[7]   # Atomic number of nitrogen
+                c_idx = atom_indices[6]   # Atomic number of carbon
+                s_idx = atom_indices[16]  # Atomic number of sulfur
+
+                # Get the editable version of the molecule
+                rw_mol = Chem.RWMol(mol)
+
+                # Replace the triple bond between C and Se with a double bond
+                rw_mol.RemoveBond(c_idx, s_idx)
+                rw_mol.AddBond(c_idx, s_idx, Chem.BondType.DOUBLE)
+
+                # Replace the single bond between N and C with a double bond
+                rw_mol.RemoveBond(n_idx, c_idx)
+                rw_mol.AddBond(n_idx, c_idx, Chem.BondType.DOUBLE)
+
+                if hasattr(self,"bonds"):
+                    # Also in the atoms object, using ligand indices
+                    bond = self.atoms[c_idx].find_bond(s_idx, "ligand")
+                    if bond is not None: bond.order = 2.0
+                    bond = self.atoms[n_idx].find_bond(c_idx, "ligand")
+                    if bond is not None: bond.order = 2.0
+
+                # Get Current Charges
+                fcharge_N  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
+                fcharge_S  = rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge()
+
+                # Update formal charges
+                rw_mol.GetAtomWithIdx(n_idx).SetFormalCharge(fcharge_N+1)   
+                rw_mol.GetAtomWithIdx(c_idx).SetFormalCharge(0)             
+                rw_mol.GetAtomWithIdx(s_idx).SetFormalCharge(fcharge_S-1) 
+
+                # Also in ligand object
+                self.atoms[n_idx].charge  = fcharge_N+1
+                self.atoms[s_idx].charge  = fcharge_S-1
+
+                # Update the molecule
+                mol = rw_mol.GetMol()
+
+        #####################
+        # Fixes Added atoms # 
+        #####################
+        n_atoms       = self.natoms 
+        n_atoms_rdkit = mol.GetNumAtoms() 
+        if n_atoms_rdkit > n_atoms:
+            if debug > 0: print(f"Fixing_Added_Atoms: {n_atoms=} {n_atoms_rdkit=}")
+            rw_mol = Chem.RWMol(mol)
+            to_remove = []
+            for a in rw_mol.GetAtoms():
+                i    = a.GetIdx()
+                neig = a.GetNeighbors()
+                if i > n_atoms-1:
+                    label = a.GetSymbol()
+                    if debug > 0: print(f"FIX_RDKIT: Atom {i=} {label=} flagged for removal")
+                    #rw_mol.RemoveAtom(i)
+                    to_remove.append(i)
+                    for n in neig:
+                        fcharge = n.GetFormalCharge()
+                        if   label == 'H' : n.SetFormalCharge(fcharge-1) 
+                        elif label == 'O' : n.SetFormalCharge(fcharge-2)
+                        elif label == 'Cl': n.SetFormalCharge(fcharge+1)
+                        else: 
+                            if debug > 0: print(f"FIX_RDKIT: Unknown atom type as added atom {label=}")
+
+            if len(to_remove) > 0:
+                to_remove.sort(reverse=True)
+                for idx, r in enumerate(to_remove):
+                    if debug > 0: print(f"FIX_RDKIT: removing atom {r=}")
+                    rw_mol.RemoveAtom(r)
+            
+            mol = rw_mol.GetMol()
+
+        #######################################
+        # Fixes Zwitterions in Adjacent Atoms #
+        #######################################
+        rw_mol = Chem.RWMol(mol)
+        for a in rw_mol.GetAtoms():
+            ## Searches for adjacent atoms with opposite formal charges
+            fcharge = a.GetFormalCharge()
+            if fcharge > 0:
+                label = a.GetSymbol()
+                neig = a.GetNeighbors()
+                neig_labels = [n.GetSymbol() for n in neig]
+                idx = a.GetIdx()
+
+                fix = True
+                ## Except Nitrosyls
+                if label == 'N' and len(neig) == 2 and neig_labels.count('O') == 2: fix = False
+                
+                ## If Must be fixed
+                if fix: 
+                    for n in neig:
+                        if n.GetIdx() > idx:
+                            compensated_charge = n.GetFormalCharge() + fcharge 
+                            ## Initiates Correction
+                            if compensated_charge == 0:
+                                a.SetFormalCharge(0)
+                                n.SetFormalCharge(0)
+        mol = rw_mol.GetMol()
+
+        ## Sanitize Step. Rdkit it too restrictive sometimes, but I still prefer to use it
+        ## If it fails, it returns the original rdkit_obj
+        try:
+            Chem.SanitizeMol(mol)
+        except Exception as exc:
+            if debug > 0: print("Error Sanitizing the 'fixed' rdkit object. Preserving old one")
+            if debug > 0: print("The attempt that failed at sanitizing is stored as self.failed_rdkit_obj")
+            self.failed_rdkit_obj = mol
+            return self.rdkit_obj
+        self.rdkit_obj = mol
+        return self.rdkit_obj
+
+    ######################################################
+    def set_bonds(self, debug: int=0):
+        ## Creats bond objects using the information contained in the RDKit object
+        ## The RDKit object is necessary, as it is the only one that contains the bond order information (lewis structure)
+        if not hasattr(self,"rdkit_obj"): return False
+        self.has_bonds = True
+        n_atoms = self.natoms 
+        n_atoms_rdkit = self.rdkit_obj.GetNumAtoms() 
+        if debug >= 1: print(f"CREATE_bonds: {self.formula=}, {self.subtype=} {self.smiles=}")
+
+        if n_atoms == n_atoms_rdkit:  
+            if debug >= 2: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are equal: {n_atoms} {n_atoms_rdkit}")
+
+            for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8
+                if debug >= 2: print(f"\t{idx=}", rdkit_atom.GetSymbol(), "Number of bonds in rdkit_obj:", len(rdkit_atom.GetBonds()))
+                if len(rdkit_atom.GetBonds()) == 0:
+                    if debug >= 1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} due to no bonds in {self.subtype} RDKit object")
+                else:
+                    for b in rdkit_atom.GetBonds():
+                        bond_startatom = b.GetBeginAtomIdx()
+                        bond_endatom   = b.GetEndAtomIdx()
+                        bond_order     = b.GetBondTypeAsDouble()
+
+                        ## Checks the labels involved in the bond
+                        if self.atoms[bond_endatom].label != self.rdkit_obj.GetAtomWithIdx(bond_endatom).GetSymbol():
+                            if debug >= 1: print(f"\tError with Bond EndAtom", self.atoms[bond_endatom].label, self.rdkit_obj.GetAtomWithIdx(bond_endatom).GetSymbol())
+                        else:
+                            if bond_endatom == idx:
+                                start = bond_endatom
+                                end   = bond_startatom
+                            elif bond_startatom == idx:
+                                start = bond_startatom
+                                end   = bond_endatom      
+
+                            # create new bond object and add it to both atoms
+                            if end > start:
+                                if debug >=2: print(f"\tBOND CREATED", idx, start, end, bond_order, self.atoms[start].label, self.atoms[end].label)
+                                new_bond = bond(self.atoms[start], self.atoms[end], bond_order)
+                                self.atoms[start].add_bond(new_bond)
+                                self.atoms[end].add_bond(new_bond)
+                
+                    if hasattr(self.atoms[idx], "bonds"):
+                        if debug >=1 : print(f"\tBONDS", [(bd.atom1.label, bd.atom2.label, bd.order, round(bd.distance,3)) for bd in self.atoms[idx].bonds])
+                    else:
+                        if self.natoms == 1:
+                            if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.subtype} object")
+                            pass
+                        else:
+                            if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.subtype} RDKit object index {idx}. Please check the RDKit object.")
+                            return False # return False if no bonds are created
+        else:
+            if debug >= 1: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are different: {n_atoms} {n_atoms_rdkit}")
+            if debug >= 2: print(f"\t{[(i, atom.label) for i, atom in enumerate(self.atoms)]}")
+            if debug >= 2: print(f"\t{[(i, atom.GetSymbol()) for i, atom in enumerate(self.rdkit_obj.GetAtoms())]}")       
+            non_bonded_atoms = list(range(0, n_atoms_rdkit))[n_atoms:]
+            if debug >= 2: print(f"\tNON_BONDED_ATOMS", non_bonded_atoms)
+
+            for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+                if debug >= 2: print(f"\t{idx=}", rdkit_atom.GetSymbol(), "Number of bonds :", len(rdkit_atom.GetBonds()))
+                if len(rdkit_atom.GetBonds()) == 0:
+                    if debug >= 1: print(f"\tNO BONDS CREATED for {rdkit_atom.GetSymbol()} due to no bonds in {self.subtype} RDKit object")
+                else:
+                    for b in rdkit_atom.GetBonds():
+                        bond_startatom = b.GetBeginAtomIdx()
+                        bond_endatom   = b.GetEndAtomIdx()
+                        bond_order     = b.GetBondTypeAsDouble()
+  
+                        if bond_startatom in non_bonded_atoms or bond_endatom in non_bonded_atoms:
+                            if debug >= 2: print(f"\tNO BOND CREATED {bond_startatom=} or {bond_endatom=} is not in the self.atoms. It belongs to {non_bonded_atoms=}.")
+                        else :
+                            if bond_endatom == idx:
+                                start = bond_endatom
+                                end   = bond_startatom
+                            elif bond_startatom == idx:
+                                start = bond_startatom
+                                end   = bond_endatom   
+
+                            # create new bond object and add it to both atoms
+                            if end > start:
+                                if debug >=2: print(f"\tBOND CREATED", idx, start, end, bond_order, self.atoms[start].label, self.atoms[end].label)
+                                new_bond = bond(self.atoms[start], self.atoms[end], bond_order)
+                                self.atoms[start].add_bond(new_bond)
+                                self.atoms[end].add_bond(new_bond)
+                
+                    if idx not in non_bonded_atoms:
+                        if hasattr(self.atoms[idx], "bonds"):
+                            if debug >=2: 
+                                print(f"\tBONDS", [(bd.atom1.label, bd.atom2.label, bd.order, round(bd.distance,3)) for bd in self.atoms[idx].bonds])
+                        else:
+                            if self.natoms == 1:
+                                if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.subtype} object")
+                                pass
+                            else:
+                                if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.subtype} RDKit object index {idx}. Please check the RDKit object.")
+                                return False # return False if no bonds are created
+                    else :
+                        if debug >=1: print(f"\tNO BONDS for {rdkit_atom.GetSymbol()} with {self.subtype} RDKit object index {idx} because it is an added atom")
+        return True 
+
+    #######################################################
     def __repr__(self):
         to_print = ""
         to_print += f'------------- SCOPE LIGAND Object --------------\n'
@@ -742,8 +1197,9 @@ class group(specie):
 ### BOND ######
 ###############
 class bond(object):
-    def __init__(self, atom1: object, atom2: object, bond_order: int=1):
+    def __init__(self, atom1: object, atom2: object, bond_order: int=1, subtype: str="intraspecie"):
         self.type       = "bond"
+        self.subtype    = subtype
         self.version    = "2.0"
         self.atom1      = atom1
         self.atom2      = atom2
@@ -751,11 +1207,13 @@ class bond(object):
         self.distance   = np.linalg.norm(np.array(atom1.coord) - np.array(atom2.coord))
 
     def __repr__(self):
-        to_print += f'------------- SCOPE BOND Object --------------\n'
+        to_print = f'------------- SCOPE BOND Object --------------\n'
         to_print += f' Version               = {self.version}\n'
         to_print += f' Type                  = {self.type}\n'
-        to_print += f' Atom 1                = {self.atom1.parent_index}\n'
-        to_print += f' Atom 2                = {self.atom2.parent_index}\n'
+        to_print += f' Atom 1                = {self.atom1.get_parent_index("molecule")}\n'
+        to_print += f' Atom 2                = {self.atom2.get_parent_index("molecule")}\n'
+        to_print += f' Label 1               = {self.atom1.label}\n'
+        to_print += f' Label 2               = {self.atom2.label}\n'
         to_print += f' Bond Order            = {self.order}\n'
         to_print += f' Distance              = {round(self.distance,3)}\n'
         to_print += '-------------------------------------------------\n'
@@ -775,6 +1233,7 @@ class atom(object):
         self.block           = elemdatabase.elementblock[label]
         self.parents         = []
         self.parents_index   = []
+        self.bonds           = []
         self.formula         = label
 
         if frac_coord is not None:        self.frac_coord = frac_coord
@@ -857,6 +1316,18 @@ class atom(object):
         if isgood and adjnum[0] > 0: return True
         else:                        return False
 
+    #######################################################
+    def find_bond(self, end_idx: int, parent_str: str, debug: int=0):
+        ## Finds bond object in self.bonds. It needs an index, and the parent string to identify the parent.
+        ## Remember indices change between parents
+        if not hasattr(self,"bonds"): self.bonds = []
+        for b in self.bonds:
+            if   b.atom1.get_parent_index(parent_str) == end_idx and b.atom2.get_parent_index(parent_str) == self.get_parent_index(parent_str):
+                return b
+            elif b.atom2.get_parent_index(parent_str) == end_idx and b.atom1.get_parent_index(parent_str) == self.get_parent_index(parent_str):
+                return b
+        return None
+            
     #######################################################
     def add_bond(self, newbond: object, debug: int=0):
         if not hasattr(self,"bonds"): self.bonds = []
