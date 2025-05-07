@@ -943,6 +943,7 @@ class ligand(specie):
         # Fixes Zwitterions in Adjacent Atoms #
         #######################################
         rw_mol = Chem.RWMol(mol)
+        isnitrosyl = False
         for a in rw_mol.GetAtoms():
             ## Searches for adjacent atoms with opposite formal charges
             fcharge = a.GetFormalCharge()
@@ -952,9 +953,12 @@ class ligand(specie):
                 neig_labels = [n.GetSymbol() for n in neig]
                 idx = a.GetIdx()
 
+                if debug > 0: print(f"FIX_RDKIT:{neig_labels=} {label=} {neig_labels.count('O')=}")
                 fix = True
                 ## Except Nitrosyls
-                if label == 'N' and len(neig) == 2 and neig_labels.count('O') == 2: fix = False
+                if label == 'N' and len(neig) == 3 and neig_labels.count('O') == 2: 
+                    fix = False
+                    isnitrosyl = True
                 
                 ## If Must be fixed
                 if fix: 
@@ -967,17 +971,35 @@ class ligand(specie):
                                 n.SetFormalCharge(0)
         mol = rw_mol.GetMol()
 
+        ##################
         ## Sanitize Step. Rdkit it too restrictive sometimes, but I still prefer to use it
-        ## If it fails, it returns the original rdkit_obj
+        ##################
+        ## If nitrosyl has been detected. Sanitize will fail
+        if isnitrosyl:
+            if debug > 0: print("Found nitrosyl group. RDKIT will fail at sanitizing. Preserving old one")
+            if debug > 0: print("The mol-object attempt that failed is stored as self.failed_rdkit_obj")
+            self.failed_rdkit_obj = mol
+            return self.rdkit_obj
+
+        ## Otherwise we try to sanitize
         try:
             Chem.SanitizeMol(mol)
         except Exception as exc:
             if debug > 0: print("Error Sanitizing the 'fixed' rdkit object. Preserving old one")
-            if debug > 0: print("The attempt that failed at sanitizing is stored as self.failed_rdkit_obj")
+            if debug > 0: print("The mol-object attempt that failed is stored as self.failed_rdkit_obj")
             self.failed_rdkit_obj = mol
             return self.rdkit_obj
+
+        ## If everything worked, we have new rdkit_obj
         self.rdkit_obj = mol
         return self.rdkit_obj
+
+    ######################################################
+    def set_smiles_from_rdkit_obj(self, debug: int=0):
+        from rdkit import Chem
+        if not hasattr(self,"rdkit_obj"): return None
+        self.smiles = Chem.MolToSmiles(self.rdkit_obj)
+        return self.smiles
 
     ######################################################
     def set_bonds(self, debug: int=0):
