@@ -365,13 +365,15 @@ class specie(object):
         if hasattr(self,'subtype'): to_print += f' Sub-Type              = {self.subtype}\n'
         to_print += f' Number of Atoms       = {self.natoms}\n'
         to_print += f' Formula               = {self.formula}\n'
-        if hasattr(self,"adjmat"):     to_print += f' Has Adjacency Matrix  = YES\n'
-        else:                          to_print += f' Has Adjacency Matrix  = NO \n'
         if hasattr(self,"parents"):    to_print += f' Number of Parents     = {len(self.parents)}\n'
         if hasattr(self,"occurrence"): to_print += f' Occurrence in Parent  = {self.occurrence}\n'
         if hasattr(self,"totcharge"):  to_print += f' Total Charge          = {self.totcharge}\n'
         if hasattr(self,"spin"):       to_print += f' Spin                  = {self.spin}\n'
         if hasattr(self,"smiles"):     to_print += f' SMILES                = {self.smiles}\n'
+        if hasattr(self,"adjmat"):     to_print += f' Has Adjacency Matrix  = YES\n'
+        else:                          to_print += f' Has Adjacency Matrix  = NO \n'
+        if hasattr(self,"bonds"):      to_print += f' Has Bonds             = YES\n'
+        else:                          to_print += f' Has Bonds             = NO \n'
         if not indirect: to_print += '------------------------------------------------\n'
         return to_print
 
@@ -1230,14 +1232,14 @@ class bond(object):
 
     def __repr__(self):
         to_print = f'------------- SCOPE BOND Object --------------\n'
-        to_print += f' Version               = {self.version}\n'
-        to_print += f' Type                  = {self.type}\n'
-        to_print += f' Atom 1                = {self.atom1.get_parent_index("molecule")}\n'
-        to_print += f' Atom 2                = {self.atom2.get_parent_index("molecule")}\n'
-        to_print += f' Label 1               = {self.atom1.label}\n'
-        to_print += f' Label 2               = {self.atom2.label}\n'
-        to_print += f' Bond Order            = {self.order}\n'
-        to_print += f' Distance              = {round(self.distance,3)}\n'
+        to_print += f' Version                 = {self.version}\n'
+        to_print += f' Type                    = {self.type}\n'
+        to_print += f' Atom1 Index in Molecule = {self.atom1.get_parent_index("molecule")}\n'
+        to_print += f' Atom2 Index in Molecule = {self.atom2.get_parent_index("molecule")}\n'
+        to_print += f' Label Atom1             = {self.atom1.label}\n'
+        to_print += f' Label Atom2             = {self.atom2.label}\n'
+        to_print += f' Formal Bond Order       = {self.order}\n'
+        to_print += f' Distance                = {round(self.distance,3)}\n'
         to_print += '-------------------------------------------------\n'
         return to_print
 
