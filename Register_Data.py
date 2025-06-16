@@ -100,6 +100,7 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
     ### Also forces, but they do not condition "worked" or "isgood"
     forces = comp.output.get_forces_last_complete_block()
     if forces is not None:
+        exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
         fstate.set_forces(forces)
 
     return worked

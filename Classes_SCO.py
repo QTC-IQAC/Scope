@@ -12,7 +12,7 @@ from Scope.Structure_SCO import geom_sco_from_xyz, guess_spin_state
 from Scope.Read_Write import save_binary, load_binary, print_xyz
 from Scope.Classes_State import state
 from Scope.Classes_Molecule import *
-from Scope.Bibliography import *
+#from Scope.Bibliography import *
 
 from Scope.Workflow import Branch
 from Scope.Workflow.Branch import *

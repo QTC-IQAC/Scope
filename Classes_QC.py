@@ -1,5 +1,6 @@
 import sys
 import os
+import numpy as np
 
 from Scope.Parse_General import search_string, read_lines_file 
 from Scope.Unit_cell_tools import get_unit_cell_volume
@@ -21,14 +22,29 @@ class VNM(object):
         self.force_cnt = force_cnt
         self.IR_int = IR_int
         self.sym = sym
+        self.haseigenvec = False
 
     def eigenvec(self, atomidxs: list, atnums: list, xs: list, ys: list, zs: list):
         self.atomidxs = atomidxs
         self.atnums = atnums
         self.labels = [elemdatabase.elementsym[atnum] for atnum in atnums]
+        self.masses = [elemdatabase.elementweight[l] for l in self.labels]
         self.xs = xs
         self.ys = ys
         self.zs = zs
+        self.eigenvec_format1 = np.column_stack([xs, ys, zs])
+        self.eigenvec_format2 = np.column_stack([xs, ys, zs]).reshape(-1)
+        self.haseigenvec = True
+
+    def __repr__(self) -> None:
+        to_print  = f'-----------------------------\n'
+        to_print +=  '   Vibrational Normal Mode   \n'
+        to_print += f'-----------------------------\n'
+        to_print += f' Index                 = {self.index}\n'
+        to_print += f' Freq (cm-1)           = {self.freq_cm}\n'
+        to_print += f' IR_int                = {self.IR_int}\n'
+        to_print += f' Has eigenvector       = {self.haseigenvec}\n'
+        return to_print
 
 class orbital_set(object):
     def __init__(self, name: str) -> None:

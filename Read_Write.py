@@ -4,12 +4,56 @@ import os
 import shutil
 from ast import literal_eval
 
-#from Scope.Other import str_to_list
-
+###########
+## Other ##
+###########
 def center_geom(coord: list, origin_atom_idx: int):
     ref = np.array(coord[origin_atom_idx])
     new_coord = np.array(coord)-ref
     return new_coord
+
+def save_list_as_text(inplist: list, pathfile: str=os.getcwd()+"outfile.txt"):
+    with open(pathfile, "w") as fil:
+        for l in inplist:
+            print(l, file=fil)
+
+def read_user_input(message: str, rtext: bool=False, rtext_options: list=[], rtype: bool=False, rtype_options: list=[], limit_attempts: bool=True, attempts: int=3, debug: int=0):
+    att = 0
+    correct = False
+    if limit_attempts:
+        while att < attempts and not correct:
+            opt = input(message)
+            if debug > 0: print(f"Read opt={opt}, of type={type(opt)}, rtype={rtype}, rtext={rtext}")
+            if rtext and not rtype:
+                if opt in rtext_options:                                correct = True
+                else:                                                   correct = False; att += 1
+            elif rtype and not rtext:
+                try:        opt = literal_eval(opt); isstr = False
+                except:     isstr = True
+                if debug > 0: print(f"isstr={isstr}, opt={opt}, type={type(opt)}")
+
+                if type(opt) in rtype_options:                          correct = True
+                else:                                                   correct = False; att += 1
+
+            elif rtype and rtext:
+                if type(opt) in rtype_options and opt in rtext_options: correct = True
+                else:                                                   correct = False; att += 1
+            else: correct = True
+            if debug > 0: print(f"correct={correct}, #attempt={att}")
+
+            if not correct: print(f"Please, try again. Options are: {rtext_options}")
+        if correct: return opt
+        else:       return None
+
+##############
+## Binaries ##
+##############
+def load_binary(pathfile):
+    import pickle
+    with open(pathfile, "rb") as pickle_file:
+        binary = pickle.load(pickle_file)
+    return binary
+
 
 def save_binary(variable, pathfile, backup: bool=False):
     pathfile = pathfile.replace("lustre","home")
@@ -23,32 +67,29 @@ def save_binary(variable, pathfile, backup: bool=False):
             print(exc)
     if backup:
         print("Backup not implemented, file not saved")
-#        if os.path.isfile(pathfile):
-#            saved = False
-#            idx = 1
-#            while not saved and idx < 11:
-#                new_pathfile = pathfile+"_backup"+str(idx)
-#                if not os.path.isfile(new_pathfile): 
-#                    shutil.copy(pathfile, new_pathfile) 
-#                    file = open(pathfile,'wb')
-#                    pickle.dump(variable,file)
-#                    file.close()
-#                    saved = True 
 
-#######################
-def load_binary(pathfile):
-    import pickle
-    with open(pathfile, "rb") as pickle_file:
-        binary = pickle.load(pickle_file)
-    return binary
+#####################
+## Plain XYZ Files ##
+#####################
+def read_xyz(xyz_file):
+    assert(xyz_file[-4:] == ".xyz")
+    labels = []
+    coord = []
+    try:    xyz = open(xyz_file, "r")
+    except: print("Could not read xyz file: {0}".format(xyz_file))
+    n_atoms = xyz.readline()
+    title = xyz.readline()
+    for line in xyz:
+        line_data = line.split()
+        if len(line_data) == 4:
+            label, x, y, z = line.split()
+            coord.append([float(x), float(y), float(z)])
+            labels.append(label)
+        else:
+            print("I can't read the xyz. It has =/ than 4 columns")
+    xyz.close()
+    return labels, coord
 
-#######################
-def save_list_as_text(inplist: list, pathfile: str=os.getcwd()+"outfile.txt"):
-    with open(pathfile, "w") as fil:
-        for l in inplist:
-            print(l, file=fil)
-
-#######################
 def writexyz(fdir, fname, labels, coord, charge: int=0, spin: int=1):
     if fdir[-1] != "/":
         fdir = fdir + "/"
@@ -60,6 +101,9 @@ def writexyz(fdir, fname, labels, coord, charge: int=0, spin: int=1):
         for idx, l in enumerate(labels):
             print("%s  %.6f  %.6f  %.6f" % (l, coord[idx][0], coord[idx][1], coord[idx][2]),file=fil)
 
+#######################
+## MACE ExtXYZ Files ##
+#######################
 def write_xyz_forces_energy(fdir, fname, labels, coord, forces, energy, charge: int=0, spin: int=1, other=None):
     if fdir[-1] != "/":
         fdir = fdir + "/"
@@ -90,67 +134,45 @@ def write_data_MACE_extxyz(fdir, fname, labels, coord, forces, energy, charge: i
         for idx, l in enumerate(labels):
             print(total_fmt.format(l, *coord[idx], 0, *forces[idx]), file=fil)
             
+###########
+## Print ##
+###########
 def print_xyz(labels, coord):
     for idx, l in enumerate(labels):
         print("%s  %.6f  %.6f  %.6f" % (l, coord[idx][0], coord[idx][1], coord[idx][2]))
 
+#########
+## ASE ##
+#########
+def write_ase_cell(symbols, positions, cell=None, filename='structure.cif'):
+    from ase import Atoms
+    from ase.io import write
+    """
+    Save a crystal structure using ASE.
 
-#######################
-def read_xyz(xyz_file):
-    assert(xyz_file[-4:] == ".xyz")
-    
-    labels = []
-    coord = []
-    
-    try:    xyz = open(xyz_file, "r")
-    except: print("Could not read xyz file: {0}".format(xyz_file))
+    Parameters:
+    - symbols: list of str, chemical symbols (e.g., ['C', 'H', 'H', 'H'])
+    - positions: list of lists or Nx3 array of atomic positions in Å
+    - cell: 3x3 list or array representing the unit cell vectors
+    - filename: output file name (e.g., 'structure.cif', 'structure.xyz', 'structure.traj')
+    - pbc: bool or 3-tuple, periodic boundary conditions (default: True)
+    """
+    if cell is not None: atoms = Atoms(symbols=symbols, positions=positions, cell=cell, pbc=True)
+    else:                atoms = Atoms(symbols=symbols, positions=positions, pbc=False)
+    write(filename, atoms)
 
-    n_atoms = xyz.readline()
-    title = xyz.readline()
-    for line in xyz:
-        line_data = line.split()
-        if len(line_data) == 4:
-            label, x, y, z = line.split()
-            coord.append([float(x), float(y), float(z)])
-            labels.append(label)
-        else:
-            print("I can't read the xyz. It has =/ than 4 columns")
+def read_ase_atoms(filename):
+    atoms = read(filename)
+    print(f" Structure read from '{filename}':")
+    print(f" Number of atoms: {len(atoms)}")
+    print(f" Chemical symbols: {atoms.get_chemical_symbols()}")
+    print(f" Positions (Å):\n{atoms.get_positions()}")
+    print(f" Periodic boundary conditions: {atoms.get_pbc()}")
+    return atoms
 
-    xyz.close()
-    return labels, coord
-
-def read_user_input(message: str, rtext: bool=False, rtext_options: list=[], rtype: bool=False, rtype_options: list=[], limit_attempts: bool=True, attempts: int=3, debug: int=0):
-    att = 0
-    correct = False
-    if limit_attempts:
-        while att < attempts and not correct:
-            opt = input(message)
-            if debug > 0: print(f"Read opt={opt}, of type={type(opt)}, rtype={rtype}, rtext={rtext}")
-            if rtext and not rtype:
-                if opt in rtext_options:                                correct = True
-                else:                                                   correct = False; att += 1
-            elif rtype and not rtext:
-                try:        opt = literal_eval(opt); isstr = False
-                except:     isstr = True
-                if debug > 0: print(f"isstr={isstr}, opt={opt}, type={type(opt)}")
-
-                if type(opt) in rtype_options:                          correct = True
-                else:                                                   correct = False; att += 1
-
-            elif rtype and rtext:
-                if type(opt) in rtype_options and opt in rtext_options: correct = True
-                else:                                                   correct = False; att += 1
-            else: correct = True
-            if debug > 0: print(f"correct={correct}, #attempt={att}")
-            
-            if not correct: print(f"Please, try again. Options are: {rtext_options}")
-        if correct: return opt
-        else:       return None
-
-
-#####################
-### VISUALIZATION ###
-#####################
+##########################
+## For .view() function ##
+##########################
 def set_scene(fig, positions, padding=1.0, width: int=500, height: int=500):
     xmin, xmax = positions[:,0].min() - padding, positions[:,0].max() + padding
     ymin, ymax = positions[:,1].min() - padding, positions[:,1].max() + padding
@@ -164,6 +186,9 @@ def set_scene(fig, positions, padding=1.0, width: int=500, height: int=500):
 
     fig.update_layout(width=width,height=height)
 
+#####################################
+## I don't know where this is used ##
+#####################################
 def prepare_specie_figure(specie, bond_thr):
     import plotly.graph_objects as go
     from scipy.spatial.distance import cdist
@@ -235,7 +260,6 @@ def prepare_specie_figure(specie, bond_thr):
         bond_pairs.append((i, j))
 
     midpoints = np.array(midpoints)
-
 
     # Return figure, midpoints, and bond pairs (for bond-related data plotting)
     return fig, midpoints, bond_pairs

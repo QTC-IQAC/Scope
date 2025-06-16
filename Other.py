@@ -9,6 +9,56 @@ class HiddenPrints:
         sys.stdout.close()
         sys.stdout = self._original_stdout
 
+#############
+def rmsd(labels1, coord1, labels2, coord2, reorder=True, debug: int=0):
+    from Scope.Adapted_from_cell2mol import compute_centroid
+    from Scope.Reconstruct import reorder_hungarian
+    from Scope.Read_Write  import print_xyz
+
+    """
+    Compute the RMSD between two sets of coordinates
+    Consider Expanding the data that is sent to hungarian. Currently only labels...
+    ...but other data such as adjnum could be added 
+    """
+    ## Ensure both species have the same number of atoms
+    if len(labels1) != len(labels2):
+        raise ValueError("The number of atoms in the two lists must be the same.")
+
+    ## Arranges data
+    labels1 = np.array([f"{l}" for l in labels1])
+    labels2 = np.array([f"{l}" for l in labels2])
+
+    coords1 = np.array(coord1) - compute_centroid(coord1)
+    coords2 = np.array(coord2) - compute_centroid(coord2)
+
+    if reorder:
+        idx = reorder_hungarian(labels1, labels2, coords1, coords2)
+        coords2 = coords2[idx]
+        labels2 = labels2[idx]
+
+    U = kabsch_rotate(coords1, coords2)
+    aligned_coords2 = np.dot(coords2, U.T)
+
+    if debug > 0: print("Coordinates for self:")
+    if debug > 0: print_xyz(labels1, coords1)
+    if debug > 0: print("Aligned Coordinates for other:")
+    if debug > 0: print_xyz(labels2, aligned_coords2)
+
+    rmsd = np.sqrt(np.mean(np.sum((coords1 - aligned_coords2) ** 2, axis=1)))
+    return np.round(rmsd, 4)
+
+#############
+def kabsch_rotate(coords1, coords2):
+    """
+    Compute the rotation matrix to align coords2 with coords1 using the Kabsch algorithm.
+    """
+    H = np.dot(coords2.T, coords1)
+    V, S, W = np.linalg.svd(H)
+    d = np.sign(np.linalg.det(V) * np.linalg.det(W))
+    S = np.diag([1, 1, d])
+    U = np.dot(np.dot(V, S), W)
+    return U
+
 ###########
 def correct_smiles_ligand(lig: object):
     ## Receives a ligand class object and constructs the smiles and the rdkit_mol object from scratch, using atoms and bond information

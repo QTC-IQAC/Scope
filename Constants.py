@@ -1,5 +1,6 @@
 import numpy as np
 
+hbar=1                            ## Atomic Units
 boltz_au=0.00000316682968         ## hartree/K
 boltz_J=1.380649e-23              ## J/K
 speed_light=299792458             ## meter/second
@@ -17,7 +18,7 @@ har2eV=27.211399
 eV2har=0.03674930495
 cm2har=0.000004556335281
 ry2har=0.5
-
+amu2au=1822.888486  # 1 amu in atomic units
 
 ### Derived Factors. Always to be applied as multiplications
 

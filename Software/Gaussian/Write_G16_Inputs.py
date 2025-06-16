@@ -58,7 +58,7 @@ def gen_G16_input(comp, debug: int=0):
             if   loose_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,loose)")
             elif tight_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,VeryTight)")
             else:           commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral)")
-        elif jobtype == "opt&freq" or jobtype == "freq": commandline.append(" freq")
+        elif jobtype == "opt&freq" or jobtype == "freq": commandline.append(" freq(hpmodes)")
         else: print("G16_INPUT: jobtype", jobtype, "not recognized")
 
         ## 2.5-Grimme
