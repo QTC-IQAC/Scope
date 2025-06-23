@@ -353,17 +353,17 @@ class g16_output(object):
 #########################
 ### FREQUENCIES & VNM ###
 #########################
-    def get_frequencies(self, debug: int=0):
-        if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
-        if len(self.opt_blocks) == 0: return None
-        for idx in range(len(self.opt_blocks)-1,-1,-1):
-            init_line = self.opt_blocks[idx][0]#+1
-            last_line = self.opt_blocks[idx][1]#+1
-            tmp = parse_freqs_from_step(self.lines[init_line:last_line])
-            if tmp is not None:
-                self.frequencies = tmp; return self.frequencies
-        self.frequencies = None
-        return self.frequencies
+    #def get_frequencies(self, debug: int=0):
+    #    if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
+    #    if len(self.opt_blocks) == 0: return None
+    #    for idx in range(len(self.opt_blocks)-1,-1,-1):
+    #        init_line = self.opt_blocks[idx][0]#+1
+    #        last_line = self.opt_blocks[idx][1]#+1
+    #        tmp = parse_freqs_from_step(self.lines[init_line:last_line])
+    #        if tmp is not None:
+    #            self.frequencies = tmp; return self.frequencies
+    #    self.frequencies = None
+    #    return self.frequencies
 
     def get_vnms(self, witheigen: bool=False, debug: int=0):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
@@ -371,10 +371,13 @@ class g16_output(object):
         for idx in range(len(self.opt_blocks)-1,-1,-1):
             init_line = self.opt_blocks[idx][0]#+1
             last_line = self.opt_blocks[idx][1]#+1
-            tmp = parse_vnms_from_step(self.lines[init_line:last_line], witheigen=witheigen, debug=debug)
-            if tmp is not None:
+            ## After June 2025, I force frequencies in Gaussian to be computed with freq=hpmodes. 
+            ## As a result, two parsing routines are needed.
+            tmp = parse_hp_vnms_from_step(self.lines[init_line:last_line], witheigen=witheigen, debug=debug)
+            if tmp is None: tmp = parse_vnms_from_step(self.lines[init_line:last_line], witheigen=witheigen, debug=debug)
+            if tmp is not None:    
                 self.vnms = tmp; return self.vnms
-            else:
+            else:                  
                 if debug > 0: print("get_vnms: vnms is None")
         self.vnms = None
         return self.vnms

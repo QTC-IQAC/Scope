@@ -109,22 +109,22 @@ def parse_energy_from_step(lines, debug: int=0):
     ener = float(lines[ldx].split()[4])
     return ener
 
-def parse_freqs_from_step(lines, debug: int=0):
-    freqs = []
-    ldx, found = search_string("Frequencies --", lines, typ='all')
-    if found:
-        for l in ldx:
-            length = len(lines[l].split())
-            f1 = float(lines[l].split()[2])
-            freqs.append(f1)
-            if length > 3:
-                f2 = float(lines[l].split()[3])
-                freqs.append(f2)
-            if length > 4:
-                f3 = float(lines[l].split()[4])
-                freqs.append(f3)
-    else: return None
-    return freqs
+#def parse_freqs_from_step(lines, debug: int=0):
+#    freqs = []
+#    ldx, found = search_string("Frequencies --", lines, typ='all')
+#    if found:
+#        for l in ldx:
+#            length = len(lines[l].split())
+#            f1 = float(lines[l].split()[2])
+#            freqs.append(f1)
+#            if length > 3:
+#                f2 = float(lines[l].split()[3])
+#                freqs.append(f2)
+#            if length > 4:
+#                f3 = float(lines[l].split()[4])
+#                freqs.append(f3)
+#    else: return None
+#    return freqs
 
 def parse_hp_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
     ## New implementation when using freq(hpmodes) in Gaussian16 input line
