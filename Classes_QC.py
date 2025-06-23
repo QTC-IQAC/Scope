@@ -16,11 +16,11 @@ elemdatabase = ElementData()
 class VNM(object):
     def __init__(self, index: int, freq: float, red_mass: float=1.0, force_cnt: float=0.0, IR_int: float=0.0, sym: str='A'):
         self.index = index 
-        self.freq_cm = freq                            ## It must be in cm-1
-        self.freq = freq*Constants.cm2har              ## It must be in atomic units 
-        self.red_mass = red_mass
-        self.force_cnt = force_cnt
-        self.IR_int = IR_int
+        self.freq_cm = freq                            ## In cm-1
+        self.freq = freq*Constants.cm2har              ## In atomic units 
+        self.red_mass = red_mass                       ## In AMU     as in Gaussian
+        self.force_cnt = force_cnt                     ## In mDyne/A as in Gaussian
+        self.IR_int = IR_int                           ## In KM/Mole as in Gaussian
         self.sym = sym
         self.haseigenvec = False
 
@@ -40,10 +40,11 @@ class VNM(object):
         to_print  = f'-----------------------------\n'
         to_print +=  '   Vibrational Normal Mode   \n'
         to_print += f'-----------------------------\n'
-        to_print += f' Index                 = {self.index}\n'
-        to_print += f' Freq (cm-1)           = {self.freq_cm}\n'
-        to_print += f' IR_int                = {self.IR_int}\n'
-        to_print += f' Has eigenvector       = {self.haseigenvec}\n'
+        to_print += f' Index                  = {self.index}\n'
+        to_print += f' Freq (cm-1)            = {self.freq_cm}\n'
+        to_print += f' IR Intensity (KM/Mole) = {self.IR_int}\n'
+        to_print += f' Reduced Mass (AMU)     = {self.red_mass}\n'
+        to_print += f' Has eigenvector        = {self.haseigenvec}\n'
         return to_print
 
 class orbital_set(object):

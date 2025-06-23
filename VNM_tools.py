@@ -1,5 +1,5 @@
 import numpy as np
-
+from Scope import Constants
 
 def write_vnm_dyn(initial_coord: list, vnm: object, amplitude: int=10, index: int=0, outfolder: str='./', labels: None=list):
     filename: str="dyn_vnm_"+str(index)+".xyz"
@@ -10,7 +10,8 @@ def write_vnm_dyn(initial_coord: list, vnm: object, amplitude: int=10, index: in
             print(natoms, file=output_file)
             print("", file=output_file)
             for idx in range(natoms):
-                vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]])
+                #vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]])
+                vector = vnm.eigenvec_format1[idx]
                 coord  = initial_coord[idx] + vector*f*0.1
                 if labels is None: label = elemdatabase.elementsym[vnm.atnums[idx]]
                 else:              label = vnm.labels[idx]
@@ -28,6 +29,8 @@ def vnm_displacement(VNMs: list, initial_coord: list, which: list=[], which_side
 
     ## Store Initial Coord
     new_coord = initial_coord.copy()    
+    new_coord = np.array(new_coord)
+    natoms    = len(initial_coord)
     if debug >= 1: print("initial coord:", new_coord[0])
 
     ## If empty which, then takes all
@@ -35,21 +38,27 @@ def vnm_displacement(VNMs: list, initial_coord: list, which: list=[], which_side
 
     ## Applies Displacement
     for vnm in VNMs:
+        assert vnm.haseigenvec and len(vnm.xs) == natoms
+        ## The actual amount of displacement depends on the amplitude defined by the user
+        ## ... and the freq_factor, which depends on the frequency
+        if   vnm.freq < 20:   freq_factor = 0.1
+        else:                 freq_factor = 0.2
         if vnm.index in which:
             if debug >= 1: print("displacing VNM with frequency:", vnm.freq_cm)
-            for idx in range(len(vnm.xs)):
-                vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]])*np.sqrt(vnm.masses[idx])*Constants.bohr2angs
-                #vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]])  as it was before
-
-                ## The actual amount of displacement depends on the amplitude defined by the user
-                ## ... and the freq_factor, which depends on the frequency
-                if   vnm.freq < -20:  freq_factor = 0.1
-                else:                 freq_factor = 0.2
-                if debug >= 1: print(f"using factor={amplitude*freq_factor}")
+            if debug >= 1: print(f"using factor={amplitude*freq_factor}")
+            
+            for idx in range(natoms):
+                ## Evaluate the vector, here it expects to receive a mass-weighted eigenvector, as in Gaussian
+                #vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]]) / np.sqrt(vnm.masses[idx])*Constants.bohr2angs
+                #vector = vnm.eigenvec_format1[idx] / np.sqrt(vnm.masses[idx])*Constants.bohr2angs
+                #vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]])*np.sqrt(vnm.masses[idx])*Constants.bohr2angs
+                vector = vnm.eigenvec_format1[idx]
+                #vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]])  #as it was before
 
                 ## Apply displacement to coordinates
                 if   which_side.lower() == 'positive': displacement = vector*amplitude*freq_factor
                 elif which_side.lower() == 'negative': displacement = -vector*amplitude*freq_factor
                 new_coord[idx] = new_coord[idx]+displacement
                 if idx == 0 and debug >= 1: print("displaced coord:", new_coord[idx])
+        new_coord.reshape(natoms,3)
     return new_coord

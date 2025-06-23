@@ -126,6 +126,64 @@ def parse_freqs_from_step(lines, debug: int=0):
     else: return None
     return freqs
 
+def parse_hp_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
+    ## New implementation when using freq(hpmodes) in Gaussian16 input line
+    from Scope.Classes_QC import VNM 
+    vnms = []
+
+    ldx, found1 = search_string("Frequencies ---", lines, typ='all')
+    kdx, found2 = search_string("Harmonic frequencies", lines, typ='last')
+    if not found1 or not found2: return None
+
+    index = 1
+    for idx, l in enumerate(ldx):
+        if idx < len(ldx)-1: bottom = ldx[idx+1]
+        else:                bottom = len(lines)
+        length          = int(len(lines[l].split('---')[1].split()))   ## Number of freq blocks in this line
+        if debug > 0: print(f"Processing block {idx}/{len(ldx)} with {length} frequencies starting at line {l} and ending at {bottom}")
+
+        # Gets the number of atoms in the first block of frequencies
+        if witheigen and idx == 0:
+            inieigen, found1 = search_string("Coord Atom Element:", lines, typ='first', lowlim=l)
+            if not found1:
+                print("Error: Could not find eigenvector block in VNM parsing")
+                return None
+            len_block_eigen = (bottom-2 - inieigen) 
+            natoms = int(len_block_eigen/3)
+            if debug > 0: print(f"Number of atoms in eigenvector block: {natoms}")
+
+        for kdx in range(length):
+            index_from_file = int(lines[l-2].split()[kdx])
+            assert index == index_from_file                
+
+            sym  = str(lines[l-1].split()[kdx])
+            freq = float(lines[l].split('---')[1].split()[kdx])
+            rm   = float(lines[l+1].split('---')[1].split()[kdx])
+            fo   = float(lines[l+2].split('---')[1].split()[kdx])
+            ir   = float(lines[l+3].split('---')[1].split()[kdx])
+            new_vnm = VNM(index, freq, rm, fo, ir, sym)
+
+            if witheigen:
+                if debug > 0 and kdx == 0: print(f"Parsing eigenvector block from {inieigen} to {bottom}")
+                atom_idx = []
+                atnum = []
+                x = []
+                y = []
+                z = []
+    
+                run_line = 0
+                for jdx in range(natoms):
+                    atom_idx.append(int(lines[l+5+run_line].split()[1]))
+                    atnum.append(int(lines[l+5+run_line].split()[2]))
+                    for cdx in range(3):
+                        if   cdx == 0: x.append(float(lines[l+5+run_line].split()[3+kdx])); run_line += 1
+                        elif cdx == 1: y.append(float(lines[l+5+run_line].split()[3+kdx])); run_line += 1
+                        elif cdx == 2: z.append(float(lines[l+5+run_line].split()[3+kdx])); run_line += 1
+            new_vnm.eigenvec(atom_idx, atnum, x, y, z)  
+            vnms.append(new_vnm)
+            index += 1
+    return vnms
+   
 def parse_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
     from Scope.Classes_QC import VNM 
     vnms = []
@@ -134,33 +192,71 @@ def parse_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
     kdx, found2 = search_string("X      Y      Z", lines, typ='all')
     assert len(ldx) == len(kdx)
     if not found1 or not found2: return None
-    if found1 and found2:
-        index = 1
-        for idx, l in enumerate(ldx):
+
+    index = 1
+    for idx, l in enumerate(ldx):
+        
+        if witheigen and idx == 0:
+            width = ldx[1] - kdx[0] - 3  # Should be the number of atoms, useful when retrieving the eigenvectors
+        
+        length = len(lines[l].split())
+        
+        f1 = float(lines[l].split()[2])            
+        index_from_file = int(lines[l-2].split()[0])
+        assert index == index_from_file            
+        sym1 = str(lines[l-1].split()[0])
+        
+        rm_l, found = search_string("Red. masses", lines, typ='first', lowlim=l, uplim=kdx[idx])
+        if found: r1 = float(lines[rm_l].split()[3])
+        else: r1 = float(0)
             
-            if witheigen and idx == 0:
-                width = ldx[1] - kdx[0] - 3  # Should be the number of atoms, useful when retrieving the eigenvectors
+        fc_l, found = search_string("Frc consts", lines, typ='first', lowlim=l, uplim=kdx[idx])
+        if found: fo1 = float(lines[fc_l].split()[3])
+        else: fo1 = float(0)
             
-            length = len(lines[l].split())
-            
-            f1 = float(lines[l].split()[2])            
-            index_from_file = int(lines[l-2].split()[0])
-            assert index == index_from_file            
-            sym1 = str(lines[l-1].split()[0])
+        ir_l, found = search_string("IR Inten", lines, typ='first', lowlim=l, uplim=kdx[idx])
+        if found: ir1 = float(lines[ir_l].split()[3])
+        else: ir1 = float(0)
+
+        new_vnm = VNM(index, f1, r1, fo1, ir1, sym1)
+        
+        if witheigen:
+            atom_idx = []
+            atnum = []
+            x = []
+            y = []
+            z = []
+            for l2 in range(kdx[idx]+1,kdx[idx]+width+1):
+                line = lines[l2]
+                atom_idx.append(int(line.split()[0]))
+                atnum.append(int(line.split()[1]))
+                x.append(float(line.split()[2]))
+                y.append(float(line.split()[3]))
+                z.append(float(line.split()[4]))
+            new_vnm.eigenvec(atom_idx, atnum, x, y, z)       
+
+        vnms.append(new_vnm)
+        index += 1
+
+        if length > 3:
+            f2 = float(lines[l].split()[3])              
+            index_from_file = int(lines[l-2].split()[1])
+            assert index == index_from_file                
+            sym2 = str(lines[l-1].split()[1])
             
             rm_l, found = search_string("Red. masses", lines, typ='first', lowlim=l, uplim=kdx[idx])
-            if found: r1 = float(lines[rm_l].split()[3])
-            else: r1 = float(0)
-                
-            fc_l, found = search_string("Frc consts", lines, typ='first', lowlim=l, uplim=kdx[idx])
-            if found: fo1 = float(lines[fc_l].split()[3])
-            else: fo1 = float(0)
-                
-            ir_l, found = search_string("IR Inten", lines, typ='first', lowlim=l, uplim=kdx[idx])
-            if found: ir1 = float(lines[ir_l].split()[3])
-            else: ir1 = float(0)
+            if found: r2 = float(lines[rm_l].split()[4])
+            else: r2 = float(0)
 
-            new_vnm = VNM(index, f1, r1, fo1, ir1, sym1)
+            fc_l, found = search_string("Frc consts", lines, typ='first', lowlim=l, uplim=kdx[idx])
+            if found: fo2 = float(lines[fc_l].split()[4])
+            else: fo2 = float(0)
+
+            ir_l, found = search_string("IR Inten", lines, typ='first', lowlim=l, uplim=kdx[idx])
+            if found: ir2 = float(lines[ir_l].split()[4])
+            else: ir2 = float(0)
+            
+            new_vnm = VNM(index, f2, r2, fo2, ir2, sym2)
             
             if witheigen:
                 atom_idx = []
@@ -168,93 +264,55 @@ def parse_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
                 x = []
                 y = []
                 z = []
-                for l2 in range(kdx[idx]+1,kdx[idx]+width+1):
+                for l2 in range(kdx[idx]+1,kdx[idx]+width+1):   
                     line = lines[l2]
                     atom_idx.append(int(line.split()[0]))
                     atnum.append(int(line.split()[1]))
-                    x.append(float(line.split()[2]))
-                    y.append(float(line.split()[3]))
-                    z.append(float(line.split()[4]))
-                new_vnm.eigenvec(atom_idx, atnum, x, y, z)       
-
+                    x.append(float(line.split()[5]))
+                    y.append(float(line.split()[6]))
+                    z.append(float(line.split()[7]))
+                new_vnm.eigenvec(atom_idx, atnum, x, y, z)  
+            
             vnms.append(new_vnm)
             index += 1
+                        
+        if length > 4:
+            f3 = float(lines[l].split()[4])                
+            index_from_file = int(lines[l-2].split()[2])
+            assert index == index_from_file                
+            sym3 = str(lines[l-1].split()[2])
+            
+            rm_l, found = search_string("Red. masses", lines, typ='first', lowlim=l, uplim=kdx[idx])
+            if found: r3 = float(lines[rm_l].split()[5])
+            else: r3 = float(0)
 
-            if length > 3:
-                f2 = float(lines[l].split()[3])              
-                index_from_file = int(lines[l-2].split()[1])
-                assert index == index_from_file                
-                sym2 = str(lines[l-1].split()[1])
-                
-                rm_l, found = search_string("Red. masses", lines, typ='first', lowlim=l, uplim=kdx[idx])
-                if found: r2 = float(lines[rm_l].split()[4])
-                else: r2 = float(0)
+            fc_l, found = search_string("Frc consts", lines, typ='first', lowlim=l, uplim=kdx[idx])
+            if found: fo3 = float(lines[fc_l].split()[5])
+            else: fo3 = float(0)
 
-                fc_l, found = search_string("Frc consts", lines, typ='first', lowlim=l, uplim=kdx[idx])
-                if found: fo2 = float(lines[fc_l].split()[4])
-                else: fo2 = float(0)
-
-                ir_l, found = search_string("IR Inten", lines, typ='first', lowlim=l, uplim=kdx[idx])
-                if found: ir2 = float(lines[ir_l].split()[4])
-                else: ir2 = float(0)
-                
-                new_vnm = VNM(index, f2, r2, fo2, ir2, sym2)
-                
-                if witheigen:
-                    atom_idx = []
-                    atnum = []
-                    x = []
-                    y = []
-                    z = []
-                    for l2 in range(kdx[idx]+1,kdx[idx]+width+1):   
-                        line = lines[l2]
-                        atom_idx.append(int(line.split()[0]))
-                        atnum.append(int(line.split()[1]))
-                        x.append(float(line.split()[5]))
-                        y.append(float(line.split()[6]))
-                        z.append(float(line.split()[7]))
-                    new_vnm.eigenvec(atom_idx, atnum, x, y, z)  
-                
-                vnms.append(new_vnm)
-                index += 1
-                            
-            if length > 4:
-                f3 = float(lines[l].split()[4])                
-                index_from_file = int(lines[l-2].split()[2])
-                assert index == index_from_file                
-                sym3 = str(lines[l-1].split()[2])
-                
-                rm_l, found = search_string("Red. masses", lines, typ='first', lowlim=l, uplim=kdx[idx])
-                if found: r3 = float(lines[rm_l].split()[5])
-                else: r3 = float(0)
-
-                fc_l, found = search_string("Frc consts", lines, typ='first', lowlim=l, uplim=kdx[idx])
-                if found: fo3 = float(lines[fc_l].split()[5])
-                else: fo3 = float(0)
-
-                ir_l, found = search_string("IR Inten", lines, typ='first', lowlim=l, uplim=kdx[idx])
-                if found: ir3 = float(lines[ir_l].split()[5])
-                else: ir3 = float(0)
-                
-                new_vnm = VNM(index, f3, r3, fo3, ir3, sym3)
-                
-                if witheigen:
-                    atom_idx = []
-                    atnum = []
-                    x = []
-                    y = []
-                    z = []
-                    for l2 in range(kdx[idx]+1,kdx[idx]+width+1): 
-                        line = lines[l2]
-                        atom_idx.append(int(line.split()[0]))
-                        atnum.append(int(line.split()[1]))
-                        x.append(float(line.split()[8]))
-                        y.append(float(line.split()[9]))
-                        z.append(float(line.split()[10]))
-                    new_vnm.eigenvec(atom_idx, atnum, x, y, z)  
-                
-                vnms.append(new_vnm)
-                index += 1
+            ir_l, found = search_string("IR Inten", lines, typ='first', lowlim=l, uplim=kdx[idx])
+            if found: ir3 = float(lines[ir_l].split()[5])
+            else: ir3 = float(0)
+            
+            new_vnm = VNM(index, f3, r3, fo3, ir3, sym3)
+            
+            if witheigen:
+                atom_idx = []
+                atnum = []
+                x = []
+                y = []
+                z = []
+                for l2 in range(kdx[idx]+1,kdx[idx]+width+1): 
+                    line = lines[l2]
+                    atom_idx.append(int(line.split()[0]))
+                    atnum.append(int(line.split()[1]))
+                    x.append(float(line.split()[8]))
+                    y.append(float(line.split()[9]))
+                    z.append(float(line.split()[10]))
+                new_vnm.eigenvec(atom_idx, atnum, x, y, z)  
+            
+            vnms.append(new_vnm)
+            index += 1
     return vnms
 
 ############
