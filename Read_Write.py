@@ -101,9 +101,9 @@ def writexyz(fdir, fname, labels, coord, charge: int=0, spin: int=1):
         for idx, l in enumerate(labels):
             print("%s  %.6f  %.6f  %.6f" % (l, coord[idx][0], coord[idx][1], coord[idx][2]),file=fil)
 
-#######################
-## MACE ExtXYZ Files ##
-#######################
+#########################
+## Custom ExtXYZ Files ##
+#########################
 def write_xyz_forces_energy(fdir, fname, labels, coord, forces, energy, charge: int=0, spin: int=1, other=None):
     if fdir[-1] != "/":
         fdir = fdir + "/"
@@ -118,10 +118,10 @@ def write_xyz_forces_energy(fdir, fname, labels, coord, forces, energy, charge: 
         for idx, l in enumerate(labels):
             print("%s  %.6f  %.6f  %.6f  %.6f  %.6f  %.6f" % (l, coord[idx][0], coord[idx][1], coord[idx][2], forces[idx][0], forces[idx][1], forces[idx][2]),file=fil)
 
+#####
 def write_data_MACE_extxyz(fdir, fname, labels, coord, forces, energy, charge: int=0, spin: int=1, other=None):
     other = other if isinstance(other,str) else ''
-    if fdir[-1] != "/":
-        fdir = fdir + "/"
+    if fdir[-1] != "/": fdir = fdir + "/"
     natoms = len(labels)
     fullname = fdir + fname
     if os.path.isfile(fullname): mode = 'a'
@@ -133,7 +133,7 @@ def write_data_MACE_extxyz(fdir, fname, labels, coord, forces, energy, charge: i
         print(f'Properties=species:S:1:pos:R:3:molID:I:1:forces:R:3 Nmols=1 Comp={fname.split("_")[0]}_{other} charge={charge} energy={energy} pbc="F F F"', file=fil)
         for idx, l in enumerate(labels):
             print(total_fmt.format(l, *coord[idx], 0, *forces[idx]), file=fil)
-            
+
 ###########
 ## Print ##
 ###########
