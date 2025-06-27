@@ -179,7 +179,7 @@ def parse_hp_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
                         if   cdx == 0: x.append(float(lines[l+5+run_line].split()[3+kdx])); run_line += 1
                         elif cdx == 1: y.append(float(lines[l+5+run_line].split()[3+kdx])); run_line += 1
                         elif cdx == 2: z.append(float(lines[l+5+run_line].split()[3+kdx])); run_line += 1
-            new_vnm.eigenvec(atom_idx, atnum, x, y, z)  
+                new_vnm.eigenvec(atom_idx, atnum, x, y, z)  
             vnms.append(new_vnm)
             index += 1
     return vnms

@@ -733,11 +733,12 @@ def center(X):
     X -= C
     return X, C
 
-def reorder_hungarian(z1, z2, coord1, coord2):
+def reorder_hungarian(z1, z2, coord1, coord2, debug: int=0):
     unique_atoms = np.unique(z1)
     map12 = np.zeros_like(z1, dtype=int)
     map12 -= 1
     for atom in unique_atoms:
+        if debug > 0: print(f"REORDER: doing {atom} in unique_atoms")
         (aidx1,) = np.where(z1 == atom)
         (aidx2,) = np.where(z2 == atom)
         acoord1 = coord1[aidx1]
@@ -751,17 +752,17 @@ def hungarian(a, b):
     ia, ib = lsa(distances)
     return ib
 
-def reorder(z1, z2, coord1, coord2):
-    z1 = np.array(z1)
-    z2 = np.array(z2)
-    coord1, c1 = center(coord1)
-    coord2, c2 = center(coord2)
-    assert len(z1) == len(z2)
-    assert coord1.shape == coord2.shape
-    map12 = reorder_hungarian(z1, z2, coord1, coord2)
-    z2 = z2[map12]
-    coord2 = coord2[map12, :]
-    return list(z2), list(coord2 + c2), map12
+#def reorder(z1, z2, coord1, coord2):
+#    z1 = np.array(z1)
+#    z2 = np.array(z2)
+#    coord1, c1 = center(coord1)
+#    coord2, c2 = center(coord2)
+#    assert len(z1) == len(z2)
+#    assert coord1.shape == coord2.shape
+#    map12 = reorder_hungarian(z1, z2, coord1, coord2)
+#    z2 = z2[map12]
+#    coord2 = coord2[map12, :]
+#    return list(z2), list(coord2 + c2), map12
 
 def test_reorder():
     # Two water molecules with different order!
