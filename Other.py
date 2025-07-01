@@ -9,43 +9,263 @@ class HiddenPrints:
         sys.stdout.close()
         sys.stdout = self._original_stdout
 
-#############
-def rmsd(labels1, coord1, labels2, coord2, reorder=True, debug: int=0):
+####
+def build_graph(adj_matrix, labels):
+    import networkx as nx
+    G = nx.Graph()
+    N = len(labels)
+    for i in range(N):
+        G.add_node(i, label=labels[i])#, feature=features[i] if features else None)
+    for i in range(N):
+        for j in range(i+1, N):
+            if adj_matrix[i, j] > 0:
+                G.add_edge(i, j)
+    return G
+
+####
+def get_permutation_from_isomorphism(G1, G2):
+    import networkx as nx
+    from networkx.algorithms.isomorphism import GraphMatcher
+    matcher = GraphMatcher(G1, G2, node_match=lambda n1, n2: (n1['label'] == n2['label']))
+    if matcher.is_isomorphic():
+        mapping = matcher.mapping
+        return [mapping[i] for i in range(len(mapping))]
+    else:
+        return None
+
+####
+def overlap_molecules(labels1, coords1, labels2, coords2, use_ext_info: bool=True, translate_to_ref: bool=True, debug: int=0):
     from Scope.Adapted_from_cell2mol import compute_centroid
+    from Scope.Adapted_from_cell2mol import get_adjmatrix
     from Scope.Reconstruct import reorder_hungarian
     from Scope.Read_Write  import print_xyz
+    from collections import Counter
 
-    """
-    Compute the RMSD between two sets of coordinates
-    Consider Expanding the data that is sent to hungarian. Currently only labels...
-    ...but other data such as adjnum could be added 
-    """
     ## Ensure both species have the same number of atoms
     if len(labels1) != len(labels2):
         raise ValueError("The number of atoms in the two lists must be the same.")
 
-    ## Arranges data
-    labels1 = np.array([f"{l}" for l in labels1])
-    labels2 = np.array([f"{l}" for l in labels2])
+    center1 = compute_centroid(coords1) 
+    center2 = compute_centroid(coords2) 
 
-    coords1 = np.array(coord1) - compute_centroid(coord1)
-    coords2 = np.array(coord2) - compute_centroid(coord2)
+    coords1 = np.array(coords1) - center1 
+    coords2 = np.array(coords2) - center2 
 
-    if reorder:
-        idx = reorder_hungarian(labels1, labels2, coords1, coords2)
-        coords2 = coords2[idx]
-        labels2 = labels2[idx]
+    ## Stores the original adjacency matrices
+    isgood1, orig_adjmat1, orig_adjnum1 = get_adjmatrix(labels1, coords1)
+    isgood2, orig_adjmat2, orig_adjnum2 = get_adjmatrix(labels2, coords2)
+    if debug > 0: print(f"{isgood1}, {isgood2}")
+    if debug > 0: print(f"original adjmat1={orig_adjmat1[0]}")
+    if debug > 0: print(f"original adjmat2={orig_adjmat2[0]}")
 
-    U = kabsch_rotate(coords1, coords2)
-    aligned_coords2 = np.dot(coords2, U.T)
+    if debug > 0:
+        print("---------------------")
+        print("Centered Coords of 1:")
+        print("---------------------")
+        print_xyz(labels1, coords1)
+        print("---------------------")
+        print("Centered Coords of 2:")
+        print("---------------------")
+        print_xyz(labels2, coords2)
 
-    if debug > 0: print("Coordinates for self:")
-    if debug > 0: print_xyz(labels1, coords1)
-    if debug > 0: print("Aligned Coordinates for other:")
-    if debug > 0: print_xyz(labels2, aligned_coords2)
+    ## We do a first alignment, to facilitate the hungarian
+    _, _, coords2, _ = kabsch_test(coords2, coords1)
+    if debug > 0:
+        print("--------------------")
+        print("Aligned Coords of 2:")
+        print("--------------------")
+        print_xyz(labels2, coords2)
 
-    rmsd = np.sqrt(np.mean(np.sum((coords1 - aligned_coords2) ** 2, axis=1)))
+    if use_ext_info:
+        data1 = get_extended_info(labels1, coords1, orig_adjmat1, orig_adjnum1, debug=debug)
+        data2 = get_extended_info(labels2, coords2, orig_adjmat2, orig_adjnum2, debug=debug)
+        unique1 = [d for d in np.unique(data1) if Counter(data1)[d] == 1]    ## Data's which appear only once, and thus have no possibility of error
+        unique2 = [d for d in np.unique(data2) if Counter(data2)[d] == 1]
+        ## These are going to be all atoms whose data appears once in both structures
+        safe = [index for index in range(len(data1)) if data1[index] in unique1 and data2[index] in unique2]
+        if debug > 0: print(f"{safe=}")
+        #safe = [index for index, val in enumerate(map12) if index == val and data1[index] in unique1 and data2[index] in unique2]
+
+        ## For each atom in SAFE, we add the topological distance of all atoms to their data
+        for s in safe:
+            if debug > 0: print(f"Taking atom {s=} with {data1[s]=} as reference when computing topological distances")
+            dist1 = compute_topological_distances(orig_adjmat1, s)
+            dist2 = compute_topological_distances(orig_adjmat2, s)
+            data1 = np.array([str(f"{d1}{d2}") for d1, d2 in zip(data1, dist1)])
+            data2 = np.array([str(f"{d1}{d2}") for d1, d2 in zip(data2, dist2)])
+            labels1 = np.array([f"{l}" for l in labels1])
+            labels2 = np.array([f"{l}" for l in labels2])
+    else:
+        data1 = np.array([f"{l}" for l in labels1])
+        data2 = np.array([f"{l}" for l in labels2])
+        labels1 = np.array([f"{l}" for l in labels1])
+        labels2 = np.array([f"{l}" for l in labels2])
+
+    if debug > 0: print(f"OVERLAP_MOLECULES: {data1=}")
+    if debug > 0: print(f"OVERLAP_MOLECULES: {data2=}")
+    # Verify that data1 and data2 contain the same items
+    set1 = set(data1)
+    set2 = set(data2)
+    if set1 != set2:
+        print("WARNING: data1 and data2 do not contain the same items.")
+        print("Items only in data1:", set1 - set2)
+        print("Items only in data2:", set2 - set1)
+    else:
+        if debug > 0: print("data1 and data2 contain the same items.")
+
+    ## Now we have the relevant data. We proceed to reorder
+    if debug > 0: print("-------------------------")
+    if debug > 0: print("## STARTING TO REORDER ##")
+    if debug > 0: print("-------------------------")
+    map12 = reorder_hungarian(data1, data2, coords1, coords2, debug=debug)
+    if debug > 0: print(f"GET_RMSD: reorder map={map12}")
+    labels2 = labels2[map12]
+    coords2 = coords2[map12]
+    data2   = data2[map12]
+    if debug > 0:
+        print("--------------------------")
+        print("Coords of 1 after reorder:")
+        print("--------------------------")
+        print_xyz(labels1, coords1)
+        print("--------------------------")
+        print("Coords of 2 after reorder:")
+        print("--------------------------")
+        print_xyz(labels2, coords2)
+
+    #### After this reorder, we check if any adjacency matrix entry is different
+    adjmat2 = orig_adjmat2[np.ix_(map12, map12)]
+    different = []
+    for idx in range(len(orig_adjmat1)):
+        if any(orig_adjmat1[idx] != adjmat2[idx]): different.append(idx)
+    if len(different) > 0: 
+        print("WARNING Different entries in the adjacency matrix:")
+        for d in different:
+            print(d, orig_adjmat1[d], adjmat2[d])
+    
+    #### Then, we do the final alignment, which will be even better than the first
+    _, _, coords2, _ = kabsch_test(coords2, coords1)
+    if debug > 0:
+        print("----------------------------------")
+        print("Coords of 2 after final alignment:")
+        print("----------------------------------")
+        print_xyz(labels2, coords2)
+    
+    #### And finally, we translate to the original center of coordinates of the reference molecule 
+    if translate_to_ref:
+        coords1 = coords1 + center1
+        coords2 = coords2 + center1
+
+    return labels1, coords1, labels2, coords2, map12
+
+####
+def get_extended_info(labels, coords, adjmat, adjnum, debug: int=0):
+    if debug > 0: print(f"GET_EXT_INFO, received {adjmat[0]} for first atom")
+    ## Function to add decorators to labels
+    bonded = []
+    for jdx in range(len(labels)):
+        labs = []
+        for kdx in range(len(labels)):
+           if jdx != kdx and adjmat[jdx, kdx] > 0: labs.append(labels[kdx])
+        bonded.append(''.join(sorted(labs)))
+    data = np.array([str(f"{l}{a}{b}") for l, a, b in zip(labels, adjnum, bonded)])
+    if debug > 0: print(f"GET_EXT_INFO: {data=}")
+    return data
+
+#####
+def compute_topological_distances(adj_matrix: np.ndarray, ref_atom: int) -> dict:
+    import numpy as np
+    import networkx as nx
+    """
+    Compute topological distances (graph distances) from a reference atom to all others.
+
+    Parameters:
+        adj_matrix: (N, N) binary numpy array
+        ref_atom: index of the reference atom (0-based)
+
+    Returns:
+        distances: dict {atom_index: topological_distance}
+    """
+    G = nx.Graph()
+    N = adj_matrix.shape[0]
+
+    # Add edges based on adjacency matrix
+    for i in range(N):
+        for j in range(i+1, N):
+            if adj_matrix[i, j] > 0:
+                G.add_edge(i, j)
+                #G.add_edge(j, i)
+
+    # Compute shortest path lengths from ref_atom
+    dist_dict = nx.single_source_shortest_path_length(G, ref_atom)
+
+    distances = np.full(N, -1, dtype=int)
+    for idx, d in dist_dict.items():
+        distances[idx] = d
+
+    return distances
+
+#############
+def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, debug: int=0):
+    assert len(labels1) == len(labels2)
+    coords1 = np.asarray(coords1)
+    coords2 = np.asarray(coords2)
+    if reorder: 
+        new_labels1, new_coords1, new_labels2, new_coords2, _ = overlap_molecules(labels1, coords1, labels2, coords2, debug=debug)
+        assert all(new_labels1 == new_labels2)       ## In principle, one wants to compute the RMSD of atoms with the same ordering 
+        rmsd = np.sqrt(np.mean(np.sum((new_coords1 - new_coords2)**2, axis=1)))
+    else:
+        rmsd = np.sqrt(np.mean(np.sum((coords1 - coords2)**2, axis=1)))
     return np.round(rmsd, 4)
+
+#############
+def kabsch_test(P, Q):
+    """
+    Perform the Kabsch algorithm to find the optimal rotation and translation
+    to align point set P (mobile) to Q (target/reference).
+
+    Parameters:
+        P: np.ndarray of shape (N, 3) - mobile coordinates
+        Q: np.ndarray of shape (N, 3) - reference coordinates
+
+    Returns:
+        R: Rotation matrix (3x3)
+        t: Translation vector (3,)
+        P_aligned: Transformed coordinates of P (after alignment)
+        rmsd: Root Mean Square Deviation after alignment
+    """
+
+    # Step 1: Center both point sets
+    centroid_P = np.mean(P, axis=0)
+    centroid_Q = np.mean(Q, axis=0)
+
+    P_centered = P - centroid_P
+    Q_centered = Q - centroid_Q
+
+    # Step 2: Covariance matrix
+    H = P_centered.T @ Q_centered
+
+    # Step 3: SVD
+    U, S, Vt = np.linalg.svd(H)
+
+    # Step 4: Compute rotation matrix
+    R = Vt.T @ U.T
+
+    # Reflection correction (to ensure a right-handed coordinate system)
+    if np.linalg.det(R) < 0:
+        Vt[2, :] *= -1
+        R = Vt.T @ U.T
+
+    # Step 5: Compute translation
+    t = centroid_Q - R @ centroid_P
+
+    # Step 6: Apply transformation
+    P_aligned = (R @ P.T).T + t
+
+    # Step 7: Compute RMSD
+    diff = P_aligned - Q
+    rmsd = np.sqrt(np.mean(np.sum(diff**2, axis=1)))
+
+    return R, t, P_aligned, rmsd
 
 #############
 def kabsch_rotate(coords1, coords2):
@@ -58,6 +278,7 @@ def kabsch_rotate(coords1, coords2):
     S = np.diag([1, 1, d])
     U = np.dot(np.dot(V, S), W)
     return U
+
 
 ###########
 def correct_smiles_ligand(lig: object):

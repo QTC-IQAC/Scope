@@ -741,15 +741,27 @@ def reorder_hungarian(z1, z2, coord1, coord2, debug: int=0):
         if debug > 0: print(f"REORDER: doing {atom} in unique_atoms")
         (aidx1,) = np.where(z1 == atom)
         (aidx2,) = np.where(z2 == atom)
+        if debug > 0: print(f"{aidx1=}")
+        if debug > 0: print(f"{aidx2=}")
         acoord1 = coord1[aidx1]
         acoord2 = coord2[aidx2]
-        v = hungarian(acoord1, acoord2)
+        if debug > 0: print(f"{acoord1=}")
+        if debug > 0: print(f"{acoord2=}")
+        v = hungarian(acoord1, acoord2, debug=debug)
+        if debug > 0: print(f"{v=}")
         map12[aidx1] = aidx2[v]
+        if debug > 0: 
+            print(f"{map12=}")
+            for i in range(len(map12)):
+                print(i, map12[i]) 
     return map12
 
-def hungarian(a, b):
+def hungarian(a, b, debug: int=0):
     distances = cdist(a, b, "euclidean")
+    if debug > 0: print(f"{distances=}")
     ia, ib = lsa(distances)
+    if debug > 0: print(f"{ia=}")
+    if debug > 0: print(f"{ib=}")
     return ib
 
 #def reorder(z1, z2, coord1, coord2):
