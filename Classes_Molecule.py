@@ -495,13 +495,13 @@ class molecule(specie):
 
     ######################################################
     def set_bonds(self, debug: int=0):
-        self.has_bonds = True
         if self.iscomplex: 
             if not hasattr(self,"metals") or not hasattr(self,"ligands"): self.split_complex(debug=debug)
             for lig in self.ligands:
                 lig.set_bonds(debug=debug)   
             self.set_metal_ligand_bonds(debug=debug)
             self.set_metal_metal_bonds(debug=debug)
+        self.has_bonds = True
         return True
 
     ######################################################
@@ -527,9 +527,10 @@ class molecule(specie):
                         at.add_bond(newbond)
                         met.add_bond(newbond)
                         count += 1 
-                if count != at.madjnum: 
-                    if debug >= 1: print(f"MOL.CREATE_BONDS: error creating bonds for atom: \n{at}\n of ligand: \n{lig}\n")
-                    if debug >= 1: print(f"MOL.CREATE_BONDS: count differs from atom.mconnec: {count}, {at.madjnum}")
+                if hasattr(at, "madjnum"): 
+                    if count != at.madjnum: 
+                        if debug >= 1: print(f"MOL.CREATE_BONDS: error creating bonds for atom: \n{at}\n of ligand: \n{lig}\n")
+                        if debug >= 1: print(f"MOL.CREATE_BONDS: count differs from atom.mconnec: {count}, {at.madjnum}")
         return True
 
     ######################################################
@@ -711,7 +712,7 @@ class ligand(specie):
         ## This function is used to fix the rdkit object of the ligand, which contained some errors if if comes from cell2mol
         ## Eventually, this function could be move to specie class, provided that we can generate rdkit objects reliably using xyz2mol...
         ## ... for any specie. 
-        ## Also, not it only fixes 4 types of patterns:
+        ## Also, for now it only fixes 4 types of patterns:
         ## - N2-CSe+
         ## - N-CSe+
         ## - N2-CS+
@@ -1013,11 +1014,13 @@ class ligand(specie):
     def set_bonds(self, debug: int=0):
         ## Creats bond objects using the information contained in the RDKit object
         ## The RDKit object is necessary, as it is the only one that contains the bond order information (lewis structure)
-        if not hasattr(self,"rdkit_obj"): return False
+        if not hasattr(self,"rdkit_obj"): 
+            if debug >= 1: print(f"LIG.SET_BONDS: Can't set bonds, ligand has not rdkit_object")
+            return False
         self.has_bonds = True
         n_atoms = self.natoms 
         n_atoms_rdkit = self.rdkit_obj.GetNumAtoms() 
-        if debug >= 1: print(f"CREATE_bonds: {self.formula=}, {self.subtype=} {self.smiles=}")
+        if debug >= 1: print(f"LIG.SET_BONDS: {self.formula=}, {self.subtype=} {self.smiles=}")
 
         if n_atoms == n_atoms_rdkit:  
             if debug >= 2: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are equal: {n_atoms} {n_atoms_rdkit}")
@@ -1434,10 +1437,10 @@ class atom(object):
         if hasattr(self,"charge"):     to_print += f' Atom Charge                  = {self.charge}\n'
 
         # Adjacency and Metal Adjacency
-        if hasattr(self,"madjnum"):    to_print += f' Metal Adjacency (madjnum)    = {self.madjnum}\n'
+        if hasattr(self,"mconnec"):    to_print += f' Metal Adjacency (mconnec)    = {self.mconnec}\n'
         elif hasattr(self,"madjnum"):  to_print += f' Metal Adjacency (madjnum)    = {self.madjnum}\n'
         else:                          to_print += f' No Metal Adjacency Info\n'
-        if hasattr(self,"connec"):     to_print += f' Regular Adjacencies (connec) = {self.adjnum}\n'
+        if hasattr(self,"connec"):     to_print += f' Regular Adjacencies (connec) = {self.connec}\n'
         elif hasattr(self,"adjnum"):   to_print += f' Regular Adjacencies (adjnum) = {self.adjnum}\n'
         else:                          to_print += f' No Adjacency Info\n'
 

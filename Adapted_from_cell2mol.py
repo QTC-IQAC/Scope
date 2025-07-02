@@ -109,7 +109,7 @@ def get_radii(labels: list) -> np.ndarray:
     return np.array(radii)
 
 ####################################
-def get_adjmatrix(labels: list, pos: list, cov_factor: float=1.3, metal_factor: float=1.0, radii="default", metal_only: bool=False) -> Tuple[int, list, list]:
+def get_adjmatrix(labels: list, pos: list, cov_factor: float=1.3, metal_factor: float=1.0, radii="default", metal_only: bool=False, debug: int=0) -> Tuple[int, list, list]:
     isgood = True 
     clash_threshold = 0.3
     natoms = len(labels)
@@ -139,7 +139,7 @@ def get_adjmatrix(labels: list, pos: list, cov_factor: float=1.3, metal_factor: 
                 thres = (radii[i] + radii[j]) * cov_factor
                 if dist <= clash_threshold:
                     isgood = False # invalid molecule
-                    print("Adjacency Matrix: Distance", dist, "smaller than clash for atoms", i, j)
+                    if debug > 0: print("Adjacency Matrix: Distance", dist, "smaller than clash for atoms", i, j)
                 elif dist <= thres:
                     if not metal_only:
                         adjmat[i, j] = 1

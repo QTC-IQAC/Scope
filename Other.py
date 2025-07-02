@@ -69,7 +69,7 @@ def overlap_molecules(labels1, coords1, labels2, coords2, use_ext_info: bool=Tru
         print_xyz(labels2, coords2)
 
     ## We do a first alignment, to facilitate the hungarian
-    _, _, coords2, _ = kabsch_test(coords2, coords1)
+    _, _, coords2, _ = kabsch_align(coords2, coords1, debug=debug)
     if debug > 0:
         print("--------------------")
         print("Aligned Coords of 2:")
@@ -143,7 +143,7 @@ def overlap_molecules(labels1, coords1, labels2, coords2, use_ext_info: bool=Tru
             print(d, orig_adjmat1[d], adjmat2[d])
     
     #### Then, we do the final alignment, which will be even better than the first
-    _, _, coords2, _ = kabsch_test(coords2, coords1)
+    _, _, coords2, _ = kabsch_align(coords2, coords1, debug=debug)
     if debug > 0:
         print("----------------------------------")
         print("Coords of 2 after final alignment:")
@@ -205,20 +205,23 @@ def compute_topological_distances(adj_matrix: np.ndarray, ref_atom: int) -> dict
     return distances
 
 #############
-def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, debug: int=0):
+def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, atom_idxs: list=None, debug: int=0):
     assert len(labels1) == len(labels2)
     coords1 = np.asarray(coords1)
     coords2 = np.asarray(coords2)
+    if atom_idxs is not None: atom_idxs = np.sort(np.asarray(atom_idxs))
     if reorder: 
         new_labels1, new_coords1, new_labels2, new_coords2, _ = overlap_molecules(labels1, coords1, labels2, coords2, debug=debug)
         assert all(new_labels1 == new_labels2)       ## In principle, one wants to compute the RMSD of atoms with the same ordering 
-        rmsd = np.sqrt(np.mean(np.sum((new_coords1 - new_coords2)**2, axis=1)))
-    else:
-        rmsd = np.sqrt(np.mean(np.sum((coords1 - coords2)**2, axis=1)))
+        if atom_idxs is None: rmsd = np.sqrt(np.mean(np.sum((new_coords1 - new_coords2)**2, axis=1)))
+        else:                 rmsd = np.sqrt(np.mean(np.sum((new_coords1[atom_idxs] - new_coords2[atom_idxs])**2, axis=1))) 
+    else:        
+        if atom_idxs is None: rmsd = np.sqrt(np.mean(np.sum((coords1 - coords2)**2, axis=1)))
+        else:                 rmsd = np.sqrt(np.mean(np.sum((coords1[atom_idxs] - coords2[atom_idxs])**2, axis=1))) 
     return np.round(rmsd, 4)
 
 #############
-def kabsch_test(P, Q):
+def kabsch_align(P, Q, debug: int=0):
     """
     Perform the Kabsch algorithm to find the optimal rotation and translation
     to align point set P (mobile) to Q (target/reference).
