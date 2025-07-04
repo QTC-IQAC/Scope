@@ -63,7 +63,7 @@ def vnm_displacement(VNMs: list, initial_coord: list, which: list=[], which_side
     return new_coord
 
 ####
-def geom_sampling_from_vnm(labels, coord, freqs, T: float=0.0, n_samples: int=10, freq_bottom_limit: float=20, freq_top_limit: float = 5000, check_adjacencies: bool=True, debug: int=0):
+def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, n_samples: int=10, freq_bottom_limit: float=0, check_adjacencies: bool=True, debug: int=0):
     from Scope.Adapted_from_cell2mol import get_adjmatrix
     """
     Generate a set of geometries by sampling along vibrational normal modes (VNM) of a molecule.
@@ -82,14 +82,14 @@ def geom_sampling_from_vnm(labels, coord, freqs, T: float=0.0, n_samples: int=10
             - freq: frequency in atomic units
             - eigenvec_format2: mass-weighted eigenvector (array)
             - haseigenvec: boolean indicating presence of eigenvector
+    qini  : list
+        initial Q coordinates associated with the cartesian coordinates provided as coord
     T : float, optional
         Temperature in Kelvin for thermal sampling. If 0, only zero-point motion is considered.
     n_samples : int, optional
         Number of geometries to generate.
     freq_bottom_limit : float, optional
         Minimum frequency (in cm^-1) to include in sampling. Modes below this are ignored.
-    freq_top_limit : float, optional
-        Maximum frequency (in cm^-1) to include in sampling. Modes above this are ignored.
     check_adjacencies : bool, optional
         If True, only accept geometries that preserve the original adjacency matrix.
     debug : int, optional
@@ -125,6 +125,8 @@ def geom_sampling_from_vnm(labels, coord, freqs, T: float=0.0, n_samples: int=10
     modes   = np.array([freq.eigenvec_format2 for freq in freqs])   # Extract Eigenvectors from frequencies. [units? Assuming Bohr/sqrt(amu)]
     N_atoms = len(coord)    
     N_modes = len(freqs)
+    if qini is None: qini = np.zeros((N_modes))
+    else:            qini = np.asarray(qini)
     if debug > 0: print("First mode norm:", np.linalg.norm(modes[0]))
 
     # Initializes and Runs Main While loop
@@ -136,10 +138,11 @@ def geom_sampling_from_vnm(labels, coord, freqs, T: float=0.0, n_samples: int=10
     while len(geometries) < n_samples or count >= maxcount: # for _ in range(n_samples):
         displacement = np.zeros(3 * N_atoms)
 
+        q_tot = qini.copy()
         q_vec = []
         e_harm = 0.0
         for i in range(N_modes):
-            if freqs[i].freq_cm > freq_top_limit or freqs[i].freq_cm <= freq_bottom_limit:
+            if freqs[i].freq_cm <= freq_bottom_limit:
                 continue  # skip high frequency or imaginary modes
 
             omega = freqs[i].freq                               
@@ -157,17 +160,18 @@ def geom_sampling_from_vnm(labels, coord, freqs, T: float=0.0, n_samples: int=10
             # Sample a displacement
             sigma_q = sigma_q/(freqs[i].freq_cm**1.8)
             sigma_q = np.min((np.abs(sigma_q), 10))
-            q_i = np.random.normal(loc=0.0, scale=sigma_q)       ## According to chatgpt, has units of: √(AMU) × Bohr
-            q_vec.append(q_i)
-            e_harm += 0.5 * q_i**2 * omega**2
-            displacement += q_i * modes[i]                 ## should be bohr/sqrt(amu) * √(AMU) × Bohr,  [Assuming Bohr/sqrt(amu)]
+            #q_i = np.clip(np.random.normal(0.0, sigma_q), -3*sigma_q, 3*sigma_q)
+            q_i = np.random.normal(loc=0.0, scale=sigma_q)      ## Coordinates of Q for this VNM
+            q_vec.append(q_i)                                   ## Collection of Q for all VNM to be applied to this sample
+            q_tot[i] += q_i                                     ## Collection of Accumulated Q (including the initial ones) 
+            e_harm += 0.5 * q_tot[i]**2 * omega**2
+            displacement += q_i * modes[i]                 
 
-            if debug > 0 and i < 10: print(f"  Mode {i}: freq_cm = {freqs[i].freq_cm}, q_i= {q_i:.3f}, sigma_q = {sigma_q:.3f}")
+            if debug > 0 and i < 10: print(f"  Mode {i}: freq_cm = {freqs[i].freq_cm}, q_ini[i]= {q_ini[i]:.3f}, q_vec[i]= {q_vec[i]:.3f}, sigma_q = {sigma_q:.3f}")
             if debug > 1: print(f"  max eigenvector component (mass-weighted)    = {np.max(np.abs(modes[i])):.3e}")
             if debug > 1: print(f"  max displacement contribution from this mode = {np.max(np.abs(q_i * modes[i])):.3e}")
             if debug > 1: print(f"  {i=} displacement[0]: {np.round(displacement[0],3)}")
 
-        if debug > 1: print("all in bohr")
         if debug > 1: print(f"Coord:      {np.round(coord[0],3)}")
         if debug > 1: print(f"modes[i]    {np.round(modes[0][0:3],5)}")
 
@@ -181,7 +185,7 @@ def geom_sampling_from_vnm(labels, coord, freqs, T: float=0.0, n_samples: int=10
             isgood, new_adjmat, new_adjnum = get_adjmatrix(labels, displaced_coord, cov_factor=1.3, metal_factor=1.0)
             if isgood and np.array_equal(original_adjmat, new_adjmat):
                 geometries.append(displaced_coord)
-                q_coords.append(q_vec)
+                q_coords.append(q_tot)
                 energies.append(e_harm)
             else:
                 if debug > 0: print("Discarded geometry due to adjacency mismatch")
@@ -190,13 +194,13 @@ def geom_sampling_from_vnm(labels, coord, freqs, T: float=0.0, n_samples: int=10
                 if debug > 0: print(f"{new_adjnum-original_adjnum}")
         else:
             geometries.append(displaced_coord)
-            q_coords.append(q_vec)
+            q_coords.append(q_tot)
             energies.append(e_harm)
         count += 1
         if count >= maxcount: 
             print(f"Warning: Reached maximum count of {maxcount} with only {len(geometries)}/{n_samples} samples created.")
             break
-    print(f"Produced {len(geometries)} in {count} attempts")
+    if debug > 0: print(f"Produced {len(geometries)} structures in {count} attempts")
     return np.array(geometries), np.array(q_coords), np.array(energies)
 
 ####
@@ -212,8 +216,8 @@ def expected_vibrational_energy(omega_au, T):
         coth_x = (np.exp(x) + np.exp(-x)) / (np.exp(x) - np.exp(-x))  # coth(x) = (e^x + e^(-x)) / (e^x - e^(-x))
         E_vib = 0.5 * Constants.hbar * np.sum(omega_au * coth_x)
         return E_vib
-
 ####
+
 def apply_q_displacement(x_ref, q_coords, freqs):
     """
     Applies normal mode displacements to a reference geometry using given mode amplitudes.
@@ -287,3 +291,36 @@ def project_to_normal_modes(l1, x1, l2, x2, freqs, debug: int=0):
     print("Error of the projection (RMSD):", rmsd(l1, x1, l1, x3, reorder=False))
 
     return q_coords
+
+#############
+## For FPS ##
+#############
+def beta_distance(Q1, Q2, freq_cm, T: float=300, debug: int=0):
+    ### This is a similarity function to compare two sets of Q values. Meant to be used with the furthest point sampling function in Other
+    omegas = np.array(freq_cm)*Constants.cm2har
+    dist = 0
+    beta   = 1/(Constants.boltz_au*T)
+    ps     = np.exp(-beta*omegas)
+    ps     = ps/np.sum(ps)
+    for a, b, f, o in zip(Q1, Q2, ps, omegas):
+        dist += np.abs(a-b) * f
+    return dist
+
+def custom_q_distance(Q1, Q2, freq_cm):
+    ### This is a similarity function to compare two sets of Q values. Meant to be used with the furthest point sampling function in Other
+    dist = 0
+    for a, b, f in zip(Q1, Q2, freq_cm):
+        dist += np.abs(a-b) * (1/f)
+    return dist
+
+def pairwise_distance_matrix(data, freqs_cm, dist_func):
+    ### This function computes the similarity matrix using one of the metrics above. Meant to be used with the furthest point sampling function in Other
+    """Computes the pairwise distance matrix using a custom distance function."""
+    n = data.shape[0]
+    dist_matrix = np.zeros((n, n))
+    for i in range(n):
+        for j in range(i + 1, n):
+            dist = dist_func(data[i], data[j], freqs_cm)
+            dist_matrix[i, j] = dist
+            dist_matrix[j, i] = dist
+    return dist_matrix

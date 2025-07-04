@@ -474,3 +474,33 @@ def gram_schmidt(A,norm=True,row_vect=False):
     
     return G
 
+####
+def furthest_point_sampling(data, freqs_cm1, k, dist_func):
+    from Scope.VNM_tools import pairwise_distance_matrix
+    """
+    Selects `k` furthest points from `data` using a custom distance function.
+
+    Parameters:
+    - data: np.ndarray of shape (n_samples, n_features)
+    - k: number of samples to select
+    - dist_func: function to compute distance between two samples
+
+    Returns:
+    - selected_indices: list of indices of selected points
+    """
+    data        = np.array(data)
+    freqs_cm1   = np.array(freqs_cm1)
+
+    n_samples   = data.shape[0]
+    D = pairwise_distance_matrix(data, freqs_cm1, dist_func)
+
+    selected      = [0]  # Starts with 0
+    min_distances = D[selected[0]].copy()         # Distance from selected[0] to all points
+
+    for _ in range(1, k):
+        # At each step, pick the point with the maximum minimum distance to the selected set
+        for i in range(n_samples):
+            min_distances[i] = min(min_distances[i], min(D[i, j] for j in selected))
+        next_idx = np.argmax(min_distances)
+        selected.append(next_idx)
+    return selected
