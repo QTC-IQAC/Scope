@@ -222,7 +222,7 @@ class sco_system(object):
 
         else: print("Empty pool of reference molecules"); return False
 
-        assert self.HS_ref_mol.natoms != self.LS_ref_mol.natoms; f"Warning: different number of atoms in molecule; HS: {self.HS_ref_mol.natoms} vs. LS: {self.LS_ref_mol.natoms}"
+        assert self.HS_ref_mol.natoms == self.LS_ref_mol.natoms, f"Warning: {self.refcode} different number of atoms in molecule; HS: {self.HS_ref_mol.natoms} vs. LS: {self.LS_ref_mol.natoms}"
 
         ## Fixes RDKIT objects from cell2mol
         self.HS_ref_mol.set_bonds()
