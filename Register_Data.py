@@ -27,10 +27,11 @@ def reg_general(comp: object, debug: int=0):
     if not hasattr(comp,"output"): comp.create_output() 
     comp.isfinished              = comp.output.get_status_finished()
     comp.elapsed_time            = comp.output.get_elapsed_time() 
+    comp.cpu_time                = comp.output.get_cpu_time() 
     comp.status                  = comp.output.get_last_block_status()
     if debug > 0: 
         print("REG_GENERAL: comp.isfinished:", comp.isfinished)
-        print("REG_GENERAL: comp.elapsed_time:", comp.elapsed_time)
+        print("REG_GENERAL: comp.cpu_time:", comp.cpu_time)
         print("REG_GENERAL: comp.status:", comp.status)
 
 ###########################################
