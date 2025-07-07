@@ -186,41 +186,43 @@ class sco_system(object):
 
         ### Selects reference molecules
         if debug > 0: print(f"{len(pool)} tmcs in pool")
-        if len(pool) > 0:
-            for idx, mol in enumerate(pool):
-                if mol.scope_guess_spin == 'HS' and not self.hasHS:
-                    self.hasHS = True
-                    self.HS_ref_mol_id = idx
-                    self.HS_ref_mol = deepcopy(mol)
-                    #self.HS_ref_mol = import_molecule(mol, parent=self)
-                    self.HS_ref_mol.spin = 'HS'
-                    self.HS_ref_mol._sys = self  #Duplicate with parent to avoid crashes
-                    if debug > 0: print(f"HS reference molecule found")
-                elif mol.scope_guess_spin == 'LS' and not self.hasLS:
-                    self.hasLS = True
-                    self.LS_ref_mol_id = idx
-                    self.LS_ref_mol = deepcopy(mol)
-                    #self.LS_ref_mol = import_molecule(mol, parent=self)
-                    self.LS_ref_mol.spin = 'LS'
-                    self.LS_ref_mol._sys = self   #Duplicate with parent to avoid crashes
-                    if debug > 0: print(f"LS reference molecule found")
-            ### If it hasn't found any molecule that can be classified as HS and LS... then takes anything
-            if not self.hasHS:
-                self.HS_ref_mol_id = 0
-                #self.HS_ref_mol = import_molecule(pool[0], parent=self)
-                self.HS_ref_mol = deepcopy(pool[0])
-                self.HS_ref_mol.spin = 'HS'
-                self.HS_ref_mol._sys = self  #Duplicate to avoid crashes
-                if debug > 0: print(f"HS reference molecule assumed")
-            if not self.hasLS:
-                self.LS_ref_mol_id = 0
-                self.LS_ref_mol = deepcopy(pool[0])
-                #self.LS_ref_mol = import_molecule(pool[0], parent=self)
-                self.LS_ref_mol.spin = 'LS'
-                self.LS_ref_mol._sys = self   #Duplicate to avoid crashes
-                if debug > 0: print(f"LS reference molecule assumed")
+       
+        if len(pool) == 0: print("Empty pool of reference molecules"); return False           
 
-        else: print("Empty pool of reference molecules"); return False
+        ## Evaluates in pairs to make sure we get the same number of atoms
+        for idx, mol1 in enumerate(pool):
+            for jdx, mol2 in enumerate(pool):
+                if jdx != idx and not self.hasHS and not self.hasLS: 
+                    if mol1.scope_guess_spin == 'HS' and mol2.scope_guess_spin == 'LS' and mol1.totcharge == mol2.totcharge and mol1 == mol2:
+                        if debug > 0: print(f"Reference molecules found")
+                        self.hasHS = True
+                        self.hasLS = True
+
+                        self.HS_ref_mol_id = idx
+                        self.LS_ref_mol_id = jdx
+
+                        self.HS_ref_mol = deepcopy(mol1)
+                        self.LS_ref_mol = deepcopy(mol2)
+
+                        self.HS_ref_mol.spin = 'HS'
+                        self.LS_ref_mol.spin = 'LS'
+
+                        self.LS_ref_mol._sys = self   #Duplicate with parent to avoid crashes
+                        self.HS_ref_mol._sys = self  #Duplicate with parent to avoid crashes
+
+        ### If it hasn't found any molecule that can be classified as HS and LS... then takes anything
+        if not self.hasHS:
+            self.HS_ref_mol_id = 0
+            self.HS_ref_mol = deepcopy(pool[0])
+            self.HS_ref_mol.spin = 'HS'
+            self.HS_ref_mol._sys = self  #Duplicate to avoid crashes
+            if debug > 0: print(f"HS reference molecule assumed")
+        if not self.hasLS:
+            self.LS_ref_mol_id = 0
+            self.LS_ref_mol = deepcopy(pool[0])
+            self.LS_ref_mol.spin = 'LS'
+            self.LS_ref_mol._sys = self   #Duplicate to avoid crashes
+            if debug > 0: print(f"LS reference molecule assumed")
 
         assert self.HS_ref_mol.natoms == self.LS_ref_mol.natoms, f"Warning: {self.refcode} different number of atoms in molecule; HS: {self.HS_ref_mol.natoms} vs. LS: {self.LS_ref_mol.natoms}"
 
@@ -415,6 +417,7 @@ class crystal(object):
 
     ################################
     def get_FeN6_molecules(self, debug: int=0):
+        self.list_of_molecules = []
         for idx, mol in enumerate(self.cell.moleclist):
             if mol.iscomplex:
                 keepit = False
