@@ -179,12 +179,10 @@ class sco_system(object):
         print(len(self.crystals))
         for crys in self.crystals:
             if len(crys.list_of_molecules) == 0: 
-                if debug > 0: print("Setting Reference Molecules; getting_feN6") 
+                if debug > 0: print("Setting Reference Molecules; Collecting Molecules with FeN6 coordination Sphere") 
                 crys.get_FeN6_molecules(debug=debug)
             for mol in crys.list_of_molecules:
-                #mol.check_fragmentation()
-                #if not mol.isfragmented: pool.append(mol)
-                pool.append(mol)
+                if not mol.check_fragmentation(): pool.append(mol)
 
         ### Selects reference molecules
         if debug > 0: print(f"{len(pool)} tmcs in pool")
@@ -224,9 +222,15 @@ class sco_system(object):
 
         else: print("Empty pool of reference molecules"); return False
 
-        # Creates "initial" states:
-        if hasattr(self,"HS_ref_mol") and hasattr(self,"LS_ref_mol"): 
-            if self.HS_ref_mol.natoms != self.LS_ref_mol.natoms: print(f"Warning: different number of atoms in molecule; HS: {self.HS_ref_mol.natoms} vs. LS: {self.LS_ref_mol.natoms}");
+        assert self.HS_ref_mol.natoms != self.LS_ref_mol.natoms; f"Warning: different number of atoms in molecule; HS: {self.HS_ref_mol.natoms} vs. LS: {self.LS_ref_mol.natoms}"
+
+        ## Fixes RDKIT objects from cell2mol
+        self.HS_ref_mol.set_bonds()
+        self.HS_ref_mol.fix_ligands_rdkit_obj()
+        self.LS_ref_mol.set_bonds()
+        self.LS_ref_mol.fix_ligands_rdkit_obj()
+
+        ## Creates "initial" states:
         if hasattr(self,"HS_ref_mol"):
             HS_ini_state = state(self.HS_ref_mol, "initial")
             HS_ini_state.set_geometry(self.HS_ref_mol.labels, self.HS_ref_mol.coord)

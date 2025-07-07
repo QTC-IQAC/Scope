@@ -396,32 +396,50 @@ def compare_metals (at1, at2, check_coordinates: bool=False, debug: int=0):
 
 #################################
 def compare_species(mol1, mol2, debug: int=0):
+    elems = elemdatabase.elementnr.keys()
+
     if debug > 0: 
-        print("Comparing Species")
-        print(mol1)
-        print(mol2)
+        print("COMPARE_SPECIES. Comparing:")
+        print(mol1.formula)
+        print(mol2.formula)
+    
     # a pair of species is compared on the basis of:
     # 1) the total number of atoms
-    if (mol1.natoms != mol2.natoms): return False
+    if (mol1.natoms != mol2.natoms): 
+        if debug > 0: print("COMPARE_SPECIES. FALSE, different natoms:")
+        return False
 
     # 2) the total number of electrons (as sum of atomic number)
-    if (mol1.eleccount != mol2.eleccount): return False
+    if (mol1.eleccount != mol2.eleccount): 
+        if debug > 0: print("COMPARE_SPECIES. FALSE, different eleccount:")
+        return False
 
     # 3) the number of atoms of each type
     if not hasattr(mol1,"element_count"): mol1.set_element_count()
     if not hasattr(mol2,"element_count"): mol2.set_element_count()
     for kdx, elem in enumerate(mol1.element_count):
-        if elem != mol2.element_count[kdx]: return False       
-
+        if elem != mol2.element_count[kdx]: 
+            if debug > 0: print(f"COMPARE_SPECIES. FALSE, different {elem} count:")
+            return False       
+    
     # 4) the number of adjacencies between each pair of element types
     if not hasattr(mol1,"adj_types"):     mol1.set_adj_types()
     if not hasattr(mol2,"adj_types"):     mol2.set_adj_types()
-    for kdx, elem in enumerate(mol1.adj_types):
-        for ldx, elem2 in enumerate(elem):
-            if elem2 != mol2.adj_types[kdx, ldx]: return False
-    return True
-#################################
+    if debug == 2: print(f"{mol1.adj_types=}")
+    if debug == 2: print(f"{mol2.adj_types=}")
 
+    count = 0
+    for kdx, (elem, row1) in enumerate(zip(elems, mol1.adj_types)):
+        for ldx, (elem2, val1) in enumerate(zip(elems, row1)):
+            val2 = mol2.adj_types[kdx, ldx]
+            if val1 != val2: 
+                count += 1
+                if debug > 0: print(f"COMPARE_SPECIES. FALSE, different adjacency count")
+                if debug > 0: print(f"COMPARE_SPECIES. {kdx} {ldx} {elem} - {elem2} : {val1} - {val2}")
+    if count > 0 : return False
+    return True
+
+#################################
 def get_non_transition_metal_idxs(labels: list, debug: int=0):
     """ alkali metals (Group 1) and alkaline earth metals (Group 2)  """
     non_transition_metal_indices = []

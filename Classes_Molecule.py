@@ -31,11 +31,11 @@ class specie(object):
 
         self.parents           = []
         self.parents_indices   = []
-        self.indices = [*range(0,self.natoms,1)]
+        self.indices           = [*range(0,self.natoms,1)]
 
         ## Defaults
-        self.cov_factor   = 1.3
-        self.metal_factor = 1.0
+        self.cov_factor        = 1.3
+        self.metal_factor      = 1.0
         
         ## Bonds
         self.has_bonds = False
@@ -362,6 +362,50 @@ class specie(object):
     def __len__(self):
         return self.natoms
 
+    def __eq__(self, other, debug: int=0):
+        elems = elemdatabase.elementnr.keys()
+        if debug > 0: 
+            print("COMPARE_SPECIES. Comparing:")
+            print(self.formula)
+            print(other.formula)
+        
+        # a pair of species is compared on the basis of:
+        # 1) the total number of atoms
+        if (self.natoms != other.natoms): 
+            if debug > 0: print("COMPARE_SPECIES. FALSE, different natoms:")
+            return False
+
+        # 2) the total number of electrons (as sum of atomic number)
+        if (self.eleccount != other.eleccount): 
+            if debug > 0: print("COMPARE_SPECIES. FALSE, different eleccount:")
+            return False
+
+        # 3) the number of atoms of each type
+        if not hasattr(self,"element_count"): self.set_element_count()
+        if not hasattr(other,"element_count"): other.set_element_count()
+        for kdx, elem in enumerate(self.element_count):
+            if elem != other.element_count[kdx]: 
+                if debug > 0: print(f"COMPARE_SPECIES. FALSE, different {elem} count:")
+                return False       
+        # writexyz(os.getcwd(), f"reordered.xyz", self.labels, self.coord)
+        # 4) the number of adjacencies between each pair of element types
+        if not hasattr(self,"adj_types"):     self.set_adj_types()
+        if not hasattr(other,"adj_types"):     other.set_adj_types()
+        if debug == 2: print(f"{self.adj_types=}")
+        if debug == 2: print(f"{other.adj_types=}")
+
+        count = 0
+        if debug > 0: print("COMPARE_SPECIES. kdx ldx elem1 - elem2 : reordered - reference")
+        for kdx, (elem, row1) in enumerate(zip(elems, self.adj_types)):
+            for ldx, (elem2, val1) in enumerate(zip(elems, row1)):
+                val2 = other.adj_types[kdx, ldx]
+                if val1 != val2: 
+                    count += 1
+                    if debug > 0: print(f"COMPARE_SPECIES. FALSE, different adjacency count")
+                    if debug > 0: print(f"COMPARE_SPECIES. {kdx} {ldx} {elem} - {elem2} : {val1} - {val2}")
+        if count > 0 : return False
+        return True
+
     ############
     def __repr__(self, indirect: bool=False):
         to_print = ""
@@ -378,8 +422,10 @@ class specie(object):
         if hasattr(self,"smiles"):     to_print += f' SMILES                = {self.smiles}\n'
         if hasattr(self,"adjmat"):     to_print += f' Has Adjacency Matrix  = YES\n'
         else:                          to_print += f' Has Adjacency Matrix  = NO \n'
-        if hasattr(self,"bonds"):      to_print += f' Has Bonds             = YES\n'
-        else:                          to_print += f' Has Bonds             = NO \n'
+        if not hasattr(self,"has_bonds"):  to_print += f' Has Bonds             = NO\n'
+        else:
+            if self.has_bonds:         to_print += f' Has Bonds             = YES\n'
+            else:                      to_print += f' Has Bonds             = NO\n'
         if not indirect: to_print += '------------------------------------------------\n'
         return to_print
 
@@ -480,6 +526,16 @@ class molecule(specie):
                 self.metals.append(self.atoms[m])                            
         return self.ligands, self.metals
         
+    #######################################################
+    def fix_ligands_rdkit_obj(self, debug: int=0):
+        if self.iscomplex and not hasattr(self,"ligands"): self.split_complex(debug=debug)
+        self.smiles = []
+        for lig in self.ligands:
+            lig.fix_rdkit_obj(debug=debug)
+            lig.set_smiles_from_rdkit_obj(debug=debug) 
+            self.smiles.append(lig.smiles)
+        return self.smiles
+
     #######################################################
     def get_hapticity(self, debug: int=0):
         if not hasattr(self,"ligands"): self.split_complex(debug=debug)
@@ -1017,7 +1073,6 @@ class ligand(specie):
         if not hasattr(self,"rdkit_obj"): 
             if debug >= 1: print(f"LIG.SET_BONDS: Can't set bonds, ligand has not rdkit_object")
             return False
-        self.has_bonds = True
         n_atoms = self.natoms 
         n_atoms_rdkit = self.rdkit_obj.GetNumAtoms() 
         if debug >= 1: print(f"LIG.SET_BONDS: {self.formula=}, {self.subtype=} {self.smiles=}")
@@ -1109,6 +1164,7 @@ class ligand(specie):
                                 return False # return False if no bonds are created
                     else :
                         if debug >=1: print(f"\tNO BONDS for {rdkit_atom.GetSymbol()} with {self.subtype} RDKit object index {idx} because it is an added atom")
+        self.has_bonds = True
         return True 
 
     #######################################################
