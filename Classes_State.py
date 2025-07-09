@@ -285,17 +285,21 @@ class state(object):
         return self.moleclist
 
 ####################
-    def sample_geometries(self, n_selected: int=10, typ='default', debug: int=0):
+    def sample_geometries(self, n_selected: int=10, temp: float=300, n_samples_round=100, n_rounds=2, debug: int=0):
         """
+        - The sampling parameters (temperature, number of rounds, samples per round) can be adjusted.
         Samples geometries around the current state geometry using vibrational normal modes (VNMs) and furthest point sampling (FPS).
 
         Parameters
         ----------
         n_selected : int, optional
             Number of geometries to select per round (default is 10).
-        typ : str, optional
-            Sampling type, which determines the temperature, number of rounds, and samples per round.
-            Options are 'light', 'default', or 'heavy' (default is 'default').
+        temp : float, optional
+            Temperature parameter for sampling (default is 300).
+        n_samples_round : int, optional
+            Number of geometries to sample per round (default is 100).
+        n_rounds : int, optional
+            Number of sampling rounds (default is 2).
         debug : int, optional
             Debug level for verbose output (default is 0).
 
@@ -318,22 +322,22 @@ class state(object):
         - The sampling parameters (temperature, number of rounds, samples per round) depend on the `typ` argument.
         - Requires that the state is a minimum and that VNMs have eigenvectors parsed.
         """
-        from Scope.VNM_tools import geom_sampling_from_vnm, beta_distance
+        from Scope.VNM_tools import geom_sampling_from_vnm, euclidean_q_distance, custom_q_distance, beta_distance
         from Scope.Other import furthest_point_sampling
-        if   typ.lower() == 'light':    temp=100; n_rounds=2; n_samples_round=100
-        elif typ.lower() == 'default':  temp=200; n_rounds=4; n_samples_round=500
-        elif typ.lower() == 'heavy':    temp=300; n_rounds=6; n_samples_round=1000
-        else: print(f"STATE.SAMPLE_GEOMETRIES: could not understand {typ=}. Options are light/default/heavy")
+        #if   typ.lower() == 'light':    temp=100; n_rounds=2; n_samples_round=100
+        #elif typ.lower() == 'default':  temp=200; n_rounds=5; n_samples_round=300
+        #elif typ.lower() == 'heavy':    temp=300; n_rounds=8; n_samples_round=500
+        #else: print(f"STATE.SAMPLE_GEOMETRIES: could not understand {typ=}. Options are light/default/heavy")
 
         if not self.check_minimum():
             raise ValueError("State is not a minimum")
         if not hasattr(self.VNMs[0],"haseigenvec"):
             raise ValueError("VNMs do not have Eigenvectors. Please parse them")
 
-        if debug > 0: print(f"STATE.SAMPLE_GEOMETRIES: you selected {typ=}. Parameters are:")
-        if debug > 0: print(f"\t Temperature (Relevant for Sampling):  {temp}")
-        if debug > 0: print(f"\t Number of Rounds:                     {n_rounds}")
-        if debug > 0: print(f"\t Number of Selected Samples per Round: {n_samples_round}")
+        #if debug > 0: print(f"STATE.SAMPLE_GEOMETRIES: you selected {typ=}. Parameters are:")
+        #if debug > 0: print(f"\t Temperature (Relevant for Sampling):  {temp}")
+        #if debug > 0: print(f"\t Number of Rounds:                     {n_rounds}")
+        #if debug > 0: print(f"\t Number of Selected Samples per Round: {n_samples_round}")
 
         q_min = np.zeros((len(self.VNMs)))
         current_geoms = [] 
@@ -360,7 +364,8 @@ class state(object):
             if len(q_fps) > n_selected:
                 #Run FPS
                 if debug > 0: print(f"STATE.SAMPLE_GEOMETRIES: Entering FPS selection with {len(q_fps)} geometries. Keeping {n_selected}")
-                idxs = furthest_point_sampling(q_fps, self.freqs_cm, n_selected, beta_distance)
+                #idxs = furthest_point_sampling(q_fps, self.freqs_cm, n_selected, beta_distance)
+                idxs = furthest_point_sampling(q_fps, n_selected, euclidean_q_distance)
                 if debug > 0: print(f"STATE.SAMPLE_GEOMETRIES: FPS of round {nr+1}/{n_rounds} kept {len(idxs)} geometries, with indices:{idxs}")
             else:
                 if debug > 0: print(f"STATE.SAMPLE_GEOMETRIES: Sampling of round {nr+1}/{n_rounds} failed to generate enough samples for FPS. Taking all available to the next round")

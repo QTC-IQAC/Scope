@@ -396,7 +396,7 @@ class g16_output(object):
     def get_cpu_time(self, debug: int=0):
         line_elapsed, found_elapsed   = search_string("Job cpu time:", self.lines, typ='last')
         if found_elapsed:
-            elapsed_time_list = self.lines[line_elapsed].split()[2:]
+            elapsed_time_list = self.lines[line_elapsed].split()[3:]
             self.cpu_time = G16_time_to_sec(elapsed_time_list)
         else: self.cpu_time = float(0)
         return self.cpu_time        

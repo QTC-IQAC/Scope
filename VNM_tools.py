@@ -313,14 +313,19 @@ def custom_q_distance(Q1, Q2, freq_cm):
         dist += np.abs(a-b) * (1/f)
     return dist
 
-def pairwise_distance_matrix(data, freqs_cm, dist_func):
+def euclidean_q_distance(Q1, Q2):
+    ### This is a similarity function to compare two sets of Q values. Meant to be used with the furthest point sampling function in Other
+    dist = np.linalg.norm(Q1-Q2)
+    return dist
+
+def pairwise_distance_matrix(data, dist_func):
     ### This function computes the similarity matrix using one of the metrics above. Meant to be used with the furthest point sampling function in Other
     """Computes the pairwise distance matrix using a custom distance function."""
     n = data.shape[0]
     dist_matrix = np.zeros((n, n))
     for i in range(n):
         for j in range(i + 1, n):
-            dist = dist_func(data[i], data[j], freqs_cm)
+            dist = dist_func(data[i], data[j]) #, freqs_cm)
             dist_matrix[i, j] = dist
             dist_matrix[j, i] = dist
     return dist_matrix
