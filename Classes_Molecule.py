@@ -368,12 +368,12 @@ class specie(object):
         # a pair of species is compared on the basis of:
         # 1) the total number of atoms
         if (self.natoms != other.natoms): 
-            print(f"COMPARE_SPECIES. FALSE: {self.natoms=} vs. {other.natoms=}")
+            #print(f"COMPARE_SPECIES. FALSE: {self.natoms=} vs. {other.natoms=}")
             return False
 
         # 2) the total number of electrons (as sum of atomic number)
         if (self.eleccount != other.eleccount): 
-            print(f"COMPARE_SPECIES. FALSE: {self.eleccount=} vs. {other.eleccount=}")
+            #print(f"COMPARE_SPECIES. FALSE: {self.eleccount=} vs. {other.eleccount=}")
             return False
 
         # 3) the number of atoms of each type
@@ -381,7 +381,7 @@ class specie(object):
         if not hasattr(other,"element_count"): other.set_element_count()
         for kdx, elem in enumerate(self.element_count):
             if elem != other.element_count[kdx]: 
-                print(f"COMPARE_SPECIES. FALSE, different {elem} count:")
+                #print(f"COMPARE_SPECIES. FALSE, different {elem} count:")
                 return False       
         # writexyz(os.getcwd(), f"reordered.xyz", self.labels, self.coord)
         # 4) the number of adjacencies between each pair of element types
@@ -394,8 +394,8 @@ class specie(object):
                 val2 = other.adj_types[kdx, ldx]
                 if val1 != val2: 
                     count += 1
-                    print(f"COMPARE_SPECIES. FALSE, different adjacency count")
-                    print(f"COMPARE_SPECIES. {kdx=} {ldx=} {elem=}-{elem2=} : {val1=}-{val2=}")
+                    #print(f"COMPARE_SPECIES. FALSE, different adjacency count")
+                    #print(f"COMPARE_SPECIES. {kdx=} {ldx=} {elem=}-{elem2=} : {val1=}-{val2=}")
         if count > 0 : return False
         return True
 
