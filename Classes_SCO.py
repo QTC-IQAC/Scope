@@ -43,8 +43,8 @@ class sco_system(object):
         self.status               = "active"
 
     def save(self, filepath: str=None):
-        if filepath is None: filepath = self.sys_path+self.refcode+'.sys'
         from Scope.Read_Write import save_binary
+        if filepath is None: filepath = self.sys_path+self.refcode+'.sys'
         save_binary(self, filepath)
 
 ###################################

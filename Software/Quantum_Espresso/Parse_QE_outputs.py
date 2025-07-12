@@ -146,6 +146,10 @@ def parse_makov_from_step(lines, debug: int=0):
     else: return None
     return val * ry2har
 
+def parse_cpu_time(lines: str, debug: int=0):
+    # To be implemented
+    return float(0)
+
 def parse_elapsed_time(lines: str, debug: int=0):
     line_elapsed, found_elapsed = search_string("PWSCF        :", lines, typ='last')
     if not found_elapsed: return float(0)

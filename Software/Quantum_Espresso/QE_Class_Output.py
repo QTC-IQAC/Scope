@@ -545,6 +545,10 @@ class qe_output(object):
     def get_elapsed_time(self, debug: int=0):
         self.elapsed_time = parse_elapsed_time(self.lines)
         return self.elapsed_time        
+
+    def get_cpu_time(self, debug: int=0):
+        self.cpu_time = parse_cpu_time(self.lines)
+        return self.cpu_time        
     
 #############
 ### PRINT ###

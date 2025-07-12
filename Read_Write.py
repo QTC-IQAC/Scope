@@ -54,19 +54,23 @@ def load_binary(pathfile):
         binary = pickle.load(pickle_file)
     return binary
 
-
-def save_binary(variable, pathfile, backup: bool=False):
-    pathfile = pathfile.replace("lustre","home")
-    if not backup:
-        try: 
-            file = open(pathfile,'wb')
-            pickle.dump(variable,file)
-            file.close()
-        except Exception as exc:
-            print("Error Saving Binary for pathfile:", pathfile)
-            print(exc)
-    if backup:
-        print("Backup not implemented, file not saved")
+def save_binary(variable, pathfile):
+    import tempfile
+    pathfile = pathfile.replace("lustre", "home")
+    # Write to a temporary file first
+    dir_name = os.path.dirname(pathfile)
+    try:
+        with tempfile.NamedTemporaryFile(dir=dir_name, delete=False) as tmp_file:
+            pickle.dump(variable, tmp_file)
+            temp_name = tmp_file.name
+        # If pickle.dump succeeds, replace the original file
+        shutil.move(temp_name, pathfile)
+    except Exception as exc:
+        print("Error Saving Binary for pathfile:", pathfile)
+        print(exc)
+        # Clean up temp file if exists
+        if 'temp_name' in locals() and os.path.exists(temp_name):
+            os.remove(temp_name)
 
 #####################
 ## Plain XYZ Files ##

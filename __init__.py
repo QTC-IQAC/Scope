@@ -9,6 +9,7 @@ from .Classes_SCO import *
 from .Classes_Spin import *
 from .Classes_State import *
 from .Constants import *
+from .CShM import *
 from .Database  import *
 from .Elementdata import *
 from .Findiff import *
@@ -20,7 +21,6 @@ from .Parse_Cif import *
 from .Parse_General import *
 from .Read_Write import *
 from .Register_Data import *
-from .Shape_V0 import *
 from .Structure_SCO import *
 from .Thermal_Corrections import *
 from .Unit_cell_tools import *
