@@ -268,16 +268,18 @@ class specie(object):
             self.madjnum = None
         return self.madjmat, self.madjnum
 
-    def get_occurrence(self, substructure: object) -> int:
+    def get_occurrence(self, substructure: object, debug: int=0) -> int:
+        ## Finds how many times a substructure appears in self
         occurrence = 0
-        ## Ligands in Complexes or Groups in Ligands
+
+        ## Case of Ligands in Complexes or Groups in Ligands
         done = False
         if hasattr(substructure,"subtype") and hasattr(self,"subtype"):
             if substructure.subtype == 'ligand' and self.subtype == 'molecule':
                 if not hasattr(self,"ligands"): self.split_complex()
                 if self.ligands is not None:
                     for l in self.ligands:
-                        issame = compare_species(substructure, l, debug=1)
+                        issame = compare_species(substructure, l, debug=debug)
                         if issame: occurrence += 1
                     done = True 
             elif substructure.subtype == 'group' and self.subtype == 'ligand':
@@ -286,7 +288,7 @@ class specie(object):
                     for l in self.ligands:
                         if not hasattr(l,"groups"): self.split_ligand()
                         for g in l.groups:
-                            issame = compare_species(substructure, g, debug=1)
+                            issame = compare_species(substructure, g, debug=debug)
                             if issame: occurrence += 1
                 done = True 
         ## Atoms in Species
@@ -2084,7 +2086,7 @@ class cell(object):
         self.coord = np.ndarray.tolist(new_coord)
         return self.coord
 
-    def get_occurrence(self, substructure: object) -> int:
+    def get_occurrence(self, substructure: object, debug: int=0) -> int:
         occurrence = 0
         ## Molecules in Cell
         if hasattr(substructure,"subtype") and hasattr(self,"moleclist"): 

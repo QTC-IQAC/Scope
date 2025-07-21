@@ -12,6 +12,7 @@ angs2bohr = 1/bohr2angs
 
 ### Conversion Factor. Always to be applied as multiplications
 
+kcal2kJmol=4.184
 har2kJmol=2625.5002
 har2cm=219474.6
 har2eV=27.211399

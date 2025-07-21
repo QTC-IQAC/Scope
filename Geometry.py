@@ -6,12 +6,47 @@ def unit_vector(vector):
     return vector / np.linalg.norm(vector)
 
 def getangle(v1, v2):
+    """
+    Calculates the angle in radians between two vectors.
+
+    Parameters:
+        v1 (array-like): The first vector.
+        v2 (array-like): The second vector.
+
+    Returns:
+        float: The angle in radians between vectors v1 and v2.
+
+    Notes:
+        - The function assumes that `unit_vector` and `np` (NumPy) are defined/imported in the scope.
+        - The result is in the range [0, π].
+    """
     v1_u = unit_vector(v1)
     v2_u = unit_vector(v2)
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 #########
 def getdihedral(V1, V2, V3, V4):
+    """
+    Calculate the dihedral angle (torsion angle) defined by four points in 3D space.
+
+    Given four points V1, V2, V3, and V4, this function computes the signed dihedral angle
+    between the planes formed by (V1, V2, V3) and (V2, V3, V4). The angle is returned in radians,
+    ranging from -π to π.
+
+    Parameters
+    ----------
+    V1, V2, V3, V4 : array-like
+        The coordinates of the four points, each as a 1D array-like of length 3.
+
+    Returns
+    -------
+    angle : float
+        The signed dihedral angle in radians.
+
+    Notes
+    -----
+    The sign of the angle follows the right-hand rule and is determined using the atan2 function.
+    """
     V1, V2, V3, V4 = map(np.asarray, (V1, V2, V3, V4))
     # Bond vectors
     b1 = V2 - V1

@@ -195,7 +195,7 @@ class state(object):
         ## If it is a unit cell, then we need a list of molecules that should in principle be there. This is refmoleclist
         ## If the cell is created by cell2mol, then this list is already stored in the .cell object
         elif self._subject.type == "cell": 
-            assert hasattr(self,"cellvec")
+            assert hasattr(self,"cell_vector")
             assert hasattr(self._subject,"refmoleclist")
 
             if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)

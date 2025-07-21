@@ -3,7 +3,7 @@ from pybliometrics.scopus import ScopusSearch
 from pybliometrics.scopus import AbstractRetrieval
 import pandas as pd
 
-pybliometrics.scopus.init()
+#pybliometrics.scopus.init()
 
 def get_query(crys, qtype: int=0, debug: int=0):
     if debug > 0: print("GET_ABSTRACT: crys info:", crys.authors[0], crys.authors[-1], crys.journal_year, crys.journal_name, crys.journal_volume, crys.journal_page)
