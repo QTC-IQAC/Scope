@@ -67,6 +67,17 @@ class job(object):
         self.must_be_good     = new_job_data.must_be_good                
         self.check_requisites()
 
+    def get_max_step(self, debug: int=0):
+        max_step = 0
+        for idx, comp in enumerate(self.computations):
+            if comp.step > max_step: 
+                max_step = comp.step
+        return max_step
+
+    def check_convergence(self, debug: int=0):
+        self.isconverged = check_convergence(self.energies, None, self.job_data.energy_thres)
+        return self.isconverged
+
     def find_computation(self, keyword: str='', step: int=1, run_number: int=1, debug: int=0):
         for idx, comp in enumerate(self.computations):
             if not hasattr(comp,"step"): comp.step = 1
@@ -430,6 +441,7 @@ class job(object):
         to_print += f' self.constrains       = {self.constrains}\n'
         to_print += f' self.setup            = {self.setup}\n'
         to_print += f' Num Computations      = {len(self.computations)}\n'
+        if self.setup == "rep_opt": to_print += f' Num Steps             = {self.get_max_step()}\n'
         to_print += '----------------------------------------------------\n'
         to_print += f' self.isregistered (Temp) = {self.isregistered}\n'
         to_print += f' self.isgood       (Temp) = {self.isgood}\n' 

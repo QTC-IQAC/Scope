@@ -240,7 +240,11 @@ class state(object):
 
     def set_energy(self, energy, units, overwrite: bool=True):
         self.add_result(data("energy",energy,units,"state.set_energy"), overwrite=overwrite)
-        #self.energy     = energy
+
+    def set_Helec(self, overwrite: bool=True, debug: int=0):
+        assert "energy" in self.results
+        if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
+        self.add_result(data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.set_Helec"), overwrite=overwrite)
 
     def find_computation(self, job_keyword: str='', step: int=1, run_number: int=1, debug: int=0):
         for idx, comp in enumerate(self.computations):
@@ -502,9 +506,6 @@ def find_state(subject: object, search_name: str, debug: int=0):
         if not found: 
             if debug >= 1: print(f"FIND STATE: state {search_name} not found")
             return False, None
-
-
-
 
 ## OLD ATTEMPT AT UPDATE
 
