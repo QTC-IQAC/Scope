@@ -45,7 +45,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
     assert hasattr(istate,"coord"),  f"istate = {comp.qc_data.istate} doesn't have coordinates"
 
     ## 2b-Cell or Molecule?
-    if hasattr(gmol,"cellparam"): system_type = "cell"
+    if hasattr(gmol,"cell_param"): system_type = "cell"
     else:                         system_type = "molecule"
 
     ## 3-Determines the PP_Library path
@@ -59,14 +59,14 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
 
     ## Charge of System
     if system_type == "cell":
-        if hasattr(gmol,"type"): 
-            if gmol.type == "perxyz": system_charge = gmol.totcharge     
+        if hasattr(gmol,"type") and hasattr(gmol,"totcharge"): 
+            if gmol.type == "perxyz": system_charge = gmol.totcharge    # Note: I wonder how a .cell-class or a perxyz would have totcharge != 0. Why not setting int(0) always? 
             else:                     system_charge = int(0)
         else:                         system_charge = int(0)
-    else:                             system_charge = gmol.totcharge
+    elif system_type == "molecule":   system_charge = gmol.totcharge
 
     if system_type == "cell":     
-        assert hasattr(istate,"cellvec"),  f"istate = {comp.qc_data.istate} doesn't have cell vectors"
+        assert hasattr(istate,"cell_vector"),  f"istate = {comp.qc_data.istate} doesn't have cell vectors"
         if hasattr(istate,"natoms"): natoms = istate.natoms
         else:                        natoms = len(istate.labels) 
     if system_type == "molecule":    natoms = istate.natoms
@@ -232,9 +232,9 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
         #//////////////////
         if system_type == "cell":
             print("CELL_PARAMETERS angstrom", file=inp)
-            print(f"{istate.cellvec[0][0]:14.6f} {istate.cellvec[0][1]:14.6f} {istate.cellvec[0][2]:14.6f}", file=inp)
-            print(f"{istate.cellvec[1][0]:14.6f} {istate.cellvec[1][1]:14.6f} {istate.cellvec[1][2]:14.6f}", file=inp)
-            print(f"{istate.cellvec[2][0]:14.6f} {istate.cellvec[2][1]:14.6f} {istate.cellvec[2][2]:14.6f}", file=inp)
+            print(f"{istate.cell_vector[0][0]:14.6f} {istate.cell_vector[0][1]:14.6f} {istate.cell_vector[0][2]:14.6f}", file=inp)
+            print(f"{istate.cell_vector[1][0]:14.6f} {istate.cell_vector[1][1]:14.6f} {istate.cell_vector[1][2]:14.6f}", file=inp)
+            print(f"{istate.cell_vector[2][0]:14.6f} {istate.cell_vector[2][1]:14.6f} {istate.cell_vector[2][2]:14.6f}", file=inp)
          
         #///////////////////
         #// Atom Species ///
