@@ -224,18 +224,18 @@ def parse_volume_from_step(lines, debug: int=0):
     string = "unit-cell volume"
     linenum, found = search_string(string, lines, typ="first")
     if found:
-        if   len(lines[linenum].split()) == 10: val = lines[linenum].split()[4]
-        elif len(lines[linenum].split()) == 5:  val = lines[linenum].split()[3]
+        if   len(lines[linenum].split()) == 10: val = float(lines[linenum].split()[4])
+        elif len(lines[linenum].split()) == 5:  val = float(lines[linenum].split()[3])
         else: print(len(lines[linenum].split()), "as length for volume line")
     else: val = None 
-    return float(val)
+    return val
 
 def parse_density_from_step(lines, debug: int=0):
     string = "density ="
     linenum, found = search_string(string, lines, typ="first")
-    if found: val = lines[linenum].split()[2]
+    if found: val = float(lines[linenum].split()[2])
     else:     val = None
-    return float(val)
+    return val
 
 def parse_cell_parameters(lines, debug: int=0):
     import numpy as np
