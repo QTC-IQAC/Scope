@@ -404,6 +404,7 @@ class state(object):
                     self.add_result(data("Helec",Helec.value,Helec.units,"enforced in get_thermal_data"), overwrite=overwrite)
             else:
                 print("Get_Thermal_Data: wrong type of data provided when enforcing Helec. It must be a DATA-class object")
+        if debug > 0: print(f"Helec is {self.results['Helec']}")
 
         ############## Selec ##############
         if Selec is None:
@@ -415,6 +416,7 @@ class state(object):
                     self.add_result(data("Selec",Selec.value,Selec.units,"enforced in get_thermal_data"), overwrite=overwrite)
             else:
                 print("Get_Thermal_Data: wrong type of data provided when enforcing Selec. It must be a DATA-class object")
+        if debug > 0: print(f"Selec is {self.results['Selec']}")
 
         ############## Hvib ##############
         if Hvib is None:
@@ -429,6 +431,7 @@ class state(object):
                     self.add_result(Hvib, overwrite=overwrite)
             else:
                 print("Get_Thermal_Data: wrong type of data provided when enforcing Hvib. It must be a COLLECTION-class object")
+        if debug > 0: print(f"Hvib is {self.results['Hvib']}")
 
         ############## Svib ##############
         if Svib is None:
@@ -443,6 +446,7 @@ class state(object):
                     self.add_result(Svib, overwrite=overwrite)
             else:
                 print("Get_Thermal_Data: wrong type of data provided when enforcing Svib. It must be a COLLECTION-class object")
+        if debug > 0: print(f"Svib is {self.results['Svib']}")
 
         ############## Gtot ##############
         if Gtot is None:
@@ -469,6 +473,7 @@ class state(object):
                     self.add_result(Gtot, overwrite=overwrite)
             else:
                 print("Get_Thermal_Data: wrong type of data provided when enforcing Gtot. It must be a COLLECTION")
+        if debug > 0: print(f"Gtot is {self.results['Gtot']}")
 
     def __repr__(self) -> None:
         to_print  = f'---------------------------------------------------\n'

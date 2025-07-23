@@ -11,9 +11,7 @@ from Scope import Constants
 ##############################################################################
 ### Here is where the all protocols to extract system properties, (often) involving more than one system (eg. HS and LS), are collected
 ##############################################################################
-
-def extract_T12(sys: object, branch_keyword: str, High_E_state: object, Low_E_state: object, Trange: range=range(10,501,1), flexible: bool=True, overwrite: bool=False, global_env: object=None, debug: int=0):
-
+def extract_T12(sys: object, branch_keyword: str, High_E_state: object, Low_E_state: object, Trange: range=range(10,501,1), ignore_not_minima: bool=False, flexible: bool=True, overwrite: bool=False, global_env: object=None, debug: int=0):
     ## Uses data stored in state-class objects. More information can be found in Classes_State
 
     ## 0-Changes paths if necessary
@@ -26,34 +24,30 @@ def extract_T12(sys: object, branch_keyword: str, High_E_state: object, Low_E_st
             except Exception as exc: 
                 pass
  
-    ### Not sure why this was necessary. Removed
-    #if flexible:
-    #    if not hasattr(High_E_state,"num_neg_freqs"): High_E_state.set_VNMs(High_E_state.VNMs)
-    #    if not hasattr(Low_E_state,"num_neg_freqs"):  Low_E_state.set_VNMs(Low_E_state.VNMs)
-
-    ##############
-    ### BRANCH ###
-    ##############
+    #################################
+    ### Create Results for BRANCH ###
+    #################################
     exists, this_branch = sys.find_branch(branch_keyword, debug=debug)
     if exists and debug > 0: print("Branch loaded with keyword", this_branch.keyword)
     if not exists: return False, None
 
-    ## Checks that both states exist and are minima
-    if not hasattr(High_E_state,"isminimum") or not hasattr(Low_E_state,"isminimum"): 
-        if debug > 0: print(f"{High_E_state.name} and/or {Low_E_state.name} have not been evaluated as minima")
-        return False, None
+    if not ignore_not_minima:
+        ## Checks that both states exist and are minima
+        if not hasattr(High_E_state,"isminimum") or not hasattr(Low_E_state,"isminimum"): 
+            if debug > 0: print(f"{High_E_state.name} and/or {Low_E_state.name} have not been evaluated as minima")
+            return False, None
 
-    ## If not, it evaluates if the states could be considered minima for the sake of T12 evaluation
-    if not High_E_state.isminimum and (not High_E_state.almost_minimum or not flexible):
-        if debug > 0: print(f"{High_E_state.name} cannot be used for Thermochemistry")
-        return False, None
-        
-    if not Low_E_state.isminimum and (not Low_E_state.almost_minimum or not flexible):
-        if debug > 0: print(f"{High_E_state.name} cannot be used for Thermochemistry")
-        return False, None
+        ## If not, it evaluates if the states could be considered minima for the sake of T12 evaluation
+        if not High_E_state.isminimum and (not High_E_state.almost_minimum or not flexible):
+            if debug > 0: print(f"{High_E_state.name} cannot be used for Thermochemistry")
+            return False, None
+            
+        if not Low_E_state.isminimum and (not Low_E_state.almost_minimum or not flexible):
+            if debug > 0: print(f"{High_E_state.name} cannot be used for Thermochemistry")
+            return False, None
  
-    if not "Helec" in High_E_state.results: High_E_state.get_thermal_data()
-    if not "Helec" in Low_E_state.results: Low_E_state.get_thermal_data()
+    assert "Helec" in High_E_state.results 
+    assert "Helec" in Low_E_state.results 
 
     ## dHelec
     if overwrite or not "dHelec" in this_branch.results.keys():
