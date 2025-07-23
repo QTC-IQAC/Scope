@@ -5,17 +5,13 @@ from Scope import Constants
 ### COLLECTION ###
 ##################
 class collection(object):
-    def __init__(self, key: str):
-        self.type  = "collection"
-        self.key   = key
-        self.datas = []
+    def __init__(self, key: str, variable_name: str):
+        self.type           = "collection"
+        self.key            = key
+        self.datas          = []
 
     def get_values(self):
-        values = []
-        for data in self.datas:
-            values.append(data.value)
-        return values 
-        #return list([data.value for data in self.datas])
+        return np.asarray(list([data.value for data in self.datas]))
 
     def add_data(self, data: object):
         if not hasattr(self,"units"):    self.units    = data.units
@@ -30,7 +26,10 @@ class collection(object):
                 value = getattr(data, condition_name)
                 if value == condition_value: return data
 
-    ### Should be changed to __repr__
+    def view(self):
+        import matplotlib.pyplot as plt
+        plt.plot(self.get_values())
+
     def __repr__(self):
         if hasattr(self,"units"): 
             if self.units == 'kj': units = 'kJ/mol'
