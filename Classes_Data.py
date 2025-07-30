@@ -6,7 +6,7 @@ from Scope import Constants
 ### COLLECTION ###
 ##################
 class collection(object):
-    def __init__(self, key: str, variable_name: str):
+    def __init__(self, key: str):
         self.type           = "collection"
         self.key            = key
         self.datas          = []
