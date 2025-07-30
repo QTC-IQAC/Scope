@@ -1615,10 +1615,13 @@ class metal(atom):
         return self.valence_elec
 
     #######################################################
-    def get_cshm(self, ref_shape: str='OC-6', debug: int=0):
+    def get_cshm(self, ref_shape: str='OC-6', overwrite: bool=False, debug: int=0):
         import cosymlib as cml
         from Scope.CShM import get_CShM_ref
         # Prepares coordiantes of the coordination sphere
+
+        if hasattr(self, "cshm") and not overwrite: return self.cshm
+
         coord_sphere_coords = [self.coord]
         coord_sphere_coords += [at.coord for at in self.get_coord_sphere()]
         # Gets Coordinates of the reference shape
@@ -1635,8 +1638,9 @@ class metal(atom):
         # Wrap in shape objects
         shape_current = CustomShape(np.array(coord_sphere_coords))
         shape_reference = CustomShape(np.array(ref_coords))
+        self.cshm = shape_current.measure(shape_reference)
 
-        return shape_current.measure(shape_reference)
+        return self.cshm
 
     #######################################################
     def get_coord_sphere_idx(self, debug: int=0):
