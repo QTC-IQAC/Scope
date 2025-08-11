@@ -258,7 +258,7 @@ def compute_centroid(coord: list) -> list:
     for idx in range(natoms):
         x += coord[idx][0]; y += coord[idx][1]; z += coord[idx][2]
     centroid = [float(x / natoms), float(y / natoms), float(z / natoms)]
-    return np.array(centroid)
+    return centroid
 #########################
 
 #########################

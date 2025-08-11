@@ -6,16 +6,27 @@ class qe_output(object):
     def __init__(self, lines: list, computation: object=None):
         self._computation   = computation
         self.lines          = lines
-        if hasattr(computation,"jobtype"):           self.jobtype        = computation.jobtype
-        elif hasattr(computation.qc_data,"jobtype"): self.jobtype        = computation.qc_data.jobtype
-        self.requisites     = self.get_requisites()
-        
+        self.set_jobtype()
+        self.get_requisites()
+
     def clear_lines(self):
         self.lines          = []
         
     def read_lines(self):
         if hasattr(self,"_computation"): self.lines = read_lines_file(self._computation.out_path)
         
+    def set_jobtype(self, jobtype: str=None):
+        if jobtype is not None:
+            self.jobtype = jobtype
+        else:
+            if self._computation is not None:
+                if hasattr(self._computation,"jobtype"):             self.jobtype        = computation.jobtype
+                elif hasattr(self._computation,"qc_data"):
+                    if hasattr(self._computation.qc_data,"jobtype"): self.jobtype        = computation.qc_data.jobtype
+                else:                                          self.jobtype        = "unknown"
+            else:                                              self.jobtype        = "unknown"
+        return self.jobtype
+
 ##################
 ### REQUISITES ###
 ##################
@@ -24,6 +35,7 @@ class qe_output(object):
         if   self.jobtype == 'scf':       self.requisites = ['scf'] 
         elif self.jobtype == 'relax':     self.requisites = ['scf','opt'] 
         elif self.jobtype == 'vc-relax':  self.requisites = ['scf','opt'] 
+        else:                             self.requisites = []
         return self.requisites
 
 ###############

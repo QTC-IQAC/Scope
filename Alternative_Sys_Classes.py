@@ -7,7 +7,9 @@ from Scope.Software.Quantum_Espresso import Parse_QE_outputs
 #########################
 class simple_molecule(object):
     def __init__(self, atom_idx: list, labels: list, coord: list, totcharge: int=0, spin: str='LS') -> None:
+        self.version              = "0.2"
         self.type                 = "smol"
+        self.subtype              = "smol"
         self.atom_idx             = atom_idx
         self.labels               = labels
         self.coord                = coord
@@ -17,6 +19,9 @@ class simple_molecule(object):
 
 class periodic_xyz(object):
     def __init__(self, name: str, labels: list, coord: list, path: str) -> None:
+        self.version              = "0.2"
+        self.type                 = "perxyz"
+        self.subtype              = "perxyz"
         self.name                 = name
         self.labels               = labels
         self.coord                = coord
@@ -25,8 +30,10 @@ class periodic_xyz(object):
         self.formula              = labels2formula(labels)
         self.phase                = str(name.split("_")[0])
         self.pressure             = float(name.split("_")[1])
+        self.natoms               = len(labels)
 
     def add_cell_info(self, cellvec, celldim, cellparam) -> None:
+        from Scope.Unit_cell_tools import get_unit_cell_volume
         self.cellvec              = cellvec
         self.celldim              = celldim
         self.cellparam            = cellparam
@@ -39,4 +46,17 @@ class periodic_xyz(object):
         self.totcharge = 0
         for mol in self.moleclist: self.totcharge += mol.totcharge
         return self.totcharge
+
+    def __repr__(self):
+        to_print = ""
+        to_print  += f'---------- SCOPE Periodix xyz Object -----------\n'
+        to_print += f' Version               = {self.version}\n'
+        to_print += f' Type                  = {self.type}\n'
+        to_print += f' Number of Atoms       = {self.natoms}\n'
+        to_print += f' Formula               = {self.formula}\n'
+        if hasattr(self,"phase"):    to_print += f' Phase                 = {self.phase}\n'
+        if hasattr(self,"pressure"): to_print += f' Pressure              = {self.pressure}\n'
+        to_print += '------------------------------------------------\n'
+        return to_print
+
 #########################

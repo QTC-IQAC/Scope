@@ -1,6 +1,5 @@
 from Scope.Parse_General import search_string, read_lines_file
 from Scope.Unit_cell_tools import cellvec_2_cellparam, get_unit_cell_volume
-from Scope.Classes_QC import periodic_xyz
 import Scope.Constants
 
 bohr2angs = Scope.Constants.bohr2angs

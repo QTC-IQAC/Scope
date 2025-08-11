@@ -34,57 +34,67 @@ def get_permutation_from_isomorphism(G1, G2):
         return None
 
 ####
-def overlap_molecules(labels1, coords1, labels2, coords2, use_ext_info: bool=True, translate_to_ref: bool=True, debug: int=0):
+def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="centroid", use_ext_info: bool=True, translate_to_ref: bool=True, save_to_folder: str="/Users/sergivela/Documents/SCOPE/Program/tests/Overlap_Molecules/", debug: int=0):
     from Scope.Adapted_from_cell2mol import compute_centroid
     from Scope.Adapted_from_cell2mol import get_adjmatrix
     from Scope.Reconstruct import reorder_hungarian
-    from Scope.Read_Write  import print_xyz
+    from Scope.Read_Write  import print_xyz, writexyz
     from collections import Counter
 
     ## Ensure both species have the same number of atoms
     if len(labels1) != len(labels2):
         raise ValueError("The number of atoms in the two lists must be the same.")
 
-    center1 = compute_centroid(coords1) 
-    center2 = compute_centroid(coords2) 
-
-    coords1 = np.array(coords1) - center1 
-    coords2 = np.array(coords2) - center2 
-
     ## Stores the original adjacency matrices
     isgood1, orig_adjmat1, orig_adjnum1 = get_adjmatrix(labels1, coords1)
     isgood2, orig_adjmat2, orig_adjnum2 = get_adjmatrix(labels2, coords2)
+
     if debug > 0: print(f"{isgood1}, {isgood2}")
     if debug > 0: print(f"original adjmat1={orig_adjmat1[0]}")
     if debug > 0: print(f"original adjmat2={orig_adjmat2[0]}")
+
+    if center_method == "centroid":
+        center1 = np.array(compute_centroid(coords1)) 
+        center2 = np.array(compute_centroid(coords2))
+    elif center_method == "metal":
+        metal1 = get_metal_idxs(labels1)[0]
+        metal2 = get_metal_idxs(labels2)[0]
+        center1 = np.array(coords1)[metal1]
+        center2 = np.array(coords2)[metal2]
+
+    coords1c = np.array(coords1) - center1
+    coords2c = np.array(coords2) - center2
 
     if debug > 0:
         print("---------------------")
         print("Centered Coords of 1:")
         print("---------------------")
-        print_xyz(labels1, coords1)
+        print_xyz(labels1, coords1c)
+        writexyz(save_to_folder, "centered1.xyz", labels1, coords1c)
         print("---------------------")
         print("Centered Coords of 2:")
         print("---------------------")
-        print_xyz(labels2, coords2)
+        print_xyz(labels2, coords2c)
+        writexyz(save_to_folder, "centered2.xyz", labels2, coords2c)
 
     ## We do a first alignment, to facilitate the hungarian
-    _, _, coords2, _ = kabsch_align(coords2, coords1, debug=debug)
+    _, _, coords2a, _ = kabsch_align(labels2, coords2c, labels1, coords1c, center_method=center_method, debug=debug)
     if debug > 0:
         print("--------------------")
         print("Aligned Coords of 2:")
         print("--------------------")
-        print_xyz(labels2, coords2)
+        print_xyz(labels2, coords2a)
+        writexyz(save_to_folder, "aligned2.xyz", labels2, coords2a)
 
     if use_ext_info:
-        data1 = get_extended_info(labels1, coords1, orig_adjmat1, orig_adjnum1, debug=debug)
-        data2 = get_extended_info(labels2, coords2, orig_adjmat2, orig_adjnum2, debug=debug)
+        ## Decorate the labels to facilitate the reorder hungarian
+        data1 = get_extended_info(labels1, coords1c, orig_adjmat1, orig_adjnum1, debug=debug)
+        data2 = get_extended_info(labels2, coords2a, orig_adjmat2, orig_adjnum2, debug=debug)
         unique1 = [d for d in np.unique(data1) if Counter(data1)[d] == 1]    ## Data's which appear only once, and thus have no possibility of error
         unique2 = [d for d in np.unique(data2) if Counter(data2)[d] == 1]
         ## These are going to be all atoms whose data appears once in both structures
         safe = [index for index in range(len(data1)) if data1[index] in unique1 and data2[index] in unique2]
         if debug > 0: print(f"{safe=}")
-        #safe = [index for index, val in enumerate(map12) if index == val and data1[index] in unique1 and data2[index] in unique2]
 
         ## For each atom in SAFE, we add the topological distance of all atoms to their data
         for s in safe:
@@ -106,8 +116,8 @@ def overlap_molecules(labels1, coords1, labels2, coords2, use_ext_info: bool=Tru
     # Verify that data1 and data2 contain the same items
     set1 = set(data1)
     set2 = set(data2)
-    if set1 != set2:
-        print("WARNING: data1 and data2 do not contain the same items.")
+    if set1 != set2 and debug > 0:
+        print("OVERLAP_MOLECULES: WARNING: data1 and data2 do not contain the same items.")
         print("Items only in data1:", set1 - set2)
         print("Items only in data2:", set2 - set1)
     else:
@@ -117,45 +127,53 @@ def overlap_molecules(labels1, coords1, labels2, coords2, use_ext_info: bool=Tru
     if debug > 0: print("-------------------------")
     if debug > 0: print("## STARTING TO REORDER ##")
     if debug > 0: print("-------------------------")
-    map12 = reorder_hungarian(data1, data2, coords1, coords2, debug=debug)
+    map12 = reorder_hungarian(data1, data2, coords1c, coords2a, debug=debug)
     if debug > 0: print(f"GET_RMSD: reorder map={map12}")
-    labels2 = labels2[map12]
-    coords2 = coords2[map12]
-    data2   = data2[map12]
+    labels2r = np.array(labels2)[map12]
+    coords2r = coords2c[map12]
+    data2    = data2[map12]
     if debug > 0:
         print("--------------------------")
         print("Coords of 1 after reorder:")
         print("--------------------------")
-        print_xyz(labels1, coords1)
+        print_xyz(labels1, coords1c)
+        writexyz(save_to_folder, "reorder1.xyz", labels1, coords1c)
         print("--------------------------")
         print("Coords of 2 after reorder:")
         print("--------------------------")
-        print_xyz(labels2, coords2)
+        print_xyz(labels2r, coords2r)
+        writexyz(save_to_folder, "reorder2.xyz", labels2r, coords2r)
 
     #### After this reorder, we check if any adjacency matrix entry is different
-    adjmat2 = orig_adjmat2[np.ix_(map12, map12)]
+    adjmat2r = orig_adjmat2[np.ix_(map12, map12)]
     different = []
+    isgood = True
     for idx in range(len(orig_adjmat1)):
-        if any(orig_adjmat1[idx] != adjmat2[idx]): different.append(idx)
+        if any(orig_adjmat1[idx] != adjmat2r[idx]): different.append(idx)
     if len(different) > 0: 
-        print("WARNING Different entries in the adjacency matrix:")
-        for d in different:
-            print(d, orig_adjmat1[d], adjmat2[d])
+        isgood = False
+        if debug > 0: 
+            print("OVERLAP_MOLECULES: WARNING! Different entries in the adjacency matrix:")
+            for d in different:
+                print(d, orig_adjmat1[d], adjmat2r[d])
     
     #### Then, we do the final alignment, which will be even better than the first
-    _, _, coords2, _ = kabsch_align(coords2, coords1, debug=debug)
+    _, _, coords2ra, _ = kabsch_align(labels2r, coords2r, labels1, coords1c, center_method=center_method, debug=debug)
     if debug > 0:
         print("----------------------------------")
         print("Coords of 2 after final alignment:")
         print("----------------------------------")
-        print_xyz(labels2, coords2)
+        print_xyz(labels2r, coords2ra)
+        writexyz(save_to_folder, "final2.xyz", labels2r, coords2ra)
     
     #### And finally, we translate to the original center of coordinates of the reference molecule 
     if translate_to_ref:
-        coords1 = coords1 + center1
-        coords2 = coords2 + center1
+        coords1f = coords1c  + center1
+        coords2f = coords2ra + center1
+        writexyz(save_to_folder, "final_translated1.xyz", labels1, coords1f)
+        writexyz(save_to_folder, "final_translated2.xyz", labels2r, coords2f)
 
-    return labels1, coords1, labels2, coords2, map12
+    return isgood, labels1, coords1f, labels2r, coords2f, map12
 
 ####
 def get_extended_info(labels, coords, adjmat, adjnum, debug: int=0):
@@ -205,13 +223,14 @@ def compute_topological_distances(adj_matrix: np.ndarray, ref_atom: int) -> dict
     return distances
 
 #############
-def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, atom_idxs: list=None, debug: int=0):
+def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, center_method='centroid', atom_idxs: list=None, debug: int=0):
     assert len(labels1) == len(labels2)
-    coords1 = np.asarray(coords1)
-    coords2 = np.asarray(coords2)
+    #coords1 = np.asarray(coords1)
+    #coords2 = np.asarray(coords2)
     if atom_idxs is not None: atom_idxs = np.sort(np.asarray(atom_idxs))
     if reorder: 
-        new_labels1, new_coords1, new_labels2, new_coords2, _ = overlap_molecules(labels1, coords1, labels2, coords2, debug=debug)
+        isgood, new_labels1, new_coords1, new_labels2, new_coords2, _ = overlap_molecules(labels1, coords1, labels2, coords2, center_method=center_method, debug=debug)
+        if not isgood: return None
         assert all(new_labels1 == new_labels2)       ## In principle, one wants to compute the RMSD of atoms with the same ordering 
         if atom_idxs is None: rmsd = np.sqrt(np.mean(np.sum((new_coords1 - new_coords2)**2, axis=1)))
         else:                 rmsd = np.sqrt(np.mean(np.sum((new_coords1[atom_idxs] - new_coords2[atom_idxs])**2, axis=1))) 
@@ -221,7 +240,8 @@ def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, atom_idxs: lis
     return np.round(rmsd, 4)
 
 #############
-def kabsch_align(P, Q, debug: int=0):
+def kabsch_align(LP, P, LQ, Q, center_method: str="centroid", debug: int=0):
+    from Scope.Adapted_from_cell2mol import compute_centroid
     """
     Perform the Kabsch algorithm to find the optimal rotation and translation
     to align point set P (mobile) to Q (target/reference).
@@ -237,12 +257,20 @@ def kabsch_align(P, Q, debug: int=0):
         rmsd: Root Mean Square Deviation after alignment
     """
 
-    # Step 1: Center both point sets
-    centroid_P = np.mean(P, axis=0)
-    centroid_Q = np.mean(Q, axis=0)
-
-    P_centered = P - centroid_P
-    Q_centered = Q - centroid_Q
+    if center_method == "centroid":
+        centroid_P = np.array(compute_centroid(P))
+        centroid_Q = np.array(compute_centroid(Q))
+        # Step 1: Center both point sets
+        P_centered = P - centroid_P
+        Q_centered = Q - centroid_Q
+    elif center_method == "metal":
+        metalP = get_metal_idxs(LP)[0]
+        metalQ = get_metal_idxs(LQ)[0]
+        centroid_P = P[metalP]
+        centroid_Q = Q[metalQ]
+        # Step 1: Center both point sets
+        P_centered = P - centroid_P
+        Q_centered = Q - centroid_Q
 
     # Step 2: Covariance matrix
     H = P_centered.T @ Q_centered

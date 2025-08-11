@@ -220,6 +220,14 @@ class state(object):
                 if not self.fragmented: 
                     self.moleclist = new_moleclist
                     self.set_geometry_from_moleclist(debug=debug)
+
+        elif self._subject.type == "perxyz": 
+            if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+            if len(self.moleclist) > 1:       self.fragmented = True
+            else:                             self.fragmented = False
+            if debug > 0: print(f"STATE.CHECK_FRAGMENTATION: subject type={self._subject.type}. {self.fragmented=}")
+            return self.fragmented
+
         else:
             print(f"STATE.CHECK_FRAGMENTATION: Unknown Subject Type {self._subject.type}")
 

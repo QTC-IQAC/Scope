@@ -316,9 +316,10 @@ class specie(object):
             print("%s  %.6f  %.6f  %.6f" % (l, self.coord[idx][0], self.coord[idx][1], self.coord[idx][2]))
 
     ##########
-    def rmsd(self, other, reorder=True, debug: int=0):
+    def rmsd(self, other, reorder=True, center_method='centroid', debug: int=0):
         from Scope.Other import rmsd
-        return rmsd(self.labels, self.coord, other.labels, other.coord, reorder=reorder, debug=debug)   
+        value = rmsd(self.labels, self.coord, other.labels, other.coord, reorder=reorder, center_method=center_method, debug=debug)   
+        return value
 
     ##########
     def view(self, show_indices: bool=False, size: str='default'):
