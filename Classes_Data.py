@@ -85,12 +85,13 @@ class data(object):
         elif self.units == 'au' and new_units.lower() == 'ev':
             self.value = self.value * Constants.har2eV
         elif self.units == 'ev' and new_units.lower() == 'au':
-            self.value = self.value / Constants.har2ev
+            self.value = self.value / Constants.har2eV
         elif self.units == 'au' and new_units.lower() == 'cm':
             self.value = self.value * Constants.har2cm
         elif self.units == 'cm' and new_units.lower() == 'au':
             self.value = self.value / Constants.har2cm
         self.units = new_units
+        self.format()
         return self
 
     def print_in_units(self, new_units: str):
@@ -113,7 +114,6 @@ class data(object):
                 print(f"{self.value / Constants.har2cm:12.8f} {new_units}")
         else:
             print(self)
-
          
     def __repr__(self) -> None:
         if not hasattr(self,"formatted"): self.format()

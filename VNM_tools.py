@@ -1,44 +1,7 @@
 import numpy as np
 from Scope import Constants
 
-######
-def write_vnm_dyn(initial_coord: list, vnm: object, amplitude: int=10, outfolder: str='./', labels: None=list):
-    from Scope.Read_Write import write_xyz
-    """
-    Writes an XYZ file representing the trajectory of atoms along a vibrational normal mode (VNM).
-
-    Args:
-        initial_coord (list): List of initial atomic coordinates (shape: [natoms, 3]).
-        vnm (object): An object representing the vibrational normal mode, expected to have attributes:
-            - index (int): Index of the mode.
-            - eigenvec_format1 (list): List of eigenvectors for each atom (shape: [natoms, 3]).
-            - atnums (list): List of atomic numbers for each atom.
-            - labels (list, optional): List of atomic labels.
-        amplitude (int, optional): The range of displacement steps to apply along the mode (default is 10).
-        outfolder (str, optional): Output folder path where the XYZ file will be saved (default is './').
-        labels (list, optional): List of atomic labels to use in the XYZ file. If None, labels are inferred from atomic numbers.
-
-    Writes:
-        An XYZ file named "dyn_vnm_<index>.xyz" in the specified output folder, containing 3D coordinates for each displacement step along the mode.
-    """
-    filename: str="dyn_vnm_"+str(vnm.index)+".xyz"
-    if outfolder[-1] != '/': outfolder += '/'
-
-    initial_coord = np.array(initial_coord)
-    for f in range(-amplitude,amplitude,1):
-        labels = []
-        coords = []
-        for idx in range(natoms):
-            vector = vnm.eigenvec_format1[idx]
-            coord  = initial_coord[idx] + vector*f*0.1
-            if labels is None: label = elemdatabase.elementsym[vnm.atnums[idx]]
-            else:              label = vnm.labels[idx]
-            labels.append(label)
-            coords.append(coord)
-        write_xyz(outfolder+filename, labels, coords, append=True)
-
-######
-def vnm_displacement(VNMs: list, initial_coord: list, which: list=[], which_side: str='positive', amplitude: int=6, debug: int=0):
+def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], which_side: str='positive', amplitude: int=6, debug: int=0):
     ### This function applies a displacement from the initial geometry 
     ### using either 'all' negative normal modes whose index is in 'which'
     ### Apparently, the normal modes in gaussian come in sqrt(amu)·bohr units

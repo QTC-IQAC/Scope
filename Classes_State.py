@@ -31,11 +31,11 @@ class state(object):
                 print("WARNING from CLASS STATE: use function called 'find_state' instead to retrieve existing state")
         if not found: self._subject.states.append(self)
 
-    def add_result(self, result: object, overwrite: bool=False):
-        result._object = self
-        if overwrite or result.key not in self.results.keys():  
-            self.results[result.key] = result
 
+
+############################################
+#### Basic Functions to add information ####
+############################################
     def set_geometry(self, labels, pos):
         self.labels      = labels
         self.pos         = pos 
@@ -45,7 +45,8 @@ class state(object):
         self.radii       = get_radii(labels)
         assert len(self.labels) == len(self.pos)
 
-    def set_geometry_from_moleclist(self, debug: int=0):
+    def set_geometry_from_moleclist(self, overwrite: bool=False, debug: int=0):
+        if not hasattr(self,"moleclist"): self.get_moleclist(overwrite=overwrite, debug=debug)
         self.labels      = []
         self.pos         = []
         self.coord       = []
@@ -72,33 +73,22 @@ class state(object):
     def set_forces(self, forces):
         self.forces      = forces
 
-    def check_minimum(self):
-        if hasattr(self,"isminimum"): 
-            if self.isminimum or self.almost_minimum: return True
-            else:                                     return False
-        else:
-            if not hasattr(self,"VNMs"): 
-                print(f"STATE.check_minimum: state does not have VNMs")
-                return False
-            else:
-                self.set_VNMs(self,self.VNMs)
-                if self.isminimum or self.almost_minimum: return True
-                else:                                     return False
+    def set_spin_config(self, spin_config):
+        self.spin_config = spin_config
 
-    def set_VNMs(self, VNMs):
-        self.VNMs = VNMs
-        self.freqs_cm = [vnm.freq_cm for vnm in VNMs]
-        if all(vnm.freq_cm >= 0.0 for vnm in self.VNMs): self.isminimum = True
-        else:                                            self.isminimum = False
+    def set_atoms(self):
+        if not hasattr(self,"moleclist"): self.get_moleclist()
+        self.atoms = []
+        indices = []
+        for mol in self.moleclist:
+            for idx, at in enumerate(mol.atoms):
+                self.atoms.append(at)
+                indices.append(mol.atlist[idx])
+        self.atoms = [x for _, x in sorted(zip(indices, self.atoms), key=lambda pair: pair[0])]
 
-        ## If it is not a minimum, evaluates if, at least, is close
-        if not self.isminimum:
-            self.num_neg_freqs = 0
-            for vnm in self.VNMs: 
-                if vnm.freq_cm < 0.0: self.num_neg_freqs += 1
-            if self.num_neg_freqs <= 3 and VNMs[0].freq_cm > -50: self.almost_minimum = True
-            else:                                                 self.almost_minimum = False
-        
+###################################
+#### Operations with Molecules ####
+###################################
     def get_moleclist(self, overwrite: bool=False, debug: int=0):
         from Scope.Classes_Molecule import molecule
 
@@ -106,7 +96,6 @@ class state(object):
         if not overwrite and hasattr(self,"moleclist"): 
             if debug > 0: print(f"STATE.GET_MOLECLIST. Moleclist already exists and default is overwrite=False")
             return self.moleclist
-
         # Security
         if not hasattr(self,"labels") or not hasattr(self,"pos"): return None
         if len(self.labels) == 0 or len(self.pos) == 0: return None
@@ -163,115 +152,24 @@ class state(object):
         if debug > 0: print(f"State.get_ncomplex {self.ncomplex} complexes found in state: {self.name}")
         return self.ncomplex
 
+####################################
+#### Specific to Spin Crossover ####
+####################################
     def get_SCO_geom(self, debug: int=0):
         from Scope.Structure_SCO import geom_sco_from_xyz
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"Found Fragmented molecules in the geometry of state: {self.name}"
-         
         if not hasattr(self,"moleclist"): self.get_moleclist()
         for mol in self.moleclist:
             if mol.iscomplex: print(geom_sco_from_xyz(self.labels, self.coord, debug=debug)) 
 
-#######
-#    Not sure it is correct to extract Z like that
-#######
-#    def get_Z(self):
-#        if not hasattr(self,"labels"): return None
-#        import numpy as np
-#        ratio = labels2ratio(self.labels)
-#        self.Z = np.gcd.reduce(ratio)
-#        return self.Z
-
-    def check_fragmentation(self, reconstruct: bool = False, debug: int=0):
-
-        ## If the subject is a specie, then in principle there should only be one. So with moleclist is enough to find
-        if self._subject.type == "specie":
-            if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
-            if len(self.moleclist) > 1: self.fragmented = True
-            else:                       self.fragmented = False
-            if debug > 0: print(f"STATE.CHECK_FRAGMENTATION: subject type=specie. {self.fragmented=}")
-            return self.fragmented
-
-        ## If it is a unit cell, then we need a list of molecules that should in principle be there. This is refmoleclist
-        ## If the cell is created by cell2mol, then this list is already stored in the .cell object
-        elif self._subject.type == "cell": 
-            assert hasattr(self,"cell_vector")
-            assert hasattr(self._subject,"refmoleclist")
-
-            if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
-            self.fragmented = False
-            # First comparison with current moleclist
-            for mol in self.moleclist:
-                found = False
-                for rmol in self._subject.refmoleclist:
-                    issame = compare_species(mol, rmol)  
-                    if issame: found = True
-                if not found: self.fragmented = True
-            # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
-            if self.fragmented and reconstruct:
-                new_moleclist = self.reconstruct(debug=debug)
-                self.fragmented = False
-                for mol in new_moleclist:
-                    found = False
-                    for rmol in self._subject.refmoleclist:
-                        issame = compare_species(mol, rmol)  
-                        if issame: found = True
-                    if not found: self.fragmented = True
-                if not self.fragmented: 
-                    self.moleclist = new_moleclist
-                    self.set_geometry_from_moleclist(debug=debug)
-
-        elif self._subject.type == "perxyz": 
-            if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
-            if len(self.moleclist) > 1:       self.fragmented = True
-            else:                             self.fragmented = False
-            if debug > 0: print(f"STATE.CHECK_FRAGMENTATION: subject type={self._subject.type}. {self.fragmented=}")
-            return self.fragmented
-
-        else:
-            print(f"STATE.CHECK_FRAGMENTATION: Unknown Subject Type {self._subject.type}")
-
-        return self.fragmented
-
-    def set_spin_config(self, spin_config):
-        self.spin_config = spin_config
-
-    def set_atoms(self):
-        if not hasattr(self,"moleclist"): self.get_moleclist()
-        self.atoms = []
-        indices = []
-        for mol in self.moleclist:
-            for idx, at in enumerate(mol.atoms):
-                self.atoms.append(at)
-                indices.append(mol.atlist[idx])
-        self.atoms = [x for _, x in sorted(zip(indices, self.atoms), key=lambda pair: pair[0])]
-
-    def set_energy(self, energy, units, overwrite: bool=True):
-        self.add_result(data("energy",energy,units,"state.set_energy"), overwrite=overwrite)
-
-    def set_Helec(self, overwrite: bool=True, debug: int=0):
-        assert "energy" in self.results
-        if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
-        self.add_result(data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.set_Helec"), overwrite=overwrite)
-
-    def find_computation(self, job_keyword: str='', step: int=1, run_number: int=1, debug: int=0):
-        for idx, comp in enumerate(self.computations):
-            if comp._job.keyword == job_keyword and comp.step == step and comp.run_number == run_number: this_comp = comp; return True, this_comp
-        return False, None
-
-    def add_computation(self, computation: object, debug: int=0):
-        found, comp = self.find_computation(computation._job.keyword, computation.step, computation.run_number)
-        if not found: 
-            if debug > 0: print("STATE.ADD_COMPUTATION: same computation wasn't found. So adding it to state")
-            self.computations.append(computation)
-            computation.add_state(self)
-        else:
-            if debug > 0: print("STATE.ADD_COMPUTATION: same computation was already found in state. Ignoring")
-
+########################
+#### Reconstruction ####
+########################
     def reconstruct(self, debug: int=0):
         assert hasattr(self,"cellvec")
         if not hasattr(self._subject,"refmoleclist"): print("CLASS STATE.RECONSTRUCT: _subject does not have refmoleclist"); return None
-        from Scope.Other import HiddenPrints
+        from Scope.Read_Write import HiddenPrints
         if debug > 0: print("CLASS_STATE.RECONSTRUCT: reconstructing cell of state", self)
         with HiddenPrints():
             finished = False
@@ -296,7 +194,100 @@ class state(object):
         if debug > 0 and finished: print("CLASS STATE.RECONSTRUCT: state reconstructed to", self)
         return self.moleclist
 
-####################
+    def check_fragmentation(self, reconstruct: bool = False, debug: int=0):
+        ## If the subject is a specie, then in principle there should only be one. So with moleclist is enough to find
+        if self._subject.type == "specie":
+            if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+            if len(self.moleclist) > 1: self.fragmented = True
+            else:                       self.fragmented = False
+            if debug > 0: print(f"STATE.CHECK_FRAGMENTATION: subject type=specie. {self.fragmented=}")
+            return self.fragmented
+        ## If it is a unit cell, then we need a list of molecules that should in principle be there. This is refmoleclist
+        ## If the cell is created by cell2mol, then this list is already stored in the .cell object
+        elif self._subject.type == "cell": 
+            assert hasattr(self,"cell_vector")
+            assert hasattr(self._subject,"refmoleclist")
+            if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+            self.fragmented = False
+            # First comparison with current moleclist
+            for mol in self.moleclist:
+                found = False
+                for rmol in self._subject.refmoleclist:
+                    issame = compare_species(mol, rmol)  
+                    if issame: found = True
+                if not found: self.fragmented = True
+            # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
+            if self.fragmented and reconstruct:
+                new_moleclist = self.reconstruct(debug=debug)
+                self.fragmented = False
+                for mol in new_moleclist:
+                    found = False
+                    for rmol in self._subject.refmoleclist:
+                        issame = compare_species(mol, rmol)  
+                        if issame: found = True
+                    if not found: self.fragmented = True
+                if not self.fragmented: 
+                    self.moleclist = new_moleclist
+                    self.set_geometry_from_moleclist(debug=debug)
+        elif self._subject.type == "perxyz": 
+            if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+            if len(self.moleclist) > 1:       self.fragmented = True
+            else:                             self.fragmented = False
+            if debug > 0: print(f"STATE.CHECK_FRAGMENTATION: subject type={self._subject.type}. {self.fragmented=}")
+            return self.fragmented
+        else:
+            print(f"STATE.CHECK_FRAGMENTATION: Unknown Subject Type {self._subject.type}")
+        return self.fragmented
+
+##############################
+#### Connection with VNMs ####
+##############################
+    def check_minimum(self):
+        if hasattr(self,"isminimum"): 
+            if self.isminimum or self.almost_minimum: return True
+            else:                                     return False
+        else:
+            if not hasattr(self,"VNMs"): 
+                print(f"STATE.check_minimum: state does not have VNMs")
+                return False
+            else:
+                self.set_VNMs(self.VNMs)
+                if self.isminimum or self.almost_minimum: return True
+                else:                                     return False
+
+    def set_VNMs(self, VNMs):
+        self.VNMs       = VNMs
+        self.freqs_cm   = [vnm.freq_cm for vnm in VNMs]
+        if all(vnm.freq_cm >= 0.0 for vnm in self.VNMs): self.isminimum = True
+        else:                                            self.isminimum = False
+        ## If it is not a minimum, evaluates if, at least, is close
+        if not self.isminimum:
+            self.num_neg_freqs = 0
+            for vnm in self.VNMs: 
+                if vnm.freq_cm < 0.0: self.num_neg_freqs += 1
+            if self.num_neg_freqs <= 3 and VNMs[0].freq_cm > -50: self.almost_minimum = True
+            else:                                                 self.almost_minimum = False
+
+##################################
+#### Connection with Workflow ####
+##################################
+    def find_computation(self, job_keyword: str='', step: int=1, run_number: int=1, debug: int=0):
+        for idx, comp in enumerate(self.computations):
+            if comp._job.keyword == job_keyword and comp.step == step and comp.run_number == run_number: this_comp = comp; return True, this_comp
+        return False, None
+
+    def add_computation(self, computation: object, debug: int=0):
+        found, comp = self.find_computation(computation._job.keyword, computation.step, computation.run_number)
+        if not found: 
+            if debug > 0: print("STATE.ADD_COMPUTATION: same computation wasn't found. So adding it to state")
+            self.computations.append(computation)
+            computation.add_state(self)
+        else:
+            if debug > 0: print("STATE.ADD_COMPUTATION: same computation was already found in state. Ignoring")
+
+#############################
+#### Sampling Geometries ####
+#############################
     def sample_geometries(self, n_selected: int=10, temp: float=300, n_samples_round=100, n_rounds=2, debug: int=0):
         """
         - The sampling parameters (temperature, number of rounds, samples per round) can be adjusted.
@@ -392,7 +383,25 @@ class state(object):
 
         return current_q_disp, current_geoms
 
-####################
+#######################################
+#### Results associated with State ####
+#######################################
+    def add_result(self, result: object, overwrite: bool=False):
+        result._object = self
+        if overwrite or result.key not in self.results.keys():  
+            self.results[result.key] = result
+
+    def set_energy(self, energy, units, overwrite: bool=True):
+        self.add_result(data("energy",energy,units,"state.set_energy"), overwrite=overwrite)
+
+    def set_Helec(self, overwrite: bool=True, debug: int=0):
+        assert "energy" in self.results
+        if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
+        self.add_result(data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.set_Helec"), overwrite=overwrite)
+
+################################
+#### Get Thermodynamic Data ####
+################################
     def get_thermal_data(self, Trange: range=range(10,501,1), Helec=None, Selec=None, Hvib=None, Svib=None, Gtot=None, overwrite: bool=False, debug: int=0):
         from Scope.Thermal_Corrections import get_Selec, get_Hvib, get_Svib, get_Gibbs
 
@@ -483,6 +492,9 @@ class state(object):
                 print("Get_Thermal_Data: wrong type of data provided when enforcing Gtot. It must be a COLLECTION")
         if debug > 0: print(f"Gtot is {self.results['Gtot']}")
 
+#######################
+#### Visualization ####
+#######################
     def __repr__(self) -> None:
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   STATE                                           \n'
@@ -503,9 +515,7 @@ class state(object):
 
 #########################################################################
 ## Tools associated with states. Normally, these would be class (i.e. molecule) functions...
-## However, in this case the classes are defined in cell2mol, and I don't want to change them 
 #########################################################################
-
 def find_state(subject: object, search_name: str, debug: int=0):
     if debug >= 1: print("FIND_STATE: enters",search_name," with", len(subject.states),"states in subject")
     if not hasattr(subject,"states"): return False, None
@@ -519,44 +529,4 @@ def find_state(subject: object, search_name: str, debug: int=0):
         if not found: 
             if debug >= 1: print(f"FIND STATE: state {search_name} not found")
             return False, None
-
-## OLD ATTEMPT AT UPDATE
-
-#        updated = False
-#        for idx, st in enumerate(self._subject.states):
-#            if st.name == name: 
-#                st._update(self, debug=debug)
-#                if debug > 0: print("UPDATED SELF", dir(self))
-#                updated = True
-#                if debug > 0: print("UPDATED state", name) 
-#        if not updated: 
-#            self._subject.states.append(self)
-#            if debug > 0: print("ADDED state", name)
-
-#    def _update(self, other, debug: int=0):
-#        if debug > 0: print("Updating State", self.name)
-#        if debug > 0: print("SELF", dir(self))
-#        if debug > 0: print("OTHER", dir(other))
-#        if not isinstance(other, type(self)): 
-#            if debug > 0: print("_update STATE: other is not of the same type than self")
-#            return self
-#        for d in dir(other):
-#            if debug > 0: print("_update STATE: checking instance", d)
-#            if d in dir(other):
-#                if '_' not in d and not callable(getattr(other,d)) and d != "type" and d != "name" and d != "results" and d != "computations":
-#                    if debug > 0: print("_update STATE: updating instance", d)
-#                    at1 = getattr(other,d)
-#                    try:      attr = literal_eval(at1)
-#                    except:   attr = value
-#                    setattr(self, d, attr)
-#                elif d == "results":
-#                    for r in other.results:
-#                        if debug > 0: print("_update STATE: updating result", r)
-#                        self.add_result(r, overwrite=True)
-#                elif d == "computations": 
-#                    for c in other.computations:
-#                        if c not in self.computations: 
-#                            if debug > 0: print("_update STATE: updating computations, adding", c)
-#                            self.computations.append(c)
-#        return self
 

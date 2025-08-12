@@ -55,7 +55,7 @@ def gmol_remove_geom(mol: object, tag: str="new_coord", debug: int=0) -> None:
 
 def displace_neg_freqs(ini_coord, VNMs: object, debug: int=0) -> list:
     neg_VNMs = list([vnm for vnm in VNMs if vnm.freq_cm < 0.0])
-    disp_coord = vnm_displacement(neg_VNMs, ini_coord)
+    disp_coord = displace_coords_with_vnm(neg_VNMs, ini_coord)
     return disp_coord
 
 def cell_update_geom(cell: object, new_coord: list, tag: str="coord", debug: int=0) -> None:
