@@ -38,7 +38,7 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
     from Scope.Adapted_from_cell2mol import compute_centroid
     from Scope.Adapted_from_cell2mol import get_adjmatrix
     from Scope.Reconstruct import reorder_hungarian
-    from Scope.Read_Write  import print_xyz, writexyz
+    from Scope.Read_Write  import print_xyz, write_xyz
     from collections import Counter
 
     ## Ensure both species have the same number of atoms
@@ -70,12 +70,12 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         print("Centered Coords of 1:")
         print("---------------------")
         print_xyz(labels1, coords1c)
-        writexyz(save_to_folder, "centered1.xyz", labels1, coords1c)
+        write_xyz(save_to_folder+"centered1.xyz", labels1, coords1c)
         print("---------------------")
         print("Centered Coords of 2:")
         print("---------------------")
         print_xyz(labels2, coords2c)
-        writexyz(save_to_folder, "centered2.xyz", labels2, coords2c)
+        write_xyz(save_to_folder+"centered2.xyz", labels2, coords2c)
 
     ## We do a first alignment, to facilitate the hungarian
     _, _, coords2a, _ = kabsch_align(labels2, coords2c, labels1, coords1c, center_method=center_method, debug=debug)
@@ -84,7 +84,7 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         print("Aligned Coords of 2:")
         print("--------------------")
         print_xyz(labels2, coords2a)
-        writexyz(save_to_folder, "aligned2.xyz", labels2, coords2a)
+        write_xyz(save_to_folder+"aligned2.xyz", labels2, coords2a)
 
     if use_ext_info:
         ## Decorate the labels to facilitate the reorder hungarian
@@ -137,12 +137,12 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         print("Coords of 1 after reorder:")
         print("--------------------------")
         print_xyz(labels1, coords1c)
-        writexyz(save_to_folder, "reorder1.xyz", labels1, coords1c)
+        write_xyz(save_to_folder+"reorder1.xyz", labels1, coords1c)
         print("--------------------------")
         print("Coords of 2 after reorder:")
         print("--------------------------")
         print_xyz(labels2r, coords2r)
-        writexyz(save_to_folder, "reorder2.xyz", labels2r, coords2r)
+        write_xyz(save_to_folder+"reorder2.xyz", labels2r, coords2r)
 
     #### After this reorder, we check if any adjacency matrix entry is different
     adjmat2r = orig_adjmat2[np.ix_(map12, map12)]
@@ -164,14 +164,14 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         print("Coords of 2 after final alignment:")
         print("----------------------------------")
         print_xyz(labels2r, coords2ra)
-        writexyz(save_to_folder, "final2.xyz", labels2r, coords2ra)
+        write_xyz(save_to_folder+"final2.xyz", labels2r, coords2ra)
     
     #### And finally, we translate to the original center of coordinates of the reference molecule 
     if translate_to_ref:
         coords1f = coords1c  + center1
         coords2f = coords2ra + center1
-        writexyz(save_to_folder, "final_translated1.xyz", labels1, coords1f)
-        writexyz(save_to_folder, "final_translated2.xyz", labels2r, coords2f)
+        write_xyz(save_to_folder+"final_translated1.xyz", labels1, coords1f)
+        write_xyz(save_to_folder+"final_translated2.xyz", labels2r, coords2f)
 
     return isgood, labels1, coords1f, labels2r, coords2f, map12
 

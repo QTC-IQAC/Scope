@@ -386,7 +386,6 @@ class specie(object):
             if elem != other.element_count[kdx]: 
                 #print(f"COMPARE_SPECIES. FALSE, different {elem} count:")
                 return False       
-        # writexyz(os.getcwd(), f"reordered.xyz", self.labels, self.coord)
         # 4) the number of adjacencies between each pair of element types
         if not hasattr(self,"adj_types"):     self.set_adj_types()
         if not hasattr(other,"adj_types"):     other.set_adj_types()

@@ -7,10 +7,10 @@ from ast import literal_eval
 ###########
 ## Other ##
 ###########
-def center_geom(coord: list, origin_atom_idx: int):
-    ref = np.array(coord[origin_atom_idx])
-    new_coord = np.array(coord)-ref
-    return new_coord
+def center_geom(coords: list, origin_atom_idx: int):
+    ref = np.array(coords[origin_atom_idx])
+    new_coords = np.array(coords)-ref
+    return new_coords
 
 def save_list_as_text(inplist: list, pathfile: str=os.getcwd()+"outfile.txt"):
     with open(pathfile, "w") as fil:
@@ -78,62 +78,57 @@ def save_binary(variable, pathfile):
 def read_xyz(xyz_file):
     assert(xyz_file[-4:] == ".xyz")
     labels = []
-    coord = []
+    coords = []
     try:    xyz = open(xyz_file, "r")
     except: print("Could not read xyz file: {0}".format(xyz_file))
-    n_atoms = xyz.readline()
-    title = xyz.readline()
     for line in xyz:
         line_data = line.split()
         if len(line_data) == 4:
             label, x, y, z = line.split()
-            coord.append([float(x), float(y), float(z)])
+            coords.append([float(x), float(y), float(z)])
             labels.append(label)
-        else:
-            print("I can't read the xyz. It has =/ than 4 columns")
+        else: print("I can't read the xyz. It has =/ than 4 columns")
     xyz.close()
-    return labels, coord
+    return labels, coords
 
-def writexyz(fdir, fname, labels, coord, charge: int=0, spin: int=1):
-    if fdir[-1] != "/":
-        fdir = fdir + "/"
-    natoms = len(labels)
-    fullname = fdir + fname
-    with open(fullname, "w") as fil:
-        print(natoms, file=fil)
+def write_xyz(path, labels, coords, charge: int=0, spin: int=1, append: bool=False):
+    assert len(labels) == len(coords)
+    if append:     mode = "a"
+    else:          mode = "w"
+    with open(path, mode) as fil:
+        print(len(labels), file=fil)
         print(charge, spin, file=fil)
         for idx, l in enumerate(labels):
-            print("%s  %.6f  %.6f  %.6f" % (l, coord[idx][0], coord[idx][1], coord[idx][2]),file=fil)
+            print("%s  %.6f  %.6f  %.6f" % (l, coords[idx][0], coords[idx][1], coords[idx][2]),file=fil)
 
 #########################
 ## Custom ExtXYZ Files ##
 #########################
-def write_xyz_forces_energy(fdir, fname, labels, coord, forces, energy, charge: int=0, spin: int=1, other=None):
-    if fdir[-1] != "/":
-        fdir = fdir + "/"
-    natoms = len(labels)
-    fullname = fdir + fname
-    if os.path.isfile(fullname): mode = 'a'
-    else:                        mode = 'w'
-    with open(fullname, mode) as fil:
-        print(natoms, file=fil)
-        if other is None: print(charge, spin, energy, file=fil)
-        else:             print(charge, spin, energy, other, file=fil)
-        for idx, l in enumerate(labels):
-            print("%s  %.6f  %.6f  %.6f  %.6f  %.6f  %.6f" % (l, coord[idx][0], coord[idx][1], coord[idx][2], forces[idx][0], forces[idx][1], forces[idx][2]),file=fil)
-
-#####
-def write_data_MACE_extxyz(fdir, fname, labels, coord, forces, energy, charge: int=0, spin: int=1, other=None):
+def write_xyz_with_forces_and_energy(path: str, labels: list, coords: list, forces: list, energy: str, charge: int=0, spin: int=1, other=None):
     other = other if isinstance(other,str) else ''
-    if fdir[-1] != "/": fdir = fdir + "/"
-    natoms = len(labels)
-    fullname = fdir + fname
-    if os.path.isfile(fullname): mode = 'a'
-    else:                        mode = 'w'
+    assert len(labels) == len(coords)
+    assert len(labels) == len(forces)
+    if os.path.isfile(path): mode = 'a'
+    else:                    mode = 'w'
     frmt_atoms = 3*'{:>+16.10f}'
     total_fmt  = '{:6}' + frmt_atoms + '{:8}' + frmt_atoms 
-    with open(fullname, mode) as fil:
-        print(natoms, file=fil)
+    with open(path, mode) as fil:
+        print(len(labels), file=fil)
+        print(charge, spin, energy, other, file=fil)
+        for idx, l in enumerate(labels):
+            print(total_fmt.format(l, *coord[idx], 0, *forces[idx]), file=fil)
+
+#####
+def write_data_MACE_extxyz(path: str, labels: list, coords: list, forces: list, energy: str, charge: int=0, spin: int=1, other=None):
+    other = other if isinstance(other,str) else ''
+    assert len(labels) == len(coords)
+    assert len(labels) == len(forces)
+    if os.path.isfile(path): mode = 'a'
+    else:                    mode = 'w'
+    frmt_atoms = 3*'{:>+16.10f}'
+    total_fmt  = '{:6}' + frmt_atoms + '{:8}' + frmt_atoms 
+    with open(path, mode) as fil:
+        print(len(labels), file=fil)
         print(f'Properties=species:S:1:pos:R:3:molID:I:1:forces:R:3 Nmols=1 Comp={fname.split("_")[0]}_{other} charge={charge} energy={energy} pbc="F F F"', file=fil)
         for idx, l in enumerate(labels):
             print(total_fmt.format(l, *coord[idx], 0, *forces[idx]), file=fil)

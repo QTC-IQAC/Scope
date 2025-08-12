@@ -230,9 +230,9 @@ def fragments_reconstruct(moleclist: list, fraglist: list, Hlist: list, refmolec
         print(f"FRAG_RECONSTRUCT. {remfrag=}")
         # if len(remfrag) > 0:
         #     for i, mol in enumerate(moleclist):
-        #         writexyz(os.getcwd(), f"moleclist_{i}.xyz", mol.labels, mol.coord)
+        #         write_xyz(os.getcwd()+f"/moleclist_{i}.xyz", mol.labels, mol.coord)
         #     for i, rem in enumerate(remfrag):
-        #         writexyz(os.getcwd(), f"remfrag_{i}.xyz", rem.labels, rem.coord)
+        #         write_xyz(os.getcwd()+f"/remfrag_{i}.xyz", rem.labels, rem.coord)
         if len(remfrag) > 0:        Warning = True;  print("FRAG_RECONSTRUCT. Remaining after Hydrogen reconstruction",remfrag)
         elif len(moleclist) == 0:   Warning = True; print("FRAG_RECONSTRUCT. No Molecules after Hydrogen reconstruction", moleclist)
         else:                       Warning = False; print("FRAG_RECONSTRUCT. No remaining Molecules after Hydrogen reconstruction")
