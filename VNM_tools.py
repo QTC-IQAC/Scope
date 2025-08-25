@@ -1,15 +1,63 @@
 import numpy as np
 from Scope import Constants
 
+####
+def map_vnms(vnmsA, vnmsB, debug: int=0):
+    """
+    Map vibrational normal modes (VNMs) between two sets, without
+    dividing into degenerate blocks.
+
+    Parameters
+    ----------
+    vnmsA, vnmsB : arrays (n_modes)
+        Lists of VNM-class objects
+
+    Returns
+    -------
+    mappings : list of dict
+        Each dict has:
+        - modeA: index in A
+        - modeB: matched index in B
+        - overlap: absolute dot product after weighting/normalization
+        - freqA, freqB: the corresponding frequencies
+    """
+
+    # Extracts data from VNMs
+    modesA = [v.mode_format2 for v in vnmsA]
+    modesB = [v.mode_format2 for v in vnmsB] 
+    freqsA = [v.freq_cm for v in vnmsA]
+    freqsB = [v.freq_cm for v in vnmsB] 
+
+    # Normalize (mass-weight should not be needed)
+    from Scope.Operations.Vecs_and_Mats import normalize
+    modesA_proc = normalize(modesA)
+    modesB_proc = normalize(modesB)
+
+    nA, nB = modesA_proc.shape[0], modesB_proc.shape[0]
+    if nA != nB: raise ValueError("Number of modes in A and B must be equal.")
+
+    # Overlap matrix (absolute values)
+    S = np.abs(modesA_proc @ modesB_proc.T)
+
+    # Hungarian algorithm (maximize total overlap → minimize -S)
+    from scipy.optimize import linear_sum_assignment
+    row_ind, col_ind = linear_sum_assignment(-S)
+
+    # Build mapping list
+    mappings = []
+    for i, j in zip(row_ind, col_ind):
+        mappings.append({"modeA": int(i),"modeB": int(j),"overlap": float(S[i, j]),"freqA": float(freqsA[i]),"freqB": float(freqsB[j])})
+    return mappings
+
+######
 def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], which_side: str='positive', amplitude: int=6, debug: int=0):
     ### This function applies a displacement from the initial geometry 
-    ### using either 'all' negative normal modes whose index is in 'which'
-    ### Apparently, the normal modes in gaussian come in sqrt(amu)·bohr units
-    ### So I had to do some changes
+    ### Using either 'all' VNMs provided, or only those whose index is in 'which'
 
     ## Frequencies must have eigenvectors stored
-    if not hasattr(VNMs[0],'xs'): return None
-    if not VNMs[0].haseigenvec: print("VNMs do not have eigenvectors. Stopping"); return None 
+    if any(not vnm.has_mode for vnm in VNMs): 
+        if debug > 0: print("One or more VNMs do not have eigenvectors. Stopping")
+        return None
 
     ## Store Initial Coord
     new_coord = initial_coord.copy()    
@@ -33,11 +81,7 @@ def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], wh
             
             for idx in range(natoms):
                 ## Evaluate the vector, here it expects to receive a mass-weighted eigenvector, as in Gaussian
-                #vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]]) / np.sqrt(vnm.masses[idx])*Constants.bohr2angs
-                #vector = vnm.eigenvec_format1[idx] / np.sqrt(vnm.masses[idx])*Constants.bohr2angs
-                #vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]])*np.sqrt(vnm.masses[idx])*Constants.bohr2angs
                 vector = vnm.eigenvec_format1[idx]
-                #vector = np.array([vnm.xs[idx], vnm.ys[idx], vnm.zs[idx]])  #as it was before
 
                 ## Apply displacement to coordinates
                 if   which_side.lower() == 'positive': displacement = vector*amplitude*freq_factor
@@ -49,7 +93,8 @@ def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], wh
 
 ####
 def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, n_samples: int=10, freq_bottom_limit: float=0, check_adjacencies: bool=True, debug: int=0):
-    from Scope.Adapted_from_cell2mol import get_adjmatrix
+    from Scope.Adapted_from_cell2mol    import get_adjmatrix
+    from Scope.Operations.Vecs_and_Mats import normalize
     """
     Generate a set of geometries by sampling along vibrational normal modes (VNM) of a molecule.
     This function perturbs the input geometry along its vibrational normal modes, producing a set of 
@@ -98,7 +143,10 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
         x = (freq_cm - f0) / width
         return 0.5 * (1 + np.tanh(x))
 
-    assert freqs[0].haseigenvec, "Frequencies must have eigenvectors"
+    ## Frequencies must have eigenvectors stored
+    if any(not freq.has_mode for freq in freqs): 
+        if debug > 0: print("One or more VNMs do not have eigenvectors. Stopping")
+        return None
 
     # Stores the original adjacency matrix
     if check_adjacencies: 
@@ -107,12 +155,12 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
 
     # Extract and manage data from input
     coord   = np.array(coord) 
-    modes   = np.array([freq.eigenvec_format2 for freq in freqs])   # Extract Eigenvectors from frequencies. [units? Assuming Bohr/sqrt(amu)]
+    modes   = np.array([freq.mode_format2 for freq in freqs])   # Extract Eigenvectors from frequencies. [units? Assuming Bohr/sqrt(amu)]
     N_atoms = len(coord)    
     N_modes = len(freqs)
     if qini is None: qini = np.zeros((N_modes))
     else:            qini = np.asarray(qini)
-    if debug > 0: print("First mode norm:", np.linalg.norm(modes[0]))
+    if debug > 0: print("First mode norm:", normalize(modes[0].mode_format2))
 
     # Initializes and Runs Main While loop
     geometries = []
@@ -145,7 +193,6 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
             # Sample a displacement
             sigma_q = sigma_q/(freqs[i].freq_cm**1.8)
             sigma_q = np.min((np.abs(sigma_q), 10))
-            #q_i = np.clip(np.random.normal(0.0, sigma_q), -3*sigma_q, 3*sigma_q)
             q_i = np.random.normal(loc=0.0, scale=sigma_q)      ## Coordinates of Q for this VNM
             q_vec.append(q_i)                                   ## Collection of Q for all VNM to be applied to this sample
             q_tot[i] += q_i                                     ## Collection of Accumulated Q (including the initial ones) 

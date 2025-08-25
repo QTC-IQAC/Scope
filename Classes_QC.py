@@ -39,16 +39,17 @@ class VNM(object):
         self.mode_mw      = self.mode * mw[np.newaxis, :]         ## Mass_Weighted Version of the Mode
         return self.mode_mw
     
-    def write_dyn(self, initial_coord: list, amplitude: int=10, outfolder: str='./', labels: None=list):
+    def write_dyn(self, initial_coord: list, amplitude: int=10, outfolder: str='./', labels: None=list, name: str=None):
         ## Writes a file with a trajectory representing the displacement of the VNM
         from Scope.Read_Write import write_xyz
-        filename: str="dyn_vnm_"+str(self.index)+".xyz"
+        if name is None: filename: str="dyn_vnm_"+str(self.index)+".xyz"
+        else:            filename: str=name
         if outfolder[-1] != '/': outfolder += '/'
         initial_coord = np.array(initial_coord)
         for f in range(-amplitude,amplitude,1):
             labels = []
             coords = []
-            for idx in range(natoms):
+            for idx in range(len(initial_coord)):
                 vector = self.mode[idx]
                 coord  = initial_coord[idx] + vector*f*0.1
                 if labels is None: label = elemdatabase.elementsym[vnm.atnums[idx]]
@@ -56,6 +57,29 @@ class VNM(object):
                 labels.append(label)
                 coords.append(coord)
             write_xyz(outfolder+filename, labels, coords, append=True) 
+
+    def overlap(self, other: object) -> float:
+        if not isinstance(other, type(self)):       return None
+        if not self.has_mode or not other.has_mode: return None
+        from Scope.Operations.Vecs_and_Mats import normalize
+        vnm_a = normalize(self.mode_format2)
+        vnm_b = normalize(other.mode_format2)
+        ov    = float(np.abs(np.dot(vnm_a, vnm_b)))
+        return ov
+
+    def __eq__(self, other: object) -> bool:
+        if not isinstance(other, type(self)):       return False
+        if not self.has_mode or not other.has_mode: return None
+        ov = self.overlap(other)
+        if ov > 0.99: return True
+        else:         return False
+
+    def __ne__(self, other: object) -> bool:
+        if not isinstance(other, type(self)):       return False
+        if not self.has_mode or not other.has_mode: return None
+        ov = self.overlap(other)
+        if ov < 0.01: return True
+        else:         return False
 
     def __repr__(self) -> None:
         to_print  = f'-----------------------------\n'
@@ -65,7 +89,8 @@ class VNM(object):
         to_print += f' Freq (cm-1)            = {self.freq_cm}\n'
         to_print += f' IR Intensity (KM/Mole) = {self.IR_int}\n'
         to_print += f' Reduced Mass (AMU)     = {self.red_mass}\n'
-        to_print += f' Has Mode               = {self.has_mode}\n'
+        if hasattr(self,"has_mode"): to_print += f' Has Mode               = {self.has_mode}\n'
+        else:                        to_print += f' Has Mode               = False\n'
         return to_print
 
 ######
@@ -106,3 +131,37 @@ class orbital(object):
 #    def add_cellvec(self, cellvec, celldim):
 #        self.cellvec = cellvec
 #        self.celldim = celldim
+
+####################################################
+##### Import older versions of VNM Class ###########
+####################################################
+def import_vnm(old_vnm):
+    new_vnm = VNM(old_vnm.index, old_vnm.freq_cm, old_vnm.red_mass, old_vnm.force_cnt, old_vnm.IR_int, old_vnm.sym)
+    if hasattr(old_vnm,"haseigenvec"):
+        if old_vnm.haseigenvec:
+            new_vnm.set_mode(old_vnm.atomidxs, old_vnm.atnums, old_vnm.xs, old_vnm.ys, old_vnm.zs)
+    return new_vnm
+
+def plot_overlap_vnms_diagonal(vnmsA: object, vnmsB: object):
+    import matplotlib.pyplot as plt
+    min_len = min(len(vnmsA), len(vnmsB))
+    diagonal_overlaps = [vnmsA[i].overlap(vnmsB[i]) for i in range(min_len)]
+    plt.figure(figsize=(8, 6))
+    plt.scatter(range(min_len), diagonal_overlaps, c='blue', marker='o')
+    plt.xlabel('Mode Index')
+    plt.ylabel('Diagonal Overlap')
+    plt.title('Diagonal Overlap: vnmsA vs vnmsB')
+    plt.grid(True)
+    plt.show()
+
+def plot_overlap_vnms(vnmsA: object, vnmsB: object):
+    import matplotlib.pyplot as plt
+    overlap_matrix = np.array([[a.overlap(b) for b in vnmsB] for a in vnmsA])
+
+    plt.figure(figsize=(10, 8))
+    plt.imshow(overlap_matrix, aspect='auto', interpolation='nearest', cmap='viridis')
+    plt.colorbar(label='Overlap')
+    plt.xlabel('vnmsB index')
+    plt.ylabel('vnmsA index')
+    plt.title('Overlap Matrix: vnmsA vs vnmsB')
+    plt.show()
