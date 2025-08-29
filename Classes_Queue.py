@@ -40,10 +40,9 @@ class queue(object):
         self.nodes = []
         self.max_cpu_x_node = 0 
 
-        if not hasattr(self,"command_check_nodes_state"): self.set_commands()
+        if not hasattr(self,"self.command_check_queue_state"): self.set_commands()
         try:
-            #raw = subprocess.check_output(['bash','-c', self.command_check_queue_state]) ## raises error when node is not active
-            raw = subprocess.run(['bash', '-c', self.command_queue_state], capture_output=True).stdout
+            raw = subprocess.run(['bash', '-c', self.command_check_queue_state], capture_output=True).stdout
             dec = raw.decode("utf-8")
             text = dec.rstrip().split("\n")
         except: text = ""
@@ -227,7 +226,6 @@ class queue(object):
             #    else: print(f"QUEUE: {other.name} does not have a list of nodes: {type(other.nodes)}")
             #else: print(f"QUEUE: {other.name} has no variable other.nodes")
         return self
-
 
 ############
 ### NODE ###
