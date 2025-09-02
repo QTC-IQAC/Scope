@@ -62,8 +62,6 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
     if debug > 1: print(f"EXECUTE_JOB, step 3a: system in {sys_path} loaded")
 
     ## 3.2-Changes paths if necessary
-    #if not os.path.isdir(sys.sys_path):
-    #    if debug > 1: print(f"EXECUTE_JOB, step 3b: {sys.sys_path} does not exist")
     if global_env.check_paths(debug=1): 
         if debug > 1: print(f"EXECUTE_JOB, step 3b: global environment found with correct paths")
         try: 
@@ -75,54 +73,53 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
     ##############
     ### BRANCH ###
     ##############
+    exists, this_branch        = sys.find_branch(job_data.branch, debug=0)
+    if not exists: this_branch = sys.add_branch(job_data.branch, debug=debug); updated = True
 
-    # Here, it depends on the type of system that is sent for computation
-    if sys.type.lower() == "sco_system":
-        exists, this_branch = sys.find_branch(job_data.branch, debug=0)
-        if not exists: this_branch = sys.add_branch(job_data.branch, debug=debug); updated = True
-
-        ## For SCO, it automatically creates HS and LS recipes
-        if job_data.target.lower() == "ref_mol":
-            this_branch.add_recipe('HS',sys.HS_ref_mol)
-            this_branch.add_recipe('LS',sys.LS_ref_mol)
-        elif job_data.target.lower() == "ref_crys":
-            this_branch.add_recipe('HS',sys.HS_ref_crys.cell)
-            this_branch.add_recipe('LS',sys.LS_ref_crys.cell)
-        else: 
-            print(f"EXECUTE_JOB, step 3c: {job_data.target=} could not be identified in system. Recipes were not created")
-
-    elif sys.type.lower() == "ligand":
-        assert job_data.target == 'self'
-        from Scope.Gmol_ops import find_branch_gmol, add_branch_gmol
-        exists, this_branch = find_branch_gmol(sys, job_data.branch, debug=0)
-        if not exists: this_branch = add_branch_gmol(sys, job_data.branch, calc_folder, debug=debug); updated = True
-    elif sys.type.lower() == "perxyz":
-        assert job_data.target == 'self'
-        from Scope.Gmol_ops import find_branch_perxyz, add_branch_perxyz
-        exists, this_branch = find_branch_perxyz(sys, job_data.branch, debug=0)
-        if not exists: this_branch = add_branch_perxyz(sys, job_data.branch, calc_folder, debug=debug); updated = True
-    elif sys.type.lower() == "smol":
-        assert job_data.target == 'self'
-        from Scope.Gmol_ops import find_branch_smol, add_branch_smol
-        exists, this_branch = find_branch_smol(sys, job_data.branch, debug=0)
-        if not exists: this_branch = add_branch_smol(sys, job_data.branch, calc_folder, debug=debug); updated = True
-    if debug > 1: print("EXECUTE_JOB, step 4: branch loaded")
+#        ## For SCO, it automatically creates HS and LS recipes
+#        if job_data.target.lower() == "ref_mol":
+#            this_branch.add_recipe('HS',sys.HS_ref_mol)
+#            this_branch.add_recipe('LS',sys.LS_ref_mol)
+#        elif job_data.target.lower() == "ref_crys":
+#            this_branch.add_recipe('HS',sys.HS_ref_crys.cell)
+#            this_branch.add_recipe('LS',sys.LS_ref_crys.cell)
+#        else: 
+#            print(f"EXECUTE_JOB, step 3c: {job_data.target=} could not be identified in system. Recipes were not created")
+#
+#    elif sys.type.lower() == "ligand":
+#        assert job_data.target == 'self'
+#        from Scope.Gmol_ops import find_branch_gmol, add_branch_gmol
+#        exists, this_branch = find_branch_gmol(sys, job_data.branch, debug=0)
+#        if not exists: this_branch = add_branch_gmol(sys, job_data.branch, calc_folder, debug=debug); updated = True
+#    elif sys.type.lower() == "perxyz":
+#        assert job_data.target == 'self'
+#        from Scope.Gmol_ops import find_branch_perxyz, add_branch_perxyz
+#        exists, this_branch = find_branch_perxyz(sys, job_data.branch, debug=0)
+#        if not exists: this_branch = add_branch_perxyz(sys, job_data.branch, calc_folder, debug=debug); updated = True
+#    elif sys.type.lower() == "smol":
+#        assert job_data.target == 'self'
+#        from Scope.Gmol_ops import find_branch_smol, add_branch_smol
+#        exists, this_branch = find_branch_smol(sys, job_data.branch, debug=0)
+#        if not exists: this_branch = add_branch_smol(sys, job_data.branch, calc_folder, debug=debug); updated = True
+#    if debug > 1: print("EXECUTE_JOB, step 4: branch loaded")
 
     ##############
     ### RECIPE ###
     ##############
-    for idx, recipe in enumerate(this_branch.recipes):
+    #for idx, recipe in enumerate(this_branch.recipes):
+    for rec in job_data.recipe:
+        exists, recipe             = this_branch.find_recipe(rec)
+        if not exists: recipe      = this_branch.add_recipe(rec); updated = True
 
         ###########
         ### JOB ###
         ###########
-        ## 5-Finds the job. If it does not exist, it is created in 5.1
+        ## 5.1 Finds or creates the job.
         exists, this_job = recipe.find_job(job_data=job_data, debug=0)
-
-        ## 5.1 If job does not exist, creates the job
         if not exists: this_job = recipe.add_job(job_data); updated = True
+
         ## 5.2 If job exists, it checks for input changes (also in qc_data for the computations)
-        else: this_job.check_qc_data(job_path=job_path, debug=debug)
+        if exists: this_job.check_qc_data(job_path=job_path, debug=debug)
 
         if debug > 1: print("---------------------------------------------------")
         if debug > 1: print(f"EXECUTE_JOB, step 5: job {this_job.keyword} loaded")

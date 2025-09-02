@@ -2,7 +2,7 @@ from datetime import datetime, timedelta
 import subprocess
 import numpy as np
 
-from Scope.Parse_General import slurm_time_to_seconds
+from .Parse_General import slurm_time_to_seconds
 
 #############
 ### QUEUE ###

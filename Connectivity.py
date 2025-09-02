@@ -3,40 +3,15 @@ import numpy as np
 from scipy import sparse
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import reverse_cuthill_mckee
+
 from typing import Tuple
-from Scope.Elementdata import ElementData  
+from .Other import extract_from_list  
+from .Elementdata import ElementData  
 elemdatabase = ElementData()
 
-#from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
-
-
-################################
-def extract_from_list(entrylist: list, old_array: list, dimension: int=2, debug: int=0) -> list:
-    if debug >= 1: print(f"EXTRACT_FROM_LIST. received: {entrylist=}")
-    if debug >= 1: print(f"EXTRACT_FROM_LIST. received: {old_array=}")
-    if debug >= 1: print(f"EXTRACT_FROM_LIST. maximum value received in entrylist: {np.max(entrylist)+1}")
-    if debug >= 1: print(f"EXTRACT_FROM_LIST. length of old_array: {len(old_array)}")
-    assert len(old_array) >= np.max(entrylist)+1
-    length = len(entrylist)
-    if dimension == 2:
-        new_array = np.empty((length, length), dtype=object)
-        for idx, row in enumerate(entrylist):
-            for jdx, col in enumerate(entrylist):
-                new_array[idx, jdx] = old_array[row][col]
-    elif dimension == 1:
-        new_array = np.empty((length), dtype=object)
-        for idx, val in enumerate(entrylist):
-            new_array[idx] = old_array[val]
-    return list(new_array)
-
-################################
-def printxyz(labels, pos):
-    print(len(labels))
-    print("")
-    for idx, l in enumerate(labels):
-        print("%s  %.6f  %.6f  %.6f" % (l, pos[idx][0], pos[idx][1], pos[idx][2]))
-
-################################
+######################################
+#### Functions Related to Species ####
+######################################
 def labels2formula(labels: list):
     elems = elemdatabase.elementnr.keys()
     formula=[]
@@ -46,8 +21,8 @@ def labels2formula(labels: list):
             formula.append(f"{z}{nz}-")
         if nz == 1:
             formula.append(f"{z}-")
-    formula = ''.join(formula)[:-1] 
-    return formula 
+    formula = ''.join(formula)[:-1]
+    return formula
 
 ################################
 def labels2ratio(labels):
@@ -63,7 +38,7 @@ def labels2electrons(labels):
     eleccount = 0
     for l in labels:
         eleccount += elemdatabase.elementnr[l]
-    return eleccount 
+    return eleccount
 
 ################################
 def get_element_count(labels: list, heavy_only: bool=False) -> np.ndarray:
@@ -79,7 +54,7 @@ def get_element_count(labels: list, heavy_only: bool=False) -> np.ndarray:
 def get_adjacency_types(label: list, conmat: np.ndarray) -> np.ndarray:
     elems = elemdatabase.elementnr.keys()
     natoms = len(label)
-    bondtypes = np.zeros((len(elems), len(elems)),dtype=int)
+    adjtypes = np.zeros((len(elems), len(elems)),dtype=int)
     found = np.zeros((natoms, natoms))
 
     for i in range(0, natoms):
@@ -90,14 +65,14 @@ def get_adjacency_types(label: list, conmat: np.ndarray) -> np.ndarray:
                         if label[i] == elem1:
                             for l, elem2 in enumerate(elems):
                                 if label[j] == elem2:
-                                    bondtypes[k, l] += 1
+                                    adjtypes[k, l] += 1
                                     if elem1 != elem2:
-                                        bondtypes[l, k] += 1
+                                        adjtypes[l, k] += 1
                                     found[i, j] = 1
                                     found[j, i] = 1
                                     break
                             break
-    return bondtypes
+    return adjtypes
 
 ################################
 def get_radii(labels: list) -> np.ndarray:
@@ -194,62 +169,7 @@ def get_blocks(matrix: np.ndarray) -> Tuple[list, list]:
         endlist.append(0)
     return startlist, endlist
 
-####################################
-#def get_molecules(labels: list, pos: list, factor: float=1.3, debug: int=0) -> Tuple[bool, list]:
-#    ## Function that identifies connected groups of atoms from their atomic coordinates and labels.
-#
-#    # Gets the covalent radii
-#    radii = get_radii(labels)
-#
-#    # Computes the adjacency matrix of what is received
-#    isgood, adjmat, adjnum = get_adjmatrix(labels, pos, factor, radii)
-#
-#    # isgood indicates whether the adjacency matrix could be built normally, or errors were detected. Typically, those errors are steric clashes
-#    if isgood:
-#        degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
-#        lap = adjmat - degree     # computes laplacian
-#
-#        # creates block matrix
-#        graph = csr_matrix(lap)
-#        perm = reverse_cuthill_mckee(graph)
-#        gp1 = graph[perm, :]
-#        gp2 = gp1[:, perm]
-#        dense = gp2.toarray()
-#
-#        # detects blocks in the block diagonal matrix called "dense"
-#        startlist, endlist = get_blocks(dense)
-#
-#        nmolec = len(startlist)
-#        # keeps track of the atom movement within the matrix. Needed later
-#        atomlist = np.zeros((len(dense)))
-#        for b in range(0, nmolec):
-#            for i in range(0, len(dense)):
-#                if (i >= startlist[b]) and (i <= endlist[b]):
-#                    atomlist[i] = b + 1
-#        invperm = inv(perm)
-#        atomlistperm = [int(atomlist[i]) for i in invperm]
-#
-#        # assigns atoms to molecules
-#        moleclist = []
-#        for b in range(0, nmolec):
-#            labelist = []
-#            poslist = []
-#            atlist = []    # atom indices in the original ordering
-#            for i in range(0, len(atomlistperm)):
-#                if atomlistperm[i] == b + 1:
-#                    labelist.append(labels[i])
-#                    poslist.append(pos[i])
-#                    atlist.append(i)
-#            radiilist = get_radii(labelist)
-#
-#            newmolec = molecule(str(b), atlist, labelist, poslist, radiilist)
-#            newmolec.information(1.3,1.0)
-#
-#            moleclist.append(newmolec)
-#            #moleclist.append(list([atlist, labelist, poslist, radiilist]))
-#    return moleclist
-
-################################
+###############################
 def compute_centroid(coord: list) -> list:
     natoms = len(coord)
     x = 0
@@ -463,11 +383,11 @@ def split_group(original_group, conn_idx, final_ligand_indices, debug: int=0):
     if debug > 1: print(f"GROUP.SPLIT_GROUP: {original_group.labels=}")
     if debug > 1: print(f"GROUP.SPLIT_GROUP: {original_group.coord=}")
     if debug > 1: print(f"GROUP.SPLIT_GROUP: {original_group.atoms=}")
-    conn_labels  = extract_from_list(conn_idx, original_group.labels, dimension=1)
-    conn_coord   = extract_from_list(conn_idx, original_group.coord, dimension=1)
+    conn_labels       = extract_from_list(conn_idx, original_group.labels, dimension=1)
+    conn_coord        = extract_from_list(conn_idx, original_group.coord, dimension=1)
     conn_frac_coord   = extract_from_list(conn_idx, original_group.frac_coord, dimension=1)
-    conn_radii   = extract_from_list(conn_idx, original_group.radii, dimension=1)
-    conn_atoms   = extract_from_list(conn_idx, original_group.atoms, dimension=1)
+    conn_radii        = extract_from_list(conn_idx, original_group.radii, dimension=1)
+    conn_atoms        = extract_from_list(conn_idx, original_group.atoms, dimension=1)
     if debug > 1: print(f"GROUP.SPLIT_GROUP: {conn_labels=}")
 
     cov_factor=original_group.get_parent("ligand").cov_factor

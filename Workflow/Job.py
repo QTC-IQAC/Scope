@@ -446,7 +446,7 @@ class job(object):
         to_print += f' self.isregistered (Temp) = {self.isregistered}\n'
         to_print += f' self.isgood       (Temp) = {self.isgood}\n' 
         to_print += f' self.isfinished   (Temp) = {self.isfinished}\n' 
-        to_print += '----------------------------------------------------\n'
+        to_print += '\n'
         return to_print
 
 def check_convergence(energies, current_step=None, thres: float=1e-5, debug: int=0):

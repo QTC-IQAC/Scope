@@ -10,9 +10,6 @@ except:
 
 import pickle
 from collections import Counter
-#from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
-#from Scope.Elementdata import ElementData
-#elemdatabase = ElementData()
 
 ###########################################
 def atoms_for_representation(mol: object, target: list=['metal'], debug=0):

@@ -4,10 +4,11 @@ from scipy import sparse
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import reverse_cuthill_mckee
 
-from Scope.Adapted_from_cell2mol import *
-from Scope.Classes_Molecule import specie, molecule, ligand, atom, metal, cell
-from Scope.Unit_cell_tools import *
-from Scope.Elementdata import ElementData
+from .Connectivity    import *
+from .Classes_Atom    import *
+from .Classes_Specie  import *
+from .Unit_cell_tools import *
+from .Elementdata import ElementData
 elemdatabase = ElementData()
 
 #######################################################

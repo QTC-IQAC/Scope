@@ -6,9 +6,9 @@ import grp
 import subprocess
 import numpy as np
 
-from Scope.Classes_Queue import queue 
-from Scope.Classes_Input import input_data
-from Scope import Classes_Input
+from .Classes_Queue import queue 
+from .Classes_Input import input_data
+from . import Classes_Input
 
 def set_user():
     return pwd.getpwuid( os.getuid() ).pw_name

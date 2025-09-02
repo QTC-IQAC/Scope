@@ -1,17 +1,7 @@
 import numpy as np
-import os
+from Scope.Geometry import *
 
-#################
-def unit_vector(vector):
-    return vector / np.linalg.norm(vector)
-
-#################
-def getangle(v1, v2):
-    v1_u = unit_vector(v1)
-    v2_u = unit_vector(v2)
-    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
-
-#################
+######
 def geom_sco_from_xyz(labels, pos, debug=0):   
     #Computes Structural Variables for all Fe atoms of a given structure
     #Returns two lists, one for FeN and another for NFeN, with all values.
@@ -90,7 +80,7 @@ def geom_sco_from_xyz(labels, pos, debug=0):
     
     return alldist, allangle, allepsylon
 
-#################
+######
 def guess_spin_state(ox_state: str, dist: float, debug: int=0):
     if debug > 0: print(f"Received Ox_state={ox_state} and dist={dist}")
     if ox_state == 2 or ox_state == '2':

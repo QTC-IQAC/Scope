@@ -1,14 +1,9 @@
-import sys
-import copy
-from copy import deepcopy
-import os
 import numpy as np
+from copy import deepcopy
 from datetime import datetime
 
-from Scope.Adapted_from_cell2mol import labels2formula
-
-from Scope.Workflow import Job
-from Scope.Workflow.Job import *
+from .              import Job
+from .Job           import *
 
 ####################
 ###### RECIPE ######
@@ -19,7 +14,6 @@ class recipe(object):
         self._branch          = _branch
         self.path             = _branch.path
         self.keyword          = keyword
-        #self.keyword          = _branch.keyword
         self.subject          = subject
         self.jobs             = []
         self.isregistered     = False
@@ -143,5 +137,5 @@ class recipe(object):
             self.jobs.sort(key=lambda x: x.hierarchy)
             to_print += f' Last Job Keyword      = {self.jobs[-1].keyword}\n'
             to_print += f' Last Job Hierarchy    = {self.jobs[-1].hierarchy}\n'
-        to_print += '----------------------------------------------------\n'
+        to_print += '\n'
         return to_print

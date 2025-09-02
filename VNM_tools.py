@@ -1,5 +1,5 @@
 import numpy as np
-from Scope import Constants
+from . import Constants
 
 ####
 def map_vnms(vnmsA, vnmsB, debug: int=0):

@@ -1,15 +1,14 @@
 import numpy as np
-from Scope.Adapted_from_cell2mol import *
-from Scope.Classes_Data import collection, data
-from Scope.Classes_Molecule import *
-from Scope.Reconstruct    import *
-from Scope.Elementdata import ElementData
+from .Connectivity import *
+from .Classes_Data import collection, data
+from .Classes_Specie import *
+from .Reconstruct    import *
+from .Elementdata import ElementData
 elemdatabase = ElementData()
 
 ##############
 ### STATES ###
 ##############
-
 class state(object):
     def __init__(self, _subject: object, name: str, debug: int=0):
         self.type         = "state"
@@ -30,8 +29,6 @@ class state(object):
                 print("WARNING from CLASS STATE: you're trying to create a state that already exists in _subject.")
                 print("WARNING from CLASS STATE: use function called 'find_state' instead to retrieve existing state")
         if not found: self._subject.states.append(self)
-
-
 
 ############################################
 #### Basic Functions to add information ####
@@ -159,7 +156,7 @@ class state(object):
         from Scope.Structure_SCO import geom_sco_from_xyz
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"Found Fragmented molecules in the geometry of state: {self.name}"
-        if not hasattr(self,"moleclist"): self.get_moleclist()
+        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
         for mol in self.moleclist:
             if mol.iscomplex: print(geom_sco_from_xyz(self.labels, self.coord, debug=debug)) 
 
@@ -174,7 +171,7 @@ class state(object):
         with HiddenPrints():
             finished = False
             if hasattr(self._subject,"type") and hasattr(self,"cellvec"):
-                if not hasattr(self,"moleclist"): self.get_moleclist() 
+                if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug) 
                 if self._subject.type.lower() == "cell":
                     import itertools
                     blocklist = self.moleclist.copy()

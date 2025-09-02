@@ -1,9 +1,7 @@
-#from cell2mol.tmcharge_common import *
-from Scope.VNM_tools import displace_coords_with_vnm 
-from Scope.Workflow import Branch
-from Scope.Workflow.Branch import *
-from Scope.Classes_State import *
-#from copy import deepcopy
+from .VNM_tools import displace_coords_with_vnm 
+from .Workflow import Branch
+from .Workflow.Branch import *
+from .Classes_State import *
 
 def gmol_update_geom(mol: object, new_coord: list, tag: str="coord", debug: int=0) -> None:
     assert hasattr(mol,tag)

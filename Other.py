@@ -3,10 +3,9 @@ import numpy as np
 
 ####
 def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="centroid", use_ext_info: bool=True, translate_to_ref: bool=True, save_to_folder: str="/Users/sergivela/Documents/SCOPE/Program/tests/Overlap_Molecules/", debug: int=0):
-    from Scope.Adapted_from_cell2mol import compute_centroid
-    from Scope.Adapted_from_cell2mol import get_adjmatrix
-    from Scope.Reconstruct import reorder_hungarian
-    from Scope.Read_Write  import print_xyz, write_xyz
+    from .Connectivity import compute_centroid, get_adjmatrix
+    from .Reconstruct import reorder_hungarian
+    from .Read_Write  import print_xyz, write_xyz
     from collections import Counter
 
     ## Ensure both species have the same number of atoms
@@ -209,7 +208,7 @@ def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, center_method=
 
 #############
 def kabsch_align(LP, P, LQ, Q, center_method: str="centroid", debug: int=0):
-    from Scope.Adapted_from_cell2mol import compute_centroid
+    from .Connectivity import compute_centroid
     """
     Perform the Kabsch algorithm to find the optimal rotation and translation
     to align point set P (mobile) to Q (target/reference).
@@ -331,18 +330,37 @@ def get_dist (atom1_pos: list, atom2_pos: list) -> float :
     dist = np.linalg.norm(np.array(atom1_pos) - np.array(atom2_pos))
     return round(dist, 3)
 
-def extract_from_list(entrylist: list, old_array: np.ndarray, dimension: int=2) -> np.ndarray:
+################################
+def extract_from_list(entrylist: list, old_array: list, dimension: int=2, debug: int=0) -> list:
+    if debug >= 1: print(f"EXTRACT_FROM_LIST. received: {entrylist=}")
+    if debug >= 1: print(f"EXTRACT_FROM_LIST. received: {old_array=}")
+    if debug >= 1: print(f"EXTRACT_FROM_LIST. maximum value received in entrylist: {np.max(entrylist)+1}")
+    if debug >= 1: print(f"EXTRACT_FROM_LIST. length of old_array: {len(old_array)}")
+    assert len(old_array) >= np.max(entrylist)+1
     length = len(entrylist)
     if dimension == 2:
-        new_array = np.empty((length, length))
+        new_array = np.empty((length, length), dtype=object)
         for idx, row in enumerate(entrylist):
             for jdx, col in enumerate(entrylist):
                 new_array[idx, jdx] = old_array[row][col]
     elif dimension == 1:
-        new_array = np.empty((length))
+        new_array = np.empty((length), dtype=object)
         for idx, val in enumerate(entrylist):
             new_array[idx] = old_array[val]
-    return new_array
+    return list(new_array)
+
+#def extract_from_list(entrylist: list, old_array: np.ndarray, dimension: int=2) -> np.ndarray:
+#    length = len(entrylist)
+#    if dimension == 2:
+#        new_array = np.empty((length, length))
+#        for idx, row in enumerate(entrylist):
+#            for jdx, col in enumerate(entrylist):
+#                new_array[idx, jdx] = old_array[row][col]
+#    elif dimension == 1:
+#        new_array = np.empty((length))
+#        for idx, val in enumerate(entrylist):
+#            new_array[idx] = old_array[val]
+#    return new_array
 
 def where_in_array(array,condition) -> list:
     results = []

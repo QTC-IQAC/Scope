@@ -431,6 +431,7 @@ class computation(object):
         if self.isregistered: to_print += f' self.isfinished       = {self.isfinished}\n' 
         if self.isregistered: to_print += f' self.elapsed_time     = {self.elapsed_time}\n' 
         if hasattr(self,"output"): to_print += f'{self.output}\n'
+        to_print += '\n'
         return to_print
 
 ##############################################################

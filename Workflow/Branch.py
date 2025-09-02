@@ -44,7 +44,7 @@ class branch(object):
         result._object = self
         if overwrite or result.key not in self.results.keys():  self.results[result.key] = result
 
-    def add_recipe(self, keyword: str, subject: object, debug: int=0):
+    def add_recipe(self, keyword: str, subject: object):
         exists, new_recipe = self.find_recipe(keyword)
         if not exists: 
             new_recipe = recipe(keyword, subject, _branch=self)
@@ -54,13 +54,13 @@ class branch(object):
     ########################################
     def find_recipe(self, keyword: str, debug: int=0):
         if debug > 1: print(f"BRANCH.FIND_RECIPE: Searching Recipe with keyword:", keyword) 
-        for idx, rec in enumerate(self.recipes):
+        for rec in self.recipes:
             if debug > 1: print(f"BRANCH.FIND_RECIPE: Comparing with",rec.keyword)
             if rec.keyword == keyword: return True, rec 
         return False, None
 
     ########################################
-    def set_status(self, status: str, debug: int=0):
+    def set_status(self, status: str):
         status = status.lower()
         if hasattr(self,"status"):
             if self.status != status: self.status = status
@@ -120,9 +120,8 @@ class branch(object):
         to_print += f' self.path             = {self.path}\n'
         to_print += f' self.keyword          = {self.keyword}\n'
         to_print += f' Num Recipes           = {len(self.recipes)}\n'
-        to_print += '----------------------------------------------------\n'
+        to_print += '\n'
         return to_print
-
 
 #    def delete_inactive_recipes(self, obj, keyword, debug: int=0):
 #        for idx, rec in enumerate(self.recipes):

@@ -113,8 +113,8 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
     from scipy.sparse import csr_matrix
     from scipy.sparse.csgraph import reverse_cuthill_mckee
     from typing import Tuple
-    from Scope.Elementdata import ElementData
-    from Scope.Adapted_from_cell2mol import get_adjmatrix, get_blocks, inv
+    from .Elementdata import ElementData
+    from .Connectivity import get_adjmatrix, get_blocks, inv
     elemdatabase = ElementData()
 
     d0 = getdihedral(coord[atom1], coord[atom2], coord[atom3], coord[atom4])

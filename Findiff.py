@@ -1,4 +1,4 @@
-from Scope import Constants
+from . import Constants
 from copy import deepcopy
 import numpy as np
 

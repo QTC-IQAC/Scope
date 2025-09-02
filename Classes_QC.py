@@ -2,12 +2,12 @@ import sys
 import os
 import numpy as np
 
-from Scope.Parse_General import search_string, read_lines_file 
-from Scope.Unit_cell_tools import get_unit_cell_volume
-from Scope import Constants
+from .Parse_General import search_string, read_lines_file 
+from .Unit_cell_tools import get_unit_cell_volume
+from . import Constants
 
-from Scope.Adapted_from_cell2mol import labels2formula
-from Scope.Elementdata import ElementData
+from .Connectivity import labels2formula
+from .Elementdata import ElementData
 elemdatabase = ElementData()
 
 ######################

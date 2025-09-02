@@ -1,7 +1,7 @@
 import numpy as np
-from Scope import Constants
-from Scope.Classes_Data import *
-from Scope.Other import range2list
+from . import Constants
+from .Classes_Data import *
+from .Other import range2list
 
 ###########
 def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', typ: str='default', FR_cutoff: int=100, FR_alpha: int=4, nmol: int=1):
