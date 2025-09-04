@@ -1,15 +1,9 @@
-import sys
-import copy
 from copy import deepcopy
 import os
-import numpy as np
 from datetime import datetime
 
-from Scope.Adapted_from_cell2mol import labels2formula
-from Scope.Classes_Environment import set_cluster, set_user
-
-from Scope.Workflow import Recipe
-from Scope.Workflow.Recipe import *
+from ..Classes_Environment  import set_cluster, set_user
+from .Recipe    import *
 
 ##########################
 ###### BRANCH CLASS ######
@@ -44,12 +38,17 @@ class branch(object):
         result._object = self
         if overwrite or result.key not in self.results.keys():  self.results[result.key] = result
 
-    def add_recipe(self, keyword: str, subject: object):
+    def add_recipe(self, keyword: str):
         exists, new_recipe = self.find_recipe(keyword)
         if not exists: 
-            new_recipe = recipe(keyword, subject, _branch=self)
-            self.recipes.append(new_recipe)
-        return new_recipe
+            exists, source = self._sys.find_source(keyword)
+            if exists: 
+                new_recipe = recipe(keyword, source, _branch=self)
+                self.recipes.append(new_recipe)
+                return new_recipe
+            else:
+                print(f"BRANCH. Source with name {keyword} does not exist. Recipe could not be created")
+                print(f"BRANCH. Current sources: {keyword} does not exist. Recipe could not be created")
     
     ########################################
     def find_recipe(self, keyword: str, debug: int=0):
@@ -91,7 +90,7 @@ class branch(object):
         allgood     = True
         allfinished = True
         if len(self.recipes) > 0:
-            for idx, rec in enumerate(self.recipes):
+            for rec in self.recipes:
                 if not rec.isregistered:                 rec.register(debug=debug)
                 if not rec.isgood:                       allgood     = False
                 if not rec.isfinished:                   allfinished = False
@@ -101,7 +100,6 @@ class branch(object):
         if allgood:     self.isgood     = True
         if allfinished: self.isfinished = True
         self.isregistered = True
-        #if allgood and allfinished: self.isregistered = True
         if debug > 1: print("Registered Branch:", self.keyword, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
 
 #############

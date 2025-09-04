@@ -1,14 +1,10 @@
-import sys
-import copy
-from copy import deepcopy
 import os
 import numpy as np
-from datetime import datetime
+from copy import deepcopy
 
-from Scope.Classes_State import state, find_state
-from Scope.Workflow import Computation
-from Scope.Workflow.Computation import *
-from Scope.Other import where_in_array
+from ..Classes_State    import state, find_state
+from .Computation       import *
+from ..Other            import where_in_array
 
 ###################
 ######  JOB  ######
@@ -49,7 +45,7 @@ class job(object):
         if new_job_data != old_job_data: 
             print(f"CHECK_QC_DATA: identified changes in job_data for job.keyword={self.keyword}")
             self.update_job_data(old_job_data, new_job_data) 
-            new_qc_data    = set_qc_data(job_path, section="&qc_data" , debug=0)
+            #new_qc_data    = set_qc_data(job_path, section="&qc_data" , debug=0)
             for comp in self.computations:
                 comp.check_qc_data(job_path=job_path, debug=debug)
             return True
@@ -171,7 +167,7 @@ class job(object):
     def set_computations_from_setup(self, qc_data: object, debug: int=0): 
 
         ## For Simplicity
-        gmol = self._recipe.subject
+        gmol = self._recipe.source
 
         #####################
         ## 1- Setup for regular computations: "1 job => 1 computation"
@@ -211,7 +207,7 @@ class job(object):
                                 if "freq" in comp._job.keyword and comp.isgood and not found:
                                     print(f"SET COMPUTATIONS FROM SETUP: I will try to read the eigenvectors from", idx, comp.out_path)
                                     ### 1-Parsing and storage (this block is similar to register_frequencies)
-                                    gmol = comp._job._recipe.subject
+                                    gmol = comp._job._recipe.source
                                     if not hasattr(comp,"output"): reg_general(comp)
                                     VNMs = comp.output.get_vnms(witheigen=True)
                                     if VNMs is not None: 
@@ -427,19 +423,17 @@ class job(object):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> >>> JOB                                 \n'
         to_print += f'---------------------------------------------------\n'
-        gmol = self._recipe.subject
-        if hasattr(gmol,"refcode"):                      to_print += f' Crystal               = {gmol.refcode}\n'
-        elif hasattr(gmol.get_parent("cell"),"refcode"): to_print += f' Crystal               = {gmol.get_parent("cell").refcode}\n'
-        to_print += f' Type of Object        = {self._recipe.subject.type}\n'
-        to_print += f' Spin (Recipe Name)    = {self._recipe.subject.spin}\n'
-        to_print += f' Branch                = {self._recipe._branch.keyword}\n'
+        to_print += f' Source Type           = {self._recipe.source.type}\n'
+        to_print += f' Source Spin           = {self._recipe.source.spin}\n'
+        to_print += f' Branch Keyword        = {self._recipe._branch.keyword}\n'
+        to_print += f' Recipe Keyword        = {self._recipe.keyword}\n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' self.path             = {self.path}\n'
-        to_print += f' self.keyword          = {self.keyword}\n'
-        to_print += f' self.hierarchy        = {self.hierarchy}\n'
-        to_print += f' self.requisites       = {self.requisites}\n'
-        to_print += f' self.constrains       = {self.constrains}\n'
-        to_print += f' self.setup            = {self.setup}\n'
+        to_print += f' Job path              = {self.path}\n'
+        to_print += f' Job keyword           = {self.keyword}\n'
+        to_print += f' Job hierarchy         = {self.hierarchy}\n'
+        to_print += f' Job requisites        = {self.requisites}\n'
+        to_print += f' Job constrains        = {self.constrains}\n'
+        to_print += f' Job setup             = {self.setup}\n'
         to_print += f' Num Computations      = {len(self.computations)}\n'
         if self.setup == "rep_opt": to_print += f' Num Steps             = {self.get_max_step()}\n'
         to_print += '----------------------------------------------------\n'

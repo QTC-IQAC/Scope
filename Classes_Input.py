@@ -1,4 +1,5 @@
 import os
+import sys
 import numpy as np
 from ast import literal_eval
 
@@ -6,7 +7,7 @@ from ast import literal_eval
 def interpret_software(name: str):
     if name == 'g16' or name == 'gaussian': software = 'g16'
     elif name == 'qe' or name == 'quantum_espresso' or name == 'quantum_espresso' or name == 'espresso': software = 'qe'
-    else: print("INTERPRET SOFTWARE: software",name," could not be interpreted. EXITING"); exit()
+    else: print("INTERPRET SOFTWARE: software",name," could not be interpreted. EXITING"); sys.exit()
     return software
 
 #######################
@@ -15,7 +16,7 @@ def interpret_software(name: str):
 class input_data(object):
     def __init__(self, f_name: str, section=None, debug=0):
         if f_name != '': self.read(f_name, section, debug=debug)
-        self.type = "input_data"
+        #self.type = "input_data"
  
     def read(self, f_name: str, section=None, debug: int=0):
         dct = dict()
@@ -23,7 +24,7 @@ class input_data(object):
             canread = False
             for idx, line in enumerate(f.readlines()):
 
-                if line[0] == '#' or line == '\n': continue
+                if line[0] == '#' or line == '\n': continue       ### Ignores lines commented with #
                 line = line.strip()
                 if debug > 0: print("INPUT DATA: Doing line", idx, line) 
 
@@ -101,18 +102,20 @@ class input_data(object):
         else: 
             same = True
             for d in dir(self): 
-                if '_' not in d and not callable(getattr(self,d)):
+                if '_' not in d and not isinstance(getattr(self, d), dict) and not callable(getattr(self, d)): 
                     at1 = getattr(self,d)
                     try:    
                         at2 = getattr(other,d)
-                        if at1 != at2: same = False
+                        if at1 != at2: 
+                            same = False
                     except: return False
             for d in dir(other): 
-                if '_' not in d and not callable(getattr(other,d)): 
+                if '_' not in d and not isinstance(getattr(other, d), dict) and not callable(getattr(other, d)): 
                     at1 = getattr(other,d)
                     try:    
                         at2 = getattr(self,d)
-                        if at1 != at2: same = False
+                        if at1 != at2: 
+                            same = False
                     except: return False
         return same
 
@@ -127,13 +130,14 @@ def fill_environment_data(data: object, debug: int=0):
 
 def fill_options_data(data: object, debug: int=0):
     ## Adds defaults to options data
+    ## No defaults to add for the moment
     return data
 
 def fill_job_data(data: object, debug: int=0):
     ## Adds defaults to job_data
-    if not hasattr(data,"branch"):        print("WARNING: job_data is missing branch"); exit() 
-    if not hasattr(data,"target"):        print("WARNING: job_data is missing target"); exit() 
-    if not hasattr(data,"hierarchy"):     print("WARNING: job_data is missing hierarchy"); exit() 
+    if not hasattr(data,"branch"):        print("WARNING: job_data is missing branch"),    sys.exit()
+    if not hasattr(data,"recipe"):        print("WARNING: job_data is missing recipe"),    sys.exit()
+    if not hasattr(data,"hierarchy"):     print("WARNING: job_data is missing hierarchy"), sys.exit()
     if not hasattr(data,"suffix"):        data._add_attr("suffix", str(data.hierarchy))
     #if not hasattr(data,"keyword"):       data._add_attr("keyword", str("scf"))  ## In case I implement the available_keywords below
     if not hasattr(data,"keyword"):       data._add_attr("keyword", str(data.suffix))
@@ -174,7 +178,7 @@ def fill_job_data(data: object, debug: int=0):
 
 def fill_qc_data(data: object, debug: int=0):
     ## Adds defaults to qc_data
-    if not hasattr(data,"software"):      print("WARNING: qc_data is missing software"); exit() 
+    if not hasattr(data,"software"):      print("WARNING: qc_data is missing software"); sys.exit()
     else:                                 data._add_attr("software", interpret_software(data.software))
 
     if data.software == "g16":
@@ -206,7 +210,6 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"pressure"):      data._add_attr("pressure", int(0))
         if not hasattr(data,"forc_conv"):     data._add_attr("forc_conv", float(1e-5))
         if not hasattr(data,"elec_conv"):     data._add_attr("elec_conv", float(1e-5))
-    
     return data
 
 #######################

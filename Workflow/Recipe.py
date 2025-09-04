@@ -1,20 +1,15 @@
-import numpy as np
-from copy import deepcopy
-from datetime import datetime
-
-from .              import Job
 from .Job           import *
 
 ####################
 ###### RECIPE ######
 ####################
 class recipe(object):
-    def __init__(self, keyword: str, subject: object, _branch: object, debug: int=0) -> None:
+    def __init__(self, keyword: str, source: object, _branch: object, debug: int=0) -> None:
         self.type             = "recipe"
         self._branch          = _branch
         self.path             = _branch.path
         self.keyword          = keyword
-        self.subject          = subject
+        self.source           = source
         self.jobs             = []
         self.isregistered     = False
         self.isgood           = False
@@ -28,9 +23,8 @@ class recipe(object):
     #####################################
     ### Add // Remove // ------- Jobs ###
     #####################################
-    def add_job(self, job_data, debug: int=0):
+    def add_job(self, job_data):                               ## As opposed to add_branch or add_recipe, add_job does not need a keyword, but a full job_data input
         new_job               = job(job_data, _recipe=self)
-        if debug > 1: print("Job created")
         self.jobs.append(new_job)
         return new_job 
     
@@ -58,7 +52,6 @@ class recipe(object):
         found_job = False
 
         if keyword is None and hierarchy is None and job_data is not None:
-            #assert type(job_data) == object, f"{type(job_data)} = type(job_data)"
             assert hasattr(job_data,"keyword") and hasattr(job_data,"hierarchy")
             if debug > 1: print(f"Searching Job with keyword: '{job_data.keyword}' and hierarchy '{job_data.hierarchy}'")
             for idx, jb in enumerate(self.jobs):
@@ -88,7 +81,7 @@ class recipe(object):
         elif keyword is not None and hierarchy is not None and job_data is None:  
             assert type(keyword) == str and type(hierarchy) == int
             if debug > 1: print(f"Searching Job with keyword: '{keyword}' and hierarchy '{hierarchy}'")
-            for idx, jb in enumerate(self.jobs):
+            for jb in self.jobs:
                 if jb.keyword == keyword and jb.hierarchy == hierarchy and not found_job:
                     this_job = jb
                     found_job = True
@@ -105,7 +98,7 @@ class recipe(object):
         allgood     = True
         allfinished = True
         if len(self.jobs) > 0:
-            for idx, job in enumerate(self.jobs):
+            for job in self.jobs:
                 if not job.isregistered:                 job.register(debug=debug)
                 if not job.isgood:                       allgood     = False
                 if not job.isfinished:                   allfinished = False
@@ -115,7 +108,6 @@ class recipe(object):
         if allgood:                 self.isgood       = True
         if allfinished:             self.isfinished   = True
         self.isregistered = True
-        #if allgood and allfinished: self.isregistered = True
         if debug > 1: print("Registered Recipe:", self.keyword, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
 
 #############
@@ -125,13 +117,13 @@ class recipe(object):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> RECIPE                                  \n'
         to_print += f'---------------------------------------------------\n'
-        if hasattr(self.subject,"refcode"):                      to_print += f' Crystal               = {self.subject.refcode}\n'
-        elif self.subject.check_parent("cell"): 
-            if hasattr(self.subject.get_parent("cell"),"refcode"): to_print += f' Crystal               = {self.subject.get_parent("cell").refcode}\n'
-        if hasattr(self.subject,"spin"):             to_print += f' Spin                  = {self.subject.spin}\n'
-        if hasattr(self.subject,"phase"):            to_print += f' Phase                 = {self.subject.phase}\n'
-        to_print += f' Type of Object        = {self.subject.type}\n'
+        if hasattr(self.source,"name"):      to_print += f' Source Name           = {self.source.name}\n'
+        if hasattr(self.source,"spin"):      to_print += f' Source Spin           = {self.source.spin}\n'
+        if hasattr(self.source,"phase"):     to_print += f' Source Phase          = {self.source.phase}\n'
+        to_print += f' Source Type           = {self.source.type}\n'
+        to_print += f' Source sub-Type       = {self.source.subtype}\n'
         to_print += f'---------------------------------------------------\n'
+        to_print += f' Recipe Keyword        = {self.keyword}\n'
         to_print += f' Num Jobs              = {len(self.jobs)}\n'
         if len(self.jobs) > 0: 
             self.jobs.sort(key=lambda x: x.hierarchy)

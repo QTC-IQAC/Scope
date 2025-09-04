@@ -24,6 +24,7 @@ class cell(object):
         self.name                 = name
         self.labels               = labels 
         self.coord                = pos
+        self.formula              = labels2formula(labels)
         self.frac_coord           = frac_coord
         self.cell_vector          = cell_vector
         self.cell_param           = cell_param
@@ -87,7 +88,7 @@ class cell(object):
         ## Below is to order the atoms as in the original cell, using the indices stored in the molecule object
         self.labels = [x for _, x in sorted(zip(indices, self.labels), key=lambda pair: pair[0])]
         self.coord  = [x for _, x in sorted(zip(indices, self.coord), key=lambda pair: pair[0])]
-        assert len(self.labels) == len(self.cell.pos)
+        assert len(self.labels) == len(self.coord)
         return self.coord
 
     ## This function mimics the specie-class function with the same name
@@ -126,7 +127,7 @@ class cell(object):
         if not hasattr(self,"moleclist"): self.get_moleclist()
         self.fragmented = False
 
-        # First comparison with current moleclist
+        # First comparison with ref_moleclist
         for mol in self.moleclist:
             found = False
             for rmol in self.refmoleclist:
@@ -351,6 +352,8 @@ def import_cell(old_cell: object, debug: int=0) -> object:
         new_mol = import_molecule(mol, parent=new_cell, debug=debug)
         moleclist.append(new_mol)
     new_cell.set_moleclist(moleclist)
+    new_cell.fix_cell_coord()    ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell. 
+                                 ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
 
     ## Refmoleclist
     if debug > 0: print(f"IMPORT CELL: creating refmoleclist")

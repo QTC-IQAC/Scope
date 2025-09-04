@@ -1,26 +1,49 @@
 #!/usr/bin/env python3
-import sys
 import os
-import pwd
-
-from Scope.Classes_Input import *
-from Scope.Classes_State import *
-from Scope.Classes_SCO import sco_system, crystal
-from Scope.Read_Write import load_binary, save_binary
+from ..Classes_Input import *
+from ..Classes_State import *
+from ..Read_Write import load_binary, save_binary
 
 ## Should be moved to a better place 
-from Scope.Workflow import Job
-from Scope.Workflow.Job import check_convergence
+from ..Workflow.Job import check_convergence
 
 ######################
-def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors: bool=False, calc_folder: str=None, debug: int=0):
-    ### !!!!
-    ### It is better that the environment is already loaded, so it is not necessary to load it for every system
-    ### !!!!
+def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors: bool=False, debug: int=0):
+    """
+    Executes a SCOPE Task (defined in the job_path file) on a SCOPE system (in the sys_path). 
+    The Configuration of the Computer is read from the GLOBAL_ENVIRONMENT, which must be configured before and given as a binary.
+    This function performs the following steps:
+    1. Verifies the existence of the system and job files.
+    2. Reads input data from the job file, including environment, options, job data, and QC_data.
+    3. Updates the global environment with user-specific choices.
+    4. Adjusts options if no queue management is detected.
+    5. Loads the system object from the binary file and updates paths if necessary. Handy if registration and execution of tasks are performed in different computers
+    6. Finds or creates the required branch and recipe in the system.
+    7. Finds or creates the job within the recipe, and checks for input changes.
+    8. Validates job requisites and continues only if they are fulfilled.
+    9. Sets up computations for the job, checks file existence, and handles submission.
+    10. Registers computations, handles errors, and manages continuation or repetitive computations as needed.
+    11. Updates registry information and saves the system binary if changes occurred.
+    ----------
+    Parameters
+    ----------
+    sys_path : str
+        Path to the system binary file.
+    job_path : str
+        Path to the job configuration file.
+    global_env : object
+        Global environment object, expected to be pre-loaded.
+    handle_errors : bool, optional
+        If True, handles errors encountered during registration (default is False).
+    debug : int, optional
+        Debug level for verbose output (default is 0).
+    Returns
+    -------
+    report : str or None
+        A report string summarizing any issues or actions taken during execution,
+        or None if the required files do not exist.
+    """
 
-    if calc_folder is None: calc_folder = sys_path ## Temporary Measure for Unique Ligands
-
-    #print("ENTERED EXECUTE JOB with job_path:", job_path)
     report = ''
 
     if debug > 1: print("")
@@ -76,16 +99,6 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
     exists, this_branch        = sys.find_branch(job_data.branch, debug=0)
     if not exists: this_branch = sys.add_branch(job_data.branch, debug=debug); updated = True
 
-#        ## For SCO, it automatically creates HS and LS recipes
-#        if job_data.target.lower() == "ref_mol":
-#            this_branch.add_recipe('HS',sys.HS_ref_mol)
-#            this_branch.add_recipe('LS',sys.LS_ref_mol)
-#        elif job_data.target.lower() == "ref_crys":
-#            this_branch.add_recipe('HS',sys.HS_ref_crys.cell)
-#            this_branch.add_recipe('LS',sys.LS_ref_crys.cell)
-#        else: 
-#            print(f"EXECUTE_JOB, step 3c: {job_data.target=} could not be identified in system. Recipes were not created")
-#
 #    elif sys.type.lower() == "ligand":
 #        assert job_data.target == 'self'
 #        from Scope.Gmol_ops import find_branch_gmol, add_branch_gmol
@@ -106,8 +119,8 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
     ##############
     ### RECIPE ###
     ##############
-    #for idx, recipe in enumerate(this_branch.recipes):
-    for rec in job_data.recipe:
+    for rec in job_data.recipe if isinstance(job_data.recipe, list) else list([job_data.recipe]):   ### Works when job_data.recipe is a str or a list
+
         exists, recipe             = this_branch.find_recipe(rec)
         if not exists: recipe      = this_branch.add_recipe(rec); updated = True
 
@@ -147,7 +160,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
             #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
             if debug > 1: print("")
             if debug > 1: print("########################################################################")
-            if debug > 1: print(f"    {sys.refcode} -> {this_job._recipe.subject.spin} -> {this_job.keyword} -> {comp.step} -> {comp.run_number}")
+            if debug > 1: print(f"    {sys.name} -> {this_job._recipe.keyword} -> {this_job.keyword} -> {comp.step} -> {comp.run_number}")
             if debug > 1: print("########################################################################")
             if debug > 1: print(f"EXECUTE_JOB, step 7.0: evaluating job, and computation with indices: {recipe.jobs.index(this_job)+1}/{len(recipe.jobs)}, {jdx+1}/{len(this_job.computations)}")
 
@@ -185,9 +198,10 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
             ## Step 8: registration
             elif comp.output_exists and comp.input_exists:
                 ## 8.1-If output exists, and is not registered, it does it
+                ## This means that the output is read, parsed. The parsed data depends on the type of computation
                 if not comp.isregistered:
                     if debug > 1: print(f"EXECUTE_JOB, step 8: registration")
-                    worked = comp.register(debug=debug)
+                    worked = comp.register(debug=debug) 
 
                     if debug > 1: print(f"EXECUTE_JOB, step 8.1: registration {worked=}")
                     if debug > 1: print(f"EXECUTE_JOB, step 8.1: {comp.has_update=}")
@@ -209,7 +223,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                         ## 8.3.1 Collects energies from state in this step
                         if hasattr(comp.qc_data,"fstate"): fstate = comp.qc_data.fstate
                         else:                              fstate = comp._job.fstate
-                        exists, state = find_state(comp._job._recipe.subject, fstate)
+                        exists, state = find_state(comp._job._recipe.source, fstate)
                         #print('energies:', this_job.energies)
                         #print('len:', len(this_job.energies))
                         #print('step:', comp.step)
@@ -252,7 +266,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
                 #if comp.isregistered and "freq" in comp._job.keyword and (hasattr(comp.qc_data,"fstate") or hasattr(comp._job,"fstate")):
                 #    if hasattr(comp.qc_data,"fstate"): fstate = comp.qc_data.fstate
                 #    else:                              fstate = comp._job.fstate
-                #    exists, state = find_state(comp._job._recipe.subject, fstate)
+                #    exists, state = find_state(comp._job._recipe.source, fstate)
                 #    print("State",fstate,"exist=", exists)
                 #    if exists and hasattr(state,"VNMs"):
                 #        if not hasattr(state.VNMs,"xs"): 

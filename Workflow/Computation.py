@@ -1,16 +1,11 @@
-import sys
-import copy
 from copy import deepcopy
 import os
-import numpy as np
 from datetime import datetime
 
-from Scope.Classes_Spin import *
-from Scope.Classes_Environment import * 
-from Scope.Register_Data import reg_general, reg_optimization, reg_frequencies, reg_energy
-from Scope.Software.Quantum_Espresso.Write_QE_Inputs import *
-from Scope.Software.Gaussian.Write_G16_Inputs import *
-from Scope.Parse_General import read_lines_file
+from ..Classes_Spin                                 import *
+from ..Classes_Environment                          import * 
+from ..Register_Data                                import reg_general, reg_optimization, reg_frequencies, reg_energy
+from ..Parse_General                                import read_lines_file
 
 #########################
 ###### COMPUTATION ######
@@ -27,12 +22,12 @@ class computation(object):
         self.suffix           = _job.suffix           ## A string to add to the file name. This should be eliminated 
         self.path             = path
         self.index            = len(_job.computations)+1
-        self.refcode          = _job._recipe.subject._sys.refcode
         self.isregistered     = False
         self.has_update       = False
         self.is_update        = is_update
-        self.run_number       = self.set_run_number(debug=1) 
+        self.run_number       = self.set_run_number() 
         self.states           = []
+        self.name             = _job._recipe.source._sys.name  ## Just to simplify calling this variable 
 
         ############
         ### SPIN ###
@@ -41,9 +36,9 @@ class computation(object):
         ## Spin Config can be used to define more complex spin states. 
         ## Particularly in crystals with intermediate spin states, which are not implemented yet
         ############
-        if not hasattr(self.qc_data,"spin"): self.spin             = self._job._recipe.subject.spin
+        if not hasattr(self.qc_data,"spin"): self.spin             = self._job._recipe.source.spin
         else:                                self.spin             = qc_data.spin
-        self.spin_config = get_spin_config(self._job._recipe.subject, self.spin, debug=debug)
+        self.spin_config = get_spin_config(self._job._recipe.source, self.spin, debug=debug)
 
     #####################
     ### Name of Files ###
@@ -71,13 +66,13 @@ class computation(object):
                     if debug > 2: print(f"comp.GET_NAME_FROM_CONFIG: modifying {mod=} in new_filename")
         return new_filename
 
-    def set_filename(self, use_refcode: bool=True, use_suffix: bool=True, use_step: bool=False, use_run_number: bool=True, use_spin: bool=True, debug: int=0):
+    def set_filename(self, use_name: bool=True, use_suffix: bool=True, use_step: bool=False, use_run_number: bool=True, use_spin: bool=True, debug: int=0):
 
         ### Here is the convention I'm using to name files. It is better not to change once computations have been submitted
         ### Uses a filename-class object, as defined below, defined as a sum of items
         if not hasattr(self,"run_number"): self.set_run_number() 
         self.filename = filename()   ## Class defined at the end of this file
-        if use_refcode:        new_item = filename_item("refcode",    self.refcode);        self.filename.add_item(new_item)
+        if use_name:           new_item = filename_item("name",       self.name);           self.filename.add_item(new_item)
         if use_suffix:         new_item = filename_item("suffix",     self._job.suffix);    self.filename.add_item(new_item)
         if use_step:           # Only step=2 and above are printed in name 
             new_item = filename_item("step",       self.step,'s')
@@ -153,9 +148,8 @@ class computation(object):
                     if debug > 0: print(f"comp.CHECK_UPDATES: found update with {mod_name=}")
         return self.has_update
 
-    def set_run_number(self, debug: int=1) -> int:
+    def set_run_number(self) -> int:
         run_number = 0
-        if debug > 0: print("SET_RUN_NUMBER: evaluating computation with keyword", self.keyword)
         for comp in self._job.computations:               # Searches in the job it is contained
             if comp.keyword == self.keyword and comp.step == self.step and hasattr(comp,"isfinished") and hasattr(comp,"run_number"):
                 if comp.run_number > run_number: run_number = comp.run_number
@@ -166,11 +160,19 @@ class computation(object):
     #### QC_DATA-related functions ####
     ###################################
     def check_qc_data(self, job_path: str, debug: int=0):
-        from Scope.Classes_Input import set_qc_data
-        new_qc_data  = set_qc_data(job_path, section="&qc_data" , debug=0)
-        current_qc_data  = deepcopy(self.qc_data)
-        if new_qc_data != current_qc_data: 
-            self.update_qc_data(current_qc_data, new_qc_data) 
+        from ..Classes_Input import set_qc_data
+        old_qc_data    = deepcopy(self.qc_data)
+        new_qc_data    = set_qc_data(job_path, section="&qc_data" , debug=0)
+        if new_qc_data != old_qc_data: 
+            if debug > 1:
+                print("CHECK_QC_DATA found different qc_data:")
+                print("--- OLD QC_DATA ---")
+                print(old_qc_data)
+                print("--- NEW QC_DATA ---")
+                print(new_qc_data)
+                print("----")
+                print("CHECK_QC_DATA will now update:")
+            self.update_qc_data(old_qc_data, new_qc_data) 
             return True
         return False
 
@@ -190,11 +192,17 @@ class computation(object):
     ##################################
     def create_output(self, debug: int=0):
         if not hasattr(self,'output_lines'): self.read_lines()
+        ## Gaussian Computations
         if   self.software == 'g16': 
-            from Scope.Software.Gaussian.G16_Class_Output import g16_output
+            from ..Software.Gaussian.G16_Class_Output import g16_output
+            allowed_types = ['specie']
+            assert self._job._recipe.source.type in allowed_types
             self.output = g16_output(self.output_lines, self)
+        ## Quantum Espresso Computations
         elif self.software == 'qe':  
-            from Scope.Software.Quantum_Espresso.QE_Class_Output import qe_output
+            from ..Software.Quantum_Espresso.QE_Class_Output import qe_output
+            allowed_types = ['specie', 'cell']
+            assert self._job._recipe.source.type in allowed_types
             self.output = qe_output(self.output_lines, self)
         else: print(f"COMPUTATION.CREATE_OUTPUT: Output of {comp.software} computationss is not implemented."); return None
         return self.output 
@@ -222,8 +230,8 @@ class computation(object):
         if not found: self.states.append(state)
 
     def verify_state(self, name, target: str='opt'):
-        subject = self._job._recipe.subject
-        found, state = find_state(subject, name)
+        source = self._job._recipe.source
+        found, state = find_state(source, name)
         if not found: return False
         #if not found: return None
         if target == 'opt':
@@ -236,7 +244,7 @@ class computation(object):
     #### Submission-related functions ####
     ######################################
     def check_submission_status(self, environment: object, debug: int=0) -> None:
-        if not hasattr(self,"name"): self.set_name() #key = str(self.refcode+self.suffix)
+        if not hasattr(self,"name"): self.set_name() 
         key = self.name
         self.isrunning = environment.check_submitted(job_name=key, debug=debug)
         
@@ -297,6 +305,8 @@ class computation(object):
  
 ###########################################
     def run(self, environment: object, options: object, debug: int=0) -> None:
+        from ..Software.Quantum_Espresso.Write_QE_Inputs    import gen_G16_input, gen_G16_subfile
+        from ..Software.Gaussian.Write_G16_Inputs           import gen_QE_input, gen_QE_subfile 
 
         ## 0-Checks that Resources are available
         if options.want_submit: sent_procs, sent_jobs = environment.get_user_requested(debug=debug)
@@ -405,31 +415,29 @@ class computation(object):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> >>> >>> COMPUTATION                     \n'
         to_print += f'---------------------------------------------------\n'
-        gmol = self._job._recipe.subject
-        if hasattr(gmol,"refcode"):                      to_print += f' Crystal               = {gmol.refcode}\n'
-        elif hasattr(gmol.get_parent("cell"),"refcode"): to_print += f' Crystal               = {gmol.get_parent("cell").refcode}\n'
-        if hasattr(gmol,"type"):                         to_print += f' Type of Object        = {gmol.type}\n'
-        if hasattr(gmol,"subtype"):                      to_print += f' Subtype of Object     = {gmol.subtype}\n'
-        to_print += f' Spin (Recipe Name)    = {self._job._recipe.keyword}\n'
-        to_print += f' Branch                = {self._job._recipe._branch.keyword}\n'
-        to_print += f' Job                   = {self._job.keyword}\n'
+        source = self._job._recipe.source
+        to_print += f' Source Type           = {source.type}\n'
+        to_print += f' Source sub-Type       = {source.subtype}\n'
+        to_print += f' Branch Keyword        = {self._job._recipe._branch.keyword}\n'
+        to_print += f' Recipe Keyword        = {self._job._recipe.keyword}\n'
+        to_print += f' Job Keyword           = {self._job.keyword}\n'
         to_print += f'---------------------------------------------------\n'
-        if hasattr(self,"istate"): to_print += f' self.istate           = {self.istate}\n'
-        else:                      to_print += f' Job Initial State     = {self._job.istate}\n'
-        if hasattr(self,"fstate"): to_print += f' self.fstate           = {self.fstate}\n'
-        else:                      to_print += f' Job Final State       = {self._job.fstate}\n'
-        to_print += f' self.software         = {self.software}\n'
-        to_print += f' self.index            = {self.index}\n' 
-        to_print += f' self.step             = {self.step}\n' 
-        to_print += f' self.run_number       = {self.run_number}\n' 
-        to_print += f' self.spin             = {self.spin}\n'
-        to_print += f' self.keyword          = {self.keyword}\n' 
-        to_print += f' self.inp_path         = {self.inp_path}\n' 
-        to_print += f' self.out_path         = {self.out_path}\n' 
-        to_print += f' self.isregistered     = {self.isregistered}\n' 
-        if self.isregistered: to_print += f' self.isgood           = {self.isgood}\n' 
-        if self.isregistered: to_print += f' self.isfinished       = {self.isfinished}\n' 
-        if self.isregistered: to_print += f' self.elapsed_time     = {self.elapsed_time}\n' 
+        if hasattr(self,"istate"): to_print += f' Initial State         = {self.istate}\n'
+        else:                      to_print += f' Initial State         = {self._job.istate}\n'
+        if hasattr(self,"fstate"): to_print += f' Final State           = {self.fstate}\n'
+        else:                      to_print += f' Final State           = {self._job.fstate}\n'
+        to_print += f' Comp software         = {self.software}\n'
+        to_print += f' Comp index            = {self.index}\n' 
+        to_print += f' Comp step             = {self.step}\n' 
+        to_print += f' Comp run_number       = {self.run_number}\n' 
+        to_print += f' Comp spin             = {self.spin}\n'
+        to_print += f' Comp keyword          = {self.keyword}\n' 
+        to_print += f' Comp inp_path         = {self.inp_path}\n' 
+        to_print += f' Comp out_path         = {self.out_path}\n' 
+        to_print += f' Comp isregistered     = {self.isregistered}\n' 
+        if self.isregistered: to_print += f' Comp isgood           = {self.isgood}\n' 
+        if self.isregistered: to_print += f' Comp isfinished       = {self.isfinished}\n' 
+        if self.isregistered: to_print += f' Comp elapsed_time     = {self.elapsed_time}\n' 
         if hasattr(self,"output"): to_print += f'{self.output}\n'
         to_print += '\n'
         return to_print
@@ -463,6 +471,7 @@ class filename(object):
 
 #######################
 class filename_item(object):
+    ## Simple object to create filenames for computation files: input, output and submission
     def __init__(self, variable: str, value, prefix: str=''):
         self.typ      = 'filename_item'
         self.variable = variable
@@ -500,10 +509,6 @@ class filename_item(object):
             if self.prefix != '': to_print += f'{self.prefix}'
             to_print += f'{str(self.value)}'
         return to_print
-        #to_print = ''
-        #if self.prefix != '': to_print += f'{self.prefix}'
-        #to_print += f'{str(self.value)}'
-        #return to_print
 
     def __add__(self,other) -> None:
         if not isinstance(other, type(self)): return self

@@ -68,10 +68,9 @@ class sco_system(system):
                     if debug > 0: print("Trying to load cell2mol CELL file from", folder+fil)
                     new_cell        = import_cell(load_binary(folder+fil))        ## Imports to the generic Cell class
                     new_cell        = convert_to_sco_cell(new_cell)               ## Converts to the SCO adapted Cell class
-                    new_cell.set_path(folder+fil)                                 ## Saves the path
                     cell_loaded     = True
                     cell_path       = folder+fil
-                    if debug > 0: print("File loaded successfuly")
+                    if debug > 0: print("File loaded successfully")
                 except Exception as exc: 
                     if debug > 0: print("Cell could not be loaded from", folder+fil)
                     if debug > 0: print(exc)
@@ -81,7 +80,7 @@ class sco_system(system):
                     if debug > 0: print("Trying to load CIF file from", folder+fil)
                     new_cif         = cif(fil, folder+fil)
                     cif_loaded      = True
-                    if debug > 0: print("File loaded successfuly")
+                    if debug > 0: print("File loaded successfully")
                 except Exception as exc: 
                     if debug > 0: print("Cif file could not be loaded from", folder+fil)
                     if debug > 0: print(exc)
@@ -98,6 +97,8 @@ class sco_system(system):
             ## Link Cell and Cif objects
             new_cell.associate_cif(new_cif)
             new_cif.associate_cell(new_cell)
+            ## Stores Path
+            new_cell.set_path(cell_path)                               
             ## Create SCO System, and incorporate the cell
             self.add_source(new_cell, overwrite=overwrite, debug=debug)
         return self
@@ -170,7 +171,7 @@ class sco_system(system):
         found_hs, hs = self.find_source("ref_hs_cell")
         found_ls, ls = self.find_source("ref_ls_cell")
         if not overwrite and found_hs and found_ls:
-            if debug > 0: print(f"SET_REF_CELLS: reference crystals already present. Use overwrite=True to reset them")
+            if debug > 0: print(f"SET_REF_CELLS: reference HS or LS cells already present. Use overwrite=True to reset them")
             return True
 
         hs_ref_temp = 1000  ## Initial high value to find the lowest temperature
@@ -227,7 +228,7 @@ class sco_system(system):
             if mol.iscomplex: mol.fix_ligands_rdkit_obj()
         self.add_source(hs)
 
-        hs.name = "ref_ls_cell"
+        ls.name = "ref_ls_cell"
         ls.spin = "LS"
         ls._sys = self
         for mol in ls.moleclist:

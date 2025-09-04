@@ -5,6 +5,7 @@
 import os
 import numpy as np
 from .Read_Write import save_binary
+from .Workflow.Branch import branch
 
 class system(object):
     def __init__(self, name: str, environment: object) -> None:
@@ -188,7 +189,7 @@ class system(object):
             if br.keyword.lower() == branch_keyword.lower():
                 if len(br.recipes) == 0: return False, None
                 for rec in br.recipes:
-                    if rec.subject.spin.lower() == recipe_keyword.lower():
+                    if rec.source.spin.lower() == recipe_keyword.lower():
                         if len(rec.jobs) == 0: return False, None
                         for job in rec.jobs:
                             if job.keyword.lower() == job_keyword.lower():

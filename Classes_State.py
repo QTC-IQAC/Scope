@@ -153,7 +153,7 @@ class state(object):
 #### Specific to Spin Crossover ####
 ####################################
     def get_SCO_geom(self, debug: int=0):
-        from Scope.Structure_SCO import geom_sco_from_xyz
+        from .Spin_Crossover.SCO_Structure import geom_sco_from_xyz
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"Found Fragmented molecules in the geometry of state: {self.name}"
         if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
@@ -400,7 +400,7 @@ class state(object):
 #### Get Thermodynamic Data ####
 ################################
     def get_thermal_data(self, Trange: range=range(10,501,1), Helec=None, Selec=None, Hvib=None, Svib=None, Gtot=None, overwrite: bool=False, debug: int=0):
-        from Scope.Thermal_Corrections import get_Selec, get_Hvib, get_Svib, get_Gibbs
+        from .Thermal_Corrections import get_Selec, get_Hvib, get_Svib, get_Gibbs
 
         if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
         if debug > 0: print(f"STATE.GET_THERMAL_DATA: found {self.ncomplex} complex molecules")

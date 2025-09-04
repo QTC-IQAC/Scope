@@ -546,6 +546,7 @@ class environment(object):
 ###############
 ###  Paths  ###
 ###############
+
     def set_storage_path(self, debug: int=0):
         if   self.cluster == "csuc3" : self.storage_path = f"/data/{self.group}/{self.user}"
         elif self.cluster == "csuc2" : self.storage_path = f"/scratch/{self.user}/"
@@ -567,17 +568,6 @@ class environment(object):
             self.scope_main_path = str(input("Please Specify Main Scope Folder:"))
             if self.scope_main_path[-1] != '/': self.scope_main_path += '/'
         return self.scope_main_path
-
-#    def set_PP_Library(self, debug: int=0):
-#        if not hasattr(self,"storage_path"): self.set_storage_path()
-#        if not hasattr(self,"scope_main_path"): self.set_scope_main_path()
-#        if   os.path.isdir(self.scope_main_path+"PP_Library"):   self.PP_Library= self.scope_main_path+"PP_Library/"
-#        elif os.path.isdir(self.storage_path+"PP_Library"):      self.PP_Library= self.storage_path+"PP_Library/"
-#        else:                                                    self.PP_Library= str(input("Please Specify PP_Library Path: ")) 
-#        # Corrects PP_Library path if necessary
-#        if self.PP_Library[-1] != '/': self.PP_Library += '/'
-#        print("PP_Library set to", self.PP_Library)
-#        return self.PP_Library
 
     def set_paths(self, debug: int=0):
         if not hasattr(self,"storage_path"): self.set_storage_path()
