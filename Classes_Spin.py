@@ -5,9 +5,9 @@ from .Other import get_metal_idxs
 ### SPIN INFO ###
 #################
 class spin_config(object):
-    def __init__(self, _subject: object):
+    def __init__(self, _source: object):
         self.type           = "spin_state"
-        self._subject        = _subject  ## A gmol-class object
+        self._source        = _source  ## A gmol-class object
         self.atomic_spins   = []
 
     def add_atomic_spin(self, label, index, spin):
@@ -32,7 +32,7 @@ class spin_config(object):
         return self.multiplicity    
 
     def get_QE_data(self):
-        self.elems =  list(set(self._subject.labels))
+        self.elems =  list(set(self._source.labels))
         self.nelems = len(self.elems)
         if len(self.atomic_spins) == 0:
             self.magn_pairs = []
@@ -45,7 +45,7 @@ class spin_config(object):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   Spin Configuration                              \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' _Subject Type         = {self._subject.type}\n'
+        to_print += f' _Subject Type         = {self._source.type}\n'
         to_print += f'---------------------------------------------------\n'
         if hasattr(self,"elems"):               to_print += f' Elements            = {self.elems}\n'
         if hasattr(self,"ismagnetic"):          to_print += f' Is Magnetic?        = {self.ismagnetic}\n'
@@ -128,7 +128,7 @@ def get_spin_config(gmol: object, metal_spins, debug: int=0):
 
     ## Create spin_config-class object and fill it with spins
     pointer = 0
-    new_spcf = spin_config(_subject=gmol) 
+    new_spcf = spin_config(_source=gmol) 
     for idx, l in enumerate(gmol.labels):
         if idx in metal_indices:
             desired_spin = metal_spins[pointer]

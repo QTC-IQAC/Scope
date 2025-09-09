@@ -1,6 +1,5 @@
-from Scope.Parse_General import search_string, read_lines_file
-from Scope import Constants
-#from Scope.Classes_QC import orbital_set, orbital     ### Add when implementing reading orbitals
+import Scope_New.Constants 
+from Scope_New.Parse_General import search_string, read_lines_file
 
 ##############
 ### STATUS ###

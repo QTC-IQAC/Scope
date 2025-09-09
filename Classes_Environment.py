@@ -1,14 +1,11 @@
-import sys
 import os
-import copy
 import pwd
 import grp 
 import subprocess
 import numpy as np
-
+import glob
+import readline
 from .Classes_Queue import queue 
-from .Classes_Input import input_data
-from . import Classes_Input
 
 def set_user():
     return pwd.getpwuid( os.getuid() ).pw_name
@@ -17,83 +14,79 @@ def set_group():
     group_id = pwd.getpwnam(set_user()).pw_gid
     return grp.getgrgid(group_id).gr_name
 
-def set_cluster():
-    release = os.uname()[2]
-    if   release == "4.18.0-513.11.1.el8_9.x86_64": cluster = "csuc3"
-    elif release == "3.10.0-693.5.2.el7.x86_6":     cluster = "csuc2"
-    elif release == "4.19.0-10-amd64":              cluster = "portal"
-    elif release == "4.18.0-305.3.1.el8_4.x86_64":  cluster = "cesga"
-    elif release == "23.6.0":                       cluster = "duke"
-    return cluster
-
 ###############
 ### CLUSTER ###
 ###############
 class environment(object):
-    def __init__(self):
+    """
+    The `environment` class controls the computational environment of SCOPE, for job submission and resource allocation.
+    It should be ready to work in SGE and Slurm, although extensive testing encompassing different version has not been done.
+
+    Attributes:
+        type (str): Type of the environment object.
+        name (str): Name of the environment.
+        user (str): User name, set via `set_user()`.
+        group (str): Group name, set via `set_group()`.
+        available_queues (list): List of available queue objects.
+        selected_queues (list): List of selected queue objects.
+        method (str): Method for queue selection (default: 'weighted').
+    Methods:
+        __init__(name):                 Initializes the environment object.
+        set_management_type(debug=0):   Detects and sets the job management system type.
+        set_commands():                 Sets command-line instructions for job management system.
+        read_user_queue_list(line):     Processes user-provided queue names and selects corresponding queues.
+        read_local_environment(file_path): Reads and applies user-specific environment settings from a local file.
+        get_mqueues(debug=0):           Retrieves and initializes queues based on the management system.
+        add_mqueue(new_queue):          Adds a new queue to the environment.
+        find_queue(queue_name):         Finds a queue by name or alternate name.
+        make_queue_available(queue_name): Makes a queue available for selection.
+        select_queue(queue_name):       Selects a queue for job submission.
+        save(filepath=None):            Saves the environment object to a file.
+        get_user_requested(debug=0):    Gets total CPUs and jobs requested by the user.
+        get_user_waiting(debug=0):      Gets number of waiting CPUs and jobs for the user.
+        assign_waiting_jobs(debug=0):   Assigns waiting jobs to queues.
+        get_user_running():             Gets number of running CPUs and jobs for the user.
+        get_best_queue():               Returns the best queue for job submission based on scoring.
+        check_submitted(job_name):      Checks if a job has been submitted.
+        set_queues():                   Interactively sets available queues for the environment.
+        set_storage_path():             Sets the storage path with tab completion.
+        set_scope_program():            Sets the main Scope program path with tab completion.
+        set_paths():                    Sets paths for sources, calculations, and systems.
+        check_paths():                  Checks if specified paths exist.
+        set_software():                 Sets software modules for Gaussian16 and Quantum Espresso.
+        __repr__():                     Returns a formatted string representation of the environment object.
+        _add_attr(key, value):          Adds an attribute to the environment.
+        _mod_attr(key, value):          Modifies an attribute in the environment.
+    Usage:
+        1) Instantiate the class giving a name and follow prompts.
+        2) If in a computation cluster, run self.set_queues(), to specify which queues are available
+    """
+    def __init__(self, name: str):
         self.type                   = "environment"
-        self.cluster                = set_cluster()
+        self.name                   = name
         self.user                   = set_user()
         self.group                  = set_group()
         self.available_queues       = [] 
         self.selected_queues        = [] 
         self.method                 = 'weighted'
 
-        self.get_management_type() 
-        self.set_commands()
-
-    def read_user_queue_list(self, line):
-        ## Function to digest the queue names assuming that the user will use strange formats
-        list_of_user_q = line.strip().split(",")
-        for user_q in list_of_user_q:
-            user_q = user_q.strip()
-            for q in self.available_queues:
-                if q.name == user_q or q.alter_name == user_q:
-                    q.select_queue()
-                elif user_q in q.name or q.name in user_q:
-                    message = f"Found Similar queue as the one you requested. Is {q.name} your selection: {user_q} Y/N "
-                    tmp = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"])
-                    if tmp == "Y" or tmp == 'y':
-                        q.select_queue()
-                        q.alter_name = user_q
-
-    def read_local_environment(self, file_path, debug: int=0):
-        from Scope.Classes_Input import set_environment_data
-        if not hasattr(self,"available_queues"): print("ENVIRONMENT.ADD: please run 'user_queue_preferences' first"); return None
-        local_env = set_environment_data(file_path, debug=debug)
-        if debug > 0: print("ENV.READ_USER_SPECS: reading data:", local_env)
-
-        self.added_attr = {}
-        for d in dir(local_env):
-
-            ## General Attributes
-            if d[0] != '_' and not callable(getattr(local_env,d)) and d != "dct" and d != "type" and d != "queues" and d != "queue":
-                at1 = getattr(local_env,d)
-                if debug > 0: print(f"ENV.READ_USER_SPECS: adding key={d}, value={at1}")
-                self._add_attr(d,at1)
-                self.added_attr[d] = at1 
-            ## Queues are selected
-            elif d == "queues" or d == "queue":
-                at1 = getattr(local_env,d)
-                self.read_user_queue_list(at1)
-        return self.added_attr
-
-    def set_commands(self):
-        if self.management_type == "slurm":
-            string_squeue = str('"%.10i %.9P %.50j %.12u %.2t %.12M %.5C %.3D %R"')
-            self.command_get_user_usage      = f"squeue -o {string_squeue}"
-            self.command_get_user_waiting    = f"squeue -o {string_squeue} | grep {self.user} | grep ' PD '"
-            self.command_check_job           = 'squeue -o "%.60j %.12u"'
-            self.command_submit              = 'sbatch'
-        elif self.management_type == "sge":
-            self.command_get_user_usage      = "qstat"
-            self.command_get_user_waiting    = "qstat -f | grep ' qw '"
-            self.command_check_job           = "qstat -xml | grep JB_name"
-            self.command_submit              = "qsub"
-
-    def get_management_type(self, debug: int=0):
-        self.management_type = "None"
+        print(" Environment has been created. Now setting some parameters")
         
+        self.set_management_type() 
+        self.set_commands()
+        self.set_software()
+
+    ######
+    def set_management_type(self, debug: int=0):
+        """
+        Determines the type of job management system available on the host machine.
+        The method checks for the presence of Sun Grid Engine (SGE) and Slurm by attempting to
+        execute their respective queue listing commands. 
+        Args:
+            debug (int, optional): Debug level (currently unused). Defaults to 0.
+        Returns:
+            str: The detected management type ("sge", "slurm", or "None").
+        """
         ### Sun Grid Engine, SGE ###
         worked_sge = False
         try: 
@@ -108,20 +101,124 @@ class environment(object):
             worked_slurm = True
         except: pass
 
+        ### Decicsion ###
         if worked_sge and not worked_slurm:   self.management_type = "sge"
         elif not worked_sge and worked_slurm: self.management_type = "slurm"
+        elif worked_sge and worked_slurm:     
+            raise ValueError("ENVIRONMENT.SET_MANAGEMENT_TYPE: Confict with the recognition of the Queue System")
         else: 
-            print("GET_MANAGEMENT_TYPE: Confict with the recognition of the Queue System")
-            print("GET_MANAGEMENT_TYPE: SGE:", worked_sge)
-            print("GET_MANAGEMENT_TYPE: Slurm:", worked_slurm)
-            print("GET_MANAGEMENT_TYPE: Assuming this is a local computer")
+            print("ENVIRONMENT.SET_MANAGEMENT_TYPE: Could not recognise the Queue Management System")
+            print("ENVIRONMENT.SET_MANAGEMENT_TYPE: Assuming this is a local computer")
+            print("ENVIRONMENT.SET_MANAGEMENT_TYPE: If this is a computation cluster with SLURM or SGE, please report bug")
+            self.management_type = "local"
         return self.management_type
 
+    ######
+    def set_commands(self):
+        """
+        Sets the command-line instructions for interacting with the job management system
+        based on the specified management type ('slurm' or 'sge').
+        The commands are assigned to instance attributes for later use.
+        """
+        if self.management_type == "slurm":
+            string_squeue = str('"%.10i %.9P %.50j %.12u %.2t %.12M %.5C %.3D %R"')
+            self.command_get_user_usage      = f"squeue -o {string_squeue}"
+            self.command_get_user_waiting    = f"squeue -o {string_squeue} | grep {self.user} | grep ' PD '"
+            self.command_check_job           = 'squeue -o "%.60j %.12u"'
+            self.command_submit              = 'sbatch'
+        elif self.management_type == "sge":
+            self.command_get_user_usage      = "qstat"
+            self.command_get_user_waiting    = "qstat -f | grep ' qw '"
+            self.command_check_job           = "qstat -xml | grep JB_name"
+            self.command_submit              = "qsub"
+        else:
+            self.command_get_user_usage      = None 
+            self.command_get_user_waiting    = None
+            self.command_check_job           = None
+            self.command_submit              = None
+
+    ######
+    def read_user_queue_list(self, line):
+        """
+        Processes a comma-separated string of queue names provided by the user, matches them against available queues,
+        and selects the corresponding queues. Handles variations in queue name formats and prompts the user to confirm
+        selection if a similar queue name is found.
+
+        Args:
+            line (str): A comma-separated string containing queue names input by the user.
+
+        Behavior:
+            - Strips whitespace and splits the input string into individual queue names.
+            - For each queue name, checks for an exact match or an alternate name in the available queues.
+            - If a similar queue name is found (partial match), prompts the user for confirmation before selecting.
+            - Updates the alternate name of the queue if the user confirms selection of a similar queue.
+        """
+        ## Function to digest the queue names assuming that the user could use strange formats
+        list_of_user_q = line.strip().split(",")
+        for user_q in list_of_user_q:
+            user_q = user_q.strip()
+            for q in self.available_queues:
+                if q.name == user_q or q.alter_name == user_q:
+                    q.select_queue()
+                elif user_q in q.name or q.name in user_q:
+                    message = f"Found Similar queue as the one you requested. Is {q.name} your selection: {user_q} Y/N "
+                    tmp = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"])
+                    if tmp == "Y" or tmp == 'y':
+                        q.select_queue()
+                        q.alter_name = user_q
+
+    ######
+    def read_local_environment(self, file_path, debug: int=0):
+        """
+        Reads and applies user-specific environment settings from a local file, 
+        complementing the global environment with user choices.
+
+        Args:
+            file_path (str): Path to the local environment configuration file.
+            debug (int, optional): Debug level for verbose output. Defaults to 0.
+
+        Returns:
+            dict: Dictionary of attributes added to the environment from the local configuration.
+
+        Notes:
+            - Requires 'user_queue_preferences' to be run prior to execution.
+            - Attributes from the local environment are added to the current environment, 
+              except for internal attributes and queue-related keys.
+            - Queue selections are handled separately via 'read_user_queue_list'.
+        """
+        from .Classes_Input import set_environment_data
+        if not hasattr(self,"available_queues"): print("ENVIRONMENT.ADD: please run 'user_queue_preferences' first in the environment class"); return None
+        local_env = set_environment_data(file_path, debug=debug)
+        if debug > 0: print("ENV.READ_USER_SPECS: reading data:", local_env)
+        self.added_attr = {}
+        for d in dir(local_env):
+            ## General Attributes
+            if d[0] != '_' and not callable(getattr(local_env,d)) and d != "dct" and d != "type" and d != "queues" and d != "queue":
+                at1 = getattr(local_env,d)
+                if debug > 0: print(f"ENV.READ_USER_SPECS: adding key={d}, value={at1}")
+                self._add_attr(d,at1)
+                self.added_attr[d] = at1 
+            ## Queues are selected
+            elif d == "queues" or d == "queue":
+                at1 = getattr(local_env,d)
+                self.read_user_queue_list(at1)
+        return self.added_attr
+
+    ######
     def get_mqueues(self, debug: int=0):
+        """
+        Retrieves and initializes queues based on the detected cluster management system (SGE or SLURM).
+
+        Args:
+            debug (int, optional): Debug level (currently unused). Defaults to 0.
+
+        Returns:
+            self.mqueues(list): A list of initialized queue objects corresponding to the available queues.
+        """
         self.mqueues = []
 
         ##  SGE  ##
-        if not hasattr(self,"management_type"): self.get_management_type()
+        if not hasattr(self,"management_type"): self.set_management_type()
         if self.management_type == "sge": 
             raw = subprocess.check_output(['bash','-c', "qconf -sql"]) 
             #raw = subprocess.check_output(['bash','-c', "qstat -g c"]) ## this could also be interesting 
@@ -152,13 +249,11 @@ class environment(object):
     def add_mqueue(self, new_queue: object):
         if new_queue.name not in list(q.name for q in self.mqueues): 
             self.mqueues.append(new_queue)
-            #if new_queue.num_nodes > 0: self.mqueues.append(new_queue)
         else: 
             for q in self.mqueues:
                 if q.name == new_queue.name: q += new_queue
 
     def find_queue(self, queue_name: str):
-        found = False
         for q in self.mqueues:
             if q.name == queue_name or q.alter_name == queue_name:
                 return True, q
@@ -169,27 +264,25 @@ class environment(object):
         if found and q not in self.available_queues: self.available_queues.append(q)
         if not found: print(f"ENV.MAKE_QUEUE_AVAILABLE: queue {queue_name} not found")
 
-    def make_queue_selected(self, queue_name: str):
+    def select_queue(self, queue_name: str):
         found, q = self.find_queue(queue_name)
         if found and q not in self.selected_queues: self.selected_queues.append(q)
-        if not found: print(f"ENV.MAKE_QUEUE_AVAILABLE: queue {queue_name} not found")
+        if not found: print(f"ENV.SELECT_QUEUE: queue {queue_name} not found")
 
     def save(self, filepath=None):
+        from .Read_Write import save_binary
         if filepath is None and hasattr(self,"filepath"):            pass
         elif filepath is not None and hasattr(self,"filepath"):      self.filepath = filepath
         elif filepath is not None and not hasattr(self,"filepath"):  self.filepath = filepath
         elif filepath is None and not hasattr(self,"filepath"): 
             print("ENVIRONMENT.SAVE: please re-run and provide filepath")
             return None
-        from Scope.Read_Write import save_binary
         save_binary(self, self.filepath)
 
 #####################################
 ###  Connection with Execute_Job  ###
 #####################################
     def get_user_requested(self, debug: int=0):
-        #if not hasattr(self,"user_waiting_cpus"): self.get_user_waiting(debug=debug)
-        #if not hasattr(self,"user_running_cpus"): self.get_user_running(debug=debug)
         self.get_user_waiting(debug=debug)
         self.get_user_running(debug=debug)
         self.user_requested_cpus = self.user_waiting_cpus + self.user_running_cpus
@@ -231,7 +324,7 @@ class environment(object):
 
         return self.user_waiting_cpus, self.user_waiting_jobs
 
-############## NOW ###
+    ######
     def assign_waiting_jobs(self, debug: int=0):
         if not hasattr(self,"command_get_user_waiting"): self.set_commands()
         self.jobs_assigned = []
@@ -318,8 +411,7 @@ class environment(object):
                 for ja in self.jobs_assigned[:]:
                     if ja < (min_job_id + 5000): self.jobs_assigned.remove(ja)
 
-############## NOW ###
-
+    ######
     def get_user_running(self, method: str='direct', debug: int=0):
         if not hasattr(self,"command_get_user_waiting"): self.set_commands()
         self.user_running_cpus = 0
@@ -374,15 +466,19 @@ class environment(object):
         return self.user_running_cpus, self.user_running_jobs
          
     def get_best_queue(self, autoselect: bool=False, debug: int=0):
-        ## This method gives back the best queue to submit a computation.
-        ## Basically, it computes a score for each queue that is either available (self.available_queues)
-        ## or selected (self.selected_queues) by the user. 
-        ## The score is computed for each queue separately using:
-        ## 1-the current queue availability (accounting for all users)
-        ## 2-the currently pending jobs     (accounting for one user, i.e. the one using scope)
-        ##
-        ## 1) is computed once every 60 seconds, as it is demanding
-        ## 2) is computed every time
+        """
+        Determines and returns the best queue for submitting a computation based on queue availability and pending jobs.
+        The method computes a score for each queue, considering:
+            1. Current queue availability (across all users), updated every 60 seconds.
+            2. Number of currently pending jobs (for the current user), updated every call.
+        If no queues have been selected by the user, all available queues in the cluster are considered.
+        The queue with the highest score is returned.
+        Args:
+            autoselect (bool, optional): If True, automatically selects all available queues if none are selected. Defaults to False.
+            debug (int, optional): Debug level for verbose output. Defaults to 0.
+        Returns:
+            Queue: The queue object with the highest computed score, or None if no queues are available.
+        """
    
         ## If user has not selected queues yet. Then we take all available queues
         if len(self.selected_queues) == 0: 
@@ -415,7 +511,7 @@ class environment(object):
 
     def check_submitted(self, job_name: str, debug: int=0):
         if not hasattr(self,"command_check_job"): self.set_commands()
-        if not hasattr(self,"management_type"): self.get_management_type()
+        if not hasattr(self,"management_type"):   self.set_management_type()
         if self.management_type == "None": return False 
 
         raw  = subprocess.check_output(['bash','-c', self.command_check_job])
@@ -431,9 +527,11 @@ class environment(object):
 #########################
     def set_queues(self, debug: int=0):
         ## If it is not a computation cluster, returns an empty list
-        if self.management_type == "None": return []
+        if self.management_type == "local": 
+            print("ENV.SET_QUEUES. Identified local computer, returning empty list of available queues")
+            return self.available_queues
 
-        from Scope.Read_Write import read_user_input
+        from .Read_Write import read_user_input
         if not hasattr(self,"mqueues"):   self.get_mqueues()
 
         suggested_names = list(q.name for q in self.mqueues if q.available)
@@ -546,86 +644,100 @@ class environment(object):
 ###############
 ###  Paths  ###
 ###############
-
     def set_storage_path(self, debug: int=0):
-        if   self.cluster == "csuc3" : self.storage_path = f"/data/{self.group}/{self.user}"
-        elif self.cluster == "csuc2" : self.storage_path = f"/scratch/{self.user}/"
-        elif self.cluster == "duke"  : self.storage_path = f"/scratch/{self.user}/"
-        elif self.cluster == "portal": self.storage_path = f"/scratch/{self.user}/"
-        else: 
-            print(f"Cluster {self.cluster} not implemented")
-            self.storage_path = str(input("Please Specify Path of Storage Folder (e.g. user scratch):"))
-            if self.storage_path[-1] != '/': self.storage_path += '/'
+        # Configure readline to use tab completion
+        readline.set_completer_delims(' \t\n;')
+        readline.parse_and_bind("tab: complete")
+        readline.set_completer(complete_path)
+        self.storage_path = os.path.abspath(str(input("Please specify path of storage folder (with autocomplete): ")))
+        if not self.storage_path.endswith("/"):
+            self.storage_path += "/"
         return self.storage_path
 
-    def set_scope_main_path(self, debug: int=0):
-        if   self.cluster == "csuc3" : self.scope_main_path = f"/home/{self.user}/SCOPE/Database_SCO/"
-        elif self.cluster == "csuc2" : self.scope_main_path = f"/home/{self.user}/SCOPE/Database_SCO/" 
-        elif self.cluster == "duke"  : self.scope_main_path = f"/Users/{self.user}/Documents/SCOPE/Database_SCO/"
-        elif self.cluster == "portal": self.scope_main_path = f"/home/{self.user}/SCOPE/Database_SCO/"
-        else: 
-            print(f"Cluster {self.cluster} not implemented")
-            self.scope_main_path = str(input("Please Specify Main Scope Folder:"))
-            if self.scope_main_path[-1] != '/': self.scope_main_path += '/'
-        return self.scope_main_path
+    #def set_storage_path(self, debug: int=0):
+    #    self.storage_path = str(input("Please Specify Path of Storage Folder (e.g. user scratch):"))
+    #    if self.storage_path[-1] != '/': self.storage_path += '/'
+    #    return self.storage_path
+
+    def set_scope_program(self, debug: int=0):
+        readline.set_completer_delims(' \t\n;')
+        readline.parse_and_bind("tab: complete")
+        readline.set_completer(complete_path)
+        self.scope_program = os.path.abspath(str(input("Please Specify Main Scope Folder (with autocomplete):")))
+        if self.scope_program[-1] != '/': self.scope_program += '/'
+        return self.scope_program
 
     def set_paths(self, debug: int=0):
-        if not hasattr(self,"storage_path"): self.set_storage_path()
-        if not hasattr(self,"scope_main_path"): self.set_scope_main_path()
+        print("--------------------------------------------------------------------------------------------------------------")
+        print("SCOPE connects a list of sources (molecules/cells), with their computations, and analyses")
+        print("The data is stored in system files. Please define the GENERAL paths where these 3 elements will be stored.")
+        print("")
+        print("                          SOURCE <--> COMPUTATION <--> SYSTEM")
+        print("")
+        print("Notice that each system will have its own subfolder inside those paths.")
+        print("--------------------------------------------------------------------------------------------------------------")
 
-        keyword = "4-Merged/"
-        if   self.scope_main_path is not None and os.path.isdir(self.scope_main_path+keyword): self.cell2mol_path = self.scope_main_path+keyword
-        elif self.storage_path is not None and    os.path.isdir(self.storage_path+keyword):    self.cell2mol_path = self.storage_path+keyword
-        else:                                                                                  self.cell2mol_path = str(input("Please Specify Cell2mol Path: "))
-
-        keyword = "5-Complexes_Iso/"
-        if   self.scope_main_path is not None and os.path.isdir(self.scope_main_path+keyword): self.calcs_path = self.scope_main_path+keyword
-        elif self.storage_path is not None and    os.path.isdir(self.storage_path+keyword):    self.calcs_path = self.storage_path+keyword
-        else:                                                                                  self.calcs_path = str(input("Please Specify Calcs Path: "))
-
-        keyword = "6-Systems_V3/"
-        if   self.scope_main_path is not None and os.path.isdir(self.scope_main_path+keyword): self.sys_path = self.scope_main_path+keyword
-        elif self.storage_path is not None and    os.path.isdir(self.storage_path+keyword):    self.sys_path = self.storage_path+keyword
-        else:                                                                                  self.sys_path = str(input("Please Specify Systems Path: "))
-
-        if self.cell2mol_path[-1]   != '/': self.cell2mol_path += '/'
+        readline.set_completer_delims(' \t\n;')
+        readline.parse_and_bind("tab: complete")
+        readline.set_completer(complete_path)
+        self.sources_path   = os.path.abspath(str(input("Please Specify Sources Path (with autocomplete): ")))
+        self.calcs_path     = os.path.abspath(str(input("Please Specify Calculations Path (with autocomplete): ")))
+        self.sys_path       = os.path.abspath(str(input("Please Specify Systems Path (with autocomplete): ")))
+        if self.sources_path[-1]    != '/': self.sources_path  += '/'
         if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
-        if self.sys_path[-1]    != '/': self.sys_path  += '/'
+        if self.sys_path[-1]        != '/': self.sys_path      += '/'
+
+        print("--------------------------------------------------------------------------------------------------------------")
+        print("Additionally, you can specify: (1) a storage (scratch or data) folder --> Run self.set_storage_path()")
+        print("                               (2) the folder where the program is    --> Run self.set_scope_program()")
+        print("--------------------------------------------------------------------------------------------------------------")
 
     def check_paths(self, debug: int=0):
-        if not hasattr(self,"cell2mol_path"): self.set_paths()
-        if os.path.isdir(self.cell2mol_path): self.iscell2mol_path   = True 
-        else:                                 self.iscell2mol_path   = False
-        if os.path.exists(self.calcs_path):   self.iscalcs_path      = True
-        else:                                 self.iscalcs_path      = False
-        if os.path.exists(self.sys_path):     self.issys_path        = True 
-        else:                                 self.issys_path        = False
-        if debug > 0 and not os.path.isdir(self.cell2mol_path): print(f"ENVIRONMENT.CHECK_PATHS: {self.cell2mol_path} does not exist")
-        if debug > 0 and not os.path.isdir(self.sys_path):      print(f"ENVIRONMENT.CHECK_PATHS: {self.sys_path} does not exist")
-        if debug > 0 and not os.path.isdir(self.calcs_path):    print(f"ENVIRONMENT.CHECK_PATHS: {self.calcs_path} does not exist")
-        if self.issys_path and self.iscalcs_path and self.iscell2mol_path: return True
+        if not hasattr(self,"sources_path"):  self.set_paths()
+        self.issources_path    = os.path.isdir(self.sources_path)
+        self.iscalcs_path      = os.path.isdir(self.calcs_path)
+        self.issys_path        = os.path.isdir(self.sys_path)
+        if not os.path.isdir(self.sources_path):  print(f"ENVIRONMENT.CHECK_PATHS: {self.sources_path} does not exist")
+        if not os.path.isdir(self.sys_path):      print(f"ENVIRONMENT.CHECK_PATHS: {self.sys_path} does not exist")
+        if not os.path.isdir(self.calcs_path):    print(f"ENVIRONMENT.CHECK_PATHS: {self.calcs_path} does not exist")
+        if self.issys_path and self.iscalcs_path and self.issources_path: return True
         else:                                                              return False
+
+#################
+###  Software ###
+#################
+    def set_software(self):
+        from .Read_Write import read_user_input
+        if self.management_type != "local": 
+            print("-------------------------------------------------------------------------------------")
+            print("SCOPE expects computations to be run with either Gaussian16 or Quantum Espresso")
+            print("Please introduce the modules that should be called for these two codes")
+            print("Alternatively, modify the functions gen_QE_subfile and gen_G16_subfile to your liking")
+            print("-------------------------------------------------------------------------------------")
+            message = "introduce the module to run GAUSSIAN16 in this cluster"
+            self.g16_module = read_user_input(message=message, rtext=False)
+            message = "Now introduce the module to run QUANTUM ESPRESSO in this cluster"
+            self.qe_module = read_user_input(message=message, rtext=False)
 
 ########################
 ###  Dunder Methods  ###
 ########################
     def __repr__(self) -> None:
         to_print  = f'\n-----------------------------------------------------------\n'
-        to_print += f' Formatted input interpretation of Environment Class Object()\n'
+        to_print += f'               SCOPE Environment Class Object\n'
         to_print += f'-------------------------------------------------------------\n'
-        to_print += f' Cluster               = {self.cluster}\n'
         to_print += f' User                  = {self.user}\n'
         to_print += f' Group                 = {self.group}\n'
         to_print += f'\n'
-        if hasattr(self,"scope_main_path"):  
+        if hasattr(self,"sources_path"):  
             to_print += f' Paths:\n'
-            to_print += f'     Scope Main       = {self.scope_main_path}\n'
-            to_print += f'     Cell2mol         = {self.cell2mol_path}\n'
+            to_print += f'     Sources          = {self.sources_path}\n'
             to_print += f'     Computations     = {self.calcs_path}\n'
             to_print += f'     Systems          = {self.sys_path}\n'
-            to_print += f'     Storage          = {self.storage_path}\n'
-            to_print += f'\n'
-        to_print += f' Queue System          = {self.management_type}\n'
+        if hasattr(self,"storage_path"):  to_print += f'     Storage Path     = {self.storage_path}\n'
+        if hasattr(self,"scope_program"): to_print += f'     Scope Program    = {self.scope_program}\n'
+        to_print += f'\n'
+        to_print += f' Queue Management Type = {self.management_type}\n'
         if hasattr(self,"method"): to_print += f' Method of Queue Sel   = {self.method}\n'
         if hasattr(self,"filepath"): to_print += f' Path of saved file    = {self.filepath}\n'
         if hasattr(self,"available_queues"): 
@@ -662,3 +774,12 @@ class environment(object):
         except:   attr = value
         if hasattr(self,"dct"): self.dct[key] = attr
         setattr(self, key, attr)
+
+####
+def complete_path(text, state):
+    """Autocomplete for filesystem paths"""
+    matches = glob.glob(text + '*')  # expand matching files/dirs
+    if state < len(matches):
+        return matches[state]
+    else:
+        return None

@@ -1,7 +1,6 @@
 import os
 import numpy as np
 from copy import deepcopy
-
 from ..Classes_State    import state, find_state
 from .Computation       import *
 from ..Other            import where_in_array

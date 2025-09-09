@@ -1,8 +1,6 @@
-from copy import deepcopy
 import os
 from datetime import datetime
-
-from ..Classes_Environment  import set_cluster, set_user
+from ..Classes_Environment  import set_user
 from .Recipe    import *
 
 ##########################
@@ -12,7 +10,6 @@ class branch(object):
     def __init__(self, path: str, keyword: str, _sys: object, debug: int=0) -> None:
         self.type             = "branch"
         self.creation_time    = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        self.creation_cluster = set_cluster()
         self.creation_user    = set_user()
         self.path             = path
         self.keyword          = keyword
@@ -109,11 +106,10 @@ class branch(object):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> BRANCH                                      \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' System                = {self._sys.refcode}\n'
+        to_print += f' System                = {self._sys.name}\n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' self.status           = {self.status}\n'
         to_print += f' self.creation_time    = {self.creation_time}\n'
-        to_print += f' self.creation_cluster = {self.creation_cluster}\n'
         to_print += f' self.creation_user    = {self.creation_user}\n'
         to_print += f' self.path             = {self.path}\n'
         to_print += f' self.keyword          = {self.keyword}\n'

@@ -1,15 +1,9 @@
 #!/usr/bin/env python3
-import sys
 import os
-import numpy as np
-import pickle
-from collections import Counter
-from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
-
-from Scope.Classes_State import find_state
-from Scope.Classes_Environment import set_user, set_cluster
-from Scope.Elementdata import ElementData 
-from Scope.Other import get_metal_idxs, get_metal_species, where_in_array
+from Scope_New.Classes_State       import find_state
+from Scope_New.Classes_Environment import set_user
+from Scope_New.Other               import get_metal_idxs, get_metal_species, where_in_array
+from Scope_New.Elementdata         import ElementData 
 elemdatabase = ElementData()
 
 #######################
@@ -23,53 +17,40 @@ def get_pp(elem: str, path: str):
             cutoff_wfc = elemdata["cutoff_wfc"]
             cutoff_rho = elemdata["cutoff_rho"]
     except Exception as exc: 
-        print(f"GET_PP: error reading JSON or parsing element {elem}. Printing Exception")
-        print(exc)
-        exit()
+        raise ValueError(f"GET_PP: error reading JSON or parsing element {elem}. Printing Exception \n {exc}")
     return pp_name, cutoff_wfc, cutoff_rho
 
 #######################
 def gen_QE_input(comp: object, environment: object, debug: int=0):
 
-    gmol = comp._job._recipe.subject
+    ## To simplify calls below 
+    gmol = comp._job._recipe.source
 
-    ## 1a-Change some variable names to simplify calls
-    cluster    = environment.cluster
-    storage    = environment.storage_path
-
-    ## 2a-Verify Information in State
+    ## 2a-Verify Information in initial state
     assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in comp.qc_data"
     exists, istate    = find_state(gmol, comp.qc_data.istate)
-    assert exists, f"istate = {comp.qc_data.istate} does not exist"
-    assert hasattr(istate,"labels"), f"istate = {comp.qc_data.istate} doesn't have labels"
-    assert hasattr(istate,"coord"),  f"istate = {comp.qc_data.istate} doesn't have coordinates"
+    assert exists,                         f"istate = {comp.qc_data.istate} does not exist"
+    assert hasattr(istate,"labels"),       f"istate = {comp.qc_data.istate} doesn't have labels"
+    assert hasattr(istate,"coord"),        f"istate = {comp.qc_data.istate} doesn't have coordinates"
 
     ## 2b-Cell or Molecule?
-    if hasattr(gmol,"cell_param"): system_type = "cell"
-    else:                         system_type = "molecule"
+    if   gmol.type == "cell":   system_type = "cell"
+    elif gmol.type == "specie": system_type = "molecule"
+    else: print(f"GEN_QE_input: unrecognised {gmol.type=}")
 
     ## 3-Determines the PP_Library path
     if not hasattr(comp.qc_data,"PP_Library"): f"PP_Library could not be found. Please set it in the qc_data.section of the Job"
-    import Scope
+    import Scope ## Trick to retrieve the relative path
     PP_path = os.path.abspath(Scope.__file__).replace("__init__.py","Software/Quantum_Espresso/PP_Libraries/")
-    if   comp.qc_data.PP_Library.lower() == "efficiency": PP_path += "Efficiency/"
-    elif comp.qc_data.PP_Library.lower() == "precision":  PP_path += "Precision/"
+    if   comp.qc_data.PP_Library.lower() == "efficiency":  PP_path += "Efficiency/"
+    elif comp.qc_data.PP_Library.lower() == "precision":   PP_path += "Precision/"
     elif comp.qc_data.PP_Library.lower() == "vanderbilt":  PP_path += "Vanderbilt_USPP/"
-    else: print(f"GEN_QE_INPUT: could not recognise PP_library: {comp.qc_data.PP_Library}. Exitting"); exit()
+    else: raise ValueError(f"GEN_QE_INPUT: could not recognise PP_library: {comp.qc_data.PP_Library}")
 
-    ## Charge of System
-    if system_type == "cell":
-        if hasattr(gmol,"type") and hasattr(gmol,"totcharge"): 
-            if gmol.type == "perxyz": system_charge = gmol.totcharge    # Note: I wonder how a .cell-class or a perxyz would have totcharge != 0. Why not setting int(0) always? 
-            else:                     system_charge = int(0)
-        else:                         system_charge = int(0)
-    elif system_type == "molecule":   system_charge = gmol.totcharge
-
+    ## Checks requisites
     if system_type == "cell":     
-        assert hasattr(istate,"cell_vector"),  f"istate = {comp.qc_data.istate} doesn't have cell vectors"
-        if hasattr(istate,"natoms"): natoms = istate.natoms
-        else:                        natoms = len(istate.labels) 
-    if system_type == "molecule":    natoms = istate.natoms
+        assert hasattr(istate,"cell_vector"),  f"GEN_QE_input: {comp.qc_data.istate=} doesn't have cell vectors"
+        assert gmol.totcharge == int(0),       f"GEN_QE_input: {gmol.totcharge=} must be 0. A unit cell must be neutral"
 
     if debug >= 1 : print("GEN_QE_INPUT: system_type:", system_type)
     if debug >= 1 : print("GEN_QE_INPUT: creating input in path:", comp.inp_path)
@@ -77,15 +58,11 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
     #########################
     ### DETERMINE SPECIES ###
     #########################
-#    metal_indices = get_metal_idxs(gmol.labels)
-#    metal_species = get_metal_species(gmol.labels)
-
     comp.spin_config.get_QE_data()
     metal_indices = get_metal_idxs(istate.labels)
     metal_species = get_metal_species(istate.labels)
     elems = comp.spin_config.elems
     nelems = comp.spin_config.nelems
-
     species = []
     for idx, elem in enumerate(elems):
         if elem in metal_species:
@@ -132,13 +109,11 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
             print(f"    tprnfor = .true.", file=inp)
             print(f"    nstep = 300", file=inp)
             print(f"    forc_conv_thr = {comp.qc_data.forc_conv}", file=inp)
-
         print("/", file=inp)
 
         #/////////////////////
         #// System control ///
         #/////////////////////
-
         min_cowfc = 25
         min_corho = 200
         ### Determines cutoffs using the info contained in the Pseudopotentials
@@ -152,17 +127,13 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
         if comp.qc_data.jobtype == "vc-relax": min_cowfc *= 2; min_corho *= 2  ## In vc-relax it is convenient to minimize pulay stress
 
         print(" &system", file=inp)
-        if system_type == "molecule": print(f"    ibrav=1, celldm(1)={comp.qc_data.cubeside}", file=inp)
-        elif system_type == "cell":   print(f"    ibrav=0,", file=inp)
-        print(f"    nat={natoms}, ntyp={nspecies}, ecutwfc={int(min_cowfc)}, ecutrho={float(min_corho)}", file=inp)
+        if   system_type == "molecule": print(f"    ibrav=1, celldm(1)={comp.qc_data.cubeside}", file=inp)
+        elif system_type == "cell":     print(f"    ibrav=0,", file=inp)
+        print(f"    nat={istate.natoms}, ntyp={nspecies}, ecutwfc={int(min_cowfc)}, ecutrho={float(min_corho)}", file=inp)
         if not hasattr(comp.spin_config,"ismagnetic"): comp.spin_config.get_total_magnetization()
         print(f"    nspin=2,", file=inp)
-        #if comp.spin_config.ismagnetic: print(f"    nspin=2,", file=inp)
-        #else:          print(f"    nspin=1,", file=inp)
-        print(f"    tot_charge={system_charge}", file=inp)
-        
+        print(f"    tot_charge={gmol.totcharge}", file=inp)
         print(f"    tot_magnetization={comp.spin_config.total_magnetization}", file=inp)
-        #if comp.spin_config.ismagnetic: print(f"    tot_magnetization={comp.spin_config.total_magnetization}", file=inp)
   
         ## Starting Magnetization
         for idx, u in enumerate(comp.spin_config.magn_uniques):
@@ -239,8 +210,6 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
         #///////////////////
         #// Atom Species ///
         #///////////////////
-        #if len(spin_config) == 0: elems = list(set(gmol.labels))   ## This list of elements must be updated to include the different magnetization labels (eg. Fe1, Fe2)
-        #else:                     elems = list(t[0] for t in uniques)
         print("ATOMIC_SPECIES", file=inp)
         for idx, spec in enumerate(species):
             if spec[-1].isdigit(): label = spec[:-1]
@@ -273,95 +242,33 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
 
 ###################################################
 def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", version: str="6.4.1"): 
-
     version = str(version)
-    cluster = queue._environment.cluster
-    user    = queue._environment.user
-    group   = queue._environment.group
-    storage = queue._environment.storage_path
-
-    if cluster == 'portal': 
-        with open(comp.sub_path, 'w+') as sub:
-            print(f"#!/bin/bash", file=sub)
-            print(f"#$ -N {comp.name}", file=sub) 
-            print(f"#$ -pe smp {procs}", file=sub)
-            print(f"#$ -cwd", file=sub)
-            print(f"#$ -o {storage}/x-stds/{comp.name}.stdout", file=sub)
-            print(f"#$ -e {storage}/x-stds/{comp.name}.stderr", file=sub)
-            print(f"#$ -S /bin/bash", file=sub)
-            print(f"#$ -q {queue.name}" , file=sub)
-            print(f"", file=sub)
-            print(f"source /etc/profile.d/modules.csh", file=sub)
-
-            #if version == "6.4.1": print(f"module load espresso/6.4.1_ompi", file=sub)
-            ## Only one version implemented 
-            print(f"module load espresso/6.4.1_ompi", file=sub)
-
-            print(f"", file=sub)
-            print(f"set OMP_NUM_THREADS=1", file=sub)
-            print(f"ulimit -l unlimited", file=sub)
-            print(f"", file=sub)
-            print(f"WORKDIR=$PWD", file=sub)
-            print(f"cd $TMPDIR", file=sub)
-            print(f"cp $WORKDIR/{comp.inp_name} .", file=sub)
-            print(f"mpirun -np {procs} pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
-            print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
-            os.chmod(comp.sub_path, 0o777)
-
-    elif cluster == "csuc2" or cluster == "csuc3":
-        with open(comp.sub_path, 'w+') as sub:
-            print(f"#!/bin/bash", file=sub)
-            print(f"#SBATCH -J {comp.name}", file=sub)
-            print(f"#SBATCH -e {storage}/std_files/{comp.name}.stderr", file=sub)
-            print(f"#SBATCH -o {storage}/std_files/{comp.name}.stdout", file=sub)
-            print(f"#SBATCH -p {queue.name}", file=sub)
-            print(f"#SBATCH --nodes=1", file=sub)
-            print(f"#SBATCH --ntasks={procs}", file=sub)
-            print(f"#SBATCH --mem-per-cpu=1900MB", file=sub)
-            print(f"#SBATCH --time={queue.time_limit_plain}", file=sub)
-            print(f"", file=sub)
-            if   version == "6.4.1": print(f"module load apps/quantumespresso/6.4.1", file=sub)
-            elif version == "7.0":   print(f"module load quantumespresso/7.0", file=sub)
-            elif version == "7.2":   print(f"module load quantumespresso/7.2", file=sub)
-            else:                    print(f"UNKNOWN VERSION",version)
-            print(f"", file=sub)
-            print(f"set OMP_NUM_THREADS=1", file=sub)
-            print(f"ulimit -l unlimited", file=sub)
-            print(f"", file=sub)
-            print(f"WORKDIR=$PWD", file=sub)
-            print(f"cd $TMPDIR", file=sub)
-            print(f"cp $WORKDIR/{comp.inp_name} .", file=sub)
-            if procs >= 128: print(f"srun pw.x < {comp.inp_name} > {comp.out_name} -pd .true.", file=sub)
-            else:            print(f"srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
-            print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
-            os.chmod(comp.sub_path, 0o777)
-     
-    ### Cesga 
-    elif cluster == "cesga": 
-        with open(comp.sub_path, 'w+') as sub:
-            print(f"#!/bin/bash", file=sub)
-            print(f"#SBATCH -J {comp.name}", file=sub)
-            print(f"#SBATCH -e {storage}/std_files/{comp.name}.stderr", file=sub)
-            print(f"#SBATCH -o {storage}/std_files/{comp.name}.stdout", file=sub)
-            print(f"#SBATCH -p {queue.name}", file=sub)
-            print(f"#SBATCH --nodes=1", file=sub)
-            print(f"#SBATCH --ntasks={procs}", file=sub)
-            print(f"#SBATCH --time={queue.time_limit_plain}", file=sub)
-            print(f"#SBATCH -x pirineus", file=sub)
-            print(f"", file=sub)
-            print(f"module load quantumespresso/6.5", file=sub)
-            print(f"", file=sub)
-            print(f"set OMP_NUM_THREADS=1", file=sub)
-            print(f"ulimit -l unlimited", file=sub)
-            print(f"", file=sub)
-            print(f"WORKDIR=$PWD", file=sub)
-            print(f"cd $TMPDIR", file=sub)
-            print(f"cp $WORKDIR/{comp.inp_name} .", file=sub)
-            print(f"srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
-            print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
-            os.chmod(comp.sub_path, 0o777)
-
-    else: print("WRITE_QE_INPUTS: Cluster not recognized")
+    with open(comp.sub_path, 'w+') as sub:
+        print(f"#!/bin/bash", file=sub)
+        print(f"#SBATCH -J {comp.name}", file=sub)
+        print(f"#SBATCH -e {comp.name}.stderr", file=sub)
+        print(f"#SBATCH -o {comp.name}.stdout", file=sub)
+        print(f"#SBATCH -p {queue.name}", file=sub)
+        print(f"#SBATCH --nodes=1", file=sub)
+        print(f"#SBATCH --ntasks={procs}", file=sub)
+        print(f"#SBATCH --mem-per-cpu=1900MB", file=sub)
+        print(f"#SBATCH --time={queue.time_limit_plain}", file=sub)
+        print(f"", file=sub)
+        if   version == "6.4.1": print(f"module load apps/quantumespresso/6.4.1", file=sub)
+        elif version == "7.0":   print(f"module load quantumespresso/7.0", file=sub)
+        elif version == "7.2":   print(f"module load quantumespresso/7.2", file=sub)
+        else:                    print(f"UNKNOWN VERSION",version)
+        print(f"", file=sub)
+        print(f"set OMP_NUM_THREADS=1", file=sub)
+        print(f"ulimit -l unlimited", file=sub)
+        print(f"", file=sub)
+        print(f"WORKDIR=$PWD", file=sub)
+        print(f"cd $TMPDIR", file=sub)
+        print(f"cp $WORKDIR/{comp.inp_name} .", file=sub)
+        if procs >= 128: print(f"srun pw.x < {comp.inp_name} > {comp.out_name} -pd .true.", file=sub)
+        else:            print(f"srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
+        print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
+        os.chmod(comp.sub_path, 0o777)
         
 ###################################################
 

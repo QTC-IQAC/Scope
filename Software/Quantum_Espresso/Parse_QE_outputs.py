@@ -1,10 +1,9 @@
-from Scope.Parse_General import search_string, read_lines_file
-from Scope.Unit_cell_tools import cellvec_2_cellparam, get_unit_cell_volume
-import Scope.Constants
+from   Scope_New.Parse_General   import search_string
+from   Scope_New.Unit_cell_tools import cellvec_2_cellparam
+import Scope_New.Constants
 
-bohr2angs = Scope.Constants.bohr2angs
-ry2har    = Scope.Constants.ry2har
-
+bohr2angs = Scope_New.Constants.bohr2angs
+ry2har    = Scope_New.Constants.ry2har
 
 ###############
 ### PARSING ###

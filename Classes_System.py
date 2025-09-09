@@ -35,7 +35,7 @@ class system(object):
         to_print += f' Type                  = {self.type}\n'
         to_print += f' Subtype               = {self.subtype}\n'
         to_print += f' Name                  = {self.name}\n'
-        to_print += f' Source Path           = {self.source_path}\n'   ## Path where files with molecular or cell structures are stored
+        to_print += f' Source Path           = {self.sources_path}\n'  ## Path where files with molecular or cell structures are stored
         to_print += f' Calculations Path     = {self.calcs_path}\n'    ## Path where folders with calculations will be stored
         to_print += f' System File Path      = {self.sys_path}\n'      ## Path where the system object is stored
         if len(self.sources) > 0:
@@ -71,9 +71,9 @@ class system(object):
 
     ######
     def add_source(self, new_source: object, overwrite: bool=False, debug: int=0):
-        ## Links the source to the system
+        ## Links the system to the source
         new_source._sys = self
-        ## Search if cell with the same name already exists
+        ## Search if source with the same name already exists
         found, source = self.find_source(new_source.name)
         ## If not, it is added
         if not found: self.sources.append(new_source)
@@ -94,29 +94,29 @@ class system(object):
         reset = False
 
         ## Fix for older versions
-        if not hasattr(environment,"source_path"):
-            if hasattr(environment,"cell2mol_path"):  environment.source_path = environment.cell2mol_path
-            else: print("WARNING: no source_path in environment"); return False
+        if not hasattr(environment,"sources_path"):
+            if hasattr(environment,"cell2mol_path"):  environment.sources_path = environment.cell2mol_path
+            else: print("WARNING: no sources_path in environment"); return False
 
         ## Environment Sends the Global Paths
-        target_source_path          = f"{environment.source_path}{self.name}/"
+        target_sources_path          = f"{environment.sources_path}{self.name}/"
         target_calcs_path           = f"{environment.calcs_path}{self.name}/"
         target_sys_path             = f"{environment.sys_path}{self.name}/"
         target_sys_file             = f"{environment.sys_path}{self.name}/{self.name}.npy"
 
         ### We make sure that those exist:
-        #if not os.path.isdir(target_sys_path) or os.path.isdir(target_calcs_path) or os.path.isdir(target_source_path):  
+        #if not os.path.isdir(target_sys_path) or os.path.isdir(target_calcs_path) or os.path.isdir(target_sources_path):  
         #    print("WARNING: folders do not exist")
         #    return False
 
         reset = True
-        self.source_path          = target_source_path 
+        self.sources_path          = target_sources_path 
         self.calcs_path           = target_calcs_path 
         self.sys_path             = target_sys_path
         self.sys_file             = target_sys_file
         if debug > 0: 
             print(f"RESET_PATHS: new paths:")
-            print(f"Source path: {self.source_path}")
+            print(f"Source path: {self.sources_path}")
             print(f"Calcs path:  {self.calcs_path}")
             print(f"System path: {self.sys_path}")
             print(f"System file: {self.sys_file}")
@@ -197,3 +197,15 @@ class system(object):
                                 for idx, comp in enumerate(job.computations):
                                     if comp.run_number == comp_run_number and comp.step == comp_step and comp.keyword.lower() == comp_keyword.lower(): return True, comp
         return False, None
+
+    #########################################
+    ### Functions to Interact with States ###
+    #########################################
+    def add_state(self, state: object, debug: int=0):
+        ## Verifies that a state with the same name does not exist already. If not, appends it
+        for my_state in self.states:
+            if my_state.name == state.name: 
+                found = True
+                print("SYSTEM.ADD_STATE: you're trying to create a state that already exists in _source.")
+                print("SYSTEM.ADD_STATE: use function called 'find_state' instead to retrieve existing state")
+        if not found: self.states.append(state)

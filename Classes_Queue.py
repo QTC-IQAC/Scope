@@ -1,7 +1,5 @@
 from datetime import datetime, timedelta
 import subprocess
-import numpy as np
-
 from .Parse_General import slurm_time_to_seconds
 
 #############
@@ -18,9 +16,20 @@ class queue(object):
         self.state               = state
         self.selected            = False
         self._environment        = _environment
-
         self.set_commands()
-        #self.set_max_mem()
+        #self.set_max_mem()      # Not ready
+
+    ######
+    def set_commands(self):
+        if self._environment.management_type == "slurm":
+            self.command_get_user_usage      = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+self.name  ## The rest shouldnt be necessary
+            self.command_check_queue_state   = 'sinfo -o "%n %P %C" | grep '+self.name 
+            self.command_job_count           = 'squeue | grep '+self.name+' | wc -l'
+            self.command_get_max_mem         = 'sinfo -o "%15N %10c %10m  %25f %10G" | grep '+self.name
+        elif self._environment.management_type == "sge":
+            self.command_get_user_usage      = "qstat | grep "+self.name
+            self.command_check_queue_state   = "qstat -f | grep "+self.name
+            self.command_job_count           = "qstat | grep "+self.name+" | wc -l"
 
 ## test function to retrieve mem-per-cpu. Should be done at the node level
     #def set_max_mem(self):
@@ -36,6 +45,7 @@ class queue(object):
     #                tot_mem         = float(blocks[2])
     #    elif self._environment.management_type == 'sge': return None
 
+    ######
     def set_nodes(self):
         self.nodes = []
         self.max_cpu_x_node = 0 
@@ -78,10 +88,12 @@ class queue(object):
         self.nodes.sort(key= lambda x: x.name)
         return self.nodes
 
+    ######
     def set_priority(self, prio: int=1):
         self.priority = prio
         return self.priority
 
+    ######
     def select_queue(self):
         if not hasattr(self._environment,"selected_queues"): self._environment.selected_queues = []
         if self not in self._environment.selected_queues: 
@@ -89,17 +101,7 @@ class queue(object):
         self.selected = True
         return self.selected
 
-    def set_commands(self):
-        if self._environment.management_type == "slurm":
-            self.command_get_user_usage      = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+self.name  ## The rest shouldnt be necessary
-            self.command_check_queue_state   = 'sinfo -o "%n %P %C" | grep '+self.name 
-            self.command_job_count           = 'squeue | grep '+self.name+' | wc -l'
-            self.command_get_max_mem         = 'sinfo -o "%15N %10c %10m  %25f %10G" | grep '+self.name
-        elif self._environment.management_type == "sge":
-            self.command_get_user_usage      = "qstat | grep "+self.name
-            self.command_check_queue_state   = "qstat -f | grep "+self.name
-            self.command_job_count           = "qstat | grep "+self.name+" | wc -l"
-
+    ######
     def get_queue_score(self, force_update: bool=False, method: str='weighted'):
         if not hasattr(self,"priority"):      self.set_priority(prio=int(1))   ## If user has set a priority. Then 1
         if not hasattr(self,"free"):          self.get_overall_usage(force_run=force_update)
@@ -119,13 +121,13 @@ class queue(object):
         #if self.score < float(0.0): self.score = float(0.0)
         return self.score
 
+    ######
     def get_user_running(self, debug: int=0):
         ### Evaluating the usage by queues, has the risk that pending jobs will not appear. 
         ### Thus, this function is meant to be called at the environment level, were we can also run the "get_user_waiting" method
 
         self.user_running_cpus = 0
         self.user_running_jobs = 0
-
         try: 
             #raw = subprocess.check_output(['bash','-c', self.command_get_user_usage]) ## raises error when node is not active
             raw = subprocess.run(['bash', '-c', self.command_get_user_usage], capture_output=True).stdout
@@ -159,9 +161,9 @@ class queue(object):
                 self.user_running_cpus = int(0)
                 self.user_running_jobs = int(0)
                 print("QUEUE.CHECK_USER_USAGE: exception:", exc)
-
         return self.user_running_cpus, self.user_running_jobs
 
+    ######
     def get_overall_usage(self, force_run: bool=False, debug: int=0):
         ### For the overall usage, we have to go node by node
         ### We do not count pending jobs. This is done at the environment level
@@ -194,7 +196,7 @@ class queue(object):
 ######## DUNDER ##########
 ##########################
     def __repr__(self) -> None:
-        to_print  = f'\n-------------------------------------------------------\n'
+        to_print  = f'-------------------------------------------------------\n'
         to_print += f' Formatted input interpretation of Queue Class Object()\n'
         to_print += f'-------------------------------------------------------\n'
         to_print += f' Name                  = {self.name}\n'
@@ -213,9 +215,11 @@ class queue(object):
         if hasattr(self,"user_running_jobs"):  to_print += f' Num Jobs {self._environment.user}       = {self.user_running_jobs}\n'        
         if hasattr(self,"user_running_cpus"):  to_print += f' Num CPUs {self._environment.user}       = {self.user_running_cpus}\n'        
         to_print += f'---------------------------------------------------\n'
+        to_print += f'\n'
         return to_print
 
     def __add__(self, other):
+        ## Adds new nodes in other to self
         if not isinstance(other, type(self)): return self
         if self.name == other.name or self.alter_name == other.alter_name:
             if hasattr(other,"nodes"):
@@ -223,8 +227,6 @@ class queue(object):
                     for on in other.nodes:
                         if on.name not in [n.name for n in self.nodes]:
                             self.nodes.append(on)
-            #    else: print(f"QUEUE: {other.name} does not have a list of nodes: {type(other.nodes)}")
-            #else: print(f"QUEUE: {other.name} has no variable other.nodes")
         return self
 
 ############
@@ -281,12 +283,14 @@ class node(object):
                         print("NODE.CHECK_USAGE: Unexpected length of block list", blocks)
 
     def __repr__(self) -> None:
-        to_print  = f'\n------------------------------------------------------\n'
+        to_print  = f'------------------------------------------------------\n'
         to_print += f' Formatted input interpretation of NODE Class Object()\n'
         to_print += f'------------------------------------------------------\n'
         if hasattr(self._queue,"name"):   to_print += f' Queue Name            = {self._queue.name}\n'
         if hasattr(self,"name"):          to_print += f' Node Name             = {self.name}\n'
         if hasattr(self,"allocated"):     to_print += f' Allocated CPUS        = {self.allocated}\n'
         if hasattr(self,"total"):         to_print += f' Total CPUS            = {self.total}\n'
+        to_print += f'------------------------------------------------------\n'
+        to_print += f'\n'
         return to_print
 

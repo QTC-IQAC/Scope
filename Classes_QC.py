@@ -1,12 +1,6 @@
-import sys
-import os
 import numpy as np
-
-from .Parse_General import search_string, read_lines_file 
-from .Unit_cell_tools import get_unit_cell_volume
-from . import Constants
-
-from .Connectivity import labels2formula
+from Scope_New import Constants
+from .Parse_General import search_string
 from .Elementdata import ElementData
 elemdatabase = ElementData()
 
@@ -115,22 +109,6 @@ class orbital(object):
         self.name = index
         self.occupation = occupation
         self.energy = energy
-
-#class periodic_xyz(object):
-#    def __init__(self, name: str, index: int, labels: list, pos: list, cellparam: list) -> None:
-#        self.name = name
-#        self.index = index
-#        self.labels = labels  
-#        self.pos = pos               
-#        self.cellparam = cellparam  # in Bohr
-#        self.volume = get_unit_cell_volume(cellparam[0], cellparam[1], cellparam[2], cellparam[3], cellparam[4], cellparam[5]) # in Bohr3
-#        self.natoms = len(labels)
-#        self.formula = labels2formula(labels) 
-#        self.moleclist = []
-#
-#    def add_cellvec(self, cellvec, celldim):
-#        self.cellvec = cellvec
-#        self.celldim = celldim
 
 ####################################################
 ##### Import older versions of VNM Class ###########

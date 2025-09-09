@@ -1,67 +1,106 @@
 import numpy as np
-from .Connectivity import *
-from .Classes_Data import collection, data
-from .Classes_Specie import *
-from .Reconstruct    import *
-from .Elementdata import ElementData
+from .Connectivity      import *
+from .Classes_Data      import collection, data
+from .Classes_Specie    import *
+from .Reconstruct       import *
+from .Elementdata       import ElementData
 elemdatabase = ElementData()
 
 ##############
 ### STATES ###
 ##############
 class state(object):
-    def __init__(self, _subject: object, name: str, debug: int=0):
+    """
+    State class for representing a physical or chemical state associated with a source (cell, molecule, or specie).
+    This class provides methods for managing geometries, molecules, computations, vibrational normal modes (VNMs) and thermodynamic data
+
+    Initiate
+
+    _source : object                    The parent object (cell, molecule, or specie) to which this state belongs.
+    name : str                          Name of the state.
+
+    Attributes
+
+    type : str                          Type of the object ("state").
+    name : str                          Name of the state.
+    results : dict                      Dictionary of results associated with the state.
+    computations : list                 List of computations associated with the state.
+    labels : list                       Atomic labels for the geometry.
+    coord : list                        Atomic positions (Cartesian coordinates).
+    natoms : int                        Number of atoms in the state.
+    formula : str                       Chemical formula, derived from labels.
+    radii : list                        List of Atomic radii.
+    cell_vector : array-like            Cell vectors for periodic systems.
+    cell_param : array-like             Cell parameters.
+    forces : array-like                 Forces on atoms.
+    spin_config : object                Spin configuration.
+    atoms : list                        List of atom objects.
+    moleclist : list                    List of molecule objects in the state.
+    ncomplex : int                      Number of Transition Metal Complexes in the state.
+    fragmented : bool                   Whether the state geometry is fragmented.
+    VNMs : list                         Vibrational normal modes.
+
+    Methods
+
+    set_geometry()                      Set atomic labels and positions for the state geometry.
+    set_geometry_from_moleclist()       Set geometry from the list of molecule objects.
+    set_cell()                          Set cell vectors and parameters.
+    set_forces()                        Set atomic forces.
+    set_spin_config()                   Set spin configuration.
+    set_atoms()                         Set atom objects from molecule list.
+    get_moleclist()                     Generate molecule list from geometry.
+    get_ncomplex()                      Count number of complex molecules.
+    get_SCO_geom()                      Print spin crossover geometry for complex molecules.
+    reconstruct()                       Attempt to reconstruct fragmented state geometry.
+    check_fragmentation()               Check if the state geometry is fragmented.
+    check_minimum()                     Check if the state is a minimum or almost a minimum.
+    set_VNMs()                          Set vibrational normal modes and evaluate minimum status.
+    find_computation()                  Find a computation in the state.
+    add_computation()                   Add a computation to the state.
+    sample_geometries()                 Sample geometries around the current state using VNMs and furthest point sampling.
+    add_result()                        Add a result to the state.
+    set_energy()                        Set electronic energy result.
+    set_Helec()                         Set electronic energy per complex.
+    get_thermal_data()                  Compute and store thermodynamic data (Helec, Selec, Hvib, Svib, Gtot).
+
+    - The class is tightly integrated with other classes in Scope (e.g., Classes_Scecie).
+    """
+    def __init__(self, _source: object, name: str, debug: int=0):
         self.type         = "state"
-        self._subject     = _subject
-        self.subtype      = _subject.subtype
+        self._source     = _source
         self.name         = name
         self.results      = dict()
         self.computations = []
-
-        ## Creates the variable "states" to the _subject, which should be a "cell" or "molecule"-class object
-        if not hasattr(self._subject,"states"): self._subject.states = []
-        found = False
-        
-        ## Verifies that a state with the same name does not exist already. If not, appends it
-        for idx, st in enumerate(self._subject.states):
-            if st.name == name: 
-                found = True
-                print("WARNING from CLASS STATE: you're trying to create a state that already exists in _subject.")
-                print("WARNING from CLASS STATE: use function called 'find_state' instead to retrieve existing state")
-        if not found: self._subject.states.append(self)
+        self._source.add_state(self)
 
 ############################################
 #### Basic Functions to add information ####
 ############################################
-    def set_geometry(self, labels, pos):
+    def set_geometry(self, labels, coord):
         self.labels      = labels
-        self.pos         = pos 
-        self.coord       = pos 
+        self.coord       = coord
         self.natoms      = len(labels)
         self.formula     = labels2formula(self.labels)
         self.radii       = get_radii(labels)
-        assert len(self.labels) == len(self.pos)
+        assert len(self.labels) == len(self.coord)
 
     def set_geometry_from_moleclist(self, overwrite: bool=False, debug: int=0):
         if not hasattr(self,"moleclist"): self.get_moleclist(overwrite=overwrite, debug=debug)
         self.labels      = []
-        self.pos         = []
         self.coord       = []
         indices     = []
         for mol in self.moleclist:
             if not hasattr(mol,"atoms"): mol.set_atoms()
             for idx, at in enumerate(mol.atoms):
                 self.labels.append(at.label)
-                self.pos.append(at.coord)
                 self.coord.append(at.coord)
                 indices.append(mol.indices[idx])
         ## Below is to order the atoms as in the original cell, using the indices stored in the molecule object
         self.labels = [x for _, x in sorted(zip(indices, self.labels), key=lambda pair: pair[0])]
-        self.pos = [x for _, x in sorted(zip(indices, self.pos), key=lambda pair: pair[0])]
         self.coord = [x for _, x in sorted(zip(indices, self.coord), key=lambda pair: pair[0])]
         self.natoms = len(self.labels)
         self.formula = labels2formula(self.labels)
-        assert len(self.labels) == len(self.pos)
+        assert len(self.labels) == len(self.coord)
          
     def set_cell(self, cell_vector, cell_param):
         self.cell_vector  = cell_vector
@@ -94,18 +133,18 @@ class state(object):
             if debug > 0: print(f"STATE.GET_MOLECLIST. Moleclist already exists and default is overwrite=False")
             return self.moleclist
         # Security
-        if not hasattr(self,"labels") or not hasattr(self,"pos"): return None
-        if len(self.labels) == 0 or len(self.pos) == 0: return None
+        if not hasattr(self,"labels") or not hasattr(self,"coord"): return None
+        if len(self.labels) == 0 or len(self.coord) == 0: return None
         # Covalent Factor
-        if hasattr(self._subject,"factor"):       cov_factor = self._subject.factor
-        elif hasattr(self._subject,"cov_factor"): cov_factor = self._subject.cov_factor
+        if hasattr(self._source,"factor"):       cov_factor = self._source.factor
+        elif hasattr(self._source,"cov_factor"): cov_factor = self._source.cov_factor
         else: cov_factor = 1.3
         # Metal Factor
-        if hasattr(self._subject,"metal_factor"):   metal_factor = self._subject.metal_factor
+        if hasattr(self._source,"metal_factor"):   metal_factor = self._source.metal_factor
         else: metal_factor = 1.0
 
         if debug > 0: print(f"STATE.GET_MOLECLIST. Sending split_species with {cov_factor=} and {metal_factor=}") 
-        blocklist = split_species(self.labels, self.pos, cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
+        blocklist = split_species(self.labels, self.coord, cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
         self.moleclist = [] 
         for b in blocklist:
             if debug > 0: print(f"STATE.GET_MOLECLIST: doing block={b}")
@@ -118,7 +157,7 @@ class state(object):
             # For debugging
             newmolec.origin = "state.get_moleclist"
             # Adds State as parent of the molecule, with indices b
-            newmolec.add_parent(self._subject, indices=b, debug=debug)            
+            newmolec.add_parent(self._source, indices=b, debug=debug)            
             # Store Adjacency Parameters
             newmolec.set_factors(cov_factor, metal_factor)
             # Creates The atom objects with adjacencies
@@ -126,9 +165,9 @@ class state(object):
             # Sets Fractional Coordinates
             if hasattr(self,"frac_coord"): 
                 newmolec.set_fractional_coord(mol_frac_coord)
-            elif self._subject.type == "cell": 
-                if debug > 0: print(f"STATE.GET_MOLECLIST: getting frac_coord from _subject of type=cell")
-                newmolec.get_fractional_coord(cell_vector = self._subject.cell_vector)
+            elif self._source.type == "cell": 
+                if debug > 0: print(f"STATE.GET_MOLECLIST: getting frac_coord from _source of type=cell")
+                newmolec.get_fractional_coord(cell_vector = self._source.cell_vector)
             # The split_complex must be below the frac_coord, so they are carried on to the ligands    
             if newmolec.iscomplex: 
                 if debug > 0: print(f"STATE.GET_MOLECLIST: splitting complex")
@@ -164,52 +203,52 @@ class state(object):
 #### Reconstruction ####
 ########################
     def reconstruct(self, debug: int=0):
-        assert hasattr(self,"cellvec")
-        if not hasattr(self._subject,"refmoleclist"): print("CLASS STATE.RECONSTRUCT: _subject does not have refmoleclist"); return None
+        assert hasattr(self,"cell_vector")
+        if not hasattr(self._source,"refmoleclist"): print("CLASS STATE.RECONSTRUCT: _source does not have refmoleclist"); return None
         from Scope.Read_Write import HiddenPrints
         if debug > 0: print("CLASS_STATE.RECONSTRUCT: reconstructing cell of state", self)
         with HiddenPrints():
             finished = False
-            if hasattr(self._subject,"type") and hasattr(self,"cellvec"):
+            if hasattr(self._source,"type") and hasattr(self,"cell_vector"):
                 if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug) 
-                if self._subject.type.lower() == "cell":
+                if self._source.type.lower() == "cell":
                     import itertools
                     blocklist = self.moleclist.copy()
-                    refmoleclist = self._subject.refmoleclist.copy()
+                    refmoleclist = self._source.refmoleclist.copy()
                     cov_factor = refmoleclist[0].cov_factor
                     metal_factor = refmoleclist[0].metal_factor
                     moleclist, fraglist, Hlist = classify_fragments(blocklist, refmoleclist, debug=debug) 
                     if len(fraglist) > 0 or len(Hlist) > 0: 
-                        moleclist, finalmols, Warning = fragments_reconstruct(moleclist,fraglist,Hlist,refmoleclist,self.cellvec,cov_factor,metal_factor, debug=debug)
+                        moleclist, finalmols, Warning = fragments_reconstruct(moleclist,fraglist,Hlist,refmoleclist,self.cell_vector,cov_factor,metal_factor, debug=debug)
                         moleclist.extend(finalmols)
                         self.moleclist = moleclist
                         self.set_geometry_from_moleclist()
                         finished = True
      
-                else: print("WARNING: reconstruct state, _subject is not a cell. I will not reconstruct"); return None
-            else: print("WARNING: reconstruct state, _subject does not have 'type' or 'cellvec' variables"); return None
+                else: print("WARNING: reconstruct state, _source is not a cell. I will not reconstruct"); return None
+            else: print("WARNING: reconstruct state, _source does not have 'type' or 'cell_vector' variables"); return None
         if debug > 0 and finished: print("CLASS STATE.RECONSTRUCT: state reconstructed to", self)
         return self.moleclist
 
     def check_fragmentation(self, reconstruct: bool = False, debug: int=0):
-        ## If the subject is a specie, then in principle there should only be one. So with moleclist is enough to find
-        if self._subject.type == "specie":
+        ## If the source is a specie, then in principle there should only be one. So with moleclist is enough to find
+        if self._source.type == "specie":
             if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
             if len(self.moleclist) > 1: self.fragmented = True
             else:                       self.fragmented = False
-            if debug > 0: print(f"STATE.CHECK_FRAGMENTATION: subject type=specie. {self.fragmented=}")
+            if debug > 0: print(f"STATE.CHECK_FRAGMENTATION: source type=specie. {self.fragmented=}")
             return self.fragmented
         ## If it is a unit cell, then we need a list of molecules that should in principle be there. This is refmoleclist
         ## If the cell is created by cell2mol, then this list is already stored in the .cell object
-        elif self._subject.type == "cell": 
+        elif self._source.type == "cell": 
             assert hasattr(self,"cell_vector")
-            assert hasattr(self._subject,"refmoleclist")
+            assert hasattr(self._source,"refmoleclist")
             if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
             self.fragmented = False
             # First comparison with current moleclist
             for mol in self.moleclist:
                 found = False
-                for rmol in self._subject.refmoleclist:
+                for rmol in self._source.refmoleclist:
                     issame = compare_species(mol, rmol)  
                     if issame: found = True
                 if not found: self.fragmented = True
@@ -219,21 +258,21 @@ class state(object):
                 self.fragmented = False
                 for mol in new_moleclist:
                     found = False
-                    for rmol in self._subject.refmoleclist:
+                    for rmol in self._source.refmoleclist:
                         issame = compare_species(mol, rmol)  
                         if issame: found = True
                     if not found: self.fragmented = True
                 if not self.fragmented: 
                     self.moleclist = new_moleclist
                     self.set_geometry_from_moleclist(debug=debug)
-        elif self._subject.type == "perxyz": 
+        elif self._source.type == "perxyz": 
             if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
             if len(self.moleclist) > 1:       self.fragmented = True
             else:                             self.fragmented = False
-            if debug > 0: print(f"STATE.CHECK_FRAGMENTATION: subject type={self._subject.type}. {self.fragmented=}")
+            if debug > 0: print(f"STATE.CHECK_FRAGMENTATION: source type={self._source.type}. {self.fragmented=}")
             return self.fragmented
         else:
-            print(f"STATE.CHECK_FRAGMENTATION: Unknown Subject Type {self._subject.type}")
+            print(f"STATE.CHECK_FRAGMENTATION: Unknown source Type {self._source.type}")
         return self.fragmented
 
 ##############################
@@ -322,8 +361,8 @@ class state(object):
         - The sampling parameters (temperature, number of rounds, samples per round) depend on the `typ` argument.
         - Requires that the state is a minimum and that VNMs have eigenvectors parsed.
         """
-        from Scope.VNM_tools import geom_sampling_from_vnm, euclidean_q_distance, custom_q_distance, beta_distance
-        from Scope.Other import furthest_point_sampling
+        from Scope_New.VNM_tools import geom_sampling_from_vnm, euclidean_q_distance, custom_q_distance, beta_distance
+        from Scope_New.Other import furthest_point_sampling
         #if   typ.lower() == 'light':    temp=100; n_rounds=2; n_samples_round=100
         #elif typ.lower() == 'default':  temp=200; n_rounds=5; n_samples_round=300
         #elif typ.lower() == 'heavy':    temp=300; n_rounds=8; n_samples_round=500
@@ -423,7 +462,7 @@ class state(object):
         ############## Selec ##############
         if Selec is None:
             if overwrite or not "Selec" in self.results.keys():
-                self.add_result(get_Selec(self._subject.spin, outunits='au', nmol=self.ncomplex), overwrite=overwrite)
+                self.add_result(get_Selec(self._source.spin, outunits='au', nmol=self.ncomplex), overwrite=overwrite)
         else: 
             if isinstance(Selec, data):
                 if overwrite or not "Selec" in self.results.keys():
@@ -513,12 +552,12 @@ class state(object):
 #########################################################################
 ## Tools associated with states. Normally, these would be class (i.e. molecule) functions...
 #########################################################################
-def find_state(subject: object, search_name: str, debug: int=0):
-    if debug >= 1: print("FIND_STATE: enters",search_name," with", len(subject.states),"states in subject")
-    if not hasattr(subject,"states"): return False, None
+def find_state(source: object, search_name: str, debug: int=0):
+    if debug >= 1: print("FIND_STATE: enters",search_name," with", len(source.states),"states in source")
+    if not hasattr(source,"states"): return False, None
     else: 
         found = False
-        for idx, sta in enumerate(subject.states):
+        for idx, sta in enumerate(source.states):
             if sta.name == search_name: 
                 found = True
                 if debug >= 1: print(f"FIND STATE: state {search_name} found")

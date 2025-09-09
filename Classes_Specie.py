@@ -14,7 +14,7 @@ elemdatabase = ElementData()
 ### SPECIE ###
 ##############
 class specie(object):
-    def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
+    def __init__(self, name: str, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
 
        # Sanity Checks
         assert len(labels) == len(coord)
@@ -23,25 +23,28 @@ class specie(object):
             self.frac_coord = frac_coord
             
         # Optional Information
-        if radii   is not None: self.radii   = radii
+        if radii is not None:   self.radii   = radii                  ## Radii are used to obtain the adjacency matrix 
         else:                   self.radii   = get_radii(labels)
 
         self.version              = "1.0"
         self.type                 = "specie"
         self.subtype              = "specie"
         self.origin               = "created"
+        self.name                 = name
         self.labels               = labels
         self.coord                = coord
         self.formula              = labels2formula(labels)
         self.eleccount            = labels2electrons(labels)
         self.natoms               = len(labels)
         self.iscomplex            = any((elemdatabase.elementblock[l] == "d") or (elemdatabase.elementblock[l] == "f") for l in self.labels)
-
-        self.parents              = []
-        self.parents_indices      = []
         self.indices              = [*range(0,self.natoms,1)]
 
-        ## Defaults
+        ## Specie can be associated with "parents", which are other species related to it.
+        ## For instance, a ligand can be related to the transition metal complex it belongs to.
+        self.parents              = []
+        self.parents_indices      = []
+
+        ## Defaults. Were used in cell2mol version 1, kept for simplicity
         self.cov_factor           = 1.3
         self.metal_factor         = 1.0
         
@@ -274,6 +277,106 @@ class specie(object):
         self.madjnum = np.stack(extract_from_list(indices, parent.madjnum, dimension=1), axis=0)
         self.adjmat  = np.stack(extract_from_list(indices, parent.adjmat, dimension=2), axis=0)
         self.adjnum  = np.stack(extract_from_list(indices, parent.adjnum, dimension=1), axis=0)
+
+    ######
+    def set_bonds(self, debug: int=0):
+        ## Creats bond objects using the information contained in the RDKit object
+        ## The RDKit object is necessary, as it is the only one that contains the bond order information (lewis structure)
+        if not hasattr(self,"rdkit_obj"): 
+            print(f"SPECIE.SET_BONDS: Can't set bonds, specie has not an rdkit_object")
+            return False
+        natoms_rdkit = self.rdkit_obj.GetNumAtoms() 
+        if debug >= 1: print(f"SPECIE.SET_BONDS: {self.formula=}, {self.subtype=} {self.smiles=}")
+
+        if self.natoms == natoms_rdkit:  
+            if debug >= 2: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are equal: {self.natoms} {natoms_rdkit}")
+
+            for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8
+                if debug >= 2: print(f"\t{idx=}", rdkit_atom.GetSymbol(), "Number of bonds in rdkit_obj:", len(rdkit_atom.GetBonds()))
+                if len(rdkit_atom.GetBonds()) == 0:
+                    if debug >= 1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} due to no bonds in {self.subtype} RDKit object")
+                else:
+                    for b in rdkit_atom.GetBonds():
+                        bond_startatom = b.GetBeginAtomIdx()
+                        bond_endatom   = b.GetEndAtomIdx()
+                        bond_order     = b.GetBondTypeAsDouble()
+
+                        ## Checks the labels involved in the bond
+                        if self.atoms[bond_endatom].label != self.rdkit_obj.GetAtomWithIdx(bond_endatom).GetSymbol():
+                            if debug >= 1: print(f"\tError with Bond EndAtom", self.atoms[bond_endatom].label, self.rdkit_obj.GetAtomWithIdx(bond_endatom).GetSymbol())
+                        else:
+                            if bond_endatom == idx:
+                                start = bond_endatom
+                                end   = bond_startatom
+                            elif bond_startatom == idx:
+                                start = bond_startatom
+                                end   = bond_endatom      
+
+                            # create new bond object and add it to both atoms
+                            if end > start:
+                                if debug >=2: print(f"\tBOND CREATED", idx, start, end, bond_order, self.atoms[start].label, self.atoms[end].label)
+                                new_bond = bond(self.atoms[start], self.atoms[end], bond_order)
+                                self.atoms[start].add_bond(new_bond)
+                                self.atoms[end].add_bond(new_bond)
+                
+                    if hasattr(self.atoms[idx], "bonds"):
+                        if debug >=1 : print(f"\tBONDS", [(bd.atom1.label, bd.atom2.label, bd.order, round(bd.distance,3)) for bd in self.atoms[idx].bonds])
+                    else:
+                        if self.natoms == 1:
+                            if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.subtype} object")
+                            pass
+                        else:
+                            if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.subtype} RDKit object index {idx}. Please check the RDKit object.")
+                            return False # return False if no bonds are created
+        else:
+            if debug >= 1: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are different: {self.natoms} {natoms_rdkit}")
+            if debug >= 2: print(f"\t{[(i, atom.label) for i, atom in enumerate(self.atoms)]}")
+            if debug >= 2: print(f"\t{[(i, atom.GetSymbol()) for i, atom in enumerate(self.rdkit_obj.GetAtoms())]}")       
+            non_bonded_atoms = list(range(0, natoms_rdkit))[natoms:]
+            if debug >= 2: print(f"\tNON_BONDED_ATOMS", non_bonded_atoms)
+
+            for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+                if debug >= 2: print(f"\t{idx=}", rdkit_atom.GetSymbol(), "Number of bonds :", len(rdkit_atom.GetBonds()))
+                if len(rdkit_atom.GetBonds()) == 0:
+                    if debug >= 1: print(f"\tNO BONDS CREATED for {rdkit_atom.GetSymbol()} due to no bonds in {self.subtype} RDKit object")
+                else:
+                    for b in rdkit_atom.GetBonds():
+                        bond_startatom = b.GetBeginAtomIdx()
+                        bond_endatom   = b.GetEndAtomIdx()
+                        bond_order     = b.GetBondTypeAsDouble()
+  
+                        if bond_startatom in non_bonded_atoms or bond_endatom in non_bonded_atoms:
+                            if debug >= 2: print(f"\tNO BOND CREATED {bond_startatom=} or {bond_endatom=} is not in the self.atoms. It belongs to {non_bonded_atoms=}.")
+                        else :
+                            if bond_endatom == idx:
+                                start = bond_endatom
+                                end   = bond_startatom
+                            elif bond_startatom == idx:
+                                start = bond_startatom
+                                end   = bond_endatom   
+
+                            # create new bond object and add it to both atoms
+                            if end > start:
+                                if debug >=2: print(f"\tBOND CREATED", idx, start, end, bond_order, self.atoms[start].label, self.atoms[end].label)
+                                new_bond = bond(self.atoms[start], self.atoms[end], bond_order)
+                                self.atoms[start].add_bond(new_bond)
+                                self.atoms[end].add_bond(new_bond)
+                
+                    if idx not in non_bonded_atoms:
+                        if hasattr(self.atoms[idx], "bonds"):
+                            if debug >=2: 
+                                print(f"\tBONDS", [(bd.atom1.label, bd.atom2.label, bd.order, round(bd.distance,3)) for bd in self.atoms[idx].bonds])
+                        else:
+                            if self.natoms == 1:
+                                if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.subtype} object")
+                                pass
+                            else:
+                                if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.subtype} RDKit object index {idx}. Please check the RDKit object.")
+                                return False # return False if no bonds are created
+                    else :
+                        if debug >=1: print(f"\tNO BONDS for {rdkit_atom.GetSymbol()} with {self.subtype} RDKit object index {idx} because it is an added atom")
+        self.has_bonds = True
+        return True 
 
     ######
     def set_factors(self, cov_factor: float=1.3, metal_factor: float=1.0) -> None:
@@ -599,12 +702,14 @@ class molecule(specie):
 
     ######
     def set_bonds(self, debug: int=0):
-        if self.iscomplex: 
-            if not hasattr(self,"metals") or not hasattr(self,"ligands"): self.split_complex(debug=debug)
-            for lig in self.ligands:
-                lig.set_bonds(debug=debug)   
-            self.set_metal_ligand_bonds(debug=debug)
-            self.set_metal_metal_bonds(debug=debug)
+        # If it is a regular molecule, just use the specie function
+        if not self.iscomplex: return super().set_bonds(debug=debug)
+        # If it is a transition metal complex, then:
+        if not hasattr(self,"metals") or not hasattr(self,"ligands"): self.split_complex(debug=debug)
+        for lig in self.ligands:            ## Runs for each ligand individually
+            lig.set_bonds(debug=debug)      
+        self.set_metal_ligand_bonds(debug=debug) ## Creates bond between metals and ligands...
+        self.set_metal_metal_bonds(debug=debug)  ## ... and between metals 
         self.has_bonds = True
         return True
 
@@ -743,7 +848,7 @@ class ligand(specie):
         conn_coord      = extract_from_list(connected_idx, self.coord, dimension=1)
         if hasattr(self,"frac_coord"): conn_frac_coord = extract_from_list(connected_idx, self.frac_coord, dimension=1)
         conn_radii      = extract_from_list(connected_idx, self.radii, dimension=1)
-        conn_atoms      = extract_from_list(connected_idx, self.atoms, dimension=1)
+        connatoms      = extract_from_list(connected_idx, self.atoms, dimension=1)
         if debug >= 2: print(f"\tLIGAND.SPLIT_LIGAND: {conn_labels=}")
 
         if hasattr(self,"cov_factor"): blocklist = split_species(conn_labels, conn_coord, radii=conn_radii, cov_factor=self.cov_factor, debug=debug)
@@ -758,7 +863,7 @@ class ligand(specie):
             gr_coord        = extract_from_list(b, conn_coord, dimension=1)
             if hasattr(self,"frac_coord"): gr_frac_coord   = extract_from_list(b, conn_frac_coord, dimension=1)
             gr_radii        = extract_from_list(b, conn_radii, dimension=1)
-            gr_atoms        = extract_from_list(b, conn_atoms, dimension=1)
+            gr_atoms        = extract_from_list(b, connatoms, dimension=1)
             # Create Group Object
             if hasattr(self,"frac_coord"): newgroup = group(gr_labels, gr_coord, gr_frac_coord, radii=gr_radii)
             else:                          newgroup = group(gr_labels, gr_coord, radii=gr_radii)
@@ -1023,19 +1128,17 @@ class ligand(specie):
         #####################
         # Fixes Added atoms # 
         #####################
-        n_atoms       = self.natoms 
-        n_atoms_rdkit = mol.GetNumAtoms() 
-        if n_atoms_rdkit > n_atoms:
-            if debug > 0: print(f"Fixing_Added_Atoms: {n_atoms=} {n_atoms_rdkit=}")
+        natoms_rdkit = mol.GetNumAtoms() 
+        if natoms_rdkit > natoms:
+            if debug > 0: print(f"Fixing_Added_Atoms: {self.natoms=} {natoms_rdkit=}")
             rw_mol = Chem.RWMol(mol)
             to_remove = []
             for a in rw_mol.GetAtoms():
                 i    = a.GetIdx()
                 neig = a.GetNeighbors()
-                if i > n_atoms-1:
+                if i > natoms-1:
                     label = a.GetSymbol()
                     if debug > 0: print(f"FIX_RDKIT: Atom {i=} {label=} flagged for removal")
-                    #rw_mol.RemoveAtom(i)
                     to_remove.append(i)
                     for n in neig:
                         fcharge = n.GetFormalCharge()
@@ -1116,106 +1219,106 @@ class ligand(specie):
         return self.smiles
 
     ######
-    def set_bonds(self, debug: int=0):
-        ## Creats bond objects using the information contained in the RDKit object
-        ## The RDKit object is necessary, as it is the only one that contains the bond order information (lewis structure)
-        if not hasattr(self,"rdkit_obj"): 
-            if debug >= 1: print(f"LIG.SET_BONDS: Can't set bonds, ligand has not rdkit_object")
-            return False
-        n_atoms = self.natoms 
-        n_atoms_rdkit = self.rdkit_obj.GetNumAtoms() 
-        if debug >= 1: print(f"LIG.SET_BONDS: {self.formula=}, {self.subtype=} {self.smiles=}")
+    # Moved to specie class
+    ######
+    #def set_bonds(self, debug: int=0):
+    #    ## Creats bond objects using the information contained in the RDKit object
+    #    ## The RDKit object is necessary, as it is the only one that contains the bond order information (lewis structure)
+    #    if not hasattr(self,"rdkit_obj"): 
+    #        if debug >= 1: print(f"LIG.SET_BONDS: Can't set bonds, ligand has not rdkit_object")
+    #        return False
+    #    natoms_rdkit = self.rdkit_obj.GetNumAtoms() 
+    #    if debug >= 1: print(f"LIG.SET_BONDS: {self.formula=}, {self.subtype=} {self.smiles=}")
 
-        if n_atoms == n_atoms_rdkit:  
-            if debug >= 2: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are equal: {n_atoms} {n_atoms_rdkit}")
+    #    if self.natoms == natoms_rdkit:  
+    #        if debug >= 2: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are equal: {self.natoms} {natoms_rdkit}")
 
-            for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8
-                if debug >= 2: print(f"\t{idx=}", rdkit_atom.GetSymbol(), "Number of bonds in rdkit_obj:", len(rdkit_atom.GetBonds()))
-                if len(rdkit_atom.GetBonds()) == 0:
-                    if debug >= 1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} due to no bonds in {self.subtype} RDKit object")
-                else:
-                    for b in rdkit_atom.GetBonds():
-                        bond_startatom = b.GetBeginAtomIdx()
-                        bond_endatom   = b.GetEndAtomIdx()
-                        bond_order     = b.GetBondTypeAsDouble()
+    #        for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8
+    #            if debug >= 2: print(f"\t{idx=}", rdkit_atom.GetSymbol(), "Number of bonds in rdkit_obj:", len(rdkit_atom.GetBonds()))
+    #            if len(rdkit_atom.GetBonds()) == 0:
+    #                if debug >= 1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} due to no bonds in {self.subtype} RDKit object")
+    #            else:
+    #                for b in rdkit_atom.GetBonds():
+    #                    bond_startatom = b.GetBeginAtomIdx()
+    #                    bond_endatom   = b.GetEndAtomIdx()
+    #                    bond_order     = b.GetBondTypeAsDouble()
 
-                        ## Checks the labels involved in the bond
-                        if self.atoms[bond_endatom].label != self.rdkit_obj.GetAtomWithIdx(bond_endatom).GetSymbol():
-                            if debug >= 1: print(f"\tError with Bond EndAtom", self.atoms[bond_endatom].label, self.rdkit_obj.GetAtomWithIdx(bond_endatom).GetSymbol())
-                        else:
-                            if bond_endatom == idx:
-                                start = bond_endatom
-                                end   = bond_startatom
-                            elif bond_startatom == idx:
-                                start = bond_startatom
-                                end   = bond_endatom      
+    #                    ## Checks the labels involved in the bond
+    #                    if self.atoms[bond_endatom].label != self.rdkit_obj.GetAtomWithIdx(bond_endatom).GetSymbol():
+    #                        if debug >= 1: print(f"\tError with Bond EndAtom", self.atoms[bond_endatom].label, self.rdkit_obj.GetAtomWithIdx(bond_endatom).GetSymbol())
+    #                    else:
+    #                        if bond_endatom == idx:
+    #                            start = bond_endatom
+    #                            end   = bond_startatom
+    #                        elif bond_startatom == idx:
+    #                            start = bond_startatom
+    #                            end   = bond_endatom      
 
-                            # create new bond object and add it to both atoms
-                            if end > start:
-                                if debug >=2: print(f"\tBOND CREATED", idx, start, end, bond_order, self.atoms[start].label, self.atoms[end].label)
-                                new_bond = bond(self.atoms[start], self.atoms[end], bond_order)
-                                self.atoms[start].add_bond(new_bond)
-                                self.atoms[end].add_bond(new_bond)
-                
-                    if hasattr(self.atoms[idx], "bonds"):
-                        if debug >=1 : print(f"\tBONDS", [(bd.atom1.label, bd.atom2.label, bd.order, round(bd.distance,3)) for bd in self.atoms[idx].bonds])
-                    else:
-                        if self.natoms == 1:
-                            if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.subtype} object")
-                            pass
-                        else:
-                            if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.subtype} RDKit object index {idx}. Please check the RDKit object.")
-                            return False # return False if no bonds are created
-        else:
-            if debug >= 1: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are different: {n_atoms} {n_atoms_rdkit}")
-            if debug >= 2: print(f"\t{[(i, atom.label) for i, atom in enumerate(self.atoms)]}")
-            if debug >= 2: print(f"\t{[(i, atom.GetSymbol()) for i, atom in enumerate(self.rdkit_obj.GetAtoms())]}")       
-            non_bonded_atoms = list(range(0, n_atoms_rdkit))[n_atoms:]
-            if debug >= 2: print(f"\tNON_BONDED_ATOMS", non_bonded_atoms)
+    #                        # create new bond object and add it to both atoms
+    #                        if end > start:
+    #                            if debug >=2: print(f"\tBOND CREATED", idx, start, end, bond_order, self.atoms[start].label, self.atoms[end].label)
+    #                            new_bond = bond(self.atoms[start], self.atoms[end], bond_order)
+    #                            self.atoms[start].add_bond(new_bond)
+    #                            self.atoms[end].add_bond(new_bond)
+    #            
+    #                if hasattr(self.atoms[idx], "bonds"):
+    #                    if debug >=1 : print(f"\tBONDS", [(bd.atom1.label, bd.atom2.label, bd.order, round(bd.distance,3)) for bd in self.atoms[idx].bonds])
+    #                else:
+    #                    if self.natoms == 1:
+    #                        if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.subtype} object")
+    #                        pass
+    #                    else:
+    #                        if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.subtype} RDKit object index {idx}. Please check the RDKit object.")
+    #                        return False # return False if no bonds are created
+    #    else:
+    #        if debug >= 1: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are different: {self.natoms} {natoms_rdkit}")
+    #        if debug >= 2: print(f"\t{[(i, atom.label) for i, atom in enumerate(self.atoms)]}")
+    #        if debug >= 2: print(f"\t{[(i, atom.GetSymbol()) for i, atom in enumerate(self.rdkit_obj.GetAtoms())]}")       
+    #        non_bonded_atoms = list(range(0, natoms_rdkit))[self.natoms:]
+    #        if debug >= 2: print(f"\tNON_BONDED_ATOMS", non_bonded_atoms)
 
-            for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-                if debug >= 2: print(f"\t{idx=}", rdkit_atom.GetSymbol(), "Number of bonds :", len(rdkit_atom.GetBonds()))
-                if len(rdkit_atom.GetBonds()) == 0:
-                    if debug >= 1: print(f"\tNO BONDS CREATED for {rdkit_atom.GetSymbol()} due to no bonds in {self.subtype} RDKit object")
-                else:
-                    for b in rdkit_atom.GetBonds():
-                        bond_startatom = b.GetBeginAtomIdx()
-                        bond_endatom   = b.GetEndAtomIdx()
-                        bond_order     = b.GetBondTypeAsDouble()
+    #        for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
+    #            if debug >= 2: print(f"\t{idx=}", rdkit_atom.GetSymbol(), "Number of bonds :", len(rdkit_atom.GetBonds()))
+    #            if len(rdkit_atom.GetBonds()) == 0:
+    #                if debug >= 1: print(f"\tNO BONDS CREATED for {rdkit_atom.GetSymbol()} due to no bonds in {self.subtype} RDKit object")
+    #            else:
+    #                for b in rdkit_atom.GetBonds():
+    #                    bond_startatom = b.GetBeginAtomIdx()
+    #                    bond_endatom   = b.GetEndAtomIdx()
+    #                    bond_order     = b.GetBondTypeAsDouble()
   
-                        if bond_startatom in non_bonded_atoms or bond_endatom in non_bonded_atoms:
-                            if debug >= 2: print(f"\tNO BOND CREATED {bond_startatom=} or {bond_endatom=} is not in the self.atoms. It belongs to {non_bonded_atoms=}.")
-                        else :
-                            if bond_endatom == idx:
-                                start = bond_endatom
-                                end   = bond_startatom
-                            elif bond_startatom == idx:
-                                start = bond_startatom
-                                end   = bond_endatom   
+    #                    if bond_startatom in non_bonded_atoms or bond_endatom in non_bonded_atoms:
+    #                        if debug >= 2: print(f"\tNO BOND CREATED {bond_startatom=} or {bond_endatom=} is not in the self.atoms. It belongs to {non_bonded_atoms=}.")
+    #                    else :
+    #                        if bond_endatom == idx:
+    #                            start = bond_endatom
+    #                            end   = bond_startatom
+    #                        elif bond_startatom == idx:
+    #                            start = bond_startatom
+    #                            end   = bond_endatom   
 
-                            # create new bond object and add it to both atoms
-                            if end > start:
-                                if debug >=2: print(f"\tBOND CREATED", idx, start, end, bond_order, self.atoms[start].label, self.atoms[end].label)
-                                new_bond = bond(self.atoms[start], self.atoms[end], bond_order)
-                                self.atoms[start].add_bond(new_bond)
-                                self.atoms[end].add_bond(new_bond)
-                
-                    if idx not in non_bonded_atoms:
-                        if hasattr(self.atoms[idx], "bonds"):
-                            if debug >=2: 
-                                print(f"\tBONDS", [(bd.atom1.label, bd.atom2.label, bd.order, round(bd.distance,3)) for bd in self.atoms[idx].bonds])
-                        else:
-                            if self.natoms == 1:
-                                if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.subtype} object")
-                                pass
-                            else:
-                                if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.subtype} RDKit object index {idx}. Please check the RDKit object.")
-                                return False # return False if no bonds are created
-                    else :
-                        if debug >=1: print(f"\tNO BONDS for {rdkit_atom.GetSymbol()} with {self.subtype} RDKit object index {idx} because it is an added atom")
-        self.has_bonds = True
-        return True 
-
+    #                        # create new bond object and add it to both atoms
+    #                        if end > start:
+    #                            if debug >=2: print(f"\tBOND CREATED", idx, start, end, bond_order, self.atoms[start].label, self.atoms[end].label)
+    #                            new_bond = bond(self.atoms[start], self.atoms[end], bond_order)
+    #                            self.atoms[start].add_bond(new_bond)
+    #                            self.atoms[end].add_bond(new_bond)
+    #            
+    #                if idx not in non_bonded_atoms:
+    #                    if hasattr(self.atoms[idx], "bonds"):
+    #                        if debug >=2: 
+    #                            print(f"\tBONDS", [(bd.atom1.label, bd.atom2.label, bd.order, round(bd.distance,3)) for bd in self.atoms[idx].bonds])
+    #                    else:
+    #                        if self.natoms == 1:
+    #                            if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.subtype} object")
+    #                            pass
+    #                        else:
+    #                            if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.subtype} RDKit object index {idx}. Please check the RDKit object.")
+    #                            return False # return False if no bonds are created
+    #                else :
+    #                    if debug >=1: print(f"\tNO BONDS for {rdkit_atom.GetSymbol()} with {self.subtype} RDKit object index {idx} because it is an added atom")
+    #    self.has_bonds = True
+    #    return True 
 
 ###############
 #### GROUP ####

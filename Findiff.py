@@ -114,7 +114,7 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
     from Scope.Classes_QC import VNM
 
     ## Read the number of atoms from the gmol object
-    gmol   = job._recipe.subject
+    gmol   = job._recipe.source
     natoms  = gmol.natoms
     masses = [elemdatabase.elementweight[l] for l in labels]     # For the mass-weighted hessian
     atnums  = [elemdatabase.elementnr[l] for l in labels]        # For the creation of VNM
@@ -193,7 +193,7 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
 #def read_forces(job: object, debug: int=0)
 #    
 #    ## Read the number of atoms from the gmol object
-#    gmol   = job._recipe.subject
+#    gmol   = job._recipe.source
 #    natoms = gmol.natoms
 #
 #    fmatrix = np.zeros((natoms,natoms))

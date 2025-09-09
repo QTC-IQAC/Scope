@@ -1,6 +1,5 @@
-import Scope.Constants
-from Scope.Parse_General import search_string, read_lines_file
-from Scope.Software.Quantum_Espresso.Parse_QE_outputs import *
+from Scope_New.Parse_General     import read_lines_file
+from .Parse_QE_outputs import *
 
 class qe_output(object):
     def __init__(self, lines: list, computation: object=None):

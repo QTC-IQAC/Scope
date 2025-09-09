@@ -4,16 +4,16 @@ import os
 import numpy as np
 import pickle
 from collections import Counter
-#from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
 
-from Scope.Elementdata import ElementData
-from Scope.Other import get_metal_idxs
-from Scope.Classes_State import find_state
-from Scope.Classes_Environment import set_user, set_cluster
+from Scope_New.Other               import get_metal_idxs
+from Scope_New.Classes_State       import find_state
+from Scope_New.Classes_Environment import set_user
+from Scope_New.Elementdata         import ElementData
+elemdatabase = ElementData()
 
 #######################
 def gen_G16_input(comp, debug: int=0):
-    gmol = comp._job._recipe.subject
+    gmol = comp._job._recipe.source
     
     ## 1-Change some variable names to simplify calls
     jobtype = comp.qc_data.jobtype
@@ -86,66 +86,33 @@ def gen_G16_input(comp, debug: int=0):
         print("", file=inp) 
 
 ###################################################
-def gen_G16_subfile(comp: object, queue: object, procs: int=1, savechk: bool=False):
-    ## savechk must be tested
+def gen_G16_subfile(comp: object, queue: object, module: str, procs: int=1, savechk: bool=False):
    
-    if    procs*float(1.5) >= float(8): mem=int(procs*1.5)
-    else:                               mem=int(4)
+    if    procs*float(1.5) >= float(8): mem=int(procs*1.5)   ## Estimates the available memory as 1.5 GB per CPU
+    else:                               mem=int(4)           ## With a minimum of 4GB
 
-    cluster = queue._environment.cluster
-    user    = queue._environment.user
-    storage = queue._environment.storage_path
+    with open(comp.sub_path, 'w+') as sub:
+        print(f"#!/bin/bash", file=sub)
+        print(f"#SBATCH -J {comp.name}", file=sub)
+        print(f"#SBATCH -e {comp.name}.stderr", file=sub)
+        print(f"#SBATCH -o {comp.name}.stdout", file=sub)
+        print(f"#SBATCH -p {queue.name}", file=sub)
+        print(f"#SBATCH --nodes=1", file=sub)
+        print(f"#SBATCH --ntasks={procs}", file=sub)
+        print(f"#SBATCH --time={queue.time_limit_plain}", file=sub)
+        print(f"", file=sub)
+        print(f"module load gaussian/16c2", file=sub)
+        print(f"", file=sub)
+        print(f"JOBDIR=$PWD", file=sub)
+        print(f"cd $TMPDIR", file=sub)
+        print(f"export GAUSS_SCRDIR $TMPDIR", file=sub)
+        print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
+        print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
+        print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
+        print(f"cat tmp1 {comp.inp_name} > tmp2 | mv -f tmp2 {comp.inp_name}", file=sub)
+        print(f"g16 < {comp.inp_name} > {comp.out_name}", file=sub)
+        print(f"cp -pr *.log $JOBDIR/", file=sub)
+        if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)  ## This option must be tested
+        os.chmod(comp.sub_path, 0o777)                       
 
-    if cluster == "csuc2" or cluster == "csuc3":
-        with open(comp.sub_path, 'w+') as sub:
-            print(f"#!/bin/bash", file=sub)
-            print(f"#SBATCH -J {comp.name}", file=sub)
-            print(f"#SBATCH -e {storage}/std_files/{comp.name}.stderr", file=sub)
-            print(f"#SBATCH -o {storage}/std_files/{comp.name}.stdout", file=sub)
-            print(f"#SBATCH -p {queue.name}", file=sub)
-            print(f"#SBATCH --nodes=1", file=sub)
-            print(f"#SBATCH --ntasks={procs}", file=sub)
-            print(f"#SBATCH --time={queue.time_limit_plain}", file=sub)
-            print(f"", file=sub)
-            print(f"module load gaussian/16c2", file=sub)
-            print(f"", file=sub)
-            print(f"JOBDIR=$PWD", file=sub)
-            print(f"cd $TMPDIR", file=sub)
-            print(f"export GAUSS_SCRDIR $TMPDIR", file=sub)
-            print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
-            print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
-            print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
-            print(f"cat tmp1 {comp.inp_name} > tmp2 | mv -f tmp2 {comp.inp_name}", file=sub)
-            print(f"g16 < {comp.inp_name} > {comp.out_name}", file=sub)
-            print(f"cp -pr *.log $JOBDIR/", file=sub)
-            if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)
-            os.chmod(comp.sub_path, 0o777)
-
-    elif cluster == 'portal':
-        with open(comp.sub_path, 'w+') as sub:
-            print(f"#!/bin/bash", file=sub)
-            print(f"#$ -N {comp.name}", file=sub) 
-            print(f"#$ -pe smp {procs}", file=sub)
-            print(f"#$ -cwd", file=sub)
-            print(f"#$ -o /home/{user}/x-stds/{comp.name}.stdout", file=sub)
-            print(f"#$ -e /home/{user}/x-stds/{comp.name}.stderr", file=sub)
-            print(f"#$ -q {queue.name}" , file=sub)
-            print(f"", file=sub)
-            print(f"source /etc/profile.d/modules.csh", file=sub)
-            print(f"source $HOME/.bashrc", file=sub)
-            print(f". /etc/profile", file=sub)
-            print(f"module load gaussian/g16b01", file=sub)
-            print(f"", file=sub)
-            print(f"WORKDIR=$PWD", file=sub)
-            print(f"cd $TMPDIR", file=sub)
-            print(f"export GAUSS_SCRDIR $TMPDIR", file=sub)
-            print(f"cp $WORKDIR/{comp.inp_name} .", file=sub)
-            print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
-            print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
-            print(f"cat tmp1 {comp.inp_name} > tmp2 | mv -f tmp2 {comp.inp_name}", file=sub)
-            print(f"g16 < {comp.inp_name} > {comp.out_name}", file=sub)
-            print(f"cp -pr *.log $WORKDIR", file=sub)
-            if savechk: print(f"cp -pr *.chk $WORKDIR", file=sub)
-            os.chmod(comp.sub_path, 0o777)
-        
 ###################################################

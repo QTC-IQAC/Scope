@@ -1,7 +1,6 @@
 from copy import deepcopy
 import os
 from datetime import datetime
-
 from ..Classes_Spin                                 import *
 from ..Classes_Environment                          import * 
 from ..Register_Data                                import reg_general, reg_optimization, reg_frequencies, reg_energy
@@ -251,13 +250,11 @@ class computation(object):
     def add_submission_init(self, nprocs: int, queue: object) -> None:
         self.nprocs                = nprocs
         self.submission_queue      = queue.name
-        self.submission_cluster    = queue._environment.cluster
         self.submission_user       = queue._environment.user
         ## self.job_id is retrieved in self.submit
 
-    def add_registration_data(self, cluster: str=set_cluster(), user: str=set_user()) -> None:
+    def add_registration_data(self, user: str=set_user()) -> None:
         self.registration_time     = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        self.registration_cluster  = cluster
         self.registration_user     = user
             
     ###################################
@@ -319,7 +316,6 @@ class computation(object):
         if options.want_submit:
             askqueue = environment.get_best_queue(debug=debug)
             askprocs = environment.requested_procs 
-            #askqueue, askprocs = get_queue_and_procs(environment=environment)
             ## 1.1-Adds Resources
             self.add_submission_init(nprocs=askprocs, queue=askqueue)
             ## 1.2-Creates Files
@@ -328,11 +324,8 @@ class computation(object):
                 if self.software == 'g16':  gen_G16_input(self, debug=0)
                 elif self.software == 'qe': gen_QE_input(self, environment, debug=0)
             if not self.subfile_exists or options.overwrite_inputs:
-                if self.software == 'g16':  gen_G16_subfile(self, queue=askqueue, procs=askprocs)
-                elif self.software == 'qe': 
-                    print(f"here with {self.qc_data=}")
-                    if hasattr(self.qc_data,"version"): gen_QE_subfile(self, queue=askqueue, procs=askprocs, version=self.qc_data.version)
-                    else:                               gen_QE_subfile(self, queue=askqueue, procs=askprocs)
+                if self.software == 'g16':  gen_G16_subfile(self, queue=askqueue, module=environment.g16_module, procs=askprocs, savechk=False)
+                elif self.software == 'qe': gen_QE_subfile(self, queue=askqueue, module=environment.qe_module, procs=askprocs)
 
         ## 2-If output exists, prompts for registration
         if self.output_exists and not self.isregistered:
@@ -393,8 +386,6 @@ class computation(object):
             worked = reg_optimization(self, debug=debug)
         elif 'freq' in self._job.keyword: 
             worked = reg_frequencies(self, witheigen=False, debug=debug)
-        #else: 
-        #    worked = True
 
         ## 4-Wraps Up
         if worked:
@@ -404,9 +395,6 @@ class computation(object):
             self.delete_output()  ## Output Object too, since it also stores output lines
         else: 
             print(f"COMP.REGISTER: Registration didn't work for: {self.out_path}")
-
-        ### 5-Deletes Job_Id from queue pending
-        #if hasattr(self,"job_id") and hasattr(self,"submission_queue"):
 
         return worked
 
