@@ -63,23 +63,28 @@ class system(object):
         save_binary(self, filepath)
 
     ######
-    def find_source(self, name: str):
+    def find_source(self, name: str, debug: int=0):
+        if debug > 0: 
+            print(f"FIND_SOURCE. Searching for source with {name} in system with {len(self.sources)} sources:")
+            for sour in self.sources:
+                print(f"    {sour.name} {sour.type}")
         if len(self.sources) == 0: return False, None
         for sour in self.sources:
             if sour.name.lower() == name.lower(): return True, sour 
         return False, None
 
     ######
-    def add_source(self, new_source: object, overwrite: bool=False, debug: int=0):
+    def add_source(self, name: str, new_source: object, overwrite: bool=False, debug: int=0):
         ## Links the system to the source
         new_source._sys = self
         ## Search if source with the same name already exists
-        found, source = self.find_source(new_source.name)
+        found, source = self.find_source(name, debug=debug)
         ## If not, it is added
-        if not found: self.sources.append(new_source)
+        if not found: 
+            self.sources.append(new_source)
         ## If it exists, it is overwritten if specified 
         elif overwrite: 
-            self.sources = [s for s in self.sources if s.name.lower() != new_source.name.lower()]
+            self.sources = [s for s in self.sources if s.name.lower() != name.lower()]
             self.sources.append(new_source)
         else: 
             print(f"ADD_SOURCE: Source with name {new_source.name} already exists in system") 

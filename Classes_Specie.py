@@ -14,7 +14,7 @@ elemdatabase = ElementData()
 ### SPECIE ###
 ##############
 class specie(object):
-    def __init__(self, name: str, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
+    def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
 
        # Sanity Checks
         assert len(labels) == len(coord)
@@ -30,7 +30,6 @@ class specie(object):
         self.type                 = "specie"
         self.subtype              = "specie"
         self.origin               = "created"
-        self.name                 = name
         self.labels               = labels
         self.coord                = coord
         self.formula              = labels2formula(labels)
@@ -77,6 +76,7 @@ class specie(object):
 
     ######
     def save(self, filepath):
+        from .Read_Write import save_binary
         save_binary(self, filepath)
 
     ######
@@ -283,7 +283,7 @@ class specie(object):
         ## Creats bond objects using the information contained in the RDKit object
         ## The RDKit object is necessary, as it is the only one that contains the bond order information (lewis structure)
         if not hasattr(self,"rdkit_obj"): 
-            print(f"SPECIE.SET_BONDS: Can't set bonds, specie has not an rdkit_object")
+            if debug > 0: print(f"SPECIE.SET_BONDS: Can't set bonds, specie lacks an rdkit_object: {self.formula}")
             return False
         natoms_rdkit = self.rdkit_obj.GetNumAtoms() 
         if debug >= 1: print(f"SPECIE.SET_BONDS: {self.formula=}, {self.subtype=} {self.smiles=}")
@@ -332,7 +332,7 @@ class specie(object):
             if debug >= 1: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are different: {self.natoms} {natoms_rdkit}")
             if debug >= 2: print(f"\t{[(i, atom.label) for i, atom in enumerate(self.atoms)]}")
             if debug >= 2: print(f"\t{[(i, atom.GetSymbol()) for i, atom in enumerate(self.rdkit_obj.GetAtoms())]}")       
-            non_bonded_atoms = list(range(0, natoms_rdkit))[natoms:]
+            non_bonded_atoms = list(range(0, natoms_rdkit))[self.natoms:]
             if debug >= 2: print(f"\tNON_BONDED_ATOMS", non_bonded_atoms)
 
             for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
@@ -1129,14 +1129,14 @@ class ligand(specie):
         # Fixes Added atoms # 
         #####################
         natoms_rdkit = mol.GetNumAtoms() 
-        if natoms_rdkit > natoms:
+        if natoms_rdkit > self.natoms:
             if debug > 0: print(f"Fixing_Added_Atoms: {self.natoms=} {natoms_rdkit=}")
             rw_mol = Chem.RWMol(mol)
             to_remove = []
             for a in rw_mol.GetAtoms():
                 i    = a.GetIdx()
                 neig = a.GetNeighbors()
-                if i > natoms-1:
+                if i > self.natoms-1:
                     label = a.GetSymbol()
                     if debug > 0: print(f"FIX_RDKIT: Atom {i=} {label=} flagged for removal")
                     to_remove.append(i)

@@ -67,11 +67,10 @@ class state(object):
     """
     def __init__(self, _source: object, name: str, debug: int=0):
         self.type         = "state"
-        self._source     = _source
+        self._source      = _source
         self.name         = name
         self.results      = dict()
         self.computations = []
-        self._source.add_state(self)
 
 ############################################
 #### Basic Functions to add information ####
@@ -565,4 +564,3 @@ def find_state(source: object, search_name: str, debug: int=0):
         if not found: 
             if debug >= 1: print(f"FIND STATE: state {search_name} not found")
             return False, None
-
