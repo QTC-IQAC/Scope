@@ -271,12 +271,10 @@ class environment(object):
 
     def save(self, filepath=None):
         from .Read_Write import save_binary
-        if filepath is None and hasattr(self,"filepath"):            pass
-        elif filepath is not None and hasattr(self,"filepath"):      self.filepath = filepath
-        elif filepath is not None and not hasattr(self,"filepath"):  self.filepath = filepath
-        elif filepath is None and not hasattr(self,"filepath"): 
-            print("ENVIRONMENT.SAVE: please re-run and provide filepath")
-            return None
+        if      filepath is None and hasattr(self,"filepath"):          pass
+        elif    filepath is not None and hasattr(self,"filepath"):      self.filepath = filepath
+        elif    filepath is not None and not hasattr(self,"filepath"):  self.filepath = filepath
+        else:   self.filepath = os.path.abspath(str(f"./scope_env_{self.name}.npy"))
         save_binary(self, self.filepath)
 
 #####################################
@@ -714,9 +712,9 @@ class environment(object):
             print("Please introduce the modules that should be called for these two codes")
             print("Alternatively, modify the functions gen_QE_subfile and gen_G16_subfile to your liking")
             print("-------------------------------------------------------------------------------------")
-            message = "introduce the module to run GAUSSIAN16 in this cluster"
+            message = "Please, introduce the module to run GAUSSIAN16 in this cluster (Skip if G16 is not available):"
             self.g16_module = read_user_input(message=message, rtext=False)
-            message = "Now introduce the module to run QUANTUM ESPRESSO in this cluster"
+            message = "Now introduce the module to run QUANTUM ESPRESSO in this cluster (Skip if QE is not available):"
             self.qe_module = read_user_input(message=message, rtext=False)
 
 ########################
