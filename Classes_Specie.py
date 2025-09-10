@@ -467,18 +467,49 @@ class specie(object):
         else:                  self.isfragmented = False
         return self.isfragmented
 
+    #########################################
+    ### Functions to Interact with States ###
+    #########################################
+    def add_state(self, name: object, debug: int=0):
+        from .Classes_State import state
+        if not hasattr(self,"states"): setattr(self,"states",list([]))
+        exists, new_state = self.find_state(name)
+        if exists:  
+            if debug > 0: print(f"SPECIE.ADD_STATE. State with same {name=} found, returning it")
+            return new_state
+        else:
+            if debug > 0: print("SPECIE.ADD_STATE. Creating new state, returning it")
+            new_state = state(self, name, debug=debug)
+            self.states.append(new_state)
+        return new_state
+
     ######
-    def print_xyz(self):
-        print(self.natoms)
-        print("")
-        for idx, l in enumerate(self.labels):
-            print("%s  %.6f  %.6f  %.6f" % (l, self.coord[idx][0], self.coord[idx][1], self.coord[idx][2]))
+    def find_state(self, search_name: str, debug: int=0):
+        from .Classes_State import state
+        if not hasattr(self,"states"): setattr(self,"states",list([]))
+        if debug > 0: print(f"SPECIE.FIND_STATE: Searching {search_name} in SPECIE object with {len(self.states)} states")
+        for sta in self.states:
+            if debug > 0: print(f"SPECIE.FIND_STATE: Comparing {search_name} with {sta.name}")
+            if sta.name == search_name: 
+                if debug > 0: print(f"SPECIE.FIND_STATE: state {search_name} found")
+                return True, sta
+        if debug > 0: print(f"SPECIE.FIND_STATE: state {search_name} not found")
+        return False, None
 
     ######
     def rmsd(self, other, reorder=True, center_method='centroid', debug: int=0):
         from .Other import rmsd
         value = rmsd(self.labels, self.coord, other.labels, other.coord, reorder=reorder, center_method=center_method, debug=debug)   
         return value
+
+    ###################################
+    ### Functions to print/visualize ##
+    ###################################
+    def print_xyz(self):
+        print(self.natoms)
+        print("")
+        for idx, l in enumerate(self.labels):
+            print("%s  %.6f  %.6f  %.6f" % (l, self.coord[idx][0], self.coord[idx][1], self.coord[idx][2]))
 
     ######
     def view(self, show_indices: bool=False, size: str='default'):
@@ -516,6 +547,9 @@ class specie(object):
         set_scene(fig, positions, width=width, height=height)
         fig.show()
 
+    ###########################
+    ### Other Dunder Methods ##
+    ###########################
     def __add__(self, other):
         ## To be implemented
         if not isinstance(other, type(self)): return self
@@ -670,10 +704,17 @@ class molecule(specie):
         
     ######
     def fix_ligands_rdkit_obj(self, debug: int=0):
+        if debug > 0 and self.iscomplex:
+            print(f"SPECIE.FIX_LIGANDS_RDKIT_OBJ. Fixing specie {self.formula}")
+            print(f"    With ligand formula and smiles:")
+            for lig in self.ligands:
+                print(f"        {lig.formula} {lig.smiles}")
         if self.iscomplex and not hasattr(self,"ligands"): self.split_complex(debug=debug)
         if not self.iscomplex: return self.smiles
         self.smiles = []
         for lig in self.ligands:
+            if not hasattr(lig,"smiles"): 
+                raise ValueError(self, lig) 
             lig.fix_rdkit_obj(debug=debug)
             lig.set_smiles_from_rdkit_obj(debug=debug) 
             self.smiles.append(lig.smiles)
@@ -1574,11 +1615,6 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
         new_molec.metals = []
         for at in new_molec.atoms:
             if at.subtype == "metal": new_molec.metals.append(at)
-        #for met in mol.metalist: 
-        #    new_atom = import_atom(met, parent=new_molec, debug=debug)
-        #    new_atom.origin = "import_molecule"
-        #    new_molec.metals.append(new_atom)
-        #    if debug > 0: print(f"-------")
 
     ## Charges
     if hasattr(mol,"totcharge") and hasattr(mol,"atcharge"):
@@ -1634,7 +1670,8 @@ def import_ligand(lig: object, parent: object=None, debug: int=0) -> object:
     ## Smiles
     if   hasattr(lig,"Smiles"): new_ligand.smiles = lig.Smiles
     elif hasattr(lig,"smiles"): new_ligand.smiles = lig.smiles     
-    elif debug > 0: print(f"IMPORT LIGAND: SMILES could not be imported")
+    else:
+        if debug > 0: print(f"IMPORT LIGAND: SMILES could not be imported")
 
     ## Rdkit Object
     if hasattr(lig,"object"): 

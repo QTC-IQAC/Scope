@@ -4,7 +4,6 @@
 
 import numpy as np
 from .Connectivity import *
-from .Classes_Specie import *
 from .Elementdata import ElementData
 elemdatabase = ElementData()
 
@@ -313,11 +312,41 @@ class cell(object):
         set_scene(fig, positions, width=width, height=height)
         fig.show()
 
+    #########################################
+    ### Functions to Interact with States ###
+    #########################################
+    def add_state(self, name: object, debug: int=0):
+        from .Classes_State import state
+        if not hasattr(self,"states"): setattr(self,"states",list([]))
+        exists, new_state = self.find_state(name)
+        if exists:  
+            if debug > 0: print(f"CELL.ADD_STATE. State with same {name=} found, returning it")
+            return new_state
+        else:
+            if debug > 0: print("CELL.ADD_STATE. Creating new state, returning it")
+            new_state = state(self, name, debug=debug)
+            self.states.append(new_state)
+        return new_state
+
+    ######
+    def find_state(self, search_name: str, debug: int=0):
+        from .Classes_State import state
+        if not hasattr(self,"states"): setattr(self,"states",list([]))
+        if debug > 0: print(f"CELL.FIND_STATE: Searching {search_name} in Cell object with {len(self.states)} states")
+        for sta in self.states:
+            if debug > 0: print(f"CELL.FIND_STATE: Comparing {search_name} with {sta.name}")
+            if sta.name == search_name: 
+                if debug > 0: print(f"CELL.FIND_STATE: state {search_name} found")
+                return True, sta
+        if debug > 0: print(f"CELL.FIND_STATE: state {search_name} not found")
+        return False, None
+
 ######################
 ####    IMPORT    ####
 ######################
 def import_cell(old_cell: object, debug: int=0) -> object:
-    from Scope_New.Unit_cell_tools import cellvec_2_cellparam, cart2frac 
+    from .Unit_cell_tools import cellvec_2_cellparam, cart2frac 
+    from .Classes_Specie  import import_molecule
     assert hasattr(old_cell,"labels") 
     assert hasattr(old_cell,"coord") or hasattr(old_cell,"pos")
     assert hasattr(old_cell,"cellvec") or hasattr(old_cell,"cell_vector")
@@ -350,6 +379,8 @@ def import_cell(old_cell: object, debug: int=0) -> object:
     moleclist = []
     for mol in old_cell.moleclist: 
         new_mol = import_molecule(mol, parent=new_cell, debug=debug)
+        new_mol.set_bonds()
+        new_mol.fix_ligands_rdkit_obj(debug=debug)
         moleclist.append(new_mol)
     new_cell.set_moleclist(moleclist)
     new_cell.fix_cell_coord()    ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell. 

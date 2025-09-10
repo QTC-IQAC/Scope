@@ -101,7 +101,9 @@ def get_unpaired_elec(label, spin):
 def get_spin_config(gmol: object, metal_spins, debug: int=0):
 
     #assert hasattr(gmol,"gmolparam"), f"GET_SPIN_CONFIG got object without gmol parameters. Assuming it is not a gmol"
-    if debug >= 1: print("GET_SPIN_CONFIG: Received metal_spins", metal_spins)
+    if debug >= 1: print(f"GET_SPIN_CONFIG: Preparing Spin Configuration for Computation")
+    if debug >= 1: print(f"GET_SPIN_CONFIG: Involving source: {gmol.formula}")
+    if debug >= 1: print(f"GET_SPIN_CONFIG: Received metal_spins", metal_spins)
     assert hasattr(gmol,"labels"), f"GET_SPIN_CONFIG got object without labels"
 
     #########################

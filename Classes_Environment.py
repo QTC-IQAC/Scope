@@ -85,7 +85,7 @@ class environment(object):
         Args:
             debug (int, optional): Debug level (currently unused). Defaults to 0.
         Returns:
-            str: The detected management type ("sge", "slurm", or "None").
+            str: The detected management type ("sge", "slurm", or "local" if none is detected).
         """
         ### Sun Grid Engine, SGE ###
         worked_sge = False
@@ -512,7 +512,7 @@ class environment(object):
     def check_submitted(self, job_name: str, debug: int=0):
         if not hasattr(self,"command_check_job"): self.set_commands()
         if not hasattr(self,"management_type"):   self.set_management_type()
-        if self.management_type == "None": return False 
+        if self.management_type == "local": return False 
 
         raw  = subprocess.check_output(['bash','-c', self.command_check_job])
         dec  = raw.decode("utf-8")

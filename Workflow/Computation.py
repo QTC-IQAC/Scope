@@ -26,7 +26,8 @@ class computation(object):
         self.is_update        = is_update
         self.run_number       = self.set_run_number() 
         self.states           = []
-        self.name             = _job._recipe.source._sys.name  ## Just to simplify calling this variable 
+        self.source           = _job._recipe.source      ## Just to simplify calling this variable 
+        self.sys_name         = self.source._sys.name    ## Just to simplify calling this variable 
 
         ############
         ### SPIN ###
@@ -66,12 +67,11 @@ class computation(object):
         return new_filename
 
     def set_filename(self, use_name: bool=True, use_suffix: bool=True, use_step: bool=False, use_run_number: bool=True, use_spin: bool=True, debug: int=0):
-
         ### Here is the convention I'm using to name files. It is better not to change once computations have been submitted
         ### Uses a filename-class object, as defined below, defined as a sum of items
         if not hasattr(self,"run_number"): self.set_run_number() 
         self.filename = filename()   ## Class defined at the end of this file
-        if use_name:           new_item = filename_item("name",       self.name);           self.filename.add_item(new_item)
+        if use_name:           new_item = filename_item("name",       self.sys_name);       self.filename.add_item(new_item)
         if use_suffix:         new_item = filename_item("suffix",     self._job.suffix);    self.filename.add_item(new_item)
         if use_step:           # Only step=2 and above are printed in name 
             new_item = filename_item("step",       self.step,'s')

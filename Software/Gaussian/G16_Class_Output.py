@@ -1,6 +1,6 @@
 import Scope_New.Constants 
 from   Scope_New.Parse_General import search_string, read_lines_file
-from . import Parse_G16_outputs 
+from .Parse_G16_outputs import * 
 
 class g16_output(object):
     def __init__(self, lines: list, computation: object=None):

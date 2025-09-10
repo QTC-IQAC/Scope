@@ -548,19 +548,16 @@ class state(object):
                 to_print += f'    {idx}: {m.formula} \n'
         return to_print
 
-#########################################################################
-## Tools associated with states. Normally, these would be class (i.e. molecule) functions...
-#########################################################################
+##############################################################################
+## Generic Find_State Function. There are specific CELL and SPECIE class functions ### 
+##############################################################################
 def find_state(source: object, search_name: str, debug: int=0):
     if debug >= 1: print("FIND_STATE: enters",search_name," with", len(source.states),"states in source")
     if not hasattr(source,"states"): return False, None
     else: 
-        found = False
         for idx, sta in enumerate(source.states):
             if sta.name == search_name: 
-                found = True
                 if debug >= 1: print(f"FIND STATE: state {search_name} found")
                 return True, sta
-        if not found: 
-            if debug >= 1: print(f"FIND STATE: state {search_name} not found")
-            return False, None
+        if debug >= 1: print(f"FIND STATE: state {search_name} not found")
+        return False, None

@@ -161,9 +161,9 @@ class sco_system(system):
         self.add_source(ls.name, ls)
 
         # Creates Initial States:
-        hs_ini_state = state(hs, "initial")
+        hs_ini_state = hs.add_state("initial")
         hs_ini_state.set_geometry(hs.labels, hs.coord)
-        ls_ini_state = state(ls, "initial")
+        ls_ini_state = ls.add_state("initial")
         ls_ini_state.set_geometry(ls.labels, ls.coord)
 
         return True
@@ -241,12 +241,12 @@ class sco_system(system):
         if hs.natoms != ls.natoms: print(f"Warning: different number of atoms in crystal; HS: {hs.natoms} vs. LS: {ls.natom}")
 
         # Creates "initial" states:
-        hs_ini_state = state(hs, "initial")
+        hs_ini_state = hs.add_state("initial")
         hs_ini_state.set_geometry(hs.labels, hs.coord)
         hs_ini_state.set_cell(hs.cell_vector, hs.cell_param)
         hs_ini_state.get_moleclist()
         
-        ls_ini_state = state(ls, "initial")
+        ls_ini_state = ls.add_state("initial")
         ls_ini_state.set_geometry(ls.labels, ls.coord)
         ls_ini_state.set_cell(ls.cell_vector, ls.cell_param)
         ls_ini_state.get_moleclist()

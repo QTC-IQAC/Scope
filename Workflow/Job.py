@@ -35,19 +35,18 @@ class job(object):
         ## Corrects self.setup in case the user forgets to change
         if self.keyword == 'findiff' or self.keyword == 'findif': self.setup == 'findiff'
         
-    def check_qc_data(self, job_path: str, debug: int=0):
-        from Scope.Classes_Input import set_job_data, set_qc_data
-        ## job_data is for JOB
-        print(f"CHECK_QC_DATA: reading job_data from path: {job_path}")
+    def check_job_data(self, job_path: str, debug: int=0):
+        from Scope_New.Classes_Input import set_job_data, set_qc_data
+        if debug > 0: print(f"CHECK_JOB_DATA: reading job_data from path: {job_path}")
         new_job_data    = set_job_data(job_path, section="&job_data" , debug=0)
         old_job_data    = self.job_data 
         if new_job_data != old_job_data: 
-            print(f"CHECK_QC_DATA: identified changes in job_data for job.keyword={self.keyword}")
+            print(f"CHECK_JOB_DATA: identified changes in job_data for job.keyword={self.keyword}")
             self.update_job_data(old_job_data, new_job_data) 
-            #new_qc_data    = set_qc_data(job_path, section="&qc_data" , debug=0)
             for comp in self.computations:
                 comp.check_qc_data(job_path=job_path, debug=debug)
             return True
+        if debug > 0: print(f"CHECK_JOB_DATA: no changes in job_data")
         return False
 
     def update_job_data(self, old_job_data, new_job_data, debug: int=0):

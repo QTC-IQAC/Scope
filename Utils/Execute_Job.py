@@ -132,7 +132,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
         if not exists: this_job = recipe.add_job(job_data); updated = True
 
         ## 5.2 If job exists, it checks for input changes (also in qc_data for the computations)
-        if exists: this_job.check_qc_data(job_path=job_path, debug=debug)
+        if exists: this_job.check_job_data(job_path=job_path, debug=debug)
 
         if debug > 1: print("---------------------------------------------------")
         if debug > 1: print(f"EXECUTE_JOB, step 5: job {this_job.keyword} loaded")
@@ -280,7 +280,7 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
     #recipe.register(debug=0)
     this_branch.register(debug=0)
 
-    if updated: print("saving binary"); save_binary(sys, sys_path)
+    if updated: print("Saving System"); sys.save()
     return report
 
 
