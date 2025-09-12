@@ -439,7 +439,7 @@ class environment(object):
         self.user_running_cpus = 0
         self.user_running_jobs = 0
         if len(self.available_queues) == 0: 
-            print("CHECK_USER_RUNNING: please set available queues first by running the method 'set_queues'") 
+            print("ENV.CHECK_USER_RUNNING: please set available queues first by running the method 'set_queues'") 
             return None
 
         ## Method 1 - Queue by Queue
@@ -557,16 +557,16 @@ class environment(object):
         if not hasattr(self,"mqueues"):   self.get_mqueues()
 
         suggested_names = list(q.name for q in self.mqueues if q.available)
-        print(f"Setting Queues For Environment")
+        print(f"\tSetting Queues For Environment")
 
         if len(suggested_names) > 0: 
-            print(f"-------------------------------------------------")
-            print(f"         The following Queues were found:        ")
-            print(f"-------------------------------------------------")
+            print(f"\t-------------------------------------------------")
+            print(f"\t         The following Queues were found:        ")
+            print(f"\t-------------------------------------------------")
             for n in suggested_names:
-                print(n)
-            print(f"-------------------------------------------------")
-            message = "Do you want to keep ALL suggested Queues? Y/N "
+                print(f"\t{n}")
+            print(f"\t-------------------------------------------------")
+            message = "\tDo you want to keep ALL suggested Queues? Y/N "
             print(" ")
             keep = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"]) 
 
@@ -577,7 +577,7 @@ class environment(object):
             elif keep == "N" or keep == 'n':      
                 verify = True
                 user_q = []
-                message = "Write the Queues/Partitions that will be available to SCOPE. Write them one by one: Enter to Stop  "
+                message = "\tWrite the Queues/Partitions that will be available to SCOPE. Write them one by one: Enter to Stop  "
                 finished = False
                 while not finished: 
                     tmp = read_user_input(message=message, rtype=True, rtype_options=[str]) 
@@ -591,7 +591,7 @@ class environment(object):
         elif len(suggested_names) == 0: 
             verify = True
             user_q = []
-            message = "Write the Queues/Partitions that will be available to SCOPE. Write them one by one: Enter to Stop  "
+            message = "\tWrite the Queues/Partitions that will be available to SCOPE. Write them one by one: Enter to Stop  "
             finished = False
             while not finished: 
                 tmp = read_user_input(message=message, rtype=True, rtype_options=[str]) 
@@ -603,11 +603,11 @@ class environment(object):
                             
         if len(user_q) > 0 and verify:
             print(f" ")
-            print(f"The Interpreted Queues are:") #{','.join(user_q)}")
+            print(f"\tThe Interpreted Queues are:") #{','.join(user_q)}")
             for q in user_q:
-                print(f"{q}")
+                print(f"\t{q}")
             
-            message = "Is that correct? Y/N "
+            message = f"\tIs that correct? Y/N"
             tmp = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"]) 
 
             if tmp == "Y" or tmp == 'y':      correct = True
@@ -641,21 +641,22 @@ class environment(object):
         ## Queue Priority ##
         ####################
         if correct and len(self.available_queues) > 0:
-            print(" ")
-            print(f"---------------------------------------------------------------------------------------- ")
-            print("Do you want to set manual priorities for the queues?                                      ")
-            print("If so, the value you introduce will weight the ratio of free-CPU/total-CPU among queues   ")
-            print("Otherwise, all queues will be valued equally, and will be chosen based on the above ratio ")
-            print(f"---------------------------------------------------------------------------------------- ")
+            print("")
+            print(f"\t---------------------------------------------------------------------------------------- ")
+            print(f"\tDo you want to set manual priorities for the queues?                                      ")
+            print(f"\tYES: the value you introduce will weight the ratio of free-CPU/total-CPU among queues")
+            print(f"\t     so Occupancy will still determine the best queue")
+            print(f"\tNO:  all queues will be valued equally, and will be chosen based on the above ratio ")
+            print(f"\t---------------------------------------------------------------------------------------- ")
             print(" ")
 
-            message = " Y/N "
+            message = "\tY/N"
             prio = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"]) 
 
             if prio == "Y" or prio == "y":
-                print("Setting Priorities. Please type integer or float")
+                print("\tSetting Priorities. Please type integer or float")
                 for q in self.available_queues:
-                    message = f"Set priority for queue={q.name}: "
+                    message = f"\tSet priority for queue={q.name}: "
                     q_prio = read_user_input(message=message, rtype=True, rtype_options=[int, float], debug=0) 
                     q.set_priority(prio=q_prio)
             elif prio == "N" or prio == "n":
@@ -671,7 +672,7 @@ class environment(object):
         readline.set_completer_delims(' \t\n;')
         readline.parse_and_bind("tab: complete")
         readline.set_completer(complete_path)
-        self.storage_path = os.path.abspath(str(input("Please specify path of storage folder (with autocomplete): ")))
+        self.storage_path = os.path.abspath(str(input("\tPlease specify path of storage folder (with autocomplete): ")))
         if not self.storage_path.endswith("/"):
             self.storage_path += "/"
         return self.storage_path
@@ -685,7 +686,7 @@ class environment(object):
         readline.set_completer_delims(' \t\n;')
         readline.parse_and_bind("tab: complete")
         readline.set_completer(complete_path)
-        self.scope_program = os.path.abspath(str(input("Please Specify Main Scope Folder (with autocomplete):")))
+        self.scope_program = os.path.abspath(str(input("\tPlease Specify Main Scope Folder (with autocomplete):")))
         if self.scope_program[-1] != '/': self.scope_program += '/'
         return self.scope_program
 
@@ -702,9 +703,9 @@ class environment(object):
         readline.set_completer_delims(' \t\n;')
         readline.parse_and_bind("tab: complete")
         readline.set_completer(complete_path)
-        self.sources_path   = os.path.abspath(str(input("Please Specify Sources Path (with autocomplete): ")))
-        self.calcs_path     = os.path.abspath(str(input("Please Specify Calculations Path (with autocomplete): ")))
-        self.sys_path       = os.path.abspath(str(input("Please Specify Systems Path (with autocomplete): ")))
+        self.sources_path   = os.path.abspath(str(input("\tPlease Specify Sources Path (with autocomplete): ")))
+        self.calcs_path     = os.path.abspath(str(input("\tPlease Specify Calculations Path (with autocomplete): ")))
+        self.sys_path       = os.path.abspath(str(input("\tPlease Specify Systems Path (with autocomplete): ")))
         if self.sources_path[-1]    != '/': self.sources_path  += '/'
         if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
         if self.sys_path[-1]        != '/': self.sys_path      += '/'
@@ -713,6 +714,7 @@ class environment(object):
         print("\tAdditionally, you can specify: (1) a storage (scratch or data) folder --> Run environment.set_storage_path()")
         print("\t                               (2) the folder where the program is    --> Run environment.set_scope_program()")
         print("\t--------------------------------------------------------------------------------------------------------------")
+        print("")
 
     def check_paths(self, debug: int=0):
         if not hasattr(self,"sources_path"):  self.set_paths()
@@ -741,6 +743,7 @@ class environment(object):
             message = "\tNow introduce the module to run QUANTUM ESPRESSO in this cluster (Skip if QE is not available):"
             self.qe_module = read_user_input(message=message, rtext=False)
             print("-------------------------------------------------------------------------------------")
+            print("")
 
 ########################
 ###  Dunder Methods  ###
@@ -766,12 +769,12 @@ class environment(object):
         if hasattr(self,"filepath"): to_print += f'\t Path of saved file    = {self.filepath}\n'
         if hasattr(self,"available_queues"): 
             to_print += f'\t Number of available queues = {len(self.available_queues)}:\n'
-            for aq in self.available_queues:
-                to_print += f'\t  {aq.name}\n'
-        if hasattr(self,"selected_queues"):  
-            to_print += f'\t Number selected queues = {len(self.selected_queues)}:\n'
-            for sq in self.selected_queues:
-                to_print += f'\t  {sq.name}\n'
+            for idx, aq in enumerate(self.available_queues):
+                to_print += f'\t  {idx}: {aq.name} {aq.time_limit_plain} {len(aq.nodes)} {aq.max_cpu_per_node}\n'
+        #if hasattr(self,"selected_queues"):  
+        #    to_print += f'\t Number selected queues = {len(self.selected_queues)}:\n'
+        #    for idx, sq in enumerate(self.selected_queues):
+        #        to_print += f'\t  {idx}: {sq.name} {sq.time_limit_plain} {len(sq.nodes)} {sq.max_cpu_per_node}\n'
 
         ## Prints the options added as local environment
         if hasattr(self,"added_attr"):
