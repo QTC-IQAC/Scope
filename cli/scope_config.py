@@ -13,10 +13,11 @@ def main():
     env = environment(args.name)
     env.set_paths()
     env.save()
-    env.save_config()
+    config_path = env.save_config()
 
     print("")
     print(f"Environment Created and Saved in {env.filepath}. See details below")
+    print(f"JSON Config File saved in {config_path}")
     print("")
     print(env)
 

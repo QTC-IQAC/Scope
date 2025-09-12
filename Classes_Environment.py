@@ -289,9 +289,9 @@ class environment(object):
         config_dir = user_config_dir("scope")
         config_path = os.path.join(config_dir, f"config_{self.name}.json")
         os.makedirs(config_dir, exist_ok=True)
-        config_dict = {"env_path": self.filepath}
-        print(f"Config File saved in {config_path}")
+        config_dict = {f"{self.name}_env_filepath": self.filepath}
         save_json(config_dict, config_path)
+        return config_path
 
 #####################################
 ###  Connection with Execute_Job  ###
