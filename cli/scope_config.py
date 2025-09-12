@@ -12,9 +12,7 @@ def main():
     env = environment(args.name)
 
     print("")
-    print(f"\tEnvironment {env.name} Created")
-
-    print(f" We will now do the following actions:")
+    print(f"\tEnvironment {env.name} Created. We will now do the following actions:")
     print(f"\t 1) Set Paths for the SOURCE, CALCULATIONS and SYSTEM folders associated with this environment") 
     if self.management_type != "local": 
         print(f"\t 2) Set Software Modules for Quantum Espresso and Gaussian 16")

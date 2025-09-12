@@ -76,11 +76,8 @@ class environment(object):
         self.selected_queues        = [] 
         self.method                 = 'weighted'
 
-        print(" Environment has been created. Now setting some parameters")
-        
         self.set_management_type() 
         self.set_commands()
-        self.set_software()
 
     ######
     def set_management_type(self, debug: int=0):
