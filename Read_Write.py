@@ -57,6 +57,20 @@ def read_user_input(message: str, rtext: bool=False, rtext_options: list=[], rty
         if correct: return opt
         else:       return None
 
+##########
+## JSON ##
+##########
+def save_json(dict, pathfile):
+    import json
+    with open(pathfile, "w") as f:
+        json.dump(dict, f) 
+
+def load_json(pathfile):
+    import json
+    with open(pathfile, "r") as f:
+        dict = json.load(f) 
+    return dict
+
 ##############
 ## Binaries ##
 ##############

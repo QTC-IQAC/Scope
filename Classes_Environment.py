@@ -277,6 +277,22 @@ class environment(object):
         else:   self.filepath = os.path.abspath(str(f"./scope_env_{self.name}.npy"))
         save_binary(self, self.filepath)
 
+    def save_config(self, filepath=None):
+        from platformdirs import user_config_dir
+        from .Read_Write import save_json
+
+        if      filepath is None and hasattr(self,"filepath"):          pass
+        elif    filepath is not None and hasattr(self,"filepath"):      self.filepath = filepath
+        elif    filepath is not None and not hasattr(self,"filepath"):  self.filepath = filepath
+        else:   self.filepath = os.path.abspath(str(f"./scope_env_{self.name}.npy"))
+        
+        config_dir = user_config_dir("scope")
+        config_path = os.path.join(config_dir, f"config_{env.name}.json")
+        os.makedirs(config_dir, exist_ok=True)
+        config_dict = {"env_path": env.filepath}
+        print(f"Config File saved in {config_path}")
+        save_json(config_dict, config_path)
+
 #####################################
 ###  Connection with Execute_Job  ###
 #####################################
