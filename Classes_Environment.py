@@ -290,11 +290,16 @@ class environment(object):
         else:   self.filepath = os.path.abspath(str(f"./scope_env_{self.name}.npy"))
         
         config_dir = user_config_dir("scope")
-        config_path = os.path.join(config_dir, f"config_{self.name}.json")
+        self.config_path = os.path.join(config_dir, f"config_{self.name}.json")
         os.makedirs(config_dir, exist_ok=True)
         config_dict = {f"{self.name}_env_filepath": self.filepath}
-        save_json(config_dict, config_path)
-        return config_path
+        save_json(config_dict, self.config_path)
+        return self.config_path
+
+    def load_config(self):
+        from .Read_Write import load_json
+        config_dict = load_json(self.config_path)
+        return config_dict
 
 #####################################
 ###  Connection with Execute_Job  ###
@@ -685,14 +690,14 @@ class environment(object):
         return self.scope_program
 
     def set_paths(self, debug: int=0):
-        print("--------------------------------------------------------------------------------------------------------------")
-        print("SCOPE connects a list of sources (molecules/cells), with their computations, and analyses")
-        print("The data is stored in system files. Please define the GENERAL paths where these 3 elements will be stored.")
-        print("")
-        print("                          SOURCE <--> COMPUTATION <--> SYSTEM")
-        print("")
-        print("Notice that each system will have its own subfolder inside those paths.")
-        print("--------------------------------------------------------------------------------------------------------------")
+        print("\t--------------------------------------------------------------------------------------------------------------")
+        print("\tSCOPE connects a list of sources (molecules/cells), with their computations, and analyses")
+        print("\tThe data is stored in system files. Please define the GENERAL paths where these 3 elements will be stored.")
+        print("\t")
+        print("\t                          SOURCE <--> COMPUTATION <--> SYSTEM")
+        print("\t")
+        print("\tNotice that each system will have its own subfolder inside those paths.")
+        print("\t--------------------------------------------------------------------------------------------------------------")
 
         readline.set_completer_delims(' \t\n;')
         readline.parse_and_bind("tab: complete")
@@ -704,10 +709,10 @@ class environment(object):
         if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
         if self.sys_path[-1]        != '/': self.sys_path      += '/'
 
-        print("--------------------------------------------------------------------------------------------------------------")
-        print("Additionally, you can specify: (1) a storage (scratch or data) folder --> Run self.set_storage_path()")
-        print("                               (2) the folder where the program is    --> Run self.set_scope_program()")
-        print("--------------------------------------------------------------------------------------------------------------")
+        print("\t--------------------------------------------------------------------------------------------------------------")
+        print("\tAdditionally, you can specify: (1) a storage (scratch or data) folder --> Run environment.set_storage_path()")
+        print("\t                               (2) the folder where the program is    --> Run environment.set_scope_program()")
+        print("\t--------------------------------------------------------------------------------------------------------------")
 
     def check_paths(self, debug: int=0):
         if not hasattr(self,"sources_path"):  self.set_paths()
@@ -726,59 +731,60 @@ class environment(object):
     def set_software(self):
         from .Read_Write import read_user_input
         if self.management_type != "local": 
-            print("-------------------------------------------------------------------------------------")
-            print("SCOPE expects computations to be run with either Gaussian16 or Quantum Espresso")
-            print("Please introduce the modules that should be called for these two codes")
-            print("Alternatively, modify the functions gen_QE_subfile and gen_G16_subfile to your liking")
-            print("-------------------------------------------------------------------------------------")
-            message = "Please, introduce the module to run GAUSSIAN16 in this cluster (Skip if G16 is not available):"
+            print("\t-------------------------------------------------------------------------------------")
+            print("\tSCOPE expects computations to be run with either Gaussian16 or Quantum Espresso")
+            print("\tPlease introduce the modules that should be called for these two codes")
+            print("\tAlternatively, modify the functions gen_QE_subfile and gen_G16_subfile to your liking")
+            print("\t-------------------------------------------------------------------------------------")
+            message = "\tPlease, introduce the module to run GAUSSIAN16 in this cluster (Skip if G16 is not available):"
             self.g16_module = read_user_input(message=message, rtext=False)
-            message = "Now introduce the module to run QUANTUM ESPRESSO in this cluster (Skip if QE is not available):"
+            message = "\tNow introduce the module to run QUANTUM ESPRESSO in this cluster (Skip if QE is not available):"
             self.qe_module = read_user_input(message=message, rtext=False)
+            print("-------------------------------------------------------------------------------------")
 
 ########################
 ###  Dunder Methods  ###
 ########################
     def __repr__(self) -> None:
         to_print  = f'\n'
-        to_print += f'-------------------------------------------------------\n'
-        to_print += f'                  SCOPE Environment \n'
-        to_print += f'-------------------------------------------------------\n'
-        to_print += f' User                  = {self.user}\n'
-        to_print += f' Group                 = {self.group}\n'
+        to_print += f'\t-------------------------------------------------------\n'
+        to_print += f'\t                  SCOPE Environment \n'
+        to_print += f'\t-------------------------------------------------------\n'
+        to_print += f'\t User                  = {self.user}\n'
+        to_print += f'\t Group                 = {self.group}\n'
         to_print += f'\n'
         if hasattr(self,"sources_path"):  
-            to_print += f' Paths:\n'
-            to_print += f'     Sources          = {self.sources_path}\n'
-            to_print += f'     Computations     = {self.calcs_path}\n'
-            to_print += f'     Systems          = {self.sys_path}\n'
-        if hasattr(self,"storage_path"):  to_print += f'     Storage Path     = {self.storage_path}\n'
-        if hasattr(self,"scope_program"): to_print += f'     Scope Program    = {self.scope_program}\n'
+            to_print += f'\tPaths:\n'
+            to_print += f'\t    Sources          = {self.sources_path}\n'
+            to_print += f'\t    Computations     = {self.calcs_path}\n'
+            to_print += f'\t    Systems          = {self.sys_path}\n'
+        if hasattr(self,"storage_path"):  to_print += f'\t    Storage Path     = {self.storage_path}\n'
+        if hasattr(self,"scope_program"): to_print += f'\t    Scope Program    = {self.scope_program}\n'
         to_print += f'\n'
-        to_print += f' Queue Management Type = {self.management_type}\n'
-        if hasattr(self,"method"): to_print += f' Method of Queue Sel   = {self.method}\n'
-        if hasattr(self,"filepath"): to_print += f' Path of saved file    = {self.filepath}\n'
+        to_print += f'\tQueue Management Type = {self.management_type}\n'
+        if hasattr(self,"method"):   to_print += f'\t Method of Queue Sel   = {self.method}\n'
+        if hasattr(self,"filepath"): to_print += f'\t Path of saved file    = {self.filepath}\n'
         if hasattr(self,"available_queues"): 
-            to_print += f' Number of available queues = {len(self.available_queues)}:\n'
+            to_print += f'\t Number of available queues = {len(self.available_queues)}:\n'
             for aq in self.available_queues:
-                to_print += f'    {aq.name}\n'
+                to_print += f'\t  {aq.name}\n'
         if hasattr(self,"selected_queues"):  
-            to_print += f' Number selected queues = {len(self.selected_queues)}:\n'
+            to_print += f'\t Number selected queues = {len(self.selected_queues)}:\n'
             for sq in self.selected_queues:
-                to_print += f'    {sq.name}\n'
+                to_print += f'\t  {sq.name}\n'
 
         ## Prints the options added as local environment
         if hasattr(self,"added_attr"):
             if len(self.added_attr) > 0:  
-                to_print += f'---------------------------------------------------\n'
-                to_print += f' LOCAL ENVIRONMENT OPTIONS ADDED:\n'
-                to_print += f'---------------------------------------------------\n'
+                to_print += f'\t---------------------------------------------------\n'
+                to_print += f'\t LOCAL ENVIRONMENT OPTIONS ADDED:\n'
+                to_print += f'\t---------------------------------------------------\n'
                 string    = 'self.{:15}| {:20}| {:10}\n'
                 to_print += string.format('Key', 'Data Type', 'Value')
                 for key in self.added_attr.keys():
                     val = self.added_attr[key]
-                    to_print += string.format(key, str(type(val)), str(val))
-                to_print += f'---------------------------------------------------\n'
+                    to_print += f"\t{string.format(key, str(type(val)), str(val))}"
+                to_print += f'\t---------------------------------------------------\n'
         return to_print
 
     def _add_attr(self, key: str, value):
