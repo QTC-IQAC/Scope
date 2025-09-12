@@ -23,37 +23,43 @@ class environment(object):
     It should be ready to work in SGE and Slurm, although extensive testing encompassing different version has not been done.
 
     Attributes:
-        type (str): Type of the environment object.
-        name (str): Name of the environment.
-        user (str): User name, set via `set_user()`.
-        group (str): Group name, set via `set_group()`.
-        available_queues (list): List of available queue objects.
-        selected_queues (list): List of selected queue objects.
-        method (str): Method for queue selection (default: 'weighted').
+        type (str):                     Type of the environment object.
+        name (str):                     Name of the environment.
+        user (str):                     User name, set via `set_user()`.
+        group (str):                    Group name, set via `set_group()`.
+        available_queues (list):        List of available queue objects.
+        selected_queues (list):         List of selected queue objects.
+        method (str):                   Method for queue selection (default: 'weighted').
     Methods:
         __init__(name):                 Initializes the environment object.
-        set_management_type(debug=0):   Detects and sets the job management system type.
+        set_management_type():          Detects and sets the job management system type.
         set_commands():                 Sets command-line instructions for job management system.
-        read_user_queue_list(line):     Processes user-provided queue names and selects corresponding queues.
-        read_local_environment(file_path): Reads and applies user-specific environment settings from a local file.
-        get_mqueues(debug=0):           Retrieves and initializes queues based on the management system.
-        add_mqueue(new_queue):          Adds a new queue to the environment.
-        find_queue(queue_name):         Finds a queue by name or alternate name.
-        make_queue_available(queue_name): Makes a queue available for selection.
-        select_queue(queue_name):       Selects a queue for job submission.
-        save(filepath=None):            Saves the environment object to a file.
-        get_user_requested(debug=0):    Gets total CPUs and jobs requested by the user.
-        get_user_waiting(debug=0):      Gets number of waiting CPUs and jobs for the user.
-        assign_waiting_jobs(debug=0):   Assigns waiting jobs to queues.
-        get_user_running():             Gets number of running CPUs and jobs for the user.
-        get_best_queue():               Returns the best queue for job submission based on scoring.
-        check_submitted(job_name):      Checks if a job has been submitted.
+        read_user_queue_list():         Processes user-provided queue names and selects corresponding queues.
+        read_local_environment():       Reads and applies user-specific environment settings from a local file.
+        -----------------
         set_queues():                   Interactively sets available queues for the environment.
+        get_mqueues():                  Retrieves and initializes queues based on the management system.
+        add_mqueue():                   Adds a new queue to the environment.
+        find_queue():                   Finds a queue by name or alternate name.
+        make_queue_available():         Makes a queue available for selection.
+        select_queue():                 Selects a queue for job submission.
+        -----------------
+        save(filepath):                 Saves the environment object to a file.
+        save_config(filepath):          Saves a JSON config file in the user's config dir.
+        -----------------
+        set_software():                 Sets software modules for Gaussian16 and Quantum Espresso.
         set_storage_path():             Sets the storage path with tab completion.
         set_scope_program():            Sets the main Scope program path with tab completion.
         set_paths():                    Sets paths for sources, calculations, and systems.
         check_paths():                  Checks if specified paths exist.
-        set_software():                 Sets software modules for Gaussian16 and Quantum Espresso.
+        -----------------
+        get_user_requested():           Gets total CPUs and jobs requested by the user.
+        get_user_waiting():             Gets number of waiting CPUs and jobs for the user.
+        get_user_running():             Gets number of running CPUs and jobs for the user.
+        get_best_queue():               Returns the best queue for job submission based on scoring.
+        check_submitted():              Checks if a job has been submitted.
+        assign_waiting_jobs():          Assigns waiting jobs to queues.
+        -----------------
         __repr__():                     Returns a formatted string representation of the environment object.
         _add_attr(key, value):          Adds an attribute to the environment.
         _mod_attr(key, value):          Modifies an attribute in the environment.
@@ -737,9 +743,10 @@ class environment(object):
 ###  Dunder Methods  ###
 ########################
     def __repr__(self) -> None:
-        to_print  = f'\n-----------------------------------------------------------\n'
-        to_print += f'               SCOPE Environment Class Object\n'
-        to_print += f'-------------------------------------------------------------\n'
+        to_print  = f'\n'
+        to_print += f'-------------------------------------------------------\n'
+        to_print += f'                  SCOPE Environment \n'
+        to_print += f'-------------------------------------------------------\n'
         to_print += f' User                  = {self.user}\n'
         to_print += f' Group                 = {self.group}\n'
         to_print += f'\n'
@@ -768,13 +775,13 @@ class environment(object):
             if len(self.added_attr) > 0:  
                 to_print += f'---------------------------------------------------\n'
                 to_print += f' LOCAL ENVIRONMENT OPTIONS ADDED:\n'
-                to_print += f'-------------------------------------------------------------\n'
+                to_print += f'---------------------------------------------------\n'
                 string    = 'self.{:15}| {:20}| {:10}\n'
                 to_print += string.format('Key', 'Data Type', 'Value')
                 for key in self.added_attr.keys():
                     val = self.added_attr[key]
                     to_print += string.format(key, str(type(val)), str(val))
-                to_print += f'-------------------------------------------------------------\n'
+                to_print += f'---------------------------------------------------\n'
         return to_print
 
     def _add_attr(self, key: str, value):
