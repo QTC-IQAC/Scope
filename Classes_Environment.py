@@ -625,7 +625,7 @@ class environment(object):
                             self.available_queues.append(mq)
 
                     elif uq in mq.name or mq.name in uq and not found:
-                        message = f"I found a similar queue as the one you requested. Is {mq.name} your selection: {uq}? Y/N "
+                        message = f"\tI found a similar queue as the one you requested. Is {mq.name} your selection: {uq}? Y/N "
                         tmp = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"])
                         if tmp == "Y" or tmp == 'y':
                             found = True
@@ -650,7 +650,7 @@ class environment(object):
             print(f"\t---------------------------------------------------------------------------------------- ")
             print(" ")
 
-            message = "\tY/N"
+            message = "\tY/N "
             prio = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"]) 
 
             if prio == "Y" or prio == "y":
@@ -742,7 +742,7 @@ class environment(object):
             self.g16_module = read_user_input(message=message, rtext=False)
             message = "\tNow introduce the module to run QUANTUM ESPRESSO in this cluster (Skip if QE is not available):"
             self.qe_module = read_user_input(message=message, rtext=False)
-            print("-------------------------------------------------------------------------------------")
+            print("\t-------------------------------------------------------------------------------------")
             print("")
 
 ########################
@@ -770,11 +770,11 @@ class environment(object):
         if hasattr(self,"available_queues"): 
             to_print += f'\t Number of available queues = {len(self.available_queues)}:\n'
             for idx, aq in enumerate(self.available_queues):
-                to_print += f'\t  {idx}: {aq.name} {aq.time_limit_plain} {len(aq.nodes)} {aq.max_cpu_per_node}\n'
+                to_print += f'\t  {idx}: {aq.name} {aq.time_limit_plain} {len(aq.nodes)} {aq.max_cpu_x_node}\n'
         #if hasattr(self,"selected_queues"):  
         #    to_print += f'\t Number selected queues = {len(self.selected_queues)}:\n'
         #    for idx, sq in enumerate(self.selected_queues):
-        #        to_print += f'\t  {idx}: {sq.name} {sq.time_limit_plain} {len(sq.nodes)} {sq.max_cpu_per_node}\n'
+        #        to_print += f'\t  {idx}: {sq.name} {sq.time_limit_plain} {len(sq.nodes)} {sq.max_cpu_x_node}\n'
 
         ## Prints the options added as local environment
         if hasattr(self,"added_attr"):
