@@ -22,14 +22,22 @@ def parse_args():
 def main():
 
     args = parse_args()
-    print(args)
 
     #########################
     # Loads the Environment #
     #########################
     env = load_binary(args.env)
     print(f"\tEnviroment {env.name} Loaded. ")
-    print(f"\tLoading Sources From Path {env.sources_path}: ")
+    print(f"\tLoading All Sources From Path {env.sources_path}: ")
+
+    print(f"\t------------------------------------------------")
+    print(f"\tThe script expects the following folder structure")
+    print(f"\t\tenv.sources_path/")
+    print(f"\t\t\t...systems/")
+    print(f"\t\t\t\t...crystals/")
+    print(f"\t\t\t\t\t *.cif")
+    print(f"\t\t\t\t\t Cell_*.gmol")
+    print(f"\t------------------------------------------------")
 
     ###############################
     # Defines Overwrite and Debug #
@@ -38,10 +46,13 @@ def main():
     else:            debug = 0
     if args.force:   overwrite = 1
     else:            overwrite = 0
+    ###############################
+
+    if debug > 0: print(f"Arguments_parsed: {args}")
 
     for name in sorted(os.listdir(env.sources_path)):
         sys_path = env.sources_path+name
-        ## In sources_path, I expect a folder for each system. 
+        ## In sources_path, I expect a folder for each system.
         if os.path.isdir(sys_path):
             ## Inside, each system's folder, I expect a folder for each crystal structure
             new_sys = sco_system(name, env)
