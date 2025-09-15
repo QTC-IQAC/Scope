@@ -52,15 +52,16 @@ def main():
 
     for name in sorted(os.listdir(env.sources_path)):
         sys_path = env.sources_path+name
+        sys_name = name
         ## In sources_path, I expect a folder for each system.
         if os.path.isdir(sys_path):
             ## Inside, each system's folder, I expect a folder for each crystal structure
-            new_sys = sco_system(name, env)
+            new_sys = sco_system(sys_name, env)
             new_sys.load_multiple_cell2mol_folders(sys_path, debug=debug)
             worked1 = new_sys.set_reference_cells(overwrite=overwrite, debug=debug)
             worked2 = new_sys.set_reference_molecs(overwrite=overwrite, debug=debug)
             if worked1 and worked2: 
-                print(f"\tCreation of system {new_sys.name} worked. Saving sys_file here: {new_sys.sys_file}. Folders will be created if necessary:")
+                print(f"\tCreation of system {new_sys.name} worked. Saving sys_file here: {new_sys.sys_file}. Folders will be created if necessary")
                 new_sys.create_folders()
                 new_sys.save()
 

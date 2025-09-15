@@ -44,9 +44,10 @@ def main():
     else:            overwrite = 0
     ###############################
 
-    if debug > 0: print(f"Arguments_parsed: {args}")
+    if debug > 0: print(f"\tArguments_parsed: {args}")
 
     source_path = env.sources_path+args.source 
+    system_name = args.source
     exists = path_exists(source_path)
 
     if not exists:
@@ -54,12 +55,12 @@ def main():
         sys.exit()
 
     print(f"\tLoading Source From Path {source_path}: ")
-    new_sys = sco_system(source_path, env)
-    new_sys.load_single_cell2mol_folder(source_path, debug=debug)
+    new_sys = sco_system(system_name, env)
+    new_sys.load_multiple_cell2mol_folders(source_path, debug=debug)
     worked1 = new_sys.set_reference_cells(overwrite=overwrite, debug=debug)
     worked2 = new_sys.set_reference_molecs(overwrite=overwrite, debug=debug)
     if worked1 and worked2: 
-        print(f"\tCreation of system {new_sys.name} worked. Saving sys_file here: {new_sys.sys_file}. Folders will be created if necessary:")
+        print(f"\tCreation of system {new_sys.name} worked. Saving sys_file here: {new_sys.sys_file}. Folders will be created if necessary")
         new_sys.create_folders()
         new_sys.save()
 
