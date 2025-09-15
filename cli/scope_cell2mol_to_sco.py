@@ -40,8 +40,10 @@ def main():
     ###############################
     # Defines Overwrite and Debug #
     ###############################
-    debug = 1     if args.verbose else debug = 0
-    overwrite = 1 if args.force   else overwrite = 0
+    if args.verbose: debug = 1  
+    else:            debug = 0
+    if args.force:   overwrite = 1
+    else:            overwrite = 0
 
     for name in sorted(os.listdir(env.sources_path)):
         if os.path.isdir(path):

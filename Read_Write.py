@@ -71,6 +71,15 @@ def load_json(pathfile):
         dict = json.load(f) 
     return dict
 
+def load_environment(name: str):
+    from platformdirs import user_config_dir
+    #from .Classes_Environment import environment 
+    config_dir          = user_config_dir("scope")
+    config_path         = os.path.join(config_dir, f"config_{name}.json")
+    config_file_path    = load_json(config_path)[f"{name}_env_filepath"]
+    env                 = load_binary(config_file_path)
+    return env
+
 ##############
 ## Binaries ##
 ##############
