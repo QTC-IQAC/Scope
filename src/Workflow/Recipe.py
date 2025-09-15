@@ -1,4 +1,4 @@
-from .Job           import *
+from .Job import *
 
 ####################
 ###### RECIPE ######

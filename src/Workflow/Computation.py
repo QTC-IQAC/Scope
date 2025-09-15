@@ -54,7 +54,7 @@ class computation(object):
         return inp, out, sub
  
     def get_mod_filename(self, mod_item_vars: list, mod_item_vals: list, debug: int=0):
-        from Scope.Other import where_in_array, extract_from_list
+        from ..Other import where_in_array, extract_from_list
         if not hasattr(self,"filename"): self.set_filename()
         new_filename = deepcopy(self.filename)
         found = False

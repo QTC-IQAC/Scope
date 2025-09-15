@@ -1,5 +1,5 @@
 import numpy as np
-from Scope_New import Constants
+from . import Constants
 from .Parse_General import search_string
 from .Elementdata import ElementData
 elemdatabase = ElementData()
@@ -35,7 +35,7 @@ class VNM(object):
     
     def write_dyn(self, initial_coord: list, amplitude: int=10, outfolder: str='./', labels: None=list, name: str=None):
         ## Writes a file with a trajectory representing the displacement of the VNM
-        from Scope.Read_Write import write_xyz
+        from .Read_Write import write_xyz
         if name is None: filename: str="dyn_vnm_"+str(self.index)+".xyz"
         else:            filename: str=name
         if outfolder[-1] != '/': outfolder += '/'
@@ -55,7 +55,7 @@ class VNM(object):
     def overlap(self, other: object) -> float:
         if not isinstance(other, type(self)):       return None
         if not self.has_mode or not other.has_mode: return None
-        from Scope.Operations.Vecs_and_Mats import normalize
+        from .Operations.Vecs_and_Mats import normalize
         vnm_a = normalize(self.mode_format2)
         vnm_b = normalize(other.mode_format2)
         ov    = float(np.abs(np.dot(vnm_a, vnm_b)))

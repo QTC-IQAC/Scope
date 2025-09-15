@@ -212,7 +212,7 @@ class cell(object):
 
     ######
     def reconstruct(self, cov_factor: float=None, metal_factor: float=None, debug: int=0):
-        from Scope_New.Reconstruct import classify_fragments, fragments_reconstruct
+        from .Reconstruct import classify_fragments, fragments_reconstruct
 
         if not hasattr(self,"fragmented"): self.check_fragmentation()
         if not self.fragmented:
@@ -279,8 +279,8 @@ class cell(object):
     ######
     def view(self, size: str='default'):
         import plotly.graph_objects as go
-        from Scope_New.Read_Write import set_scene
-        from Scope_New.Elementdata import ElementData  
+        from .Read_Write import set_scene
+        from .Elementdata import ElementData  
         elemdatabase = ElementData()
 
         size_map = {'default': (600, 600, 8, 9), 'small': (400, 400, 6, 7), 

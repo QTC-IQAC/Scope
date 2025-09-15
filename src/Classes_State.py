@@ -360,8 +360,8 @@ class state(object):
         - The sampling parameters (temperature, number of rounds, samples per round) depend on the `typ` argument.
         - Requires that the state is a minimum and that VNMs have eigenvectors parsed.
         """
-        from Scope_New.VNM_tools import geom_sampling_from_vnm, euclidean_q_distance, custom_q_distance, beta_distance
-        from Scope_New.Other import furthest_point_sampling
+        from .VNM_tools import geom_sampling_from_vnm, euclidean_q_distance, custom_q_distance, beta_distance
+        from .Other import furthest_point_sampling
         #if   typ.lower() == 'light':    temp=100; n_rounds=2; n_samples_round=100
         #elif typ.lower() == 'default':  temp=200; n_rounds=5; n_samples_round=300
         #elif typ.lower() == 'heavy':    temp=300; n_rounds=8; n_samples_round=500

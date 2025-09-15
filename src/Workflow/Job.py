@@ -1,8 +1,8 @@
 import os
 import numpy as np
 from copy import deepcopy
-from ..Classes_State    import state, find_state
 from .Computation       import *
+from ..Classes_State    import state, find_state
 from ..Other            import where_in_array
 
 ###################
@@ -36,7 +36,7 @@ class job(object):
         if self.keyword == 'findiff' or self.keyword == 'findif': self.setup == 'findiff'
         
     def check_job_data(self, job_path: str, debug: int=0):
-        from Scope_New.Classes_Input import set_job_data, set_qc_data
+        from ..Classes_Input import set_job_data, set_qc_data
         if debug > 0: print(f"CHECK_JOB_DATA: reading job_data from path: {job_path}")
         new_job_data    = set_job_data(job_path, section="&job_data" , debug=0)
         old_job_data    = self.job_data 
