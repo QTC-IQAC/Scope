@@ -1,5 +1,5 @@
 from argparse import ArgumentParser
-from Scope_New.Classes_Environment import environment
+from ..Classes_Environment import environment
 
 def parse_args():
     parser = ArgumentParser()
