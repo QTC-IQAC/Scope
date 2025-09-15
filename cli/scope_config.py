@@ -23,15 +23,15 @@ def main():
     env.set_queues()
 
     env.save()
-    config_path = env.save_config()
+    #config_path = env.save_config()
 
     print("")
     print(f"\tEnvironment Created and Saved in {env.filepath}. See details below")
     print(env)
 
     print("")
-    print(f"\t A JSON Config File was also saved in {config_path}")
-    print("")
+    #print(f"\t A JSON Config File was also saved in {config_path}")
+    #print("")
     print(f"\t You can overwrite your selections by loading the binary and:")
     print(f"\t 1) To change Software Modules:              env.set_software():")
     print(f"\t 2) To change Available Queues/Partitions:   env.set_queues():")

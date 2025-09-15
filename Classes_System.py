@@ -104,18 +104,18 @@ class system(object):
             else: print("WARNING: no sources_path in environment"); return False
 
         ## Environment Sends the Global Paths
-        target_sources_path          = f"{environment.sources_path}{self.name}/"
+        target_sources_path         = f"{environment.sources_path}{self.name}/"
         target_calcs_path           = f"{environment.calcs_path}{self.name}/"
         target_sys_path             = f"{environment.sys_path}{self.name}/"
         target_sys_file             = f"{environment.sys_path}{self.name}/{self.name}.npy"
 
-        ### We make sure that those exist:
-        #if not os.path.isdir(target_sys_path) or os.path.isdir(target_calcs_path) or os.path.isdir(target_sources_path):  
-        #    print("WARNING: folders do not exist")
-        #    return False
+        ## We make sure that those exist:
+        if not os.path.isdir(target_sys_path) or os.path.isdir(target_calcs_path) or os.path.isdir(target_sources_path):  
+            print("WARNING: folders do not exist")
+            return False
 
         reset = True
-        self.sources_path          = target_sources_path 
+        self.sources_path         = target_sources_path 
         self.calcs_path           = target_calcs_path 
         self.sys_path             = target_sys_path
         self.sys_file             = target_sys_file

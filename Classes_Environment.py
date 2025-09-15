@@ -280,6 +280,9 @@ class environment(object):
         else:   self.filepath = os.path.abspath(str(f"./scope_env_{self.name}.npy"))
         save_binary(self, self.filepath)
 
+#######################################
+###  In case a JSON should be saved ###
+#######################################
     def save_config(self, filepath=None):
         from platformdirs import user_config_dir
         from .Read_Write import save_json
@@ -607,7 +610,7 @@ class environment(object):
             for q in user_q:
                 print(f"\t{q}")
             
-            message = f"\tIs that correct? Y/N"
+            message = f"\tIs that correct? Y/N "
             tmp = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"]) 
 
             if tmp == "Y" or tmp == 'y':      correct = True
@@ -770,11 +773,11 @@ class environment(object):
         if hasattr(self,"available_queues"): 
             to_print += f'\t Number of available queues = {len(self.available_queues)}:\n'
             for idx, aq in enumerate(self.available_queues):
-                to_print += f'\t  {idx}: {aq.name} {aq.time_limit_plain} {len(aq.nodes)} {aq.max_cpu_x_node}\n'
+                to_print += f'\t  {idx+1}: Name: {aq.name} Time_limit: {aq.time_limit_plain} #Nodes: {len(aq.nodes)} Max_CPU_per_node: {aq.max_cpu_x_node}\n'
         #if hasattr(self,"selected_queues"):  
         #    to_print += f'\t Number selected queues = {len(self.selected_queues)}:\n'
         #    for idx, sq in enumerate(self.selected_queues):
-        #        to_print += f'\t  {idx}: {sq.name} {sq.time_limit_plain} {len(sq.nodes)} {sq.max_cpu_x_node}\n'
+        #        to_print += f'\t  {idx+1}: Name: {sq.name} Time_limit: {sq.time_limit_plain} #Nodes: {len(sq.nodes)} Max_CPU_per_node: {sq.max_cpu_x_node}\n'
 
         ## Prints the options added as local environment
         if hasattr(self,"added_attr"):
