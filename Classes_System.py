@@ -101,7 +101,7 @@ class system(object):
         ## Fix for older versions
         if not hasattr(environment,"sources_path"):
             if hasattr(environment,"cell2mol_path"):  environment.sources_path = environment.cell2mol_path
-            else: print("WARNING: no sources_path in environment"); return False
+            else: print("SYSTEM.READ_PATHS_FROM_ENV: WARNING: no sources_path in environment"); return False
 
         ## Environment Sends the Global Paths
         target_sources_path         = f"{environment.sources_path}{self.name}/"
@@ -110,9 +110,9 @@ class system(object):
         target_sys_file             = f"{environment.sys_path}{self.name}/{self.name}.npy"
 
         ## We make sure that those exist:
-        if not os.path.isdir(target_sys_path) or os.path.isdir(target_calcs_path) or os.path.isdir(target_sources_path):  
-            print("WARNING: folders do not exist")
-            return False
+        #if not os.path.isdir(target_sys_path) or os.path.isdir(target_calcs_path) or os.path.isdir(target_sources_path):  
+        #    print("SYSTEM.READ_PATHS_FROM_ENV: WARNING: folders do not exist")
+        #    return False
 
         reset = True
         self.sources_path         = target_sources_path 

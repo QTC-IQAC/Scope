@@ -352,6 +352,10 @@ def import_cell(old_cell: object, debug: int=0) -> object:
     assert hasattr(old_cell,"cellvec") or hasattr(old_cell,"cell_vector")
     assert hasattr(old_cell,"refcode") or hasattr(old_cell,"name")
 
+    if hasattr(old_cell,"warning_list"):        ## In cell2mol cells, this variable contains any warning found during the interpretation
+        if any(old_cell.warning_list):              ## For a cell to be valid, no error is allowed
+            return None
+
     labels     = old_cell.labels
     if   hasattr(old_cell,"coord"):       coord       = old_cell.coord
     elif hasattr(old_cell,"pos"):         coord       = old_cell.pos

@@ -67,7 +67,9 @@ class sco_system(system):
                 #try: 
                 if debug > 0: print("Trying to load cell2mol CELL file from", folder+fil)
                 new_cell        = import_cell(load_binary(folder+fil))        ## Imports to the generic Cell class
+                if new_cell is None: continue
                 new_cell        = convert_to_sco_cell(new_cell)               ## Converts to the SCO adapted Cell class
+                if new_cell is None: continue
                 cell_loaded     = True
                 cell_path       = folder+fil
                 if debug > 0: print("File loaded successfully")
@@ -85,7 +87,7 @@ class sco_system(system):
                     #if debug > 0: print("Cif file could not be loaded from", folder+fil)
                     #if debug > 0: print(exc)
                     #else: pass
-        if debug > 0: print(f"IMPORT_cell2mol_FOLDER. Path: {folder}, {cell_loaded=} {cif_loaded=}")
+        if debug > 0: print(f"IMPORT_cell2mol_FOLDER. Path: {folder}, {cell_loaded=} {cif_loaded=}")
 
         ## In SCO projects reading from cell2mol, I set that both the Cell and the cif have to be there.
         ## If the information could be properly retrieved, then it keeps the cell
@@ -136,6 +138,7 @@ class sco_system(system):
             mol.scope_guess_spin = guess_spin_state(int(mol.metals[0].charge), mol.scope_FeNdist[0], debug=0)
 
         ## Evaluates in pairs to make sure we get the 'same' molecule both both spin states
+        found_refs = False
         for idx, mol1 in enumerate(pool):
             for jdx, mol2 in enumerate(pool):
                 if jdx != idx and not found_hs and not found_ls: 
@@ -203,7 +206,7 @@ class sco_system(system):
                     elif cell.phase == "LS" and cell.cif.diff_temp < ls_ref_temp:
                         ls       = deepcopy(cell)
                         found_ls = True
-                    elif crys.phase == "IS":
+                    elif cell.phase == "IS":
                         if debug > 0: print(f"SET_REF_CELLS: IS phase found but not implemented")
 
         if not found_hs:
@@ -220,6 +223,9 @@ class sco_system(system):
                     if hasattr(cell,"warning_list"):
                         if not any(cell.warning_list):
                             ls = deepcopy(cell)
+
+        if ls is None or hs is None: # Then something went wrong
+            return False
 
         ## Prepares the cells:
         hs.name = "ref_hs_cell"
@@ -238,7 +244,7 @@ class sco_system(system):
             if mol.iscomplex: mol.fix_ligands_rdkit_obj()
         self.add_source(ls.name, ls)
 
-        if hs.natoms != ls.natoms: print(f"Warning: different number of atoms in crystal; HS: {hs.natoms} vs. LS: {ls.natom}")
+        if hs.natoms != ls.natoms: print(f"Warning: different number of atoms in crystal; HS: {hs.natoms} vs. LS: {ls.natoms}")
 
         # Creates "initial" states:
         hs_ini_state = hs.add_state("initial")
