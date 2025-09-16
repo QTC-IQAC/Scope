@@ -125,7 +125,7 @@ class state(object):
 #### Operations with Molecules ####
 ###################################
     def get_moleclist(self, overwrite: bool=False, debug: int=0):
-        from Scope.Classes_Molecule import molecule
+        from .Classes_Specie import molecule
 
         # Overwrite
         if not overwrite and hasattr(self,"moleclist"): 
@@ -204,7 +204,7 @@ class state(object):
     def reconstruct(self, debug: int=0):
         assert hasattr(self,"cell_vector")
         if not hasattr(self._source,"refmoleclist"): print("CLASS STATE.RECONSTRUCT: _source does not have refmoleclist"); return None
-        from Scope.Read_Write import HiddenPrints
+        from .Read_Write import HiddenPrints
         if debug > 0: print("CLASS_STATE.RECONSTRUCT: reconstructing cell of state", self)
         with HiddenPrints():
             finished = False

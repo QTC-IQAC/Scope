@@ -1,7 +1,8 @@
 import os
+import sys
 from argparse import ArgumentParser
-from Scope_New.Read_Write import load_binary
-from Scope_New.Spin_Crossover.SCO_Classes import sco_system
+from Scope.Read_Write import load_binary
+from Scope.Spin_Crossover.SCO_Classes import sco_system
   
 def path_exists(path):
     if not os.path.exists(path):
@@ -18,9 +19,9 @@ def env_exists(path):
         raise ValueError(f'Path {path} is not an Environment binary file!')
 
 def parse_args():
-    parser = ArgumentParser()
-    parser.add_argument('-n', '--env',     type=env_exists,      help='Path to the Environment')
-    parser.add_argument('-s', '--source',  type=str,             help='Name of the Source Folder')
+    parser = ArgumentParser(prog="create_from_cell2mol", description="Creates a system from cell2mol data")
+    parser.add_argument('-n', '--env',     type=env_exists,      help='Path to the Environment. Script will load Source data in env.sources_path')
+    parser.add_argument('-s', '--source',  type=str,             help='Name of the Source Folder Inside env.sources_path')
     parser.add_argument('-f', '--force',   action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
     return parser.parse_args()

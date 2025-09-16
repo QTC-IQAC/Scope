@@ -1,5 +1,5 @@
 [project]
-name = "scope-new"
+name = "scope"
 version = "0.0.0"
 description = "Temporary test package"
 authors = [{ name = "Dev Tester" }]
@@ -7,6 +7,6 @@ dependencies = []
 
 # Where your CLI entry point lives
 [project.scripts]
-scope_config     = "cli.scope_config:main"
-scope_sco_single = "Spin_Crossover.cli.create_from_cell2mol:main"
-scope_sco_many   = "Spin_Crossover.cli.create_many_cell2mol:main"
+scope_config     = "Scope.cli.scope_config:main"
+scope_sco_single = "Scope.Spin_Crossover.cli.create_from_cell2mol:main"
+scope_sco_many   = "Scope.Spin_Crossover.cli.create_many_cell2mol:main"

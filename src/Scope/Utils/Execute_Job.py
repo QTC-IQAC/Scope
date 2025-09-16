@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 import os
-from ..Classes_Input import *
-from ..Classes_State import *
-from ..Read_Write import load_binary, save_binary
+from Scope.Classes_Input import *
+from Scope.Classes_State import *
+from Scope.Read_Write import load_binary
 
 ## Should be moved to a better place 
 from ..Workflow.Job import check_convergence
 
 ######################
-def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors: bool=False, debug: int=0):
+def execute_job(sys_path: str, job_path: str, global_env_path: str, handle_errors: bool=False, debug: int=0):
     """
     Executes a SCOPE Task (defined in the job_path file) on a SCOPE system (in the sys_path). 
     The Configuration of the Computer is read from the GLOBAL_ENVIRONMENT, which must be configured before and given as a binary.
@@ -52,20 +52,21 @@ def execute_job(sys_path: str, job_path: str, global_env: object, handle_errors:
 
     #### 0-Verifies Files
     files = False
-    if os.path.isfile(sys_path) and os.path.isfile(job_path): files = True
+    if os.path.isfile(sys_path) and os.path.isfile(job_path) and os.path.isfile(global_env_path): files = True
     if debug > 1: print("EXECUTE_JOB, step 0: sys_path=", sys_path)
     if debug > 1: print("EXECUTE_JOB, step 0: job_path=", job_path)
     if debug > 1: print("EXECUTE_JOB, step 0: files=", files)
     if debug > 1: print("------------------------------")
     if not files: return None
 
-    #### 1-Reads Input Data
+    #### 1a-Reads Input Data
     user_environment = set_environment_data(job_path, section="&environment", debug=0)
     options          = set_options_data(job_path, section="&options"        , debug=0)
     job_data         = set_job_data(job_path, section="&job_data"           , debug=0)
     qc_data          = set_qc_data(job_path, section="&qc_data"             , debug=0)
 
-    #### 2a-Enrich Environment with User Choices:
+    #### 2a-Load Environment and Enriches with User Choices:
+    global_env      = load_binary(global_env_path)
     global_env.read_local_environment(job_path, debug=0)
 
     #### 2b-Forces some options in case the environment is not that of a computation cluster
