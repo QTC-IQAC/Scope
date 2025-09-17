@@ -7,6 +7,6 @@ dependencies = []
 
 # Where your CLI entry point lives
 [project.scripts]
-scope_config     = "Scope.cli.scope_config:main"
+scope_config     = "Scope.cli.config_environment:main"
 scope_sco_single = "Scope.Spin_Crossover.cli.create_from_cell2mol:main"
 scope_sco_many   = "Scope.Spin_Crossover.cli.create_many_cell2mol:main"

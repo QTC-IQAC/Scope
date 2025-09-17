@@ -406,8 +406,8 @@ class computation(object):
         source = self._job._recipe.source
         to_print += f' Source Type           = {source.type}\n'
         to_print += f' Source sub-Type       = {source.subtype}\n'
-        to_print += f' Branch Keyword        = {self._job._recipe._branch.keyword}\n'
-        to_print += f' Recipe Keyword        = {self._job._recipe.keyword}\n'
+        to_print += f' Branch Name           = {self._job._recipe._branch.name}\n'
+        to_print += f' Recipe Name           = {self._job._recipe.name}\n'
         to_print += f' Job Keyword           = {self._job.keyword}\n'
         to_print += f'---------------------------------------------------\n'
         if hasattr(self,"istate"): to_print += f' Initial State         = {self.istate}\n'

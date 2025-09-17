@@ -171,7 +171,7 @@ class environment(object):
                         q.alter_name = user_q
 
     ######
-    def read_local_environment(self, file_path, debug: int=0):
+    def read_job_specs(self, file_path, debug: int=0):
         """
         Reads and applies user-specific environment settings from a local file, 
         complementing the global environment with user choices.
@@ -190,15 +190,15 @@ class environment(object):
             - Queue selections are handled separately via 'read_user_queue_list'.
         """
         from .Classes_Input import set_environment_data
-        if not hasattr(self,"available_queues"): print("ENVIRONMENT.ADD: please run 'user_queue_preferences' first in the environment class"); return None
+        if not hasattr(self,"available_queues"): print("ENV.READ_JOB_SPECS: please run 'user_queue_preferences' first in the environment class"); return None
         local_env = set_environment_data(file_path, debug=debug)
-        if debug > 0: print("ENV.READ_USER_SPECS: reading data:", local_env)
+        if debug > 0: print("ENV.READ_JOB_SPECS: reading data:", local_env)
         self.added_attr = {}
         for d in dir(local_env):
             ## General Attributes
             if d[0] != '_' and not callable(getattr(local_env,d)) and d != "dct" and d != "type" and d != "queues" and d != "queue":
                 at1 = getattr(local_env,d)
-                if debug > 0: print(f"ENV.READ_USER_SPECS: adding key={d}, value={at1}")
+                if debug > 0: print(f"ENV.READ_JOB_SPECS: adding key={d}, value={at1}")
                 self._add_attr(d,at1)
                 self.added_attr[d] = at1 
             ## Queues are selected

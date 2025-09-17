@@ -20,7 +20,7 @@ class periodic_xyz(object):
         self.natoms               = len(labels)
 
     def add_cell_info(self, cellvec, celldim, cellparam) -> None:
-        from Scope.Unit_cell_tools import get_unit_cell_volume
+        from Scope.Geometry  import get_unit_cell_volume
         self.cellvec              = cellvec
         self.celldim              = celldim
         self.cellparam            = cellparam

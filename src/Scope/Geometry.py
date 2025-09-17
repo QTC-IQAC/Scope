@@ -1,11 +1,14 @@
 import numpy as np
 import math
+from Scope.Operations.Vecs_and_Mats import normalize, determinant
+
+######
+def get_dist(coord1: list, coord2: list) -> float:
+    dist = np.linalg.norm(np.array(coord1) - np.array(coord2))
+    return dist
 
 #########
-def unit_vector(vector):
-    return vector / np.linalg.norm(vector)
-
-def getangle(v1, v2):
+def get_angle(v1, v2) -> float:
     """
     Calculates the angle in radians between two vectors.
 
@@ -17,25 +20,24 @@ def getangle(v1, v2):
         float: The angle in radians between vectors v1 and v2.
 
     Notes:
-        - The function assumes that `unit_vector` and `np` (NumPy) are defined/imported in the scope.
         - The result is in the range [0, π].
     """
-    v1_u = unit_vector(v1)
-    v2_u = unit_vector(v2)
+    v1_u = normalize(v1)
+    v2_u = normalize(v2)
     return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
 
 #########
-def getdihedral(V1, V2, V3, V4):
+def get_dihedral(P1, P2, P3, P4) -> float:
     """
     Calculate the dihedral angle (torsion angle) defined by four points in 3D space.
 
-    Given four points V1, V2, V3, and V4, this function computes the signed dihedral angle
-    between the planes formed by (V1, V2, V3) and (V2, V3, V4). The angle is returned in radians,
+    Given four points P1, P2, P3, and P4, this function computes the signed dihedral angle
+    between the planes formed by (P1, P2, P3) and (P2, P3, P4). The angle is returned in radians,
     ranging from -π to π.
 
     Parameters
     ----------
-    V1, V2, V3, V4 : array-like
+    P1, P2, P3, P4 : array-like
         The coordinates of the four points, each as a 1D array-like of length 3.
 
     Returns
@@ -47,19 +49,19 @@ def getdihedral(V1, V2, V3, V4):
     -----
     The sign of the angle follows the right-hand rule and is determined using the atan2 function.
     """
-    V1, V2, V3, V4 = map(np.asarray, (V1, V2, V3, V4))
+    P1, P2, P3, P4 = map(np.asarray, (P1, P2, P3, P4))
     # Bond vectors
-    b1 = V2 - V1
-    b2 = V3 - V2
-    b3 = V4 - V3
+    b1 = P2 - P1
+    b2 = P3 - P2
+    b3 = P4 - P3
     # Normalize b2 for projection
-    b2_norm = b2 / np.linalg.norm(b2)
+    b2_norm = normalize(b2) 
     # Normals to the planes
     n1 = np.cross(b1, b2)
     n2 = np.cross(b2, b3)
     # Normalize normals
-    n1 /= np.linalg.norm(n1)
-    n2 /= np.linalg.norm(n2)
+    n1 = normalize(n1)
+    n2 = normalize(n1)
     # Orthogonal vector to n1 in the plane of rotation
     m1 = np.cross(n1, b2_norm)
     # Compute angle using atan2 to get the sign
@@ -117,7 +119,7 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
     from .Connectivity import get_adjmatrix, get_blocks, inv
     elemdatabase = ElementData()
 
-    d0 = getdihedral(coord[atom1], coord[atom2], coord[atom3], coord[atom4])
+    d0 = get_dihedral(coord[atom1], coord[atom2], coord[atom3], coord[atom4])
     if debug > 0: print(f"initial dihedral {np.degrees(d0)=}")
 
     # centers coordinate to atom2
@@ -127,7 +129,7 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
     # we get rid of the X coord of atom3
     v1 = np.array(list([c1[atom3][0],c1[atom3][1],0])) 
     v2 = np.array([1,0,0])
-    a1 = getangle(v1,v2) ## angle between xy projection of atom 3 and the x axis
+    a1 = get_angle(v1,v2) ## angle between xy projection of atom 3 and the x axis
     if debug > 0: print(f"{np.degrees(a1)=}")
     c2 = rot_in_z(a1, c1)
     if np.abs(c2[atom3][1]) > 0.0001: c2 = rot_in_z(-a1, c1)
@@ -135,7 +137,7 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
     # now we get rid of the Z coord of atom3
     v3 = np.array(list([c2[atom3][0],0,c2[atom3][2]]))
     v4 = np.array([1,0,0])
-    a2 = getangle(v3,v4) ## angle between xz projection of atom 3 and the x axis
+    a2 = get_angle(v3,v4) ## angle between xz projection of atom 3 and the x axis
     if debug > 0: print(f"{a2=}")
     c3 = rot_in_y(a2, c2)
     if np.abs(c3[atom3][2]) > 0.0001: c3 = rot_in_y(-a2, c2)
@@ -188,7 +190,7 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
     
     if debug > 0: print("Atoms to move", atoms_to_move)
     
-    d1 = getdihedral(c3[atom1], c3[atom2], c3[atom3], c3[atom4])
+    d1 = get_dihedral(c3[atom1], c3[atom2], c3[atom3], c3[atom4])
     if debug > 0: print(f"current dihedral {np.degrees(d1)=}")
     d2 = np.radians(dih) ## desired dihedral    
     if debug > 0: print(f"desired dihedral {np.degrees(d2)=}")
@@ -201,7 +203,7 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
     for idx in range(len(labels)):
         if idx in atoms_to_move: c5.append(list(c4[idx]))          # takes rotated coordinates
         else:                    c5.append(list(c3[idx]))
-    d4 = getdihedral(c5[atom1], c5[atom2], c5[atom3], c5[atom4])
+    d4 = get_dihedral(c5[atom1], c5[atom2], c5[atom3], c5[atom4])
     if debug > 0: print(f"current dihedral {np.degrees(d4)=}")
 
     if np.degrees(np.abs(d4 - d2)) > 5:
@@ -212,8 +214,92 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
         for idx in range(len(labels)):
             if idx in atoms_to_move: c5.append(list(c4[idx]))
             else:                    c5.append(list(c3[idx]))
-        d4 = getdihedral(c5[atom1], c5[atom2], c5[atom3], c5[atom4])
+        d4 = get_dihedral(c5[atom1], c5[atom2], c5[atom3], c5[atom4])
     if debug > 0: print(f"final dihedral {np.degrees(d4)=}")
 
     c6 = displace_coords(c5, atom2, coord[atom2])
     return c6
+
+##############################
+### Former Unit Cell Tools ###
+##############################
+def get_unit_cell_volume(a, b, c, alpha, beta, gamma):
+    return float(a*b*c*np.sin(np.deg2rad(beta)))
+
+######
+def cellvec_2_cellparam(cellvec):
+    a = np.linalg.norm(cellvec[0])
+    b = np.linalg.norm(cellvec[1])
+    c = np.linalg.norm(cellvec[2])
+    
+    tmp1 = cellvec[0][0]*cellvec[1][0]+cellvec[0][1]*cellvec[1][1]+cellvec[0][2]*cellvec[1][2]
+    tmp2 = cellvec[0][0]*cellvec[2][0]+cellvec[0][1]*cellvec[2][1]+cellvec[0][2]*cellvec[2][2]
+    tmp3 = cellvec[1][0]*cellvec[2][0]+cellvec[1][1]*cellvec[2][1]+cellvec[1][2]*cellvec[2][2]    
+    tmp4 = a * b
+    tmp5 = a * c
+    tmp6 = b * c
+    tmp7 = tmp1/tmp4
+    tmp8 = tmp2/tmp5
+    tmp9 = tmp3/tmp6
+    
+    alpha = np.arccos(tmp7)/(2*np.pi/360)
+    beta = np.arccos(tmp8)/(2*np.pi/360)
+    gamma = np.arccos(tmp9)/(2*np.pi/360)
+    
+    return list([a, b, c, alpha, beta, gamma])
+
+######
+def frac2cart_fromparam(frac_coord, cellparam):
+
+    a = cellparam[0]
+    b = cellparam[1]
+    c = cellparam[2]
+    alpha = np.radians(cellparam[3])
+    beta = np.radians(cellparam[4])
+    gamma = np.radians(cellparam[5])
+
+    volume = get_unit_cell_volume(a, b, c, alpha, beta, gamma)
+
+    m = np.zeros((3, 3))
+    m[0][0] = a
+    m[0][1] = b * np.cos(gamma)
+    m[0][2] = c * np.cos(beta)
+    m[1][0] = 0
+    m[1][1] = b * np.sin(gamma)
+    m[1][2] = c * ((np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma))
+    m[2][0] = 0
+    m[2][1] = 0
+    m[2][2] = volume / (a * b * np.sin(gamma))
+
+    cartesian = []
+    for idx, frac in enumerate(frac_coord):
+        xcar = frac[0] * m[0][0] + frac[1] * m[0][1] + frac[2] * m[0][2]
+        ycar = frac[0] * m[1][0] + frac[1] * m[1][1] + frac[2] * m[1][2]
+        zcar = frac[0] * m[2][0] + frac[1] * m[2][1] + frac[2] * m[2][2]
+        cartesian.append([float(xcar), float(ycar), float(zcar)])
+    return cartesian
+
+######
+def frac2cart_fromcellvec(frac_coord, cellvec):
+    cartesian = []
+    for idx, frac in enumerate(frac_coord):
+        xcar = (frac[0] * cellvec[0][0] + frac[1] * cellvec[1][0] + frac[2] * cellvec[2][0])
+        ycar = (frac[0] * cellvec[0][1] + frac[1] * cellvec[1][1] + frac[2] * cellvec[2][1])
+        zcar = (frac[0] * cellvec[0][2] + frac[1] * cellvec[1][2] + frac[2] * cellvec[2][2])
+        cartesian.append([float(xcar), float(ycar), float(zcar)])
+    return cartesian
+
+######
+def cart2frac(cartCoords, cellvec):
+    latCnt = [x[:] for x in [[None] * 3] * 3]
+    for a in range(3):
+        for b in range(3):
+            latCnt[a][b] = cellvec[b][a]
+    fracCoords = []
+    detLatCnt = determinant(latCnt)
+    for i in cartCoords:
+        aPos = (determinant([[i[0], latCnt[0][1], latCnt[0][2]],[i[1], latCnt[1][1], latCnt[1][2]],[i[2], latCnt[2][1], latCnt[2][2]]])) / detLatCnt
+        bPos = (determinant([[latCnt[0][0], i[0], latCnt[0][2]],[latCnt[1][0], i[1], latCnt[1][2]],[latCnt[2][0], i[2], latCnt[2][2]]])) / detLatCnt
+        cPos = (determinant([[latCnt[0][0], latCnt[0][1], i[0]],[latCnt[1][0], latCnt[1][1], i[1]],[latCnt[2][0], latCnt[2][1], i[2]]])) / detLatCnt
+        fracCoords.append([aPos, bPos, cPos])
+    return fracCoords

@@ -24,19 +24,19 @@ def get_pp(elem: str, path: str):
 def gen_QE_input(comp: object, environment: object, debug: int=0):
 
     ## To simplify calls below 
-    gmol = comp._job._recipe.source
+    source = comp._job._recipe.source
 
     ## 2a-Verify Information in initial state
     assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in comp.qc_data"
-    exists, istate    = find_state(gmol, comp.qc_data.istate)
+    exists, istate    = find_state(source, comp.qc_data.istate)
     assert exists,                         f"istate = {comp.qc_data.istate} does not exist"
     assert hasattr(istate,"labels"),       f"istate = {comp.qc_data.istate} doesn't have labels"
     assert hasattr(istate,"coord"),        f"istate = {comp.qc_data.istate} doesn't have coordinates"
 
     ## 2b-Cell or Molecule?
-    if   gmol.type == "cell":   system_type = "cell"
-    elif gmol.type == "specie": system_type = "molecule"
-    else: print(f"GEN_QE_input: unrecognised {gmol.type=}")
+    if   source.type == "cell":   system_type = "cell"
+    elif source.type == "specie": system_type = "molecule"
+    else: print(f"GEN_QE_input: unrecognised {source.type=}")
 
     ## 3-Determines the PP_Library path
     if not hasattr(comp.qc_data,"PP_Library"): f"PP_Library could not be found. Please set it in the qc_data.section of the Job"
@@ -50,7 +50,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
     ## Checks requisites
     if system_type == "cell":     
         assert hasattr(istate,"cell_vector"),  f"GEN_QE_input: {comp.qc_data.istate=} doesn't have cell vectors"
-        assert gmol.totcharge == int(0),       f"GEN_QE_input: {gmol.totcharge=} must be 0. A unit cell must be neutral"
+        assert source.totcharge == int(0),     f"GEN_QE_input: {source.totcharge=} must be 0. A unit cell must be neutral"
 
     if debug >= 1 : print("GEN_QE_INPUT: system_type:", system_type)
     if debug >= 1 : print("GEN_QE_INPUT: creating input in path:", comp.inp_path)
@@ -132,7 +132,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
         print(f"    nat={istate.natoms}, ntyp={nspecies}, ecutwfc={int(min_cowfc)}, ecutrho={float(min_corho)}", file=inp)
         if not hasattr(comp.spin_config,"ismagnetic"): comp.spin_config.get_total_magnetization()
         print(f"    nspin=2,", file=inp)
-        print(f"    tot_charge={gmol.totcharge}", file=inp)
+        print(f"    tot_charge={source.totcharge}", file=inp)
         print(f"    tot_magnetization={comp.spin_config.total_magnetization}", file=inp)
   
         ## Starting Magnetization

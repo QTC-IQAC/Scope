@@ -2,6 +2,24 @@ import os, sys
 import numpy as np
 
 ####
+def check_convergence(values: list, current_step: int=None, thres: float=1e-5, debug: int=0):
+    ## This function checks if a series of values has converged, based on the difference between the last two values
+    if debug > 0: print(f"CHECK_CONVERGENCE: received {values=}")
+    if current_step is None:
+        ## None when you want the overall convergence, not that of a given step
+        current_step = -1
+        for v in values:
+            if v != float(0.0): current_step += 1
+        if debug > 0: print(f"CHECK_CONVERGENCE: {current_step=}")
+        if debug > 0: print(f"CHECK_CONVERGENCE: difference: {values[current_step-1]-values[current_step]}")
+    if np.abs(values[current_step-1]-values[current_step]) > thres: 
+        if debug > 0: print(f"CHECK_CONVERGENCE: difference above threshold {thres}. Not converged")
+        return False
+    else: 
+        if debug > 0: print(f"CHECK_CONVERGENCE: difference below threshold {thres}. Converged")
+        return True
+
+####
 def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="centroid", use_ext_info: bool=True, translate_to_ref: bool=True, save_to_folder: str="/Users/sergivela/Documents/SCOPE/Program/tests/Overlap_Molecules/", debug: int=0):
     from .Connectivity import compute_centroid, get_adjmatrix
     from .Reconstruct import reorder_hungarian
@@ -325,12 +343,7 @@ def correct_smiles_ligand(lig: object):
     
     return smiles, obj
 
-#######################################################
-def get_dist (atom1_pos: list, atom2_pos: list) -> float :
-    dist = np.linalg.norm(np.array(atom1_pos) - np.array(atom2_pos))
-    return round(dist, 3)
-
-################################
+######
 def extract_from_list(entrylist: list, old_array: list, dimension: int=2, debug: int=0) -> list:
     if debug >= 1: print(f"EXTRACT_FROM_LIST. received: {entrylist=}")
     if debug >= 1: print(f"EXTRACT_FROM_LIST. received: {old_array=}")

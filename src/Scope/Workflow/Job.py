@@ -69,6 +69,7 @@ class job(object):
         return max_step
 
     def check_convergence(self, debug: int=0):
+        from Scope.Other import check_convergence
         self.isconverged = check_convergence(self.energies, None, self.job_data.energy_thres)
         return self.isconverged
 
@@ -165,7 +166,7 @@ class job(object):
     def set_computations_from_setup(self, qc_data: object, debug: int=0): 
 
         ## For Simplicity
-        gmol = self._recipe.source
+        source = self._recipe.source
 
         #####################
         ## 1- Setup for regular computations: "1 job => 1 computation"
@@ -184,7 +185,7 @@ class job(object):
         elif self.setup == "displacement" or self.setup == "disp":
             
             if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: setting displacement starting from {self.istate}")
-            exists, initial_state = find_state(gmol, self.istate)
+            exists, initial_state = find_state(source, self.istate)
             if not exists: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' was not found")
 
             if hasattr(initial_state,"VNMs") and hasattr(initial_state,"coord"):
@@ -205,7 +206,7 @@ class job(object):
                                 if "freq" in comp._job.keyword and comp.isgood and not found:
                                     print(f"SET COMPUTATIONS FROM SETUP: I will try to read the eigenvectors from", idx, comp.out_path)
                                     ### 1-Parsing and storage (this block is similar to register_frequencies)
-                                    gmol = comp._job._recipe.source
+                                    source = comp._job._recipe.source
                                     if not hasattr(comp,"output"): reg_general(comp)
                                     VNMs = comp.output.get_vnms(witheigen=True)
                                     if VNMs is not None: 
@@ -214,10 +215,10 @@ class job(object):
                                         print(f"SET COMPUTATIONS FROM SETUP: Worked!")
 
                         ## 1-Displaces Coordinates Following Negative Freqs ###
-                        from Scope.Gmol_ops import displace_neg_freqs 
+                        from Scope.VNM_tools import displace_neg_freqs 
                         disp_coord = displace_neg_freqs(initial_state.coord, initial_state.VNMs,debug=debug)
-                        exists, displ_state = find_state(gmol, "displaced")          # Checks if state already exists
-                        if not exists: displ_state = state(gmol, "displaced")        # If not, creates it
+                        exists, displ_state = find_state(source, "displaced")          # Checks if state already exists
+                        if not exists: displ_state = state(source, "displaced")        # If not, creates it
                         displ_state.set_geometry(initial_state.labels, disp_coord)   # Creates New State with Displaced Coordinates 
                         if hasattr(initial_state,"cellvec"): 
                             displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
@@ -239,7 +240,7 @@ class job(object):
         #####################
         elif self.setup == "findiff": 
             print(f"SET COMPUTATIONS FROM SETUP: findiff selected")
-            found, initial_state = find_state(gmol, self.istate)
+            found, initial_state = find_state(source, self.istate)
             if not found: print(f"SET COMPUTATIONS FROM SETUP: initial state not found")
             else:
                 if hasattr(initial_state,"coord"):
@@ -250,8 +251,8 @@ class job(object):
 
                     for idx, geo in enumerate(geoms):
                         assert len(geo) == len(initial_state.labels)
-                        exists, displ_state = find_state(gmol, names[idx])          # Checks if state already exists
-                        if not exists: displ_state = state(gmol, names[idx])        # If not, creates it and adds it to gmol
+                        exists, displ_state = find_state(source, names[idx])          # Checks if state already exists
+                        if not exists: displ_state = state(source, names[idx])        # If not, creates it and adds it to source
                         displ_state.set_geometry(initial_state.labels, geo)         # Creates New State with Displaced Coordinates 
                         if hasattr(initial_state,"cellvec"): displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
     
@@ -423,8 +424,8 @@ class job(object):
         to_print += f'---------------------------------------------------\n'
         to_print += f' Source Type           = {self._recipe.source.type}\n'
         to_print += f' Source Spin           = {self._recipe.source.spin}\n'
-        to_print += f' Branch Keyword        = {self._recipe._branch.keyword}\n'
-        to_print += f' Recipe Keyword        = {self._recipe.keyword}\n'
+        to_print += f' Branch Name           = {self._recipe._branch.name}\n'
+        to_print += f' Recipe Name           = {self._recipe.name}\n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' Job path              = {self.path}\n'
         to_print += f' Job keyword           = {self.keyword}\n'
@@ -441,13 +442,4 @@ class job(object):
         to_print += '\n'
         return to_print
 
-def check_convergence(energies, current_step=None, thres: float=1e-5, debug: int=0):
-    if current_step is None:
-        ## None when you want the overall convergence, not that of a given step
-        current_step = -1
-        for e in energies:
-            if e != float(0.0): current_step += 1
-        if debug > 0: print("job.CHECK_CONVERGENCE: curr_step:", current_step)
-        if debug > 0: print("job.en_diff:", energies[current_step-1]-energies[current_step])
-    if np.abs(energies[current_step-1]-energies[current_step]) > thres: return False
-    else: return True
+

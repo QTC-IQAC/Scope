@@ -3,10 +3,9 @@
 ###########################################################
 
 import numpy as np
-from .Connectivity import * 
-from .Other import get_dist
-from .Unit_cell_tools import * 
-from .Elementdata import ElementData
+from Scope.Connectivity   import * 
+from Scope.Geometry       import get_dist
+from Scope.Elementdata    import ElementData
 elemdatabase = ElementData()
 
 ############
@@ -386,7 +385,7 @@ class metal(atom):
 
     ######
     def get_connected_groups(self, debug: int=2):
-        from Scope.Adapted_from_cell2mol import split_group
+        from Scope.Connectivity import split_group
         # metal.groups will be used for the calculation of the relative metal radius 
         # and define the coordination geometry of the metal /hapicitiy/ hapttype    
         if not self.check_parent("molecule"): return None

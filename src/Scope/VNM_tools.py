@@ -2,6 +2,12 @@ import numpy as np
 from . import Constants
 
 ####
+def displace_neg_freqs(ini_coord, VNMs: object, debug: int=0) -> list:
+    neg_VNMs = list([vnm for vnm in VNMs if vnm.freq_cm < 0.0])
+    disp_coord = displace_coords_with_vnm(neg_VNMs, ini_coord)
+    return disp_coord
+
+####
 def map_vnms(vnmsA, vnmsB, debug: int=0):
     """
     Map vibrational normal modes (VNMs) between two sets, without
@@ -93,7 +99,7 @@ def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], wh
 
 ####
 def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, n_samples: int=10, freq_bottom_limit: float=0, check_adjacencies: bool=True, debug: int=0):
-    from Scope.Adapted_from_cell2mol    import get_adjmatrix
+    from Scope.Connectivity             import get_adjmatrix
     from Scope.Operations.Vecs_and_Mats import normalize
     """
     Generate a set of geometries by sampling along vibrational normal modes (VNM) of a molecule.

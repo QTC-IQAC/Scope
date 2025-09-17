@@ -13,7 +13,7 @@ elemdatabase = ElementData()
 
 #######################
 def gen_G16_input(comp, debug: int=0):
-    gmol = comp._job._recipe.source
+    source = comp._job._recipe.source
     
     ## 1-Change some variable names to simplify calls
     jobtype = comp.qc_data.jobtype
@@ -23,7 +23,7 @@ def gen_G16_input(comp, debug: int=0):
     tight_opt = comp.qc_data.tight_opt
 
     assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in comp.qc_data"
-    exists, istate    = find_state(gmol, comp.qc_data.istate)
+    exists, istate    = find_state(source, comp.qc_data.istate)
     assert exists, f"istate = {comp.qc_data.istate} does not exist" 
     assert hasattr(istate,"labels"), f"istate = {comp.qc_data.istate} doesn't have labels"
     assert hasattr(istate,"coord"),  f"istate = {comp.qc_data.istate} doesn't have coordinates"
@@ -73,7 +73,7 @@ def gen_G16_input(comp, debug: int=0):
         print("", file=inp) 
         print(f"Title Card", file=inp) 
         print("", file=inp) 
-        print(f"{gmol.totcharge} {comp.spin_config.multiplicity}", file=inp) 
+        print(f"{source.totcharge} {comp.spin_config.multiplicity}", file=inp) 
 
         ##################################################################
         ### Coordinates, which are taken from the initial state object ###

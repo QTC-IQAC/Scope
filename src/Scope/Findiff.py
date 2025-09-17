@@ -113,9 +113,9 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
     import numpy as np
     from Scope.Classes_QC import VNM
 
-    ## Read the number of atoms from the gmol object
-    gmol   = job._recipe.source
-    natoms  = gmol.natoms
+    ## Read the number of atoms from the source
+    source = job._recipe.source
+    natoms  = source.natoms
     masses = [elemdatabase.elementweight[l] for l in labels]     # For the mass-weighted hessian
     atnums  = [elemdatabase.elementnr[l] for l in labels]        # For the creation of VNM
     atomidxs = [i+1 for i in range(natoms)]                      # For the creation of VNM
@@ -188,20 +188,4 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
     VNMs.reverse()
 
     return VNMs
-
-
-#def read_forces(job: object, debug: int=0)
-#    
-#    ## Read the number of atoms from the gmol object
-#    gmol   = job._recipe.source
-#    natoms = gmol.natoms
-#
-#    fmatrix = np.zeros((natoms,natoms))
-#    for idx, comp in enumerate(job.computations.sort(key=lambda x: (x.index))):
-#
-#        # this could go to a different function that checks that all computations are good
-#        if comp.isregistered and comp.isgood:
-#        
-#        # reads successive (in terms of index) computations
-#        # and hessian is computed as the difference between forces
 

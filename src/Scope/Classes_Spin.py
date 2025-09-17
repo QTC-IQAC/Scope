@@ -7,7 +7,7 @@ from .Other import get_metal_idxs
 class spin_config(object):
     def __init__(self, _source: object):
         self.type           = "spin_state"
-        self._source        = _source  ## A gmol-class object
+        self._source        = _source
         self.atomic_spins   = []
 
     def add_atomic_spin(self, label, index, spin):
@@ -43,14 +43,15 @@ class spin_config(object):
  
     def __repr__(self):
         to_print  = f'---------------------------------------------------\n'
-        to_print +=  '   Spin Configuration                              \n'
+        to_print +=  '   SCOPEs Spin Configuration Class                 \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' _Subject Type         = {self._source.type}\n'
+        to_print += f' Source Name                  = {self._source.name}\n'
+        to_print += f' Source Type                  = {self._source.type}\n'
         to_print += f'---------------------------------------------------\n'
-        if hasattr(self,"elems"):               to_print += f' Elements            = {self.elems}\n'
-        if hasattr(self,"ismagnetic"):          to_print += f' Is Magnetic?        = {self.ismagnetic}\n'
-        if hasattr(self,"multiplicity"):        to_print += f' Multiplicity        = {self.multiplicity}\n'
-        if hasattr(self,"total_magnetization"): to_print += f' Total Magnetization = {self.total_magnetization}\n'
+        if hasattr(self,"elems"):               to_print += f' Elements                     = {self.elems}\n'
+        if hasattr(self,"ismagnetic"):          to_print += f' Is Magnetic?                 = {self.ismagnetic}\n'
+        if hasattr(self,"multiplicity"):        to_print += f' Multiplicity                 = {self.multiplicity}\n'
+        if hasattr(self,"total_magnetization"): to_print += f' Total Magnetization          = {self.total_magnetization}\n'
         to_print += '----------------------------------------------------\n'
         return to_print
 
@@ -98,18 +99,17 @@ def get_unpaired_elec(label, spin):
     else: print("get_unpaired_elec: label and/or spin not in library"); return None
 
 #################
-def get_spin_config(gmol: object, metal_spins, debug: int=0):
+def get_spin_config(source: object, metal_spins, debug: int=0):
 
-    #assert hasattr(gmol,"gmolparam"), f"GET_SPIN_CONFIG got object without gmol parameters. Assuming it is not a gmol"
     if debug >= 1: print(f"GET_SPIN_CONFIG: Preparing Spin Configuration for Computation")
-    if debug >= 1: print(f"GET_SPIN_CONFIG: Involving source: {gmol.formula}")
+    if debug >= 1: print(f"GET_SPIN_CONFIG: Involving source: {source.formula}")
     if debug >= 1: print(f"GET_SPIN_CONFIG: Received metal_spins", metal_spins)
-    assert hasattr(gmol,"labels"), f"GET_SPIN_CONFIG got object without labels"
+    assert hasattr(source,"labels"), f"GET_SPIN_CONFIG got object without labels"
 
     #########################
     ### IDENTIFIES METALS ###
     #########################
-    metal_indices = get_metal_idxs(gmol.labels)
+    metal_indices = get_metal_idxs(source.labels)
 
     ## if the user provides an abbreviated list of spin states. For instance, metal_spins="HS"
     if type(metal_spins) == list:
@@ -130,8 +130,8 @@ def get_spin_config(gmol: object, metal_spins, debug: int=0):
 
     ## Create spin_config-class object and fill it with spins
     pointer = 0
-    new_spcf = spin_config(_source=gmol) 
-    for idx, l in enumerate(gmol.labels):
+    new_spcf = spin_config(source) 
+    for idx, l in enumerate(source.labels):
         if idx in metal_indices:
             desired_spin = metal_spins[pointer]
             new_atomic_spin = new_spcf.add_atomic_spin(l, idx, desired_spin)

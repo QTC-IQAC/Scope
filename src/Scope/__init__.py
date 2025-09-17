@@ -21,14 +21,12 @@ from .Read_Write import *
 #from .Findiff import *
 #from .Geometry import *
 #from .Generate_Representations import *
-#from .Gmol_ops import *
 #from .Other import *
 #from .Parse_Cif import *
 #from .Parse_General import *
 #from .Read_Write import *
 #from .Register_Data import *
 #from .Thermal_Corrections import *
-#from .Unit_cell_tools import *
 #from .VNM_tools import *
 #
 #from . import Input_Systems

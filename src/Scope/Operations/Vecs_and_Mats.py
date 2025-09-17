@@ -10,3 +10,6 @@ def normalize(arr):
         norms = np.linalg.norm(arr, axis=1)
         norms[norms == 0] = 1.0
         return arr / norms[:, None]
+
+def determinant(matrix):
+    return np.linalg.det(matrix)

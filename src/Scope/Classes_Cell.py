@@ -4,30 +4,36 @@
 
 import numpy as np
 from .Connectivity import *
+from .Geometry import cellparam_2_cellvec, cellvec_2_cellparam, cart2frac
 from .Elementdata import ElementData
 elemdatabase = ElementData()
-
-############################
-#def cell_postocoord(cell: object) -> None:
-#    if not hasattr(cell,"coord") and hasattr(cell,"pos"): setattr(cell,"coord",cell.pos)
 
 ##############
 #### CELL ####
 ##############
 class cell(object):
-    def __init__(self, name: str, labels: list, pos: list, frac_coord: list, cell_vector: list, cell_param: list) -> None:
+    def __init__(self, name: str, labels: list, coord: list, cell_vector: list=None, cell_param: list=None) -> None:
         self.version              = "1.0"
         self.type                 = "cell"
         self.subtype              = "cell"
         self.origin               = "created"
         self.name                 = name
         self.labels               = labels 
-        self.coord                = pos
+        self.coord                = coord
         self.formula              = labels2formula(labels)
-        self.frac_coord           = frac_coord
-        self.cell_vector          = cell_vector
-        self.cell_param           = cell_param
         self.natoms               = len(labels)
+
+        ## Gets Cell Parameters, Vectors and Fractional Coordinates
+        if   cell_vector is None and cell_param is None:
+            raise ValueError("Either cell_vector or cell_param must be provided")
+        elif cell_vector is None and cell_param is not None:
+            self.cell_param       = cell_param
+            self.cell_vector      = cellparam_2_cellvec(cell_param)
+        elif cell_vector is not None and cell_param is None:
+            self.cell_vector      = cell_vector
+            self.cell_param       = cellvec_2_cellparam(cell_vector)
+
+        self.frac_coord           = cart2frac(self.coord, self.cell_vector)
 
     def __repr__(self, indirect: bool=False):
         to_print = ''   
@@ -345,35 +351,32 @@ class cell(object):
 ####    IMPORT    ####
 ######################
 def import_cell(old_cell: object, debug: int=0) -> object:
-    from .Unit_cell_tools import cellvec_2_cellparam, cart2frac 
     from .Classes_Specie  import import_molecule
     assert hasattr(old_cell,"labels") 
-    assert hasattr(old_cell,"coord") or hasattr(old_cell,"pos")
-    assert hasattr(old_cell,"cellvec") or hasattr(old_cell,"cell_vector")
+    assert hasattr(old_cell,"coord")   or hasattr(old_cell,"pos")
     assert hasattr(old_cell,"refcode") or hasattr(old_cell,"name")
 
     if hasattr(old_cell,"warning_list"):        ## In cell2mol cells, this variable contains any warning found during the interpretation
-        if any(old_cell.warning_list):              ## For a cell to be valid, no error is allowed
+        if any(old_cell.warning_list):          ## For a cell to be valid, no error is allowed
             return None
 
     labels     = old_cell.labels
     if   hasattr(old_cell,"coord"):       coord       = old_cell.coord
     elif hasattr(old_cell,"pos"):         coord       = old_cell.pos
 
-    if hasattr(old_cell,"name"):          name        = old_cell.name
+    if   hasattr(old_cell,"name"):        name        = old_cell.name
     elif hasattr(old_cell,"refcode"):     name        = old_cell.refcode
 
     if   hasattr(old_cell,"cellvec"):     cell_vector = old_cell.cellvec
     elif hasattr(old_cell,"cell_vector"): cell_vector = old_cell.cell_vector
+    else:                                 cell_vector = None
 
     if   hasattr(old_cell,"cell_param"):  cell_param  = old_cell.cell_param
     elif hasattr(old_cell,"cellparam"):   cell_param  = old_cell.cellparam
-    else:                                 cell_param  = cellvec_2_cellparam(cell_vector)
+    else:                                 cell_param  = None
 
-    if   hasattr(old_cell,"frac_coord"):  frac_coord = old_cell.frac_coord
-    else:                                 frac_coord = cart2frac(coord, cell_vector)
-
-    new_cell            = cell(name, labels, coord, frac_coord, cell_vector, cell_param)
+    # If cell_param and cell_vector are None, the creation of the cell will fail
+    new_cell            = cell(name, labels, coord, cell_vector, cell_param)
     new_cell.subtype    = "cell"
     new_cell.origin     = "import_cell"
     if debug > 0: print(f"IMPORT CELL: importing cell {new_cell}")

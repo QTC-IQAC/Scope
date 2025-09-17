@@ -4,11 +4,11 @@ from .Job import *
 ###### RECIPE ######
 ####################
 class recipe(object):
-    def __init__(self, keyword: str, source: object, _branch: object, debug: int=0) -> None:
+    def __init__(self, name: str, source: object, _branch: object, debug: int=0) -> None:
         self.type             = "recipe"
         self._branch          = _branch
         self.path             = _branch.path
-        self.keyword          = keyword
+        self.name             = name
         self.source           = source
         self.jobs             = []
         self.isregistered     = False
@@ -23,7 +23,7 @@ class recipe(object):
     #####################################
     ### Add // Remove // ------- Jobs ###
     #####################################
-    def add_job(self, job_data):                               ## As opposed to add_branch or add_recipe, add_job does not need a keyword, but a full job_data input
+    def add_job(self, job_data):                               ## As opposed to add_branch or add_recipe, add_job does not need a name, but a job_data input that will include a keyword
         new_job               = job(job_data, _recipe=self)
         self.jobs.append(new_job)
         return new_job 
@@ -94,7 +94,7 @@ class recipe(object):
 ### Registration ###
 ####################
     def register(self, debug: int=0):
-        if debug > 1: print("Registering Recipe:", self.keyword)
+        if debug > 1: print("Registering Recipe:", self.name)
         allgood     = True
         allfinished = True
         if len(self.jobs) > 0:
@@ -108,7 +108,7 @@ class recipe(object):
         if allgood:                 self.isgood       = True
         if allfinished:             self.isfinished   = True
         self.isregistered = True
-        if debug > 1: print("Registered Recipe:", self.keyword, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
+        if debug > 1: print("Registered Recipe:", self.name, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
 
 #############
 ### Other ###
@@ -117,17 +117,17 @@ class recipe(object):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> RECIPE                                  \n'
         to_print += f'---------------------------------------------------\n'
-        if hasattr(self.source,"name"):      to_print += f' Source Name           = {self.source.name}\n'
-        if hasattr(self.source,"spin"):      to_print += f' Source Spin           = {self.source.spin}\n'
-        if hasattr(self.source,"phase"):     to_print += f' Source Phase          = {self.source.phase}\n'
-        to_print += f' Source Type           = {self.source.type}\n'
-        to_print += f' Source sub-Type       = {self.source.subtype}\n'
+        if hasattr(self.source,"name"):      to_print += f' Source Name                 = {self.source.name}\n'
+        if hasattr(self.source,"spin"):      to_print += f' Source Spin                 = {self.source.spin}\n'
+        if hasattr(self.source,"phase"):     to_print += f' Source Phase                = {self.source.phase}\n'
+        to_print += f' Source Type                  = {self.source.type}\n'
+        to_print += f' Source sub-Type              = {self.source.subtype}\n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' Recipe Keyword        = {self.keyword}\n'
-        to_print += f' Num Jobs              = {len(self.jobs)}\n'
+        to_print += f' Recipe Name (from Source)    = {self.name}\n'
+        to_print += f' Num Jobs                     = {len(self.jobs)}\n'
         if len(self.jobs) > 0: 
             self.jobs.sort(key=lambda x: x.hierarchy)
-            to_print += f' Last Job Keyword      = {self.jobs[-1].keyword}\n'
-            to_print += f' Last Job Hierarchy    = {self.jobs[-1].hierarchy}\n'
+            to_print += f'\tLast Job Keyword      = {self.jobs[-1].keyword}\n'
+            to_print += f'\tLast Job Hierarchy    = {self.jobs[-1].hierarchy}\n'
         to_print += '\n'
         return to_print

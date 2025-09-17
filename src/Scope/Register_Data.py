@@ -7,8 +7,6 @@ from . import Constants
 from .Connectivity import *
 from .Classes_Data import *
 from .Classes_State import *
-#from .Gmol_ops import gmol_update_geom, cell_update_geom, gmol_create_geom, cell_create_geom
-#from .Parse_General import read_lines_file, search_string 
 
 ######################################################################
 # 0) HERE WE GATHER THE RULES TO REGISTER THE DIFFERENT TYPES OF JOBS ##
@@ -34,7 +32,7 @@ def reg_general(comp: object, debug: int=0):
 def reg_optimization(comp: object, debug: int=0):
 
     ### For simplicity...
-    gmol = comp._job._recipe.source
+    source = comp._job._recipe.source
 
     ### 0-In Case Reg_General hasn't been run:
     if not hasattr(comp,"output"): reg_general(comp)
@@ -47,7 +45,7 @@ def reg_optimization(comp: object, debug: int=0):
         assert len(labels) > 0
 
     ### 2-If it is a periodic object, gets the cell vectors as well
-    if gmol.type == "cell": 
+    if source.type == "cell": 
         cellvec, celldim, cellparam = comp.output.get_cell_vectors_last_complete_block()
         if cellvec is None: cellvec, celldim, cellparam = comp.output.get_last_cell_vectors()
         if cellvec is None: print("Couldn't Extract cell vectors from output", comp.out_path)
@@ -56,11 +54,11 @@ def reg_optimization(comp: object, debug: int=0):
     if new_coord is not None:
         try: 
             ### 2-Stores Results in the State Object
-            exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
-            if not exists: fstate = state(gmol, comp.qc_data.fstate)
+            exists, fstate = find_state(source, comp.qc_data.fstate)   ## If exists, it will be updated 
+            if not exists: fstate = state(source, comp.qc_data.fstate)
             fstate.set_geometry(labels, new_coord)
             fstate.set_spin_config(comp.spin_config)
-            if gmol.type == "cell": 
+            if source.type == "cell": 
                 fstate.set_cell(cellvec, cellparam)
                 fstate.get_moleclist()
                 fstate.check_fragmentation(reconstruct=True, debug=debug)
@@ -74,7 +72,7 @@ def reg_optimization(comp: object, debug: int=0):
 def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
 
     ### For simplicity...
-    gmol = comp._job._recipe.source
+    source = comp._job._recipe.source
 
     ### 0-In Case Reg_General hasn't been run:
     if not hasattr(comp,"output"): reg_general(comp)
@@ -87,8 +85,8 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
 
     ### 2-Storage ###
     if VNMs is not None:
-        exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
-        if not exists: fstate = state(gmol, comp.qc_data.fstate)
+        exists, fstate = find_state(source, comp.qc_data.fstate)   ## If exists, it will be updated 
+        if not exists: fstate = state(source, comp.qc_data.fstate)
         fstate.set_VNMs(VNMs)
         fstate.add_computation(comp)
         worked = True
@@ -97,7 +95,7 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
     ### Also forces, but they do not condition "worked" or "isgood"
     forces = comp.output.get_forces_last_complete_block()
     if forces is not None:
-        exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated 
+        exists, fstate = find_state(source, comp.qc_data.fstate)   ## If exists, it will be updated 
         fstate.set_forces(forces)
 
     return worked
@@ -106,7 +104,7 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
 def reg_energy(comp: object, debug: int=0):
 
     ### For simplicity...
-    gmol = comp._job._recipe.source
+    source = comp._job._recipe.source
 
     ### 0-In Case Reg_General hasn't been run:
     if not hasattr(comp,"output"): reg_general(comp)
@@ -126,8 +124,8 @@ def reg_energy(comp: object, debug: int=0):
     ### Storage ###
     worked = False
     if energy is not None or forces is not None:
-        exists, fstate = find_state(gmol, comp.qc_data.fstate)   ## If exists, it will be updated
-        if not exists: fstate = state(gmol, comp.qc_data.fstate)
+        exists, fstate = find_state(source, comp.qc_data.fstate)   ## If exists, it will be updated
+        if not exists: fstate = state(source, comp.qc_data.fstate)
         if energy is not None: fstate.set_energy(energy, 'au')
         if forces is not None: fstate.set_forces(forces)
         fstate.add_computation(comp)
