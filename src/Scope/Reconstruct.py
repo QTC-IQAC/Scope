@@ -1,14 +1,20 @@
+############################################################
+#### These functions have been adapted from cell2mol #######
+#### and might be included in the next version of cell2mol #
+############################################################
 import itertools
 import warnings
 from scipy import sparse
 from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import reverse_cuthill_mckee
 
-from .Connectivity    import *
-from .Classes_Atom    import *
-from .Classes_Specie  import *
-from .Geometry        import *
-from .Elementdata import ElementData
+from Scope.Connectivity    import *
+from Scope.Classes_Atom    import *
+from Scope.Classes_Specie  import *
+from Scope.Geometry        import *
+from Scope.Operations.Vecs_and_Mats import determinant
+from Scope.Other           import add_item
+from Scope.Elementdata import ElementData
 elemdatabase = ElementData()
 
 #######################################################
@@ -52,139 +58,131 @@ def tmatgenerator(centroid, thres=0.40, full=False):
 
     if not full:
         tmatrix = []
-        tmatrix = additem((0, 0, 0), tmatrix)
+        tmatrix = add_item((0, 0, 0), tmatrix)
 
         # X positive
         if centroid[0] >= tmax:
-            tmatrix = additem((-1, 0, 0), tmatrix)
+            tmatrix = add_item((-1, 0, 0), tmatrix)
             if centroid[1] >= tmax:
-                tmatrix = additem((-1, -1, 0), tmatrix)
-                tmatrix = additem((0, -1, 0), tmatrix)
+                tmatrix = add_item((-1, -1, 0), tmatrix)
+                tmatrix = add_item((0, -1, 0), tmatrix)
                 if centroid[2] >= tmax:
-                    tmatrix = additem((-1, -1, -1), tmatrix)
-                    tmatrix = additem((0, -1, -1), tmatrix)
-                    tmatrix = additem((0, 0, -1), tmatrix)
+                    tmatrix = add_item((-1, -1, -1), tmatrix)
+                    tmatrix = add_item((0, -1, -1), tmatrix)
+                    tmatrix = add_item((0, 0, -1), tmatrix)
                 if centroid[2] <= tmin:
-                    tmatrix = additem((-1, -1, 1), tmatrix)
-                    tmatrix = additem((0, -1, 1), tmatrix)
-                    tmatrix = additem((0, 0, 1), tmatrix)
+                    tmatrix = add_item((-1, -1, 1), tmatrix)
+                    tmatrix = add_item((0, -1, 1), tmatrix)
+                    tmatrix = add_item((0, 0, 1), tmatrix)
             if centroid[1] <= tmin:
-                tmatrix = additem((-1, 1, 0), tmatrix)
-                tmatrix = additem((0, 1, 0), tmatrix)
+                tmatrix = add_item((-1, 1, 0), tmatrix)
+                tmatrix = add_item((0, 1, 0), tmatrix)
                 if centroid[2] >= tmax:
-                    tmatrix = additem((-1, 1, -1), tmatrix)
-                    tmatrix = additem((0, 1, -1), tmatrix)
-                    tmatrix = additem((0, 0, -1), tmatrix)
+                    tmatrix = add_item((-1, 1, -1), tmatrix)
+                    tmatrix = add_item((0, 1, -1), tmatrix)
+                    tmatrix = add_item((0, 0, -1), tmatrix)
                 if centroid[2] <= tmin:
-                    tmatrix = additem((-1, 1, 1), tmatrix)
-                    tmatrix = additem((0, 1, 1), tmatrix)
-                    tmatrix = additem((0, 0, 1), tmatrix)
+                    tmatrix = add_item((-1, 1, 1), tmatrix)
+                    tmatrix = add_item((0, 1, 1), tmatrix)
+                    tmatrix = add_item((0, 0, 1), tmatrix)
             if centroid[2] >= tmax:
-                tmatrix = additem((-1, 0, -1), tmatrix)
-                tmatrix = additem((0, 0, -1), tmatrix)
+                tmatrix = add_item((-1, 0, -1), tmatrix)
+                tmatrix = add_item((0, 0, -1), tmatrix)
             if centroid[2] <= tmin:
-                tmatrix = additem((-1, 0, 1), tmatrix)
-                tmatrix = additem((0, 0, 1), tmatrix)
+                tmatrix = add_item((-1, 0, 1), tmatrix)
+                tmatrix = add_item((0, 0, 1), tmatrix)
 
         if centroid[1] >= tmax:
-            tmatrix = additem((0, -1, 0), tmatrix)
+            tmatrix = add_item((0, -1, 0), tmatrix)
             if centroid[2] >= tmax:
-                tmatrix = additem((0, -1, -1), tmatrix)
-                tmatrix = additem((0, 0, -1), tmatrix)
+                tmatrix = add_item((0, -1, -1), tmatrix)
+                tmatrix = add_item((0, 0, -1), tmatrix)
             if centroid[2] <= tmin:
-                tmatrix = additem((0, -1, 1), tmatrix)
-                tmatrix = additem((0, 0, 1), tmatrix)
+                tmatrix = add_item((0, -1, 1), tmatrix)
+                tmatrix = add_item((0, 0, 1), tmatrix)
 
         if centroid[2] >= tmax:
-            tmatrix = additem((0, 0, -1), tmatrix)
+            tmatrix = add_item((0, 0, -1), tmatrix)
 
         if centroid[0] <= tmin:
-            tmatrix = additem((1, 0, 0), tmatrix)
+            tmatrix = add_item((1, 0, 0), tmatrix)
             if centroid[1] <= tmin:
-                tmatrix = additem((1, 1, 0), tmatrix)
-                tmatrix = additem((0, 1, 0), tmatrix)
+                tmatrix = add_item((1, 1, 0), tmatrix)
+                tmatrix = add_item((0, 1, 0), tmatrix)
                 if centroid[2] <= tmin:
-                    tmatrix = additem((1, 1, 1), tmatrix)
-                    tmatrix = additem((0, 1, 1), tmatrix)
-                    tmatrix = additem((0, 0, 1), tmatrix)
+                    tmatrix = add_item((1, 1, 1), tmatrix)
+                    tmatrix = add_item((0, 1, 1), tmatrix)
+                    tmatrix = add_item((0, 0, 1), tmatrix)
                 if centroid[2] >= tmax:
-                    tmatrix = additem((1, 1, -1), tmatrix)
-                    tmatrix = additem((0, 1, -1), tmatrix)
-                    tmatrix = additem((0, 0, -1), tmatrix)
+                    tmatrix = add_item((1, 1, -1), tmatrix)
+                    tmatrix = add_item((0, 1, -1), tmatrix)
+                    tmatrix = add_item((0, 0, -1), tmatrix)
             if centroid[1] >= tmax:
-                tmatrix = additem((1, -1, 0), tmatrix)
-                tmatrix = additem((0, -1, 0), tmatrix)
+                tmatrix = add_item((1, -1, 0), tmatrix)
+                tmatrix = add_item((0, -1, 0), tmatrix)
                 if centroid[2] >= tmax:
-                    tmatrix = additem((1, -1, -1), tmatrix)
+                    tmatrix = add_item((1, -1, -1), tmatrix)
                 if centroid[2] <= tmin:
-                    tmatrix = additem((1, -1, 1), tmatrix)
+                    tmatrix = add_item((1, -1, 1), tmatrix)
             if centroid[2] <= tmin:
-                tmatrix = additem((1, 0, 1), tmatrix)
-                tmatrix = additem((0, 0, 1), tmatrix)
+                tmatrix = add_item((1, 0, 1), tmatrix)
+                tmatrix = add_item((0, 0, 1), tmatrix)
             if centroid[2] >= tmax:
-                tmatrix = additem((1, 0, -1), tmatrix)
-                tmatrix = additem((0, 0, -1), tmatrix)
+                tmatrix = add_item((1, 0, -1), tmatrix)
+                tmatrix = add_item((0, 0, -1), tmatrix)
 
         if centroid[1] <= tmin:
-            tmatrix = additem((0, 1, 0), tmatrix)
+            tmatrix = add_item((0, 1, 0), tmatrix)
             if centroid[2] <= tmin:
-                tmatrix = additem((0, 1, 1), tmatrix)
-                tmatrix = additem((0, 0, 1), tmatrix)
+                tmatrix = add_item((0, 1, 1), tmatrix)
+                tmatrix = add_item((0, 0, 1), tmatrix)
             if centroid[2] >= tmax:
-                tmatrix = additem((0, 1, -1), tmatrix)
-                tmatrix = additem((0, 0, -1), tmatrix)
+                tmatrix = add_item((0, 1, -1), tmatrix)
+                tmatrix = add_item((0, 0, -1), tmatrix)
         if centroid[2] <= tmin:
-            tmatrix = additem((0, 0, 1), tmatrix)
+            tmatrix = add_item((0, 0, 1), tmatrix)
 
         if (centroid[0] > tmin) and (centroid[0] < tmax):
             if centroid[1] <= tmin:
-                tmatrix = additem((0, 1, 0), tmatrix)
+                tmatrix = add_item((0, 1, 0), tmatrix)
                 if centroid[2] >= tmax:
-                    tmatrix = additem((0, 1, -1), tmatrix)
+                    tmatrix = add_item((0, 1, -1), tmatrix)
                 if centroid[2] <= tmin:
-                    tmatrix = additem((0, 1, 1), tmatrix)
+                    tmatrix = add_item((0, 1, 1), tmatrix)
             if centroid[1] >= tmax:
-                tmatrix = additem((0, -1, 0), tmatrix)
+                tmatrix = add_item((0, -1, 0), tmatrix)
                 if centroid[2] >= tmax:
-                    tmatrix = additem((0, -1, -1), tmatrix)
+                    tmatrix = add_item((0, -1, -1), tmatrix)
                 if centroid[2] <= tmin:
-                    tmatrix = additem((0, -1, 1), tmatrix)
+                    tmatrix = add_item((0, -1, 1), tmatrix)
             if centroid[2] <= tmin:
-                tmatrix = additem((0, 0, 1), tmatrix)
+                tmatrix = add_item((0, 0, 1), tmatrix)
                 if centroid[1] >= tmax:
-                    tmatrix = additem((0, -1, 1), tmatrix)
+                    tmatrix = add_item((0, -1, 1), tmatrix)
                 if centroid[1] <= tmin:
-                    tmatrix = additem((0, 1, 1), tmatrix)
+                    tmatrix = add_item((0, 1, 1), tmatrix)
             if centroid[2] >= tmax:
-                tmatrix = additem((0, 0, -1), tmatrix)
+                tmatrix = add_item((0, 0, -1), tmatrix)
                 if centroid[1] >= tmax:
-                    tmatrix = additem((0, -1, -1), tmatrix)
+                    tmatrix = add_item((0, -1, -1), tmatrix)
                 if centroid[1] <= tmin:
-                    tmatrix = additem((0, 1, -1), tmatrix)
+                    tmatrix = add_item((0, 1, -1), tmatrix)
     elif full:
         import itertools
 
         x = [-1, 0, 1]
         tmatrix = [p for p in itertools.product(x, repeat=3)]
-
     tmatrix.sort(key=absolute_value)
-
     return tmatrix
 
-#######################################################
-def additem(item, vector):
-    if item not in vector:
-        vector.append(item)
-    return vector
-
-#######################################################
+######
 def absolute_value(num):
     sum = 0
     for i in num:
         sum += np.abs(i)
     return abs(sum)
 
-#######################################################
+######
 def assign_subtype(molecule: object, references: list) -> str:
     for ref in references:
         issame = compare_species(molecule, ref)
@@ -195,7 +193,7 @@ def assign_subtype(molecule: object, references: list) -> str:
     if molecule.iscomplex: return "Complex"
     else:                  return "Other"
 
-#######################################################
+######
 def fragments_reconstruct(moleclist: list, fraglist: list, Hlist: list, refmoleclist: list, cell_vector: list, factor: float=1.3, metal_factor: float=1.0, debug: int=0):
     ## Moleclist is the list of species which have been identified as 'complete' molecules
     ## Fraglist is the list of species which are not 'complete' molecules
@@ -255,69 +253,7 @@ def fragments_reconstruct(moleclist: list, fraglist: list, Hlist: list, refmolec
 
     return moleclist, Warning
 
-#######################################################
-def translate(vector, coords, cellvec):
-    newcoord = []
-    for idx, coord in enumerate(coords):
-        newx = (
-            coord[0]
-            + vector[0] * cellvec[0][0]
-            + vector[1] * cellvec[1][0]
-            + vector[2] * cellvec[2][0]
-        )
-        newy = (
-            coord[1]
-            + vector[0] * cellvec[0][1]
-            + vector[1] * cellvec[1][1]
-            + vector[2] * cellvec[2][1]
-        )
-        newz = (
-            coord[2]
-            + vector[0] * cellvec[0][2]
-            + vector[1] * cellvec[1][2]
-            + vector[2] * cellvec[2][2]
-        )
-        newcoord.append([float(newx), float(newy), float(newz)])
-    return newcoord
-
-#######################################################
-def cart2frac(cartCoords, cellvec):
-    latCnt = [x[:] for x in [[None] * 3] * 3]
-    for a in range(3):
-        for b in range(3):
-            latCnt[a][b] = cellvec[b][a]
-    fracCoords = []
-    detLatCnt = det3(latCnt)
-    for i in cartCoords:
-        aPos = (det3([
-                    [i[0], latCnt[0][1], latCnt[0][2]],
-                    [i[1], latCnt[1][1], latCnt[1][2]],
-                    [i[2], latCnt[2][1], latCnt[2][2]],
-                ]
-            )
-        ) / detLatCnt
-        bPos = (
-            det3(
-                [
-                    [latCnt[0][0], i[0], latCnt[0][2]],
-                    [latCnt[1][0], i[1], latCnt[1][2]],
-                    [latCnt[2][0], i[2], latCnt[2][2]],
-                ]
-            )
-        ) / detLatCnt
-        cPos = (
-            det3(
-                [
-                    [latCnt[0][0], latCnt[0][1], i[0]],
-                    [latCnt[1][0], latCnt[1][1], i[1]],
-                    [latCnt[2][0], latCnt[2][1], i[2]],
-                ]
-            )
-        ) / detLatCnt
-        fracCoords.append([aPos, bPos, cPos])
-    return fracCoords
-
-#######################################################
+######
 def sequential(fragmentlist: list, refmoleclist: list, cellvec: list, factor: float=1.3, metal_factor: float=1.0, typ: str="All", debug: int=2):
     # Crappy function that controls the reconstruction process. It is called sequential because pairs of fragments are sent one by one. Ideally, a parallel version would be desirable.
     # Given a list of fragments(fragmentlist), a list of reference molecules(refmoleclist), and some other minor parameters, the function sends pairs of fragments and evaluates if they...
@@ -542,7 +478,7 @@ def sequential(fragmentlist: list, refmoleclist: list, cellvec: list, factor: fl
 
     return molecsfoundlist, remainingfragments
 
-#######################################################
+######
 def combine(tobemerged: list, references: list, cellvec: list, threshold_tmat: float, cov_factor: float, metal_factor: float, debug: int=0):
     goodlist = []   ## List of molecules coming from the two fragments received
     avglist = []    ## List of bigger fragments coming from the two fragments received
@@ -604,7 +540,7 @@ def combine(tobemerged: list, references: list, cellvec: list, threshold_tmat: f
 
     return goodlist, avglist, badlist
 
-#######################################################
+######
 def merge_fragments(frags: list, cellvec: list, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
     # finds biggest fragment and keeps it in the original cell
     sizes = []
@@ -655,75 +591,9 @@ def merge_fragments(frags: list, cellvec: list, cov_factor: float=1.3, metal_fac
                 return newmolec
     return None
 
-####################################
-def getconec(labels: list, pos: list, factor: float, radii=None):
-    status = 1  # good molecule, no clashes yet
-    clash = 0.3
-    natoms = len(labels)
-    conmat = np.zeros((natoms, natoms))
-    connec = np.zeros((natoms))
-    mconmat = np.zeros((natoms, natoms))
-    mconnec = np.zeros((natoms))
-    # Sometimes argument radii np.ndarry, or list
-    with warnings.catch_warnings():
-        warnings.simplefilter(action="ignore", category=FutureWarning)
-        if radii is None: radii = getradii(labels)
-
-    for i in range(0, natoms - 1):
-        for j in range(i, natoms):
-            if i != j:
-                # print(i,j)
-                a = np.array(pos[i])
-                b = np.array(pos[j])
-                dist = np.linalg.norm(a - b)
-                thres = (radii[i] + radii[j]) * factor
-                if dist <= clash:
-                    status = 0  # invalid molecule
-                    print("GETCONEC: Distance", dist, "smaller than clash for atoms", i, j)
-                elif dist <= thres:
-                    conmat[i, j] = 1
-                    conmat[j, i] = 1
-                    if (
-                        elemdatabase.elementblock[labels[i]] == "d"
-                        or elemdatabase.elementblock[labels[i]] == "f"
-                        or elemdatabase.elementblock[labels[j]] == "d"
-                        or elemdatabase.elementblock[labels[j]] == "f"
-                    ):
-                        mconmat[i, j] = 1
-                        mconmat[j, i] = 1
-
-    for i in range(0, natoms):
-        connec[i] = np.sum(conmat[i, :])
-        mconnec[i] = np.sum(mconmat[i, :])
-
-    conmat = conmat.astype(int)
-    mconmat = mconmat.astype(int)
-    connec = connec.astype(int)
-    mconnec = mconnec.astype(int)
-    # return status, np.array(conmat), np.array(connec), np.array(mconmat), np.array(mconnec)
-    return status, conmat, connec, mconmat, mconnec
-
-#######################################################
-def det3(mat):
-    return (
-        (mat[0][0] * mat[1][1] * mat[2][2])
-        + (mat[0][1] * mat[1][2] * mat[2][0])
-        + (mat[0][2] * mat[1][0] * mat[2][1])
-        - (mat[0][2] * mat[1][1] * mat[2][0])
-        - (mat[0][1] * mat[1][0] * mat[2][2])
-        - (mat[0][0] * mat[1][2] * mat[2][1]))
-
-################################
-def getradii(labels: list) -> np.ndarray:
-    radii = []
-    for l in labels:
-        radii.append(elemdatabase.CovalentRadius2[l])
-    return np.array(radii)
-
 ##############################
 ## Hungarian.py in cell2mol ##
 ##############################
-
 import numpy as np
 from scipy.spatial.distance import cdist
 from scipy.optimize import linear_sum_assignment as lsa
@@ -764,18 +634,6 @@ def hungarian(a, b, debug: int=0):
     if debug > 0: print(f"{ia=}")
     if debug > 0: print(f"{ib=}")
     return ib
-
-#def reorder(z1, z2, coord1, coord2):
-#    z1 = np.array(z1)
-#    z2 = np.array(z2)
-#    coord1, c1 = center(coord1)
-#    coord2, c2 = center(coord2)
-#    assert len(z1) == len(z2)
-#    assert coord1.shape == coord2.shape
-#    map12 = reorder_hungarian(z1, z2, coord1, coord2)
-#    z2 = z2[map12]
-#    coord2 = coord2[map12, :]
-#    return list(z2), list(coord2 + c2), map12
 
 def test_reorder():
     # Two water molecules with different order!

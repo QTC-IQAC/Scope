@@ -303,3 +303,28 @@ def cart2frac(cartCoords, cellvec):
         cPos = (determinant([[latCnt[0][0], latCnt[0][1], i[0]],[latCnt[1][0], latCnt[1][1], i[1]],[latCnt[2][0], latCnt[2][1], i[2]]])) / detLatCnt
         fracCoords.append([aPos, bPos, cPos])
     return fracCoords
+
+######
+def translate(vector, coords, cellvec):
+    newcoord = []
+    for idx, coord in enumerate(coords):
+        newx = (
+            coord[0]
+            + vector[0] * cellvec[0][0]
+            + vector[1] * cellvec[1][0]
+            + vector[2] * cellvec[2][0]
+        )
+        newy = (
+            coord[1]
+            + vector[0] * cellvec[0][1]
+            + vector[1] * cellvec[1][1]
+            + vector[2] * cellvec[2][1]
+        )
+        newz = (
+            coord[2]
+            + vector[0] * cellvec[0][2]
+            + vector[1] * cellvec[1][2]
+            + vector[2] * cellvec[2][2]
+        )
+        newcoord.append([float(newx), float(newy), float(newz)])
+    return newcoord

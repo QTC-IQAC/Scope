@@ -362,18 +362,10 @@ def extract_from_list(entrylist: list, old_array: list, dimension: int=2, debug:
             new_array[idx] = old_array[val]
     return list(new_array)
 
-#def extract_from_list(entrylist: list, old_array: np.ndarray, dimension: int=2) -> np.ndarray:
-#    length = len(entrylist)
-#    if dimension == 2:
-#        new_array = np.empty((length, length))
-#        for idx, row in enumerate(entrylist):
-#            for jdx, col in enumerate(entrylist):
-#                new_array[idx, jdx] = old_array[row][col]
-#    elif dimension == 1:
-#        new_array = np.empty((length))
-#        for idx, val in enumerate(entrylist):
-#            new_array[idx] = old_array[val]
-#    return new_array
+def additem(item, vector):
+    if item not in vector:
+        vector.append(item)
+    return vector
 
 def where_in_array(array,condition) -> list:
     results = []
