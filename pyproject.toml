@@ -3,10 +3,20 @@ name = "scope"
 version = "0.0.0"
 description = "Temporary test package"
 authors = [{ name = "Dev Tester" }]
-dependencies = []
+dependencies = [
+    "numpy",
+    "scipy",
+    "rdkit",
+    "cell2mol @ git+https://github.com/lcmd-epfl/cell2mol.git@1.1.0",
+]
 
 # Where your CLI entry point lives
 [project.scripts]
 scope_config     = "Scope.cli.config_environment:main"
+scope_run_job    = "Scope.cli.run_job:main"
 scope_sco_single = "Scope.Spin_Crossover.cli.create_from_cell2mol:main"
 scope_sco_many   = "Scope.Spin_Crossover.cli.create_many_cell2mol:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+

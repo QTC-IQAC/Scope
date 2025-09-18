@@ -1,7 +1,6 @@
 import pybliometrics
-from pybliometrics.scopus import ScopusSearch
-from pybliometrics.scopus import AbstractRetrieval
-import pandas as pd
+from   pybliometrics.scopus import ScopusSearch
+from   pybliometrics.scopus import AbstractRetrieval
 
 #pybliometrics.scopus.init()
 

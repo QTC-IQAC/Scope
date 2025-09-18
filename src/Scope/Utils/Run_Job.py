@@ -2,7 +2,7 @@
 import os
 import sys
 import pwd
-from Scope.Classes_Environment  import environment, read_job_specs
+from Scope.Classes_Environment  import *
 from Scope.Classes_Input        import *
 from Scope.Classes_State        import *
 from Scope.Classes_System       import *
@@ -29,7 +29,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
     Parameters
     ----------
     sys_path : str
-        Path to the system binary file.
+        Path to the system binary file
     job_paths : list
         List of Paths to the job files. 
     global_env : str or object
@@ -50,10 +50,10 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
     #############################
     ### STEP 0: Loading Files ###
     #############################
-    ## 0.1 Verifies that all files exist
+    ## 0.1 Verifies that all files exist
     if not verify_files(sys_path, global_env, job_paths, debug=1): raise ValueError("RUN_JOB: File verification failed")
 
-    ## 0.2-Checks status of system and branch. This is to avoid loading the system if calculations for that branch are already finished
+    ## 0.2-Checks status of branch in system. This is to avoid loading the system if calculations for that branch are already finished
     if not verify_status(sys_path, job_paths, debug=debug): 
         if debug > 0: print("RUN_JOB: All branches are either terminated or finished. No need to load system")
         return report 
@@ -266,22 +266,21 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
 #######################
 ## Related Functions ##
 #######################
-def get_status(sys_path: str, branch_name: str, debug: int=0):
+def get_status(sys_folder: str, branch_name: str, debug: int=0):
     ##########################################################
     ## Function to determine whether the computations of    ##
     ## a Branch for a given system have already finished    ##
     ## without having to load the system file, to save time ##
     ##########################################################
-    if sys_path[-1] != '/': sys_path += '/'
 
-    ## If system path does not exist
-    if not os.path.isdir(f"{sys_path}"):
-        print(f"GET_STATUS: System path {sys_path} does not exist")
+    ## If system file does not exist
+    if not os.path.isdir(f"{sys_folder}"):
+        print(f"RUN_JOB.GET_STATUS: System path {sys_path} does not exist")
         return "absent"
 
     ## Otherwise.. it looks for files with standardized names (see setup functions in Scope.Workflow.Branch)
-    if os.path.isfile(f"{sys_path}TERMINATED"):                return "terminated"
-    if os.path.isfile(f"{sys_path}{branch_name}_FINISHED"):    return "finished"  
+    if os.path.isfile(f"{sys_folder}TERMINATED"):                return "terminated"
+    if os.path.isfile(f"{sys_folder}{branch_name}_FINISHED"):    return "finished"  
     return "active"
 
 ######
@@ -303,7 +302,7 @@ def verify_files(sys_path: str, global_env: str | object, job_paths: list, debug
     return False
 
 ######
-def verify_paths(global_env: object, sys: object) -> bool: 
+def verify_paths(global_env: object, sys: object, debug: int=0) -> bool: 
     if global_env.check_paths(debug=1): 
         if debug > 0: print(f"RUN_JOB.VERIFY_PATHS: Environment Paths were Located")
     else:
@@ -321,30 +320,40 @@ def verify_paths(global_env: object, sys: object) -> bool:
 
 ######
 def verify_status(sys_path: str, job_paths: list, debug: int=0) -> bool:
+
+    sys_folder = os.path.dirname(sys_path)
+    if debug > 0: print(f"RUN_JOB.VERIFY_STATUS: searching status files in {sys_folder}")
+    if debug > 0: print(f"RUN_JOB.VERIFY_STATUS: found {os.listdir(sys_folder)} files in folder")
+
     ## Collects all branches requested in the different job files
     branch_names = []
     for job_path in job_paths:
         job_data = set_job_data(job_path, section="&job_data", debug=0)
         branch_names.append(job_data.branch)
+    if debug > 0: print(f"RUN_JOB.VERIFY_STATUS: found {branch_names=}")
 
     ## Checks Status of all branches
     all_status = []
     for br in branch_names:
-        all_status.append(get_status(sys_path, br, debug=debug))
-
-    if any(all_status) == 'active' and debug > 0: proceed = True 
-    else:                                         proceed = False
+        all_status.append(get_status(sys_folder, br, debug=debug))
+    if debug > 0: print(f"RUN_JOB.VERIFY_STATUS: found {all_status=}")
 
     ## If any is active, then proceed (i.e. whether the system must be loaded) is true
+    if any(s == 'active' for s in all_status): proceed = True 
+    else:                                      proceed = False
+
+    ## Apart from that, informs if any other status is found
     if debug > 0: 
         if any(all_status) == 'terminated':
             tidx = [i for i, status in enumerate(all_status) if status == 'terminated']
             for t in tidx:
                 print(f"RUN_JOB.VERIFY_STATUS: Branch {branch_names[t]} is TERMINATED. Job will be skipped.") 
-                print(f"RUN_JOB.VERIFT_STATUS: If you wish to activate it, remove file 'TERMINATED' in {sys_path}/{branch_names[t]}")
+                print(f"RUN_JOB.VERIFT_STATUS: If you wish to activate it, remove file 'TERMINATED' in {sys_folder}/{branch_names[t]}")
         if any(all_status) == 'finished':
             tidx = [i for i, status in enumerate(all_status) if status == 'finished']
             for t in tidx:
                 print(f"RUN_JOB.VERIFY_STATUS: Branch {branch_names[t]} is FINISHED. Job will be skipped.") 
-                print(f"RUN_JOB.VERIFT_STATUS: If you wish to activate it, remove file '{branch_names[t]}_FINISHED' in {sys_path}/{branch_names[t]}")
-    return False
+                print(f"RUN_JOB.VERIFT_STATUS: If you wish to activate it, remove file '{branch_names[t]}_FINISHED' in {sys_folder}/{branch_names[t]}")
+    print(f"RUN_JOB.VERIFT_STATUS: returning {proceed=}")
+
+    return proceed

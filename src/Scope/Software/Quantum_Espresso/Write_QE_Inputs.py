@@ -1,9 +1,9 @@
 #!/usr/bin/env python3
 import os
-from Scope_New.Classes_State       import find_state
-from Scope_New.Classes_Environment import set_user
-from Scope_New.Other               import get_metal_idxs, get_metal_species, where_in_array
-from Scope_New.Elementdata         import ElementData 
+from Scope.Classes_State       import find_state
+from Scope.Classes_Environment import set_user
+from Scope.Other               import get_metal_idxs, get_metal_species, where_in_array
+from Scope.Elementdata         import ElementData 
 elemdatabase = ElementData()
 
 #######################

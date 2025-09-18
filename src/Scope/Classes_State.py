@@ -1,9 +1,9 @@
 import numpy as np
-from .Connectivity      import *
-from .Classes_Data      import collection, data
-from .Classes_Specie    import *
-from .Reconstruct       import *
-from .Elementdata       import ElementData
+from Scope.Connectivity      import *
+from Scope.Classes_Data      import collection, data
+from Scope.Classes_Specie    import *
+from Scope.Reconstruct       import *
+from Scope.Elementdata       import ElementData
 elemdatabase = ElementData()
 
 ##############

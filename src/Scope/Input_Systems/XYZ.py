@@ -1,5 +1,4 @@
 from Scope.Adapted_from_cell2mol import labels2formula, get_radii
-
 from Scope import Software
 from Scope.Software import Quantum_Espresso
 from Scope.Software.Quantum_Espresso import Parse_QE_outputs

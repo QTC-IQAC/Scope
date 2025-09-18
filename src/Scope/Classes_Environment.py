@@ -5,7 +5,7 @@ import subprocess
 import numpy as np
 import glob
 import readline
-from .Classes_Queue import queue 
+from Scope.Classes_Queue import queue 
 
 def set_user():
     return pwd.getpwuid( os.getuid() ).pw_name

@@ -1,6 +1,6 @@
 import sys
 
-from .Parse_General import search_string, read_lines_file 
+from Scope.Parse_General import search_string, read_lines_file 
 
 def get_cif_diffraction_data(cifpath: str):
     diff_temp = " "

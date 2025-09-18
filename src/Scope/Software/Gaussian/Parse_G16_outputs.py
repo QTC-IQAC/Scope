@@ -1,5 +1,5 @@
-import Scope_New.Constants 
-from   Scope_New.Parse_General import search_string, read_lines_file
+import Scope.Constants 
+from   Scope.Parse_General import search_string, read_lines_file
 
 ##############
 ### STATUS ###

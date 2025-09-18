@@ -1,6 +1,6 @@
 import numpy as np
 from ast import literal_eval
-from . import Constants
+from Scope import Constants
 
 ##################
 ### COLLECTION ###

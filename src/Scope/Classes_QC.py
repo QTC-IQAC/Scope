@@ -1,7 +1,7 @@
 import numpy as np
-from . import Constants
-from .Parse_General import search_string
-from .Elementdata import ElementData
+from Scope import Constants
+from Scope.Parse_General import search_string
+from Scope.Elementdata import ElementData
 elemdatabase = ElementData()
 
 ######################

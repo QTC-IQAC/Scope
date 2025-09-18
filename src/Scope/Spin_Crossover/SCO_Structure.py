@@ -1,5 +1,5 @@
 import numpy as np
-from ..Geometry import *
+from Scope.Geometry import *
 
 ######
 def geom_sco_from_xyz(labels, pos, debug=0):   
@@ -53,7 +53,7 @@ def geom_sco_from_xyz(labels, pos, debug=0):
             for idx, v1 in enumerate(vec_FeN):
                 for jdx, v2 in enumerate(vec_FeN):
                     if jdx > idx:
-                        angle = getangle(v1, v2)*180.0/3.141592 
+                        angle = get_angle(v1, v2)*180.0/3.141592 
                         all_NFeN_angles.append(angle)
             if debug >= 2: print(f"GEOM_SCO: {all_NFeN_angles=}")
 

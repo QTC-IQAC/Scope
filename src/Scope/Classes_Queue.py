@@ -1,6 +1,6 @@
 from datetime import datetime, timedelta
 import subprocess
-from .Parse_General import slurm_time_to_seconds
+from Scope.Parse_General import slurm_time_to_seconds
 
 #############
 ### QUEUE ###

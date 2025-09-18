@@ -1,10 +1,10 @@
 from copy import deepcopy
 import os
 from datetime import datetime
-from ..Classes_Spin                                 import *
-from ..Classes_Environment                          import * 
-from ..Register_Data                                import reg_general, reg_optimization, reg_frequencies, reg_energy
-from ..Parse_General                                import read_lines_file
+from Scope.Classes_Spin                                 import *
+from Scope.Classes_Environment                          import * 
+from Scope.Register_Data                                import reg_general, reg_optimization, reg_frequencies, reg_energy
+from Scope.Parse_General                                import read_lines_file
 
 #########################
 ###### COMPUTATION ######

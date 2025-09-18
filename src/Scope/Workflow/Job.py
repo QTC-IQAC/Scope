@@ -1,9 +1,9 @@
 import os
 import numpy as np
 from copy import deepcopy
-from .Computation       import *
-from ..Classes_State    import state, find_state
-from ..Other            import where_in_array
+from Scope.Workflow.Computation    import *
+from Scope.Classes_State           import state, find_state
+from Scope.Other                   import where_in_array
 
 ###################
 ######  JOB  ######

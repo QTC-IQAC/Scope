@@ -2,8 +2,8 @@ from   Scope.Parse_General   import search_string
 from   Scope.Geometry        import cellvec_2_cellparam
 import Scope.Constants
 
-bohr2angs = Scope_New.Constants.bohr2angs
-ry2har    = Scope_New.Constants.ry2har
+bohr2angs = Scope.Constants.bohr2angs
+ry2har    = Scope.Constants.ry2har
 
 ###############
 ### PARSING ###

@@ -3,10 +3,10 @@ import os
 import numpy as np
 from copy import deepcopy
 
-from . import Constants
-from .Connectivity import *
-from .Classes_Data import *
-from .Classes_State import *
+from Scope import Constants
+from Scope.Connectivity import *
+from Scope.Classes_Data import *
+from Scope.Classes_State import *
 
 ######################################################################
 # 0) HERE WE GATHER THE RULES TO REGISTER THE DIFFERENT TYPES OF JOBS ##

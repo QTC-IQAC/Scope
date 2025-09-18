@@ -1,7 +1,7 @@
 #################################
 ####  Contains the Cif Class ####
 #################################
-from .Parse_Cif import get_cif_diffraction_data, get_cif_authors, get_cif_journal 
+from Scope.Parse_Cif import get_cif_diffraction_data, get_cif_authors, get_cif_journal 
 
 ###########
 ### CIF ###

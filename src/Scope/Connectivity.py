@@ -5,8 +5,8 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import reverse_cuthill_mckee
 
 from typing import Tuple
-from .Other import extract_from_list  
-from .Elementdata import ElementData  
+from Scope.Other import extract_from_list  
+from Scope.Elementdata import ElementData  
 elemdatabase = ElementData()
 
 ######################################

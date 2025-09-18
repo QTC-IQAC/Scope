@@ -3,9 +3,9 @@
 ##############################
 
 import numpy as np
-from .Connectivity import *
-from .Geometry import cellparam_2_cellvec, cellvec_2_cellparam, cart2frac
-from .Elementdata import ElementData
+from Scope.Connectivity     import *
+from Scope.Geometry         import cellparam_2_cellvec, cellvec_2_cellparam, cart2frac
+from Scope.Elementdata      import ElementData
 elemdatabase = ElementData()
 
 ##############
@@ -25,14 +25,16 @@ class cell(object):
 
         ## Gets Cell Parameters, Vectors and Fractional Coordinates
         if   cell_vector is None and cell_param is None:
-            raise ValueError("Either cell_vector or cell_param must be provided")
+            raise ValueError("Either cell_vector or cell_param must be provided to create a cell object")
         elif cell_vector is None and cell_param is not None:
             self.cell_param       = cell_param
             self.cell_vector      = cellparam_2_cellvec(cell_param)
         elif cell_vector is not None and cell_param is None:
             self.cell_vector      = cell_vector
             self.cell_param       = cellvec_2_cellparam(cell_vector)
-
+        else:
+            self.cell_vector      = cell_vector
+            self.cell_param       = cell_param
         self.frac_coord           = cart2frac(self.coord, self.cell_vector)
 
     def __repr__(self, indirect: bool=False):

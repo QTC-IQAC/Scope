@@ -1,4 +1,4 @@
-from . import Constants
+from Scope import Constants
 from copy import deepcopy
 import numpy as np
 
@@ -12,8 +12,8 @@ def apply_coord_displacement(coord, atom: int, axis: int, displacement: float=0.
 def get_central_difference(f1, f2, displacement: float=0.01, units: str='angstrom', debug: int=0):
     ## displacement is how much the coordinate is displaced from the center point, so the difference between the positive and negative displacements is twice
     ## Units of the displacement, not units of the forces
-    ## f1 must be the forces of the positive displacement
-    ## f2 must be the forces of the negative displacement
+    ## f1 must be the forces of the positive displacement
+    ## f2 must be the forces of the negative displacement
     assert np.shape(f1) == np.shape(f2)    
     if units == 'angstrom': displacement = displacement*Constants.angs2bohr
     elif units == 'bohr':   pass

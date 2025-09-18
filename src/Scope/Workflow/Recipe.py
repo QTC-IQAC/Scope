@@ -1,4 +1,4 @@
-from .Job import *
+from Scope.Workflow.Job import *
 
 ####################
 ###### RECIPE ######

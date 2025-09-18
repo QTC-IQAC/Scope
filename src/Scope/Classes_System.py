@@ -4,8 +4,8 @@
 
 import os
 import numpy as np
-from .Read_Write import save_binary
-from .Workflow.Branch import branch
+from Scope.Read_Write import save_binary
+from Scope.Workflow.Branch import branch
 
 class system(object):
     def __init__(self, name: str, environment: object) -> None:
@@ -20,7 +20,6 @@ class system(object):
         self.results              = dict()
         self.branches             = []
         self.states               = []
-        self.status               = "active"
 
         ## Paths
         self.read_paths_from_environment(environment)

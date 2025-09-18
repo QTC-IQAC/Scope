@@ -5,10 +5,10 @@ import numpy as np
 import pickle
 from collections import Counter
 
-from Scope_New.Other               import get_metal_idxs
-from Scope_New.Classes_State       import find_state
-from Scope_New.Classes_Environment import set_user
-from Scope_New.Elementdata         import ElementData
+from Scope.Other               import get_metal_idxs
+from Scope.Classes_State       import find_state
+from Scope.Classes_Environment import set_user
+from Scope.Elementdata         import ElementData
 elemdatabase = ElementData()
 
 #######################

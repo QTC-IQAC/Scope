@@ -1,5 +1,5 @@
 import numpy as np
-from .Other import get_metal_idxs
+from Scope.Other import get_metal_idxs
 
 #################
 ### SPIN INFO ###

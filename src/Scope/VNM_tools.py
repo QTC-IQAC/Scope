@@ -1,5 +1,5 @@
 import numpy as np
-from . import Constants
+from Scope import Constants
 
 ####
 def displace_neg_freqs(ini_coord, VNMs: object, debug: int=0) -> list:

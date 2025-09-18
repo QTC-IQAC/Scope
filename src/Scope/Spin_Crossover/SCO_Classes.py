@@ -4,14 +4,14 @@
 import os
 from copy import deepcopy
 
-from ..Classes_Cell         import *
-from ..Classes_Cif          import *
-from ..Classes_State        import *
-from ..Classes_Specie       import *
-from ..Classes_System       import system
-from ..Read_Write           import load_binary, print_xyz
+from Scope.Classes_Cell         import *
+from Scope.Classes_Cif          import *
+from Scope.Classes_State        import *
+from Scope.Classes_Specie       import *
+from Scope.Classes_System       import system
+from Scope.Read_Write           import load_binary, print_xyz
 
-from .SCO_Structure import *
+from Scope.SCO_Structure import *
 
 ########################################
 ##### SYSTEM Object Adapted to SCO #####
@@ -263,8 +263,8 @@ class sco_system(system):
 ##### CELL Object Adapted to SCO #####
 ######################################
 class sco_cell(cell):
-    def __init__(self, name: str, labels: list, pos: list, frac_coord: list, cell_vector: list, cell_param: list) -> None:
-        cell.__init__(self, name, labels, pos, frac_coord, cell_vector, cell_param)
+    def __init__(self, name: str, labels: list, pos: list, cell_vector: list=None, cell_param: list=None) -> None:
+        cell.__init__(self, name, labels, pos, cell_vector, cell_param)
         self.subtype              = "sco_cell"
 
     def __repr__(self) -> None:
@@ -336,7 +336,7 @@ def convert_to_sco_cell(generic_cell):
     if isinstance(generic_cell, sco_cell):
         if debug > 0: print(f"CONVERT_TO_SCO_CELL: Input is already a 'sco_cell' object")
         return generic_cell
-    new_cell = sco_cell(generic_cell.name, generic_cell.labels, generic_cell.coord, generic_cell.frac_coord, generic_cell.cell_vector, generic_cell.cell_param)
+    new_cell = sco_cell(generic_cell.name, generic_cell.labels, generic_cell.coord, generic_cell.cell_vector, generic_cell.cell_param)
     for attr in generic_cell.__dict__.keys():
         if not hasattr(new_cell,attr):
             setattr(new_cell, attr, getattr(generic_cell,attr))
