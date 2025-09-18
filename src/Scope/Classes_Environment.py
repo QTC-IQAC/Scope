@@ -727,7 +727,7 @@ class environment(object):
         if not os.path.isdir(self.sources_path):  print(f"ENVIRONMENT.CHECK_PATHS: {self.sources_path} does not exist")
         if not os.path.isdir(self.sys_path):      print(f"ENVIRONMENT.CHECK_PATHS: {self.sys_path} does not exist")
         if not os.path.isdir(self.calcs_path):    print(f"ENVIRONMENT.CHECK_PATHS: {self.calcs_path} does not exist")
-        if self.issys_path and self.iscalcs_path and self.issources_path: return True
+        if self.issys_path and self.iscalcs_path and self.issources_path:  return True
         else:                                                              return False
 
 #################

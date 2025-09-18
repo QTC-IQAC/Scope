@@ -362,7 +362,7 @@ def extract_from_list(entrylist: list, old_array: list, dimension: int=2, debug:
             new_array[idx] = old_array[val]
     return list(new_array)
 
-def additem(item, vector):
+def add_item(item, vector):
     if item not in vector:
         vector.append(item)
     return vector

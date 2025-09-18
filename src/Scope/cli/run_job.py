@@ -22,9 +22,9 @@ def parse_args():
     parser = ArgumentParser(prog="scope_run_job", description="Runs a job for a given system")
     parser.add_argument('-n', '--env_path',   type=env_exists,   help='Path to the Environment. Script will load Source data in env.sources_path')
     parser.add_argument('-s', '--sys_path',   type=path_exists,  help='Path to the System File')
-    parser.add_argument('-j', '--job_path',   type=path_exists,  help='Path to the Job File')
+    parser.add_argument('-j', '--job_path',   nargs="+", type=path_exists,  help='Path to the Job File')
     parser.add_argument('-v', '--verbose',    help='If true, will print debug information', action='store_true')
-    parser.add_argument('-e', '--errors',     help,'If true, will automatically handle some common errors', action='store_true')
+    parser.add_argument('-e', '--errors',     help='If true, will automatically handle some common errors', action='store_true')
     return parser.parse_args()
 
 def main():

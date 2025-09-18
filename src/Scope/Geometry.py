@@ -227,6 +227,39 @@ def get_unit_cell_volume(a, b, c, alpha, beta, gamma):
     return float(a*b*c*np.sin(np.deg2rad(beta)))
 
 ######
+def cellparam_2_cellvec(*args) -> list:
+    """
+    Convert unit cell parameters into three Cartesian cell vectors.
+
+    Accepts either:
+      - six separate arguments: (a, b, c, alpha, beta, gamma)
+      - a single list/tuple with six elements.
+
+    Returns
+    -------
+    vectors : list of np.ndarray
+        The three cell vectors [v1, v2, v3].
+    """
+    # Handle list or tuple input
+    if len(args) == 1 and isinstance(args[0], (list, tuple, np.ndarray)):
+        a, b, c, alpha, beta, gamma = args[0]
+    else:
+        a, b, c, alpha, beta, gamma = args
+
+    # Convert angles to radians
+    alpha = np.radians(alpha)
+    beta  = np.radians(beta)
+    gamma = np.radians(gamma)
+
+    # Vectors
+    v1 = np.array([a, 0.0, 0.0])
+    v2 = np.array([b * np.cos(gamma), b * np.sin(gamma), 0.0])
+    cx = c * np.cos(beta)
+    cy = c * (np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma)
+    cz = c * np.sqrt(1 - np.cos(beta)**2 - ((np.cos(alpha) - np.cos(beta) * np.cos(gamma)) / np.sin(gamma))**2)
+    v3 = np.array([cx, cy, cz])
+    return list([v1, v2, v3])
+
 def cellvec_2_cellparam(cellvec):
     a = np.linalg.norm(cellvec[0])
     b = np.linalg.norm(cellvec[1])

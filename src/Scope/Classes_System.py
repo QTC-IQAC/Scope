@@ -91,10 +91,16 @@ class system(object):
             print(f"If you would like to Overwrite, specify overwrite=True")
         return self.sources
 
-    ###################################
-    ### Functions to restart system ###
-    ###################################
-    # Eventually, reset_paths could be "change_cluster" function
+    #############
+    ### Paths ###
+    #############
+    def check_paths(self, debug: int=0) -> bool:
+        if not os.path.isfile(self.sys_file) or not os.path.isdir(self.sys_path) or not os.path.isdir(self.calcs_path) or not os.path.isdir(self.sources_path):  
+            if debug > 0: print("SYSTEM.CHECK_PATHS: WARNING: folders do not exist")
+            return False
+        return True
+
+    ######
     def read_paths_from_environment(self, environment: object, debug: int=0) -> None: 
         reset = False
 
