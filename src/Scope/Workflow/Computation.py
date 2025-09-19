@@ -230,7 +230,7 @@ class computation(object):
 
     def verify_state(self, name, target: str='opt'):
         source = self._job._recipe.source
-        found, state = find_state(source, name)
+        found, state = source.find_state(name)
         if not found: return False
         #if not found: return None
         if target == 'opt':

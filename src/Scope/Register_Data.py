@@ -54,8 +54,8 @@ def reg_optimization(comp: object, debug: int=0):
     if new_coord is not None:
         try: 
             ### 2-Stores Results in the State Object
-            exists, fstate = find_state(source, comp.qc_data.fstate)   ## If exists, it will be updated 
-            if not exists: fstate = state(source, comp.qc_data.fstate)
+            exists, fstate = source.find_state(comp.qc_data.fstate, debug=debug)   ## If exists, it will be updated
+            if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug) 
             fstate.set_geometry(labels, new_coord)
             fstate.set_spin_config(comp.spin_config)
             if source.type == "cell": 
@@ -83,8 +83,8 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
     forces = comp.output.get_forces_last_complete_block()
 
     ### 2-Saving Data in fstate ###
-    exists, fstate        = find_state(source, comp.qc_data.fstate) 
-    if not exists: fstate = state(source, comp.qc_data.fstate)
+    exists, fstate = source.find_state(comp.qc_data.fstate, debug=debug)   ## If exists, it will be updated
+    if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug) 
 
     if VNMs is not None:
         fstate.set_VNMs(VNMs)
@@ -128,8 +128,8 @@ def reg_energy(comp: object, debug: int=0):
     ### Storage ###
     worked = False
     if energy is not None or forces is not None:
-        exists, fstate = find_state(source, comp.qc_data.fstate)   ## If exists, it will be updated
-        if not exists: fstate = state(source, comp.qc_data.fstate)
+        exists, fstate = source.find_state(comp.qc_data.fstate, debug=debug)   ## If exists, it will be updated
+        if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug) 
         if energy is not None: fstate.set_energy(energy, 'au')
         if forces is not None: fstate.set_forces(forces)
         fstate.add_computation(comp)

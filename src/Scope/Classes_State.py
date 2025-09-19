@@ -535,6 +535,8 @@ class state(object):
         to_print +=  '   STATE                                           \n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' Name                  = {self.name}\n'
+        to_print += f' Source Name           = {self._source.name}\n'
+        to_print += f' Source Type           = {self._source.type}\n'
         if hasattr(self,"labels"):         to_print += f' Labels                = {self.labels[0]}...\n'
         if hasattr(self,"coord"):          to_print += f' Coord                 = {self.coord[0]}...\n'
         if hasattr(self,"ncomplex"):       to_print += f' Number of Complexes   = {self.ncomplex}\n' 

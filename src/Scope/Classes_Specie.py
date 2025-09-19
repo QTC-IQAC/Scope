@@ -470,8 +470,8 @@ class specie(object):
     #########################################
     ### Functions to Interact with States ###
     #########################################
-    def add_state(self, name: object, debug: int=0):
-        from .Classes_State import state
+    def add_state(self, name: str, debug: int=0):
+        from Scope.Classes_State import state
         if not hasattr(self,"states"): setattr(self,"states",list([]))
         exists, new_state = self.find_state(name)
         if exists:  
@@ -485,8 +485,8 @@ class specie(object):
 
     ######
     def find_state(self, search_name: str, debug: int=0):
-        from .Classes_State import state
-        if not hasattr(self,"states"): setattr(self,"states",list([]))
+        from Scope.Classes_State import state
+        if not hasattr(self,"states"): return False, None
         if debug > 0: print(f"SPECIE.FIND_STATE: Searching {search_name} in SPECIE object with {len(self.states)} states")
         for sta in self.states:
             if debug > 0: print(f"SPECIE.FIND_STATE: Comparing {search_name} with {sta.name}")

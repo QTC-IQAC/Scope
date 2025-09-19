@@ -324,7 +324,7 @@ class cell(object):
     ### Functions to Interact with States ###
     #########################################
     def add_state(self, name: object, debug: int=0):
-        from .Classes_State import state
+        from Scope.Classes_State import state
         if not hasattr(self,"states"): setattr(self,"states",list([]))
         exists, new_state = self.find_state(name)
         if exists:  
@@ -338,8 +338,8 @@ class cell(object):
 
     ######
     def find_state(self, search_name: str, debug: int=0):
-        from .Classes_State import state
-        if not hasattr(self,"states"): setattr(self,"states",list([]))
+        from Scope.Classes_State import state
+        if not hasattr(self,"states"): return False, None
         if debug > 0: print(f"CELL.FIND_STATE: Searching {search_name} in Cell object with {len(self.states)} states")
         for sta in self.states:
             if debug > 0: print(f"CELL.FIND_STATE: Comparing {search_name} with {sta.name}")

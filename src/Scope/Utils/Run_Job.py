@@ -137,14 +137,15 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
             ####################
             ## 3-Sets the computation(s), meaning that it will check if they exist, and if not, it creates them
             this_job.set_computations_from_setup(qc_data, debug=debug)
-            if debug > 1: print("RUN_JOB, step 3: computations set:")
+            if debug > 0: print("RUN_JOB, step 3: computations set. I navigated the whole workflow and I'm in:")
 
             for jdx, comp in enumerate(this_job.computations):
 
+                source = comp._job._recipe.source ## to simplify
+
                 #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
-                if debug > 0: print("")
                 if debug > 0: print(f"-----------------------------------------------------------------------")
-                if debug > 0: print(f"    {sys.name} -> {this_job._recipe.name} -> {this_job.keyword} -> {comp.step} -> {comp.run_number}")
+                if debug > 0: print(f"    {sys.name} -> {this_branch.name} -> {this_recipe.name} -> {this_job.keyword} -> {comp.step} -> {comp.run_number}")
                 if debug > 0: print(f"-----------------------------------------------------------------------")
                 if debug > 0: print(f"RUN_JOB, step 3.0: evaluating job, and computation with indices: {this_recipe.jobs.index(this_job)+1}/{len(this_recipe.jobs)}, {jdx+1}/{len(this_job.computations)}")
 
@@ -208,12 +209,13 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
                             from Scope.Other import check_convergence
  
                             ## 4.3.1 Collects energies from state in this step
-                            if hasattr(comp.qc_data,"fstate"): fstate = comp.qc_data.fstate
-                            else:                              fstate = comp._job.fstate
-                            exists, state = find_state(comp._job._recipe.source, fstate)
+                            if hasattr(comp.qc_data,"fstate"): fstate_name = comp.qc_data.fstate
+                            else:                              fstate_name = comp._job.fstate
+                            exists, fstate = source.find_state(fstate_name, debug=debug)         ## This one MUST exist
+                            assert exists
                             if comp.step > len(this_job.energies): 
                                 this_job.energies = np.append(this_job.energies,int(0))
-                            this_job.energies[int(comp.step)-1] = state.results['energy'].value
+                            this_job.energies[int(comp.step)-1] = fstate.results['energy'].value
 
                             ## 4.3.2 Checks the energy convergence
                             this_job.isconverged = False
@@ -228,6 +230,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
                                 print(f"RUN_JOB, step 4.3: maximum steps reached without convergence")  
 
                         # Checks for common stupid errors and handles files
+                        if debug > 0: print(f"RUN_JOB, step 4.4: registration {worked=}")  
                         if not worked:
                             if handle_errors:          # ...takes default action 
                                 comp.read_lines()
@@ -239,22 +242,23 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
                                 report += f"Error registering {comp.out_path} . Please Re-Submit \n"
                                 print(f"RUN_JOB: Error registering {comp.out_path}")
                         updated = True
+                        if debug > 0: print("")
 
                     ### 
                     ### Re-reads eigenvectors of a frequency computation 
                     ### Not sure I need this
                     ### 
                     #if comp.isregistered and "freq" in comp._job.keyword and (hasattr(comp.qc_data,"fstate") or hasattr(comp._job,"fstate")):
-                    #    if hasattr(comp.qc_data,"fstate"): fstate = comp.qc_data.fstate
-                    #    else:                              fstate = comp._job.fstate
-                    #    exists, state = find_state(comp._job._recipe.source, fstate)
-                    #    print("State",fstate,"exist=", exists)
+                    #    if hasattr(comp.qc_data,"fstate"): fstate_name = comp.qc_data.fstate
+                    #    else:                              fstate_name = comp._job.fstate
+                    #    exists, state = source.find_state(fstate_name)
+                    #    print("State",fstate_name,"exist=", exists)
                     #    if exists and hasattr(state,"VNMs"):
                     #        if not hasattr(state.VNMs,"xs"): 
                     #            print("RE-REGISTERING:", comp.out_path)
                     #            worked = comp.register(debug=debug)
                     #    else:
-                    #        print("State",fstate,"does not exist")
+                    #        print("State",fstate_name,"does not exist")
 
             # Updates Job Registry information
             this_job.register(debug=0)
