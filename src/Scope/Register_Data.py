@@ -78,25 +78,29 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
     if not hasattr(comp,"output"): reg_general(comp)
     
     worked = False
-    ### 1-Parsing ###
-    VNMs = comp.output.get_vnms(witheigen=witheigen)
-    if VNMs is None:
-        print("REG_FREQUENCIES: could not parse frequencies")
+    ### 1-Parsing VNMs and Forces ###
+    VNMs   = comp.output.get_vnms(witheigen=witheigen)
+    forces = comp.output.get_forces_last_complete_block()
 
-    ### 2-Storage ###
+    ### 2-Saving Data in fstate ###
+    exists, fstate        = find_state(source, comp.qc_data.fstate) 
+    if not exists: fstate = state(source, comp.qc_data.fstate)
+
     if VNMs is not None:
-        exists, fstate = find_state(source, comp.qc_data.fstate)   ## If exists, it will be updated 
-        if not exists: fstate = state(source, comp.qc_data.fstate)
         fstate.set_VNMs(VNMs)
         fstate.add_computation(comp)
         worked = True
         comp.isgood = True 
+        if debug > 0: print("REG_FREQUENCIES: VNMs were parsed")
+    else:
+        print("REG_FREQUENCIES: could not parse frequencies")
 
-    ### Also forces, but they do not condition "worked" or "isgood"
-    forces = comp.output.get_forces_last_complete_block()
-    if forces is not None:
-        exists, fstate = find_state(source, comp.qc_data.fstate)   ## If exists, it will be updated 
+    ### Forces do not condition "worked" nor "comp.isgood"
+    if forces is not None: 
         fstate.set_forces(forces)
+        if debug > 0: print("REG_FREQUENCIES: atomic forces were parsed")
+    else:                  
+        print("REG_FREQUENCIES: could not parse forces")
 
     return worked
 

@@ -1,18 +1,18 @@
 from datetime import datetime, timedelta
 import subprocess
-from Scope.Parse_General import slurm_time_to_seconds
+from Scope.Parse_General import slurm_time_to_minutes
 
 #############
 ### QUEUE ###
 #############
 class queue(object):
-    def __init__(self, name: str, _environment: object, avail: str='up', time_limit: str='infinite', state: str='idle'):
+    def __init__(self, name: str, _environment: object, avail: str='up', time_limit: str=None, state: str='idle'):
         if avail == "up":  self.available  = True
         else:              self.available  = False
-        self.name                = name
+        self.name                = fix_partition_name(name)
         self.alter_name          = name
         self.time_limit_plain    = time_limit
-        self.time_limit          = slurm_time_to_seconds(time_limit)
+        self.time_limit          = slurm_time_to_minutes(time_limit)
         self.state               = state
         self.selected            = False
         self._environment        = _environment
@@ -202,7 +202,7 @@ class queue(object):
         to_print += f' Name                  = {self.name}\n'
         if self.alter_name != self.name:  to_print += f' Alternative Name      = {self.alter_name}\n'
         to_print += f' Time Limit Plain      = {self.time_limit_plain}\n'
-        to_print += f' Time Limit (s)        = {self.time_limit} seconds\n'
+        to_print += f' Time Limit (min)      = {self.time_limit} minutes\n'
         if hasattr(self,"num_nodes"):  to_print += f' Number of Nodes       = {self.num_nodes}\n'
         if hasattr(self,"priority"):   to_print += f' Priority              = {self.priority}\n'
         if hasattr(self,"score"):      to_print += f' Score                 = {self.score}\n'
@@ -294,3 +294,8 @@ class node(object):
         to_print += f'\n'
         return to_print
 
+def fix_partition_name(name):
+    invalid_chars = ['*', '?', '[', ']', '{', '}', '!', '@', '#', '$', '%', '^', '&', '(', ')', '+', '=', ':', ';', '"', "'", ',', '<', '>', '/', '\\', '|', '`', '~']
+    for ch in invalid_chars:
+        name = name.replace(ch, '')
+    return name

@@ -24,7 +24,7 @@ def main():
     env.set_queues()
 
     env.save()
-    #config_path = env.save_config()
+    config_path = env.save_config()
 
     print("")
     print(f"\tEnvironment Created and Saved in {env.filepath}. See details below")

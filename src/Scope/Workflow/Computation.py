@@ -302,8 +302,8 @@ class computation(object):
  
 ###########################################
     def run(self, environment: object, options: object, debug: int=0) -> None:
-        from ..Software.Quantum_Espresso.Write_QE_Inputs    import gen_G16_input, gen_G16_subfile
-        from ..Software.Gaussian.Write_G16_Inputs           import gen_QE_input, gen_QE_subfile 
+        from Scope.Software.Quantum_Espresso.Write_QE_Inputs    import gen_QE_input, gen_QE_subfile 
+        from Scope.Software.Gaussian.Write_G16_Inputs           import gen_G16_input, gen_G16_subfile 
 
         ## 0-Checks that Resources are available
         if options.want_submit: sent_procs, sent_jobs = environment.get_user_requested(debug=debug)

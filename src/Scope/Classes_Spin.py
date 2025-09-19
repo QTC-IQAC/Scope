@@ -101,8 +101,8 @@ def get_unpaired_elec(label, spin):
 #################
 def get_spin_config(source: object, metal_spins, debug: int=0):
 
-    if debug >= 1: print(f"GET_SPIN_CONFIG: Preparing Spin Configuration for Computation")
-    if debug >= 1: print(f"GET_SPIN_CONFIG: Involving source: {source.formula}")
+    if debug >= 1: print(f"GET_SPIN_CONFIG: Preparing Spin Configuration for Computation Involving source: {source.name}")
+    #if debug >= 1: print(f"GET_SPIN_CONFIG: Involving source: {source.formula}")
     if debug >= 1: print(f"GET_SPIN_CONFIG: Received metal_spins", metal_spins)
     assert hasattr(source,"labels"), f"GET_SPIN_CONFIG got object without labels"
 

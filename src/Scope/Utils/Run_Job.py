@@ -68,7 +68,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
         global_env = load_binary(global_env) 
         if debug > 0: print(f"RUN_JOB, step 0.4: Environment Loaded")
 
-    ## 0.5 Verifies that all relevant paths inside system and environment.
+    ## 0.5 Verifies that all relevant paths inside system and environment.
     if not verify_paths(global_env, sys): raise ValueError("RUN_JOB: Path verification failed")
 
     ###################
@@ -76,8 +76,10 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
     ###################
     for job_idx, job_path in enumerate(job_paths):
 
-        if debug > 1: print("")
-        if debug > 1: print(f"- Starting JOB {job_idx+1}/{len(job_paths)} ----------")
+        if debug > 0: print("")
+        if debug > 0: print(f"#############################################")
+        if debug > 0: print(f"- Starting JOB {job_idx+1}/{len(job_paths)} -")
+        if debug > 0: print(f"#############################################")
 
         #### 1.1-Reads Input Data
         user_environment = set_environment_data(job_path, section="&environment", debug=0)  ## For completeness, but env data is read in global_env.read_job_specs below 
@@ -95,43 +97,40 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
             options._mod_attr('overwrite_inputs',False)  
             options._mod_attr('overwrite_logs',False)     
 
-        ##############
-        ### BRANCH ###
-        ##############
+        ##################
+        ### 1.4 BRANCH ###
+        ##################
         exists, this_branch        = sys.find_branch(job_data.branch, debug=0)
         if not exists: this_branch = sys.add_branch(job_data.branch, debug=debug); updated = True
+        #if debug > 0: print(f"RUN_JOB, step 1.4: in branch {this_branch.name}")
 
-        ##############
-        ### RECIPE ###
-        ##############
+        ##################
+        ### 1.5 RECIPE ###
+        ##################
         for rec in job_data.recipe if isinstance(job_data.recipe, list) else list([job_data.recipe]):   ### Works when job_data.recipe is a str or a list
 
-            exists, recipe             = this_branch.find_recipe(rec)
-            if not exists: recipe      = this_branch.add_recipe(rec); updated = True
+            exists, this_recipe             = this_branch.find_recipe(rec)
+            if not exists: this_recipe      = this_branch.add_recipe(rec); updated = True
+            #if debug > 0: print(f"RUN_JOB, step 1.5: inside recipes loop, recipe: {this_recipe.name}")
 
             ###########
             ### JOB ###
             ###########
             ## 2.1 Finds or creates the job.
-            exists, this_job = recipe.find_job(job_data=job_data, debug=0)
-            if not exists: this_job = recipe.add_job(job_data); updated = True
+            exists, this_job = this_recipe.find_job(job_data=job_data, debug=0)
+            if not exists: this_job = this_recipe.add_job(job_data); updated = True
+            #if debug > 0: print(f"RUN_JOB, step 2.1: inside jobs loop, job: {this_job.keyword} loaded")
 
             ## 2.2 If job exists, it checks for input changes (also in qc_data for the computations)
-            if exists: this_job.check_job_data(job_path=job_path, debug=debug)
-
-            if debug > 1: print("---------------------------------------------------")
-            if debug > 1: print(f"RUN_JOB, step 2.2: job {this_job.name} loaded")
-            if debug > 1: print("---------------------------------------------------")
+            if exists: this_job.check_job_data(job_path=job_path, debug=0)
 
             ## 2.3-Checks that all requisites and constrains of the job are fulfilled
             cancontinue = this_job.check_requisites(debug=debug)
             if not cancontinue:
-                if debug > 1:   
-                    print("RUN_JOB, step 2.333requisites NOT met or job already run. Printing job")
+                if debug > 0:   
+                    print("RUN_JOB, step 2.3: requisites NOT met or job already run. Printing job")
                     print(this_job)
                 continue        # I know if might seem misleading. Here, "continue" means "skip this one"
-            else:
-                if debug > 1:   print("RUN_JOB, step 2.3: requisites fulfilled")
 
             ####################
             ### COMPUTATIONS ###
@@ -143,37 +142,37 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
             for jdx, comp in enumerate(this_job.computations):
 
                 #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
-                if debug > 1: print("")
-                if debug > 1: print("########################################################################")
-                if debug > 1: print(f"    {sys.name} -> {this_job._recipe.name} -> {this_job.name} -> {comp.step} -> {comp.run_number}")
-                if debug > 1: print("########################################################################")
-                if debug > 1: print(f"RUN_JOB, step 3.0: evaluating job, and computation with indices: {recipe.jobs.index(this_job)+1}/{len(recipe.jobs)}, {jdx+1}/{len(this_job.computations)}")
+                if debug > 0: print("")
+                if debug > 0: print(f"-----------------------------------------------------------------------")
+                if debug > 0: print(f"    {sys.name} -> {this_job._recipe.name} -> {this_job.keyword} -> {comp.step} -> {comp.run_number}")
+                if debug > 0: print(f"-----------------------------------------------------------------------")
+                if debug > 0: print(f"RUN_JOB, step 3.0: evaluating job, and computation with indices: {this_recipe.jobs.index(this_job)+1}/{len(this_recipe.jobs)}, {jdx+1}/{len(this_job.computations)}")
 
                 ## 3.1-Checks files and updates
                 qc_has_updated = comp.check_qc_data(job_path=job_path, debug=debug)  ## Checks wether the user has updated the qc_data
                 comp.check_updates()                                                 ## Checks for not-registered update computations 
                 comp.check_files()
 
-                if debug > 1: print("RUN_JOB, step 3.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
-                if debug > 1: print("RUN_JOB, step 3.1: out_file:", comp.out_path)
-                if debug > 1: print("RUN_JOB, step 3.1: is_update:", comp.is_update)
-                if debug > 1: print("RUN_JOB, step 3.1: has_update:", comp.has_update)
-                if debug > 1: print("RUN_JOB, step 3.1: checking files [inp, out, sub]:", comp.input_exists, comp.output_exists, comp.subfile_exists)
-                if debug > 1: print("RUN_JOB, step 3.1: qc has been updated", qc_has_updated)
+                if debug > 0: print("RUN_JOB, step 3.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
+                if debug > 0: print("RUN_JOB, step 3.1: out_file:", comp.out_path)
+                if debug > 0: print("RUN_JOB, step 3.1: is_update:", comp.is_update)
+                if debug > 0: print("RUN_JOB, step 3.1: has_update:", comp.has_update)
+                if debug > 0: print("RUN_JOB, step 3.1: checking files [inp, out, sub]:", comp.input_exists, comp.output_exists, comp.subfile_exists)
+                if debug > 0: print("RUN_JOB, step 3.1: qc has been updated", qc_has_updated)
                 #if debug > 1: print("-----------------------------------------------------------------------------------")
 
                 ## 3.2a-Evaluates Submission
                 if not comp.output_exists:
                     if options.want_submit and not comp.has_update:
                         comp.check_submission_status(global_env, debug=debug)
-                        if debug > 1: print("RUN_JOB, step 3.2a: checking submission status: isrunning=",comp.isrunning)
-                        if debug > 1: print("RUN_JOB, step 3.2a: ignore_submitted=", options.ignore_submitted)
-                        if debug > 1: print("RUN_JOB, step 3.2a: initial state is", comp.qc_data.istate)
+                        if debug > 0: print("RUN_JOB, step 3.2a: checking submission status: isrunning=",comp.isrunning)
+                        if debug > 0: print("RUN_JOB, step 3.2a: ignore_submitted=", options.ignore_submitted)
+                        if debug > 0: print("RUN_JOB, step 3.2a: initial state is", comp.qc_data.istate)
                         if not comp.isrunning or options.ignore_submitted:       ## options.ignore_submitted will also be checked in comp.run 
                             comp.check_qc_data(job_path=job_path, debug=debug)
                             comp.run(global_env, options, debug=debug); updated = True
                     else: 
-                        if debug > 1: print("RUN_JOB, step 3.2a: want_submit is False or comp.has_update")
+                        if debug > 0: print("RUN_JOB, step 3.2a: want_submit is False or comp.has_update")
 
                 ## 3.2b-Warns if output exists but not input
                 elif comp.output_exists and not comp.input_exists:  
@@ -184,21 +183,23 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
                 elif comp.output_exists and comp.input_exists:
                     ## 4.1-If output exists, and is not registered, it does it
                     ## This means that the output is read, parsed. The parsed data depends on the type of computation
-                    if not comp.isregistered:
-                        if debug > 1: print(f"RUN_JOB, step 4: registration")
+                    if comp.isregistered:
+                        if debug > 0: print(f"RUN_JOB, step 4: job already registered")
+                    else:
+                        if debug > 0: print(f"RUN_JOB, step 4: registration")
                         worked = comp.register(debug=debug) 
 
-                        if debug > 1: print(f"RUN_JOB, step 4.1: registration {worked=}")
-                        if debug > 1: print(f"RUN_JOB, step 4.1: {comp.has_update=}")
-                        if debug > 1: print(f"RUN_JOB, step 4.1: {options.overwrite_inputs=}")
+                        if debug > 0: print(f"RUN_JOB, step 4.1: registration {worked=}")
+                        if debug > 0: print(f"RUN_JOB, step 4.1: {comp.has_update=}")
+                        if debug > 0: print(f"RUN_JOB, step 4.1: {options.overwrite_inputs=}")
 
                         ## 4.2 sets continuation computations. These are added to JOB object 
                         if comp.status == 'no_scf_convergence': 
-                            if debug > 1: print(f"RUN_JOB, step 4.2: setting continuation computation with typ=scf")  
+                            if debug > 0: print(f"RUN_JOB, step 4.2: setting continuation computation with typ=scf")  
                             new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
                             if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
                         elif not comp.isgood and this_job.must_be_good:
-                            if debug > 1: print(f"RUN_JOB, step 4.2: setting continuation computation with typ=opt")  
+                            if debug > 0: print(f"RUN_JOB, step 4.2: setting continuation computation with typ=opt")  
                             new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
                             if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
 
@@ -216,7 +217,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
 
                             ## 4.3.2 Checks the energy convergence
                             this_job.isconverged = False
-                            if comp.step > 1: this_job.isconverged = check_convergence(this_job.energies, comp.step-1, this_job.job_data.energy_thres)
+                            if comp.step > 0: this_job.isconverged = check_convergence(this_job.energies, comp.step-1, this_job.job_data.energy_thres)
 
                             ## 4.3.3 Continutes if not converged and below max_steps
                             if this_job.isconverged: 
@@ -257,7 +258,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
 
             # Updates Job Registry information
             this_job.register(debug=0)
-        #recipe.register(debug=0)
+        #this_recipe.register(debug=0)
         this_branch.register(debug=0)
 
         if updated: print("Saving System"); sys.save()

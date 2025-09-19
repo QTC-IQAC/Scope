@@ -22,7 +22,7 @@ def parse_args():
     parser = ArgumentParser(prog="scope_run_job", description="Runs a job for a given system")
     parser.add_argument('-n', '--env_path',   type=env_exists,   help='Path to the Environment. Script will load Source data in env.sources_path')
     parser.add_argument('-s', '--sys_path',   type=path_exists,  help='Path to the System binary file. Typically with .npy extension')
-    parser.add_argument('-j', '--job_path',   nargs="+", type=path_exists,  help='Path to the Job File')
+    parser.add_argument('-j', '--job_path',   nargs="+", type=path_exists,  help='Path to the Job File(s). If more than one, you can write them in any order')
     parser.add_argument('-v', '--verbose',    help='If true, will print debug information', action='store_true')
     parser.add_argument('-e', '--errors',     help='If true, will automatically handle some common errors', action='store_true')
     return parser.parse_args()
@@ -47,9 +47,13 @@ def main():
     report = run_job(args.sys_path, args.job_path, args.env_path, handle_errors=args.errors, debug=debug)
     if type(report) == str: summary += report
 
-    print('-----SUMMARY-----')
-    print(summary)
-    print('-------END-------')
+    print("")
+    print("#################################") 
+    print("### SUMMARY OF ERRORS/ACTIONS ###")
+    print("#################################")
+    if len(summary) > 0: print(summary)
+    else:                print("No actions to report, and nothing to investigate. All good")
+    print("#################################")
 
 if __name__ == "__main__":
     main()

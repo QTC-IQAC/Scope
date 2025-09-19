@@ -34,7 +34,7 @@ def read_user_input(message: str, rtext: bool=False, rtext_options: list=[], rty
     correct = False
     if limit_attempts:
         while att < attempts and not correct:
-            opt = input(message)
+            opt = input(message).strip()
             if debug > 0: print(f"Read opt={opt}, of type={type(opt)}, rtype={rtype}, rtext={rtext}")
             if rtext and not rtype:
                 if opt in rtext_options:                                correct = True

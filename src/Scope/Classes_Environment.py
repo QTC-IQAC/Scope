@@ -6,6 +6,7 @@ import numpy as np
 import glob
 import readline
 from Scope.Classes_Queue import queue 
+from Scope.Read_Write    import read_user_input
 
 def set_user():
     return pwd.getpwuid( os.getuid() ).pw_name
@@ -556,7 +557,6 @@ class environment(object):
             print("ENV.SET_QUEUES. Identified local computer, returning empty list of available queues")
             return self.available_queues
 
-        from .Read_Write import read_user_input
         if not hasattr(self,"mqueues"):   self.get_mqueues()
 
         suggested_names = list(q.name for q in self.mqueues if q.available)
@@ -638,6 +638,7 @@ class environment(object):
                                 self.available_queues.append(mq)
                 if not found: print(f"USER_QUEUES: could not find {uq} in the system queues")
         else:
+            print(f"USER_QUEUES: You said the interpreted queues are not correct. Please restart function to repeat the process")
             return self.available_queues
 
         ####################
@@ -706,9 +707,9 @@ class environment(object):
         readline.set_completer_delims(' \t\n;')
         readline.parse_and_bind("tab: complete")
         readline.set_completer(complete_path)
-        self.sources_path   = os.path.abspath(str(input("\tPlease Specify Sources Path (with autocomplete): ")))
-        self.calcs_path     = os.path.abspath(str(input("\tPlease Specify Calculations Path (with autocomplete): ")))
-        self.sys_path       = os.path.abspath(str(input("\tPlease Specify Systems Path (with autocomplete): ")))
+        self.sources_path   = os.path.abspath(str(input("\tPlease Specify Sources Path (with autocomplete): ")).strip())
+        self.calcs_path     = os.path.abspath(str(input("\tPlease Specify Calculations Path (with autocomplete): ")).strip())
+        self.sys_path       = os.path.abspath(str(input("\tPlease Specify Systems Path (with autocomplete): ")).strip())
         if self.sources_path[-1]    != '/': self.sources_path  += '/'
         if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
         if self.sys_path[-1]        != '/': self.sys_path      += '/'
@@ -734,16 +735,15 @@ class environment(object):
 ###  Software ###
 #################
     def set_software(self):
-        from .Read_Write import read_user_input
         if self.management_type != "local": 
             print("\t-------------------------------------------------------------------------------------")
             print("\tSCOPE expects computations to be run with either Gaussian16 or Quantum Espresso")
             print("\tPlease introduce the modules that should be called for these two codes")
             print("\tAlternatively, modify the functions gen_QE_subfile and gen_G16_subfile to your liking")
             print("\t-------------------------------------------------------------------------------------")
-            message = "\tPlease, introduce the module to run GAUSSIAN16 in this cluster (Skip if G16 is not available):"
+            message = "\tPlease, introduce the module to run GAUSSIAN16 in this cluster (Skip if G16 is not available): "
             self.g16_module = read_user_input(message=message, rtext=False)
-            message = "\tNow introduce the module to run QUANTUM ESPRESSO in this cluster (Skip if QE is not available):"
+            message = "\tNow introduce the module to run QUANTUM ESPRESSO in this cluster (Skip if QE is not available): "
             self.qe_module = read_user_input(message=message, rtext=False)
             print("\t-------------------------------------------------------------------------------------")
             print("")
@@ -767,17 +767,18 @@ class environment(object):
         if hasattr(self,"storage_path"):  to_print += f'\t    Storage Path     = {self.storage_path}\n'
         if hasattr(self,"scope_program"): to_print += f'\t    Scope Program    = {self.scope_program}\n'
         to_print += f'\n'
+        if hasattr(self,"qe_module") or hasattr(self,"g16_module"): 
+            to_print += f'\tAvailable Software:\n'
+        if hasattr(self,"g16_module"): to_print += f'\t Module of G16         = {self.g16_module}\n'
+        if hasattr(self,"qe_module"):  to_print += f'\t Module of QE          = {self.qe_module}\n'
+        to_print += f'\n'
         to_print += f'\tQueue Management Type = {self.management_type}\n'
-        if hasattr(self,"method"):   to_print += f'\t Method of Queue Sel   = {self.method}\n'
-        if hasattr(self,"filepath"): to_print += f'\t Path of saved file    = {self.filepath}\n'
+        if hasattr(self,"method"):     to_print += f'\t Method of Queue Sel   = {self.method}\n'
+        if hasattr(self,"filepath"):   to_print += f'\t Path of saved file    = {self.filepath}\n'
         if hasattr(self,"available_queues"): 
             to_print += f'\t Number of available queues = {len(self.available_queues)}:\n'
             for idx, aq in enumerate(self.available_queues):
-                to_print += f'\t  {idx+1}: Name: {aq.name} Time_limit: {aq.time_limit_plain} #Nodes: {len(aq.nodes)} Max_CPU_per_node: {aq.max_cpu_x_node}\n'
-        #if hasattr(self,"selected_queues"):  
-        #    to_print += f'\t Number selected queues = {len(self.selected_queues)}:\n'
-        #    for idx, sq in enumerate(self.selected_queues):
-        #        to_print += f'\t  {idx+1}: Name: {sq.name} Time_limit: {sq.time_limit_plain} #Nodes: {len(sq.nodes)} Max_CPU_per_node: {sq.max_cpu_x_node}\n'
+                to_print += f'\t  {idx+1}: Name: {aq.name} Time_limit: {aq.time_limit} minutes #Nodes: {len(aq.nodes)} Max_CPU_per_node: {aq.max_cpu_x_node}\n'
 
         ## Prints the options added as local environment
         if hasattr(self,"added_attr"):

@@ -7,6 +7,7 @@ dependencies = [
     "numpy",
     "scipy",
     "rdkit",
+    "platformdirs",
     "cell2mol @ git+https://github.com/lcmd-epfl/cell2mol.git@1.1.0",
 ]
 

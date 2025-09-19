@@ -153,21 +153,21 @@ class system(object):
     #########################################################
     ### Functions to Interact with Computational Workflow ###
     #########################################################
-    def add_branch(self, keyword: str, debug: int=0):
-        new_branch = branch(self.calcs_path+keyword, keyword, self, debug=debug)
-        if not os.path.isdir(self.calcs_path+keyword): 
-            try: os.makedirs(self.calcs_path+keyword)
+    def add_branch(self, name: str, debug: int=0):
+        new_branch = branch(self.calcs_path+name, name, self, debug=debug)
+        if not os.path.isdir(self.calcs_path+name): 
+            try: os.makedirs(self.calcs_path+name)
             except Exception as exc:
-                 print(f"Error creating branch folder in {self.calcs_path+keyword}")
+                 print(f"Error creating branch folder in {self.calcs_path+name}")
                  print(exc)
         self.branches.append(new_branch)
         return new_branch
 
     ######
-    def remove_branch(self, br_keyword=None):
+    def remove_branch(self, br_name=None):
         found = False
         for idx, br in enumerate(self.branches):
-            if br.keyword == str(br_keyword): found = True; found_idx = idx
+            if br.name == str(br_name): found = True; found_idx = idx
         if found:
             to_delete = self.branches[found_idx]
             del self.branches[found_idx]
@@ -178,13 +178,13 @@ class system(object):
         return self.branches
 
     ######
-    def find_branch(self, keyword: str, debug: int=0):
-        if debug > 1: print(f"FIND_BRANCH. Finding branch with keyword:", keyword)
+    def find_branch(self, name: str, debug: int=0):
+        if debug > 1: print(f"FIND_BRANCH. Finding branch with name:", name)
         if debug > 1: print(f"FIND_BRANCH. There are {len(self.branches)} branches in system")
         if len(self.branches) == 0: return False, None
         for idx, br in enumerate(self.branches):
-            if debug > 1: print(f"FIND_BRANCH. Evaluating branch {idx} with keyword: {br.keyword} and path: {br.path}")
-            if br.keyword.lower() == keyword.lower():
+            if debug > 1: print(f"FIND_BRANCH. Evaluating branch {idx} with name: {br.name} and path: {br.path}")
+            if br.name.lower() == name.lower():
                 if debug > 1: print(f"FIND_BRANCH. Branch was found. Checking path...")
                 if not os.path.isdir(br.path): 
                     print(f"WARNING: The path associated with this branch (below) does not exist. Loading the branch anyway")

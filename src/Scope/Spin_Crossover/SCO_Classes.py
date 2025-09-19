@@ -11,7 +11,7 @@ from Scope.Classes_Specie       import *
 from Scope.Classes_System       import system
 from Scope.Read_Write           import load_binary, print_xyz
 
-from Scope.SCO_Structure import *
+from Scope.Spin_Crossover.SCO_Structure import *
 
 ########################################
 ##### SYSTEM Object Adapted to SCO #####

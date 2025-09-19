@@ -31,8 +31,8 @@ def read_lines_file(filepath: str, flat: bool=False):
     info.close() 
     return np.array(lines)
 
-def slurm_time_to_seconds(sl_time: str):
-    if sl_time == "infinite":                 ## Infinite 
+def slurm_time_to_seconds(sl_time: str | None):
+    if sl_time is None or sl_time == 'infinite':                 ## Infinite 
         days = 100
         time = days * 86400 
     elif ':' in sl_time and '-' in sl_time:   ## Standard Format
@@ -63,3 +63,8 @@ def slurm_time_to_seconds(sl_time: str):
         print(f"slurm_time_to_seconds: slurm time could not be parsed: {sl_time}")
         time = 0
     return int(time)
+
+def slurm_time_to_minutes(sl_time: str):
+    sts = slurm_time_to_seconds(sl_time)
+    sts /= 60
+    return int(sts)
