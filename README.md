@@ -26,10 +26,18 @@ The associated manuscript is under preparation. Partial documentation is availab
 # Installation
 
 ```bash
-git clone https://github.com/yourusername/scope.git
+git clone https://github.com/QTC-IQAC/Scope.git
 cd scope
 pip install -e .
 ```
+
+## Dependencies
+
+- numpy
+- scikit learn
+- rdkit
+- platformdirs
+- cell2mol
 
 ---
 
@@ -39,3 +47,11 @@ The following tutorials are available at the github repository (https://github.c
 
 - Configuration of an Environment
 - 
+
+# License
+
+MIT
+
+# Acknowledgements
+- Raul Santiago (IQAC-CSIC), for his coding contribution and help at setting the repository
+- The Spanish Ministerio de Ciencia, Innovación y Universidades for funding (Project PID2022-138265NA-I00)
