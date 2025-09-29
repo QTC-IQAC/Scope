@@ -61,7 +61,7 @@ def get_dihedral(P1, P2, P3, P4) -> float:
     n2 = np.cross(b2, b3)
     # Normalize normals
     n1 = normalize(n1)
-    n2 = normalize(n1)
+    n2 = normalize(n2)
     # Orthogonal vector to n1 in the plane of rotation
     m1 = np.cross(n1, b2_norm)
     # Compute angle using atan2 to get the sign

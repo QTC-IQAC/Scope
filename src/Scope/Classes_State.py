@@ -360,8 +360,8 @@ class state(object):
         - The sampling parameters (temperature, number of rounds, samples per round) depend on the `typ` argument.
         - Requires that the state is a minimum and that VNMs have eigenvectors parsed.
         """
-        from .VNM_tools import geom_sampling_from_vnm, euclidean_q_distance, custom_q_distance, beta_distance
-        from .Other import furthest_point_sampling
+        from Scope.VNM_tools import geom_sampling_from_vnm, euclidean_q_distance, custom_q_distance, beta_distance
+        from Scope.Other import furthest_point_sampling
         #if   typ.lower() == 'light':    temp=100; n_rounds=2; n_samples_round=100
         #elif typ.lower() == 'default':  temp=200; n_rounds=5; n_samples_round=300
         #elif typ.lower() == 'heavy':    temp=300; n_rounds=8; n_samples_round=500
@@ -369,7 +369,7 @@ class state(object):
 
         if not self.check_minimum():
             raise ValueError("State is not a minimum")
-        if not hasattr(self.VNMs[0],"haseigenvec"):
+        if not hasattr(self.VNMs[0],"has_mode"):
             raise ValueError("VNMs do not have Eigenvectors. Please parse them")
 
         #if debug > 0: print(f"STATE.SAMPLE_GEOMETRIES: you selected {typ=}. Parameters are:")
@@ -389,7 +389,7 @@ class state(object):
             count = 0
             for c, q in zip(current_geoms, current_q_disp):
                 count += 1
-                geoms, q_disp, energies = geom_sampling_from_vnm(self.labels, c, self.VNMs, qini=q, T=temp, n_samples=n_samples_round, check_adjacencies=True, debug=0)
+                geoms, q_disp, energies = geom_sampling_from_vnm(self.labels, c, self.VNMs, qini=q, T=temp, n_samples=n_samples_round, check_adjacencies=True, debug=debug)
                 if debug > 0: print(f"STATE.SAMPLE_GEOMETRIES: Initial structure {count}/{len(current_geoms)} of round {nr+1}/{n_rounds} sampled {len(q_disp)} starting geometries")
 
                 # Data for FPS
@@ -535,8 +535,8 @@ class state(object):
         to_print +=  '   STATE                                           \n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' Name                  = {self.name}\n'
-        to_print += f' Source Name           = {self._source.name}\n'
-        to_print += f' Source Type           = {self._source.type}\n'
+        if hasattr(self._source,"name"):   to_print += f' Source Name           = {self._source.name}\n'
+        if hasattr(self._source,"type"):   to_print += f' Source Type           = {self._source.type}\n'
         if hasattr(self,"labels"):         to_print += f' Labels                = {self.labels[0]}...\n'
         if hasattr(self,"coord"):          to_print += f' Coord                 = {self.coord[0]}...\n'
         if hasattr(self,"ncomplex"):       to_print += f' Number of Complexes   = {self.ncomplex}\n' 

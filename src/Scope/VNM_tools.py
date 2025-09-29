@@ -166,7 +166,9 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
     N_modes = len(freqs)
     if qini is None: qini = np.zeros((N_modes))
     else:            qini = np.asarray(qini)
-    if debug > 0: print("First mode norm:", normalize(modes[0].mode_format2))
+    if debug > 0: print("Number of modes:", len(modes))
+    if debug > 0: print("First mode:", modes[0])
+    if debug > 0: print("First mode norm:", normalize(modes[0]))
 
     # Initializes and Runs Main While loop
     geometries = []
@@ -205,7 +207,7 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
             e_harm += 0.5 * q_tot[i]**2 * omega**2
             displacement += q_i * modes[i]                 
 
-            if debug > 0 and i < 10: print(f"  Mode {i}: freq_cm = {freqs[i].freq_cm}, q_ini[i]= {q_ini[i]:.3f}, q_vec[i]= {q_vec[i]:.3f}, sigma_q = {sigma_q:.3f}")
+            if debug > 0 and i < 10: print(f"  Mode {i}: freq_cm = {freqs[i].freq_cm}, q_i= {q_i:.3f}, sigma_q = {sigma_q:.3f}")
             if debug > 1: print(f"  max eigenvector component (mass-weighted)    = {np.max(np.abs(modes[i])):.3e}")
             if debug > 1: print(f"  max displacement contribution from this mode = {np.max(np.abs(q_i * modes[i])):.3e}")
             if debug > 1: print(f"  {i=} displacement[0]: {np.round(displacement[0],3)}")

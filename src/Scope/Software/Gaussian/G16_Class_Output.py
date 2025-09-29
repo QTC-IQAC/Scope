@@ -89,44 +89,11 @@ class g16_output(object):
                 if good and 'opt'  in self.requisites and not coordinates:                                  good = False
                 if good and 'freq' in self.requisites and not frequencies:                                  good = False
                 if good: found = True; self.last_complete_block = block_lines 
-
-#                if 'scf' in self.jobtype:
-#                    if not time_limit and scf_convergence:
-#                        self.last_complete_block = block_lines
-#                        found = True
-#                elif 'opt' in self.jobtype:
-#                    if not time_limit and scf_convergence and coordinates and frequencies:
-#                        self.last_complete_block = block_lines
-#                        found = True
-#                elif 'freq' in self.jobtype:
-#                    if not time_limit and scf_convergence and frequencies:
-#                        self.last_complete_block = block_lines
-#                        found = True
-#                else: print(f"GET_LAST_COMPLETE_BLOCK: unexpected output.jobtype={self.jobtype}")
- 
         if not found:
             print("GET_LAST_COMPLETE_BLOCK: No complete block was found")
             self.last_complete_block = None
-        return self.last_complete_block
 
-#    def get_last_complete_block(self, debug: int=0):
-#        if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
-#        found = False
-#        for idx in range(len(self.opt_blocks)-1,-1,-1):
-#            if not found:
-#                init_line = self.opt_blocks[idx][0]+1
-#                last_line = self.opt_blocks[idx][1]+1
-#                block_lines = self.lines[init_line:last_line]
-#                scf_convergence      = parse_scf_status(block_lines)
-#                coordinates          = parse_coord_status(block_lines)
-#                time_limit           = parse_timelimit_status(block_lines)
-#                if not time_limit and scf_convergence and coordinates:
-#                    self.last_complete_block = block_lines
-#                    found = True
-#        if not found:
-#            if debug > 0: print("GET_LAST_COMPLETE_BLOCK: No complete block was found")
-#            self.last_complete_block = None
-#        return self.last_complete_block
+        return self.last_complete_block
 
     def get_scf_blocks(self, debug: int=0):
         start_SCF, found1  = parse_start_scf(self.lines)
@@ -408,7 +375,9 @@ class g16_output(object):
         to_print  = f'---------------------------------------------------\n'
         to_print += f'   FORMATTED REPRESENTATION OF OUTPUT CLASS        \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f'#Lines            = {len(self.lines)}\n'
+        to_print += f' #Lines           = {len(self.lines)}\n'
+        to_print += f' Job Type         = {self.jobtype}\n'
+        to_print += f' Requisites       = {self.requisites}\n'
         if hasattr(self,"last_block_status"):  to_print += f'Last Block Status = {self.last_block_status}\n'
         if hasattr(self,"scf_blocks"):   to_print += f'#SCF Blocks       = {len(self.scf_blocks)}\n'
         if hasattr(self,"opt_blocks"):   to_print += f'#OPT Blocks       = {len(self.opt_blocks)}\n'
