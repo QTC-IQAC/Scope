@@ -8,7 +8,7 @@ def get_dist(coord1: list, coord2: list) -> float:
     return dist
 
 #########
-def get_angle(v1, v2) -> float:
+def get_angle(v1, v2, eps: float=1e-8) -> float:
     """
     Calculates the angle in radians between two vectors.
 
@@ -20,14 +20,15 @@ def get_angle(v1, v2) -> float:
         float: The angle in radians between vectors v1 and v2.
 
     Notes:
-        - The result is in the range [0, π].
+        In contrast with get_dihedral, this function receives vectors instead of points. Be careful
     """
-    v1_u = normalize(v1)
-    v2_u = normalize(v2)
-    return np.arccos(np.clip(np.dot(v1_u, v2_u), -1.0, 1.0))
+    v1 = normalize(v1)
+    v2 = normalize(v2)
+    if v1 < eps or v2 < eps: return 0.0 ## To avoid numerical instabilities after normalization
+    return np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
 
 #########
-def get_dihedral(P1, P2, P3, P4) -> float:
+def get_dihedral(P1, P2, P3, P4, eps: float=1e-8) -> float:
     """
     Calculate the dihedral angle (torsion angle) defined by four points in 3D space.
 
@@ -47,7 +48,8 @@ def get_dihedral(P1, P2, P3, P4) -> float:
 
     Notes
     -----
-    The sign of the angle follows the right-hand rule and is determined using the atan2 function.
+        The sign of the angle follows the right-hand rule and is determined using the atan2 function.
+        In contrast with get_angle, this function receives points instead of vectors. Be careful
     """
     P1, P2, P3, P4 = map(np.asarray, (P1, P2, P3, P4))
     # Bond vectors
@@ -62,12 +64,12 @@ def get_dihedral(P1, P2, P3, P4) -> float:
     # Normalize normals
     n1 = normalize(n1)
     n2 = normalize(n2)
+    if n1 < eps or n2 < eps or b2_norm < eps: return 0.0 ## To avoid numerical instabilities after normalization, or cases of collinearity
     # Orthogonal vector to n1 in the plane of rotation
     m1 = np.cross(n1, b2_norm)
     # Compute angle using atan2 to get the sign
     x = np.dot(n1, n2)
     y = np.dot(m1, n2)
-
     angle = np.arctan2(y, x)
     return angle
 
