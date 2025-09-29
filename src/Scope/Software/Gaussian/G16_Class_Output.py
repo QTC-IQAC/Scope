@@ -11,8 +11,10 @@ class g16_output(object):
             elif hasattr(computation.qc_data,"jobtype"): self.jobtype        = computation.qc_data.jobtype
             self.requisites       = self.get_requisites()
         else: 
+            print(f"G16_output: output created without Computation. Please specify jobtype doing set_jobtype() among 'scf', 'opt' and 'freq'.")
+            print(f"G16_output: computations with both 'opt' and 'freq' are not yet implemented.")
             self.jobtype        = "unknown"
-            self.requisites     = []
+            self.requisites     = []            ### It is dangerous to not specify requities: get_last_complete_block depends on them
         
     def clear_lines(self):
         self.lines          = []
@@ -23,11 +25,16 @@ class g16_output(object):
 ##################
 ### REQUISITES ###
 ##################
+    def set_jobtype(self,jobtype):
+        self.jobtype     = jobtype
+        self.requisites  = self.get_requisites()  ## Resets Requisites 
+
     # Not very useful now, the idea is to define the blocks of data that are needed for every jobtype
     def get_requisites(self):
         if   self.jobtype == 'scf':   self.requisites = ['scf'] 
         elif self.jobtype == 'opt':   self.requisites = ['scf','opt'] 
         elif self.jobtype == 'freq':  self.requisites = ['scf','freq'] 
+        #elif self.jobtype == 'opt-freq': self.requities ??   ## Case to be implemented, when opt and freq are run in the same computation
         return self.requisites
 
 ###############
