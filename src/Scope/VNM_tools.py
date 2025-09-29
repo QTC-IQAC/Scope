@@ -333,7 +333,7 @@ def project_to_normal_modes(l1, x1, l2, x2, freqs, debug: int=0):
     return q_coords
 
 #############
-## For FPS ##
+## For FPS ##
 #############
 def beta_distance(Q1, Q2, freq_cm, T: float=300, debug: int=0):
     ### This is a similarity function to compare two sets of Q values. Meant to be used with the furthest point sampling function in Other
