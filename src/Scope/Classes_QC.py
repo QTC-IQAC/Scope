@@ -145,6 +145,7 @@ def plot_overlap_vnms(vnmsA: object, vnmsB: object):
     plt.show()
 
 def plot_ir_spectrum(vnms, xmin=None, xmax=None, broadening=10.0, points=2000, kind="gaussian"):
+    import matplotlib.pyplot as plt
     """
     Simulate and plot IR spectrum from a list of VNM objects.
 
@@ -164,8 +165,8 @@ def plot_ir_spectrum(vnms, xmin=None, xmax=None, broadening=10.0, points=2000, k
     """
 
     # Extract frequencies and intensities
-    freqs       = np.array([m.freq_cm for v in vnms])
-    intensities = np.array([m.IR_int for  v in vnms])
+    freqs       = np.array([v.freq_cm for v in vnms])
+    intensities = np.array([v.IR_int for  v in vnms])
 
     # Define range
     if xmin is None:  xmin = max(0, freqs.min() - 100)
@@ -186,6 +187,7 @@ def plot_ir_spectrum(vnms, xmin=None, xmax=None, broadening=10.0, points=2000, k
     # Normalize Gaussian so height matches IR_int approximately
     if kind.lower() == "gaussian":
         spectrum *= 1/(broadening*np.sqrt(2*np.pi))
+        spectrum *= broadening
 
     # Plot
     plt.figure(figsize=(8,4))
