@@ -178,7 +178,7 @@ def parse_hp_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
                         if   cdx == 0: x.append(float(lines[l+5+run_line].split()[3+kdx])); run_line += 1
                         elif cdx == 1: y.append(float(lines[l+5+run_line].split()[3+kdx])); run_line += 1
                         elif cdx == 2: z.append(float(lines[l+5+run_line].split()[3+kdx])); run_line += 1
-                new_vnm.eigenvec(atom_idx, atnum, x, y, z)  
+                new_vnm.set_mode(atom_idx, atnum, x, y, z)  
             vnms.append(new_vnm)
             index += 1
     return vnms
@@ -232,7 +232,7 @@ def parse_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
                 x.append(float(line.split()[2]))
                 y.append(float(line.split()[3]))
                 z.append(float(line.split()[4]))
-            new_vnm.eigenvec(atom_idx, atnum, x, y, z)       
+            new_vnm.set_mode(atom_idx, atnum, x, y, z)       
 
         vnms.append(new_vnm)
         index += 1
@@ -270,7 +270,7 @@ def parse_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
                     x.append(float(line.split()[5]))
                     y.append(float(line.split()[6]))
                     z.append(float(line.split()[7]))
-                new_vnm.eigenvec(atom_idx, atnum, x, y, z)  
+                new_vnm.set_mode(atom_idx, atnum, x, y, z)  
             
             vnms.append(new_vnm)
             index += 1
@@ -308,7 +308,7 @@ def parse_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
                     x.append(float(line.split()[8]))
                     y.append(float(line.split()[9]))
                     z.append(float(line.split()[10]))
-                new_vnm.eigenvec(atom_idx, atnum, x, y, z)  
+                new_vnm.set_mode(atom_idx, atnum, x, y, z)  
             
             vnms.append(new_vnm)
             index += 1
