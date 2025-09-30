@@ -115,7 +115,7 @@ class cell(object):
 
     ######
     def get_adjmatrix(self):
-        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord, self.cov_factor, self.metal_factor, get_radii(self.labels))
+        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord)
         if isgood:
             self.adjmat = adjmat
             self.adjnum = adjnum
@@ -286,9 +286,32 @@ class cell(object):
 
     ######
     def view(self, size: str='default'):
+        """
+        Visualizes the 3D structure of the cell using Plotly.
+
+        Parameters
+        ----------
+        size : str, optional
+            The size of the visualization. Options are 'default', 'small', 'large', or 'ultra'.
+            Determines the figure dimensions, marker size, and text size. Default is 'default'.
+
+        Description
+        -----------
+        - Displays atoms as colored markers based on their element type.
+        - Labels each atom with its chemical symbol.
+        - Draws bonds between atoms based on the adjacency matrix.
+        - Uses CPK coloring for atoms.
+        - Adjusts figure size and marker/text sizes according to the `size` parameter.
+        - Shows the interactive 3D plot.
+
+        Notes
+        -----
+        - Uses Plotly for visualization.
+        """
+
         import plotly.graph_objects as go
-        from .Read_Write import set_scene
-        from .Elementdata import ElementData  
+        from Scope.Read_Write import set_scene
+        from Scope.Elementdata import ElementData  
         elemdatabase = ElementData()
 
         size_map = {'default': (600, 600, 8, 9), 'small': (400, 400, 6, 7), 

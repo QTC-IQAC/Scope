@@ -972,6 +972,9 @@ class ligand(specie):
         from rdkit import Chem
         if not hasattr(self,"rdkit_obj"): return None
 
+        ## Stores the original rdkit object. For debugging purposed
+        self.old_rdkit_obj = self.rdkit_obj
+
         ## Initializes the rdkit object as mol
         mol = self.rdkit_obj
 

@@ -60,7 +60,6 @@ def get_search(cif, verbose: bool=False, download: bool=True, debug: int=0):
         search = ScopusSearch(query, verbose=verbose, download=download, debug=debug)
         size = search.get_results_size()
         if size == 1: return search 
-        #if debug > 0: print(f"GET_SEARCH {search=} with {query=}")
     return None
 
 def get_abstract(search, debug: int=0):
@@ -82,6 +81,7 @@ def get_title(search, debug: int=0):
     if search.get_results_size() == 0: return None
     for e in search.get_eids():
         ab = AbstractRetrieval(e, view='FULL')
+        return ab.title
 
 def authors_to_references(aut_list):
     aut_str = ''
@@ -92,4 +92,3 @@ def authors_to_references(aut_list):
         aut_str += 'and '
         aut_str += aut_list[-1]
     return aut_str
-        return ab.title
