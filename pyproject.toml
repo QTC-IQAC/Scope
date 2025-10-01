@@ -2,19 +2,19 @@
 name = "scope"
 version = "0.0.0"
 description = "Temporary test package"
-authors = [{ name = "Dev Tester" }]
+authors = [{ name = "Sergi Vela", email = "sergi.vela@iqac.csic.es" }]
 requires-python = ">=3.10, <3.12"
 dependencies = [
     "numpy<=1.22.4",
-    "cosymlib",
-    "scipy",
-    "rdkit",
-    "platformdirs",
-    "plotly",
-    "nbformat",
-    "ipykernel",
+    "cosymlib==0.11.1",
+    "scipy==1.13.1",
+    "rdkit==2025.3.6",
+    "platformdirs==4.4.0",
     "cell2mol @ git+https://github.com/lcmd-epfl/cell2mol.git",
 ]
+
+[project.optional-dependencies]
+jupyter = ["ipykernel==6.30.1", "plotly==6.3.0", "nbformat==5.10.4"]
 
 # Where your CLI entry point lives
 [project.scripts]
@@ -26,3 +26,6 @@ scope_sco_many   = "Scope.Spin_Crossover.cli.create_many_cell2mol:main"
 [tool.setuptools.packages.find]
 where = ["src"]
 
+[build-system]
+requires = ["setuptools>=42", "wheel", "numpy<=1.22.4"]
+build-backend = "setuptools.build_meta"
