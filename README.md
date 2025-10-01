@@ -25,10 +25,8 @@ The associated manuscript is under preparation. Partial documentation is availab
 
 # Installation
 
+  ## Safest way
 ```bash
-##############
-# Safest way #
-##############
 # Create Environment
 conda create -n scope python=3.10   ## Cosymlib does not accept higher versions 
 conda activate scope
@@ -42,17 +40,16 @@ pip install scipy rdkit platformdirs ipykernel plotly nbformat
 git clone https://github.com/QTC-IQAC/Scope.git
 cd scope
 pip install -e .
+```
 
-###############
-# Fastest way #
-###############
+  ## Fastest way
+```bash
 conda create --name scope python=3.10  ## Cosymlib does not accept higher versions
 conda activate scope
 git clone https://github.com/QTC-IQAC/Scope.git
 cd scope
 pip install -e .
 ```
-  ## Cosymlib does not accept higher versions
 ## Dependencies
 
 - numpy
