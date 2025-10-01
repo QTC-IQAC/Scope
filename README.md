@@ -26,11 +26,15 @@ The associated manuscript is under preparation. Partial documentation is availab
 # Installation
 
 ```bash
+conda create --name scope python=3.10  ## Cosymlib does not accept higher versions
+conda activate scope
+conda install pip
+
 git clone https://github.com/QTC-IQAC/Scope.git
 cd scope
 pip install -e .
 ```
-
+  ## Cosymlib does not accept higher versions
 ## Dependencies
 
 - numpy
@@ -38,6 +42,7 @@ pip install -e .
 - rdkit
 - platformdirs
 - cell2mol
+- ipykernel ?
 
 ---
 
