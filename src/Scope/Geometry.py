@@ -24,7 +24,8 @@ def get_angle(v1, v2, eps: float=1e-8) -> float:
     """
     v1 = normalize(v1)
     v2 = normalize(v2)
-    if v1 < eps or v2 < eps: return 0.0 ## To avoid numerical instabilities after normalization
+    ## To avoid numerical instabilities after normalization
+    if np.linalg.norm(v1) < eps or np.linalg.norm(v2) < eps: return 0.0 
     return np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
 
 #########
@@ -64,7 +65,8 @@ def get_dihedral(P1, P2, P3, P4, eps: float=1e-8) -> float:
     # Normalize normals
     n1 = normalize(n1)
     n2 = normalize(n2)
-    if n1 < eps or n2 < eps or b2_norm < eps: return 0.0 ## To avoid numerical instabilities after normalization, or cases of collinearity
+    ## To avoid numerical instabilities after normalization, or cases of collinearity:
+    if np.linalg.norm(n1) < eps or np.linalg.norm(n2) < eps or np.linalg.norm(b2_norm) < eps: return 0.0 
     # Orthogonal vector to n1 in the plane of rotation
     m1 = np.cross(n1, b2_norm)
     # Compute angle using atan2 to get the sign

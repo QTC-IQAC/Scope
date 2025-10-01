@@ -156,8 +156,8 @@ class atom(object):
 
     ######
     def reset_charge(self) -> None:
-        if hasattr(self,"charge"):    delattr(self,"charge")
-        if hasattr(self,"poscharges"): delattr(self,"charge")
+        if hasattr(self,"charge"):     delattr(self,"charge")
+        if hasattr(self,"poscharges"): delattr(self,"poscharges")
 
     ######
     def set_charge(self, charge: int) -> None:

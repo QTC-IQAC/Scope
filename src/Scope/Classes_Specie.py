@@ -50,6 +50,19 @@ class specie(object):
         ## Bonds
         self.has_bonds            = False
 
+    ###### These properties are updated every time they are called. The info is always taken from the atom objects
+    @property
+    def totcharge(self):
+        if not hasattr(self,"atoms"): self.set_atoms()
+        if not all(hasattr(at,"charge") for at in self.atoms): return None
+        return np.sum(at.charge for at in self.atoms)
+
+    @property
+    def atomic_charges(self):
+        if not hasattr(self,"atoms"): self.set_atoms()
+        if not all(hasattr(at,"charge") for at in self.atoms): return None
+        return [at.charge for at in self.atoms]
+
     ######
     def __repr__(self, indirect: bool=False):
         to_print                   = ''
@@ -201,23 +214,17 @@ class specie(object):
             a.reset_charge() 
 
     ######
-    def set_charges(self, totcharge: int=None, atomic_charges: list=None) -> None:
-        ## Sets total charge  
-        if totcharge is not None:                              self.totcharge = int(totcharge)
-        elif totcharge is None and atomic_charges is not None: self.totcharge = int(np.sum(atomic_charges))
-        elif totcharge is None and atomic_charges is None:     self.totcharge = "Unknown" 
-        ## Sets atomic charges
-        if atomic_charges is not None:
-            self.atomic_charges = atomic_charges
-            if not hasattr(self,"atoms"): self.set_atoms()
-            for idx, a in enumerate(self.atoms):
-                a.set_charge(self.atomic_charges[idx])
+    def set_charges(self, atomic_charges: list) -> None:
+        if not hasattr(self,"atoms"): self.set_atoms()
+        assert len(self.atoms) == len(atomic_charges)
+        for idx, a in enumerate(self.atoms):
+            a.set_charge(atomic_charges[idx])
 
     ######
     def set_atoms(self, atomlist=None, create_adjacencies: bool=False, debug: int=0):
         ## If the atom objects already exist, and you want to set them in self from a different specie
         if atomlist is not None: 
-            if debug > 0: print(f"SPECIE.SET_ATOMS: received {atomlist=}")
+            if debug > 0: print(f"SPECIE.SET_ATOMS: received atomlist, with first atom: {atomlist[0]}")
             self.atoms = atomlist.copy()
             for idx, at in enumerate(self.atoms):
                 at.add_parent(self, index=idx)
@@ -984,6 +991,7 @@ class ligand(specie):
         pattern = Chem.MolFromSmarts("[N--]C#[Se+]")
         # Check if the substructure exists in the molecule
         if mol.HasSubstructMatch(pattern):
+            if debug > 0: print(f"LIGAND.FIX_RDKIT_OBJ: Fixing N2-C#Se+ pattern in ligand {self.formula}")
             matches = mol.GetSubstructMatches(pattern)
             for match in matches:
                 atom_indices = {mol.GetAtomWithIdx(idx).GetAtomicNum(): idx for idx in match}
@@ -1012,15 +1020,51 @@ class ligand(specie):
                 # Get Current Charges
                 fcharge_N  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
                 fcharge_Se = rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge()
+                fcharge_C  = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()
+                if debug > 0: 
+                    print(f"    Current Charges:")
+                    print(f"      N:  {fcharge_N}")
+                    print(f"      Se: {fcharge_Se}")
+                    print(f"      C:  {fcharge_C}")
 
                 # Update formal charges
                 rw_mol.GetAtomWithIdx(n_idx).SetFormalCharge(fcharge_N+1)   
                 rw_mol.GetAtomWithIdx(c_idx).SetFormalCharge(0)             
                 rw_mol.GetAtomWithIdx(se_idx).SetFormalCharge(fcharge_Se-1) 
+                if debug > 0: 
+                    print(f"   Updated Charges:")
+                    print(f"     N:  {rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()}")
+                    print(f"     Se: {rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge()}")
+                    print(f"     C:  {rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()}")
+                    print(f"   Old ligand atom charges:")
+                    print(f"     N:  {self.atoms[n_idx].charge}")
+                    print(f"     Se: {self.atoms[se_idx].charge}")
+                    print(f"     C:  {self.atoms[c_idx].charge}")
+                    print(f"   Old atomic charges:")
+                    print(f"     N:  {self.atomic_charges[n_idx]}")
+                    print(f"     Se: {self.atomic_charges[se_idx]}")
+                    print(f"     C:  {self.atomic_charges[c_idx]}")
+                    print(f"   Old total charge: {self.totcharge}")
 
                 # Also in ligand object
-                self.atoms[n_idx].charge  = fcharge_N+1
-                self.atoms[se_idx].charge = fcharge_Se-1
+                self.atoms[n_idx].charge    = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
+                self.atoms[c_idx].charge    = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()
+                self.atoms[se_idx].charge   = rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge() 
+                #self.atomic_charges[n_idx]  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge() 
+                #self.atomic_charges[c_idx]  = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge() 
+                #self.atomic_charges[se_idx] = rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge() 
+                #self.totcharge              = np.sum(self.atomic_charges)
+
+                if debug > 0:
+                    print(f"   New ligand atom charges:")
+                    print(f"     N:  {self.atoms[n_idx].charge}")
+                    print(f"     Se: {self.atoms[se_idx].charge}")
+                    print(f"     C:  {self.atoms[c_idx].charge}")
+                    print(f"   New atomic charges:")
+                    print(f"     N:  {self.atomic_charges[n_idx]}")
+                    print(f"     Se: {self.atomic_charges[se_idx]}")
+                    print(f"     C:  {self.atomic_charges[c_idx]}")
+                    print(f"   New total charge: {self.totcharge}")
 
                 # Update the molecule
                 mol = rw_mol.GetMol()
@@ -1032,6 +1076,7 @@ class ligand(specie):
 
         # Check if the substructure exists in the molecule
         if mol.HasSubstructMatch(pattern):
+            if debug > 0: print(f"LIGAND.FIX_RDKIT_OBJ: Fixing N-C#Se+ pattern in ligand {self.formula}")
             matches = mol.GetSubstructMatches(pattern)
             for match in matches:
                 atom_indices = {mol.GetAtomWithIdx(idx).GetAtomicNum(): idx for idx in match}
@@ -1060,15 +1105,52 @@ class ligand(specie):
                 # Get Current Charges
                 fcharge_N  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
                 fcharge_Se = rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge()
+                fcharge_C  = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()
+                if debug > 0: 
+                    print(f"    Current Charges:")
+                    print(f"      N:  {fcharge_N}")
+                    print(f"      Se: {fcharge_Se}")
+                    print(f"      C:  {fcharge_C}")
 
                 # Update formal charges
                 rw_mol.GetAtomWithIdx(n_idx).SetFormalCharge(fcharge_N+1)   
                 rw_mol.GetAtomWithIdx(c_idx).SetFormalCharge(0)             
                 rw_mol.GetAtomWithIdx(se_idx).SetFormalCharge(fcharge_Se-1) 
+                if debug > 0: 
+                    print(f"   Updated Charges:")
+                    print(f"     N:  {rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()}")
+                    print(f"     Se: {rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge()}")
+                    print(f"     C:  {rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()}")
+                    print(f"   Old ligand atom charges:")
+                    print(f"     N:  {self.atoms[n_idx].charge}")
+                    print(f"     Se: {self.atoms[se_idx].charge}")
+                    print(f"     C:  {self.atoms[c_idx].charge}")
+                    print(f"   Old atomic charges:")
+                    print(f"     N:  {self.atomic_charges[n_idx]}")
+                    print(f"     Se: {self.atomic_charges[se_idx]}")
+                    print(f"     C:  {self.atomic_charges[c_idx]}")
+                    print(f"   Old total charge: {self.totcharge}")
+
 
                 # Also in ligand object
-                self.atoms[n_idx].charge  = fcharge_N+1
-                self.atoms[se_idx].charge = fcharge_Se-1
+                self.atoms[n_idx].charge    = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
+                self.atoms[c_idx].charge    = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()
+                self.atoms[se_idx].charge   = rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge() 
+                #self.atomic_charges[n_idx]  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge() 
+                #self.atomic_charges[c_idx]  = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge() 
+                #self.atomic_charges[se_idx] = rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge() 
+                #self.totcharge              = np.sum(self.atomic_charges)
+
+                if debug > 0:
+                    print(f"   New ligand atom charges:")
+                    print(f"     N:  {self.atoms[n_idx].charge}")
+                    print(f"     Se: {self.atoms[se_idx].charge}")
+                    print(f"     C:  {self.atoms[c_idx].charge}")
+                    print(f"   New atomic charges:")
+                    print(f"     N:  {self.atomic_charges[n_idx]}")
+                    print(f"     Se: {self.atomic_charges[se_idx]}")
+                    print(f"     C:  {self.atomic_charges[c_idx]}")
+                    print(f"   New total charge: {self.totcharge}")
 
                 # Update the molecule
                 mol = rw_mol.GetMol()
@@ -1081,6 +1163,7 @@ class ligand(specie):
         # Check if the substructure exists in the molecule
         if mol.HasSubstructMatch(pattern):
             matches = mol.GetSubstructMatches(pattern)
+            if debug > 0: print(f"LIGAND.FIX_RDKIT_OBJ: Fixing N2-C#S+ pattern in ligand {self.formula}")
             for match in matches:
                 atom_indices = {mol.GetAtomWithIdx(idx).GetAtomicNum(): idx for idx in match}
                 n_idx = atom_indices[7]   # Atomic number of nitrogen
@@ -1108,15 +1191,52 @@ class ligand(specie):
                 # Get Current Charges
                 fcharge_N  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
                 fcharge_S  = rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge()
+                fcharge_C  = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()
+                if debug > 0: 
+                    print(f"    Current Charges:")
+                    print(f"      N:  {fcharge_N}")
+                    print(f"      S:  {fcharge_S}")
+                    print(f"      C:  {fcharge_C}")
 
                 # Update formal charges
                 rw_mol.GetAtomWithIdx(n_idx).SetFormalCharge(fcharge_N+1)   
                 rw_mol.GetAtomWithIdx(c_idx).SetFormalCharge(0)             
                 rw_mol.GetAtomWithIdx(s_idx).SetFormalCharge(fcharge_S-1) 
+                if debug > 0: 
+                    print(f"   Updated Charges:")
+                    print(f"     N:  {rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()}")
+                    print(f"     S:  {rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge()}")
+                    print(f"     C:  {rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()}")
+                    print(f"   Old ligand atom charges:")
+                    print(f"     N:  {self.atoms[n_idx].charge}")
+                    print(f"     S:  {self.atoms[s_idx].charge}")
+                    print(f"     C:  {self.atoms[c_idx].charge}")
+                    print(f"   Old atomic charges:")
+                    print(f"     N:  {self.atomic_charges[n_idx]}")
+                    print(f"     S:  {self.atomic_charges[s_idx]}")
+                    print(f"     C:  {self.atomic_charges[c_idx]}")
+                    print(f"   Old total charge: {self.totcharge}")
+
 
                 # Also in ligand object
-                self.atoms[n_idx].charge  = fcharge_N+1
-                self.atoms[s_idx].charge  = fcharge_S-1
+                self.atoms[n_idx].charge    = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
+                self.atoms[c_idx].charge    = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()
+                self.atoms[s_idx].charge    = rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge() 
+                #self.atomic_charges[n_idx]  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge() 
+                #self.atomic_charges[c_idx]  = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge() 
+                #self.atomic_charges[s_idx]  = rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge() 
+                #self.totcharge              = np.sum(self.atomic_charges)
+
+                if debug > 0:
+                    print(f"   New ligand atom charges:")
+                    print(f"     N:  {self.atoms[n_idx].charge}")
+                    print(f"     S:  {self.atoms[s_idx].charge}")
+                    print(f"     C:  {self.atoms[c_idx].charge}")
+                    print(f"   New atomic charges:")
+                    print(f"     N:  {self.atomic_charges[n_idx]}")
+                    print(f"     S:  {self.atomic_charges[s_idx]}")
+                    print(f"     C:  {self.atomic_charges[c_idx]}")
+                    print(f"   New total charge: {self.totcharge}")
 
                 # Update the molecule
                 mol = rw_mol.GetMol()
@@ -1129,6 +1249,7 @@ class ligand(specie):
         # Check if the substructure exists in the molecule
         if mol.HasSubstructMatch(pattern):
             matches = mol.GetSubstructMatches(pattern)
+            if debug > 0: print(f"LIGAND.FIX_RDKIT_OBJ: Fixing N-C#S+ pattern in ligand {self.formula}")
             for match in matches:
                 atom_indices = {mol.GetAtomWithIdx(idx).GetAtomicNum(): idx for idx in match}
                 n_idx = atom_indices[7]   # Atomic number of nitrogen
@@ -1156,23 +1277,61 @@ class ligand(specie):
                 # Get Current Charges
                 fcharge_N  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
                 fcharge_S  = rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge()
+                fcharge_C  = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()
+                if debug > 0: 
+                    print(f"    Current Charges:")
+                    print(f"      N:  {fcharge_N}")
+                    print(f"      S:  {fcharge_S}")
+                    print(f"      C:  {fcharge_C}")
 
                 # Update formal charges
                 rw_mol.GetAtomWithIdx(n_idx).SetFormalCharge(fcharge_N+1)   
                 rw_mol.GetAtomWithIdx(c_idx).SetFormalCharge(0)             
                 rw_mol.GetAtomWithIdx(s_idx).SetFormalCharge(fcharge_S-1) 
+                if debug > 0: 
+                    print(f"   Updated Charges:")
+                    print(f"     N:  {rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()}")
+                    print(f"     S:  {rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge()}")
+                    print(f"     C:  {rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()}")
+                    print(f"   Old ligand atom charges:")
+                    print(f"     N:  {self.atoms[n_idx].charge}")
+                    print(f"     S:  {self.atoms[s_idx].charge}")
+                    print(f"     C:  {self.atoms[c_idx].charge}")
+                    print(f"   Old atomic charges:")
+                    print(f"     N:  {self.atomic_charges[n_idx]}")
+                    print(f"     S:  {self.atomic_charges[s_idx]}")
+                    print(f"     C:  {self.atomic_charges[c_idx]}")
+                    print(f"   Old total charge: {self.totcharge}")
 
                 # Also in ligand object
-                self.atoms[n_idx].charge  = fcharge_N+1
-                self.atoms[s_idx].charge  = fcharge_S-1
+                self.atoms[n_idx].charge    = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
+                self.atoms[c_idx].charge    = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()
+                self.atoms[s_idx].charge    = rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge() 
+                #self.atomic_charges[n_idx]  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge() 
+                #self.atomic_charges[c_idx]  = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge() 
+                #self.atomic_charges[s_idx]  = rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge() 
+                #self.totcharge              = np.sum(self.atomic_charges)
+
+                if debug > 0:
+                    print(f"   New ligand atom charges:")
+                    print(f"     N:  {self.atoms[n_idx].charge}")
+                    print(f"     S:  {self.atoms[s_idx].charge}")
+                    print(f"     C:  {self.atoms[c_idx].charge}")
+                    print(f"   New atomic charges:")
+                    print(f"     N:  {self.atomic_charges[n_idx]}")
+                    print(f"     S:  {self.atomic_charges[s_idx]}")
+                    print(f"     C:  {self.atomic_charges[c_idx]}")
+                    print(f"   New total charge: {self.totcharge}")
 
                 # Update the molecule
                 mol = rw_mol.GetMol()
 
         #####################
-        # Fixes Added atoms # 
+        # Fixes Added atoms #  
         #####################
+        # In cell2mol version 1, atoms were added to the rdkit object to obtain the desired connectivity of ligands with xyz2mol. These were left in the rdkit objects
         natoms_rdkit = mol.GetNumAtoms() 
+        # Those added atoms appear at the end, so they're easy to identify
         if natoms_rdkit > self.natoms:
             if debug > 0: print(f"Fixing_Added_Atoms: {self.natoms=} {natoms_rdkit=}")
             rw_mol = Chem.RWMol(mol)
@@ -1185,12 +1344,19 @@ class ligand(specie):
                     if debug > 0: print(f"FIX_RDKIT: Atom {i=} {label=} flagged for removal")
                     to_remove.append(i)
                     for n in neig:
-                        fcharge = n.GetFormalCharge()
-                        if   label == 'H' : n.SetFormalCharge(fcharge-1) 
-                        elif label == 'O' : n.SetFormalCharge(fcharge-2)
-                        elif label == 'Cl': n.SetFormalCharge(fcharge+1)
+                        old_fcharge = n.GetFormalCharge()
+                        neig_index  = n.GetIdx()
+                        # We determine the new_charge depending on the atom to remove
+                        if   label == 'H' :  new_charge = old_fcharge-1
+                        elif label == 'O' :  new_charge = old_fcharge-2
+                        elif label == 'Cl':  new_charge = old_fcharge+1
                         else: 
                             if debug > 0: print(f"FIX_RDKIT: Unknown atom type as added atom {label=}")
+                        # We set the new_charges everywhere 
+                        n.SetFormalCharge(new_charge) 
+                        self.atoms[neig_index].charge    = new_charge 
+                        #self.atomic_charges[neig_index]  = new_charge 
+                                                        
 
             if len(to_remove) > 0:
                 to_remove.sort(reverse=True)
@@ -1253,6 +1419,7 @@ class ligand(specie):
 
         ## If everything worked, we have new rdkit_obj
         self.rdkit_obj = mol
+
         return self.rdkit_obj
 
     ######
@@ -1261,108 +1428,6 @@ class ligand(specie):
         if not hasattr(self,"rdkit_obj"): return None
         self.smiles = Chem.MolToSmiles(self.rdkit_obj)
         return self.smiles
-
-    ######
-    # Moved to specie class
-    ######
-    #def set_bonds(self, debug: int=0):
-    #    ## Creats bond objects using the information contained in the RDKit object
-    #    ## The RDKit object is necessary, as it is the only one that contains the bond order information (lewis structure)
-    #    if not hasattr(self,"rdkit_obj"): 
-    #        if debug >= 1: print(f"LIG.SET_BONDS: Can't set bonds, ligand has not rdkit_object")
-    #        return False
-    #    natoms_rdkit = self.rdkit_obj.GetNumAtoms() 
-    #    if debug >= 1: print(f"LIG.SET_BONDS: {self.formula=}, {self.subtype=} {self.smiles=}")
-
-    #    if self.natoms == natoms_rdkit:  
-    #        if debug >= 2: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are equal: {self.natoms} {natoms_rdkit}")
-
-    #        for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8
-    #            if debug >= 2: print(f"\t{idx=}", rdkit_atom.GetSymbol(), "Number of bonds in rdkit_obj:", len(rdkit_atom.GetBonds()))
-    #            if len(rdkit_atom.GetBonds()) == 0:
-    #                if debug >= 1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} due to no bonds in {self.subtype} RDKit object")
-    #            else:
-    #                for b in rdkit_atom.GetBonds():
-    #                    bond_startatom = b.GetBeginAtomIdx()
-    #                    bond_endatom   = b.GetEndAtomIdx()
-    #                    bond_order     = b.GetBondTypeAsDouble()
-
-    #                    ## Checks the labels involved in the bond
-    #                    if self.atoms[bond_endatom].label != self.rdkit_obj.GetAtomWithIdx(bond_endatom).GetSymbol():
-    #                        if debug >= 1: print(f"\tError with Bond EndAtom", self.atoms[bond_endatom].label, self.rdkit_obj.GetAtomWithIdx(bond_endatom).GetSymbol())
-    #                    else:
-    #                        if bond_endatom == idx:
-    #                            start = bond_endatom
-    #                            end   = bond_startatom
-    #                        elif bond_startatom == idx:
-    #                            start = bond_startatom
-    #                            end   = bond_endatom      
-
-    #                        # create new bond object and add it to both atoms
-    #                        if end > start:
-    #                            if debug >=2: print(f"\tBOND CREATED", idx, start, end, bond_order, self.atoms[start].label, self.atoms[end].label)
-    #                            new_bond = bond(self.atoms[start], self.atoms[end], bond_order)
-    #                            self.atoms[start].add_bond(new_bond)
-    #                            self.atoms[end].add_bond(new_bond)
-    #            
-    #                if hasattr(self.atoms[idx], "bonds"):
-    #                    if debug >=1 : print(f"\tBONDS", [(bd.atom1.label, bd.atom2.label, bd.order, round(bd.distance,3)) for bd in self.atoms[idx].bonds])
-    #                else:
-    #                    if self.natoms == 1:
-    #                        if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.subtype} object")
-    #                        pass
-    #                    else:
-    #                        if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.subtype} RDKit object index {idx}. Please check the RDKit object.")
-    #                        return False # return False if no bonds are created
-    #    else:
-    #        if debug >= 1: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are different: {self.natoms} {natoms_rdkit}")
-    #        if debug >= 2: print(f"\t{[(i, atom.label) for i, atom in enumerate(self.atoms)]}")
-    #        if debug >= 2: print(f"\t{[(i, atom.GetSymbol()) for i, atom in enumerate(self.rdkit_obj.GetAtoms())]}")       
-    #        non_bonded_atoms = list(range(0, natoms_rdkit))[self.natoms:]
-    #        if debug >= 2: print(f"\tNON_BONDED_ATOMS", non_bonded_atoms)
-
-    #        for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
-    #            if debug >= 2: print(f"\t{idx=}", rdkit_atom.GetSymbol(), "Number of bonds :", len(rdkit_atom.GetBonds()))
-    #            if len(rdkit_atom.GetBonds()) == 0:
-    #                if debug >= 1: print(f"\tNO BONDS CREATED for {rdkit_atom.GetSymbol()} due to no bonds in {self.subtype} RDKit object")
-    #            else:
-    #                for b in rdkit_atom.GetBonds():
-    #                    bond_startatom = b.GetBeginAtomIdx()
-    #                    bond_endatom   = b.GetEndAtomIdx()
-    #                    bond_order     = b.GetBondTypeAsDouble()
-  
-    #                    if bond_startatom in non_bonded_atoms or bond_endatom in non_bonded_atoms:
-    #                        if debug >= 2: print(f"\tNO BOND CREATED {bond_startatom=} or {bond_endatom=} is not in the self.atoms. It belongs to {non_bonded_atoms=}.")
-    #                    else :
-    #                        if bond_endatom == idx:
-    #                            start = bond_endatom
-    #                            end   = bond_startatom
-    #                        elif bond_startatom == idx:
-    #                            start = bond_startatom
-    #                            end   = bond_endatom   
-
-    #                        # create new bond object and add it to both atoms
-    #                        if end > start:
-    #                            if debug >=2: print(f"\tBOND CREATED", idx, start, end, bond_order, self.atoms[start].label, self.atoms[end].label)
-    #                            new_bond = bond(self.atoms[start], self.atoms[end], bond_order)
-    #                            self.atoms[start].add_bond(new_bond)
-    #                            self.atoms[end].add_bond(new_bond)
-    #            
-    #                if idx not in non_bonded_atoms:
-    #                    if hasattr(self.atoms[idx], "bonds"):
-    #                        if debug >=2: 
-    #                            print(f"\tBONDS", [(bd.atom1.label, bd.atom2.label, bd.order, round(bd.distance,3)) for bd in self.atoms[idx].bonds])
-    #                    else:
-    #                        if self.natoms == 1:
-    #                            if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.subtype} object")
-    #                            pass
-    #                        else:
-    #                            if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.subtype} RDKit object index {idx}. Please check the RDKit object.")
-    #                            return False # return False if no bonds are created
-    #                else :
-    #                    if debug >=1: print(f"\tNO BONDS for {rdkit_atom.GetSymbol()} with {self.subtype} RDKit object index {idx} because it is an added atom")
-    #    self.has_bonds = True
-    #    return True 
 
 ###############
 #### GROUP ####
@@ -1550,13 +1615,10 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
         for at in new_molec.atoms:
             if at.subtype == "metal": new_molec.metals.append(at)
 
-    ## Charges
-    if hasattr(mol,"totcharge") and hasattr(mol,"atcharge"):
-        if debug > 0: print(f"IMPORT MOLEC: imported total charge and atomic charges")
-        new_molec.set_charges(mol.totcharge, mol.atcharge)
-    elif hasattr(mol,"totcharge") and not hasattr(mol,"atcharge"):
-        if debug > 0: print(f"IMPORT MOLEC: imported total charge but no atomic charges")
-        new_molec.set_charges(mol.totcharge)
+    ### Charges
+    if hasattr(mol,"atcharge"):
+        new_molec.set_charges(mol.atcharge)
+        if debug > 0: print(f"IMPORT MOLEC: imported atomic charges")
 
     ## Fractional coordinates
     if debug > 0: print(f"IMPORT MOLEC: trying to import fractional coordinates")
@@ -1594,12 +1656,9 @@ def import_ligand(lig: object, parent: object=None, debug: int=0) -> object:
         if debug > 0: print(f"IMPORT LIGAND: parent is None") 
 
     ## Charges
-    if hasattr(lig,"totcharge") and hasattr(lig,"atcharge"):        
-        new_ligand.set_charges(lig.totcharge, lig.atcharge)
-        if debug > 0: print(f"IMPORT LIGAND: imported total charge and atomic charges")
-    elif hasattr(lig,"totcharge") and not hasattr(lig,"atcharge"):  
-        new_ligand.set_charges(lig.totcharge)
-        if debug > 0: print(f"IMPORT LIGAND: imported total charge but no atomic charges")
+    if hasattr(lig,"atcharge"):        
+        new_ligand.set_charges(lig.atcharge)
+        if debug > 0: print(f"IMPORT LIGAND: imported atomic charges")
 
     ## Smiles
     if   hasattr(lig,"Smiles"): new_ligand.smiles = lig.Smiles
@@ -1676,13 +1735,10 @@ def import_group(old_group: object, parent: object=None, debug: int=0) -> object
     else:
         if debug > 0: print(f"IMPORT GROUP: parent is None") 
 
-    ## Charges
-    if hasattr(old_group,"totcharge") and hasattr(old_group,"atcharge"):
-        new_group.set_charges(old_group.totcharge, old_group.atcharge)
-        if debug > 0: print(f"IMPORT GROUP: imported total charge and atomic charges")
-    elif hasattr(old_group,"totcharge") and not hasattr(old_group,"atcharge"):
-        new_group.set_charges(old_group.totcharge)
-        if debug > 0: print(f"IMPORT GROUP: imported total charge but no atomic charges")
+    ### Charges
+    if hasattr(old_group,"atcharge"):
+        new_group.set_charges(old_group.atcharge)
+        if debug > 0: print(f"IMPORT GROUP: imported atomic charges")
 
     ## Atoms
     if new_group.check_parent("molecule"):
