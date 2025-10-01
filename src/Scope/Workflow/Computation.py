@@ -457,6 +457,12 @@ class filename(object):
         self.path = path + self.name 
         return self.path
 
+    def __repr__(self) -> None:
+        to_print = ''
+        for it in self.items:
+            to_print += f'{str(it.variable)}: {str(it.value)}\n'
+        return to_print
+
 #######################
 class filename_item(object):
     ## Simple object to create filenames for computation files: input, output and submission
@@ -489,10 +495,11 @@ class filename_item(object):
 
     def __repr__(self) -> None:
         to_print = ''
-        if type(self.value) == int or type(self.value) == float and hasattr(self,"min_value"):
-            if self.value >= self.min_value:
-                if self.prefix != '': to_print += f'{self.prefix}'
-                to_print += f'{str(self.value)}'
+        if type(self.value) == int or type(self.value) == float:
+            if hasattr(self,"min_value"):
+                if self.value >= self.min_value:
+                    if self.prefix != '': to_print += f'{self.prefix}'
+                    to_print += f'{str(self.value)}'
         else:
             if self.prefix != '': to_print += f'{self.prefix}'
             to_print += f'{str(self.value)}'
