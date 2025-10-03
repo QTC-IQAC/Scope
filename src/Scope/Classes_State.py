@@ -427,18 +427,18 @@ class state(object):
             self.results[result.key] = result
 
     def set_energy(self, energy, units, overwrite: bool=True):
-        self.add_result(data("energy",energy,units,"state.set_energy"), overwrite=overwrite)
+        self.add_result(data("energy",energy,units,"state.set_energy()"), overwrite=overwrite)
 
     def set_Helec(self, overwrite: bool=True, debug: int=0):
         assert "energy" in self.results
         if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
-        self.add_result(data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.set_Helec"), overwrite=overwrite)
+        self.add_result(data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.set_Helec()"), overwrite=overwrite)
 
 ################################
 #### Get Thermodynamic Data ####
 ################################
     def get_thermal_data(self, Trange: range=range(10,501,1), Helec=None, Selec=None, Hvib=None, Svib=None, Gtot=None, overwrite: bool=False, debug: int=0):
-        from .Thermal_Corrections import get_Selec, get_Hvib, get_Svib, get_Gibbs
+        from Scope.Thermal_Corrections import get_Selec, get_Hvib, get_Svib, get_Gibbs
 
         if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
         if debug > 0: print(f"STATE.GET_THERMAL_DATA: found {self.ncomplex} complex molecules")
@@ -449,11 +449,11 @@ class state(object):
         ############## Helec ##############
         if Helec is None:   ### One can provide specific values for Helec, Selec, Hvib, Svib and Gtot 
             if overwrite or not "Helec" in self.results.keys():
-                self.add_result(data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.get_thermal_data"), overwrite=overwrite)
+                self.add_result(data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.get_thermal_data()"), overwrite=overwrite)
         else: 
             if isinstance(Helec, data):
                 if overwrite or not "Helec" in self.results.keys():
-                    self.add_result(data("Helec",Helec.value,Helec.units,"enforced in get_thermal_data"), overwrite=overwrite)
+                    self.add_result(data("Helec",Helec.value,Helec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
             else:
                 print("Get_Thermal_Data: wrong type of data provided when enforcing Helec. It must be a DATA-class object")
         if debug > 0: print(f"Helec is {self.results['Helec']}")
@@ -465,7 +465,7 @@ class state(object):
         else: 
             if isinstance(Selec, data):
                 if overwrite or not "Selec" in self.results.keys():
-                    self.add_result(data("Selec",Selec.value,Selec.units,"enforced in get_thermal_data"), overwrite=overwrite)
+                    self.add_result(data("Selec",Selec.value,Selec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
             else:
                 print("Get_Thermal_Data: wrong type of data provided when enforcing Selec. It must be a DATA-class object")
         if debug > 0: print(f"Selec is {self.results['Selec']}")
@@ -473,7 +473,7 @@ class state(object):
         ############## Hvib ##############
         if Hvib is None:
             if overwrite or not "Hvib" in self.results.keys():
-                Hvib = collection("Hvib")
+                Hvib = collection("Hvib", "Temperature")
                 for temp in Trange:
                     Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.ncomplex))
                 self.add_result(Hvib, overwrite=overwrite)
@@ -488,7 +488,7 @@ class state(object):
         ############## Svib ##############
         if Svib is None:
             if overwrite or not "Svib" in self.results.keys():
-                Svib = collection("Svib")
+                Svib = collection("Svib", "Temperature")
                 for temp in Trange:
                     Svib.add_data(get_Svib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.ncomplex))
                 self.add_result(Svib, overwrite=overwrite)
@@ -503,20 +503,20 @@ class state(object):
         ############## Gtot ##############
         if Gtot is None:
             if overwrite or not "Gtot" in self.results.keys():
-                Gtot = collection("Gtot")
+                Gtot = collection("Gtot", "Temperature")
                 for temp in Trange:
                     # Retrieve data (not value)
                     Helec = self.results["Helec"]
                     Selec = self.results["Selec"]
-                    Hvib_i = Hvib.find_value_with_property("temp", temp)
-                    Svib_i = Svib.find_value_with_property("temp", temp)
+                    Hvib_i = Hvib.find_value_with_property("temperature", temp)
+                    Svib_i = Svib.find_value_with_property("temperature", temp)
                     assert Helec.units == Selec.units == Hvib_i.units == Svib_i.units, f"{Helec.units=}, {Selec.units=}, {Hvib_i.units=}, {Svib_i.units=}"
                     key = "Gtot"
                     value = get_Gibbs(Helec.value, Hvib_i.value, Selec.value, Svib_i.value, temp)
                     units = Helec.units
-                    function = "state.get_thermal_data"
+                    function = "state.get_thermal_data()"
                     new_data = data(key, value, units, function)
-                    new_data.add_property("temp", temp, overwrite=overwrite)
+                    new_data.add_property("temperature", temp, overwrite=overwrite)
                     Gtot.add_data(new_data)
                 self.add_result(Gtot, overwrite=overwrite)
         else: 

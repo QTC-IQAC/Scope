@@ -68,8 +68,8 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     ## Arranges units 
     if outunits.lower() == 'kj':  total = total*Constants.har2kJmol
     ## Creates data-class object
-    new_data = data("Svib", float(total), outunits, "get_Svib")
-    new_data.add_property("temp", temp, overwrite=True)
+    new_data = data("Svib", float(total), outunits, "Scope.Thermal_Corrections.get_Svib()")
+    new_data.add_property("temperature", temp, overwrite=True)
 
     return new_data
 
@@ -98,8 +98,8 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     if outunits.lower() == 'kj':  total = total*Constants.har2kJmol    # kJ/mol
 
     ## Creates data-class object
-    new_data = data("Hvib", float(total), outunits, "get_Hvib")
-    new_data.add_property("temp", temp, overwrite=True)
+    new_data = data("Hvib", float(total), outunits, "Scope.Thermal_Corrections.get_Hvib()")
+    new_data.add_property("temperature", temp, overwrite=True)
 
     return new_data
 
@@ -109,41 +109,10 @@ def get_Selec(spin, outunits: str='au', nmol: int=1):
     elif spin == "LS": multiplicity = int(1)
     if outunits.lower()     == 'kj': value = float(8.314*np.log(multiplicity)/1000/nmol)
     elif outunits.lower()   == 'au': value = float(8.314*np.log(multiplicity)/Constants.har2kJmol/1000/nmol)
-    return data("Selec", value, outunits,  'get_Selec') 
+    return data("Selec", value, outunits,  'Scope.Thermal_Corrections.get_Selec()') 
 
 def get_Gibbs(Helec: float, Hvib: float, Selec: float, Svib: float, temp: float):
     return Helec + Hvib - temp*(Svib + Selec)
-
-#
-#def get_dG(templist, dHelec, freqs_HS, freqs_LS, freq_units='cm', outunits='kj', typ='default'):
-#
-#    assert len(freqs_HS) == len(freqs_LS)
-#
-#    ## HS ##
-#    Hvib_HS = get_Hvib(freqs_HS, templist, freq_units=freq_units, outunits=outunits).value
-#    Svib_HS = get_Svib(freqs_HS, templist, freq_units=freq_units, outunits=outunits, typ=typ).value 
-#    ## LS ##
-#    Hvib_LS = get_Hvib(freqs_LS, templist, freq_units=freq_units, outunits=outunits).value
-#    Svib_LS = get_Svib(freqs_LS, templist, freq_units=freq_units, outunits=outunits, typ=typ).value 
-#
-#    Selec_HS = get_Selec(5, outunits).value
-#    Selec_LS = get_Selec(0, outunits).value
-#    dSelec = Selec_HS - Selec_LS
-#
-#    dSvib = []
-#    for idx, z in enumerate(zip(Svib_HS,Svib_LS)):
-#        dSvib.append(z[0]-z[1])
-#
-#    dHvib = []
-#    for idx, z in enumerate(zip(Hvib_HS,Hvib_LS)):
-#        dHvib.append(z[0]-z[1])
-#
-#    dG = []
-#    for idx, t in enumerate(templist):
-#        dG.append(dHelec + dHvib[idx] - t*(dSvib[idx] + dSelec)) 
-#
-#    new_data = data("dG", dG, outunits, "get_dG", notes="trange= "+str(trange)) 
-#    return new_data
 
 def find_t12(templist, dGlist: list):
     if type(templist) == range: templist = range2list(templist) 
