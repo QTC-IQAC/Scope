@@ -168,6 +168,7 @@ class data(object):
 ### OPERATIONS ###
 ##################
 def substract_collections(name: str, col1: object, col2: object, prop=None):
+    ## Another substraction function, complementary of the dunder method
     assert col1.variable.lower() == col2.variable.lower()
     new_col = collection(name, col1.variable)
     for idx, data1 in enumerate(col1.datas):

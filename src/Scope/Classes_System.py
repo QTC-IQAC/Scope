@@ -186,7 +186,7 @@ class system(object):
             if debug > 1: print(f"FIND_BRANCH. Evaluating branch {idx} with name: {br.name} and path: {br.path}")
             if br.name.lower() == name.lower():
                 if debug > 1: print(f"FIND_BRANCH. Branch was found. Checking path...")
-                if not os.path.isdir(br.path): 
+                if not os.path.isdir(br.path) and debug > 0: 
                     print(f"WARNING: The path associated with this branch (below) does not exist. Loading the branch anyway")
                     print(f"WARNING: {br.path=}")
                 return True, br

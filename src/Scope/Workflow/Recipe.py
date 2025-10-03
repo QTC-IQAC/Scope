@@ -17,7 +17,7 @@ class recipe(object):
         self.results          = dict()
 
     def add_result(self, result: object, overwrite: bool=False):
-        result._object = self
+        #result._object = self
         if overwrite or result.key not in self.results.keys():  self.results[result.key] = result
 
     #####################################
