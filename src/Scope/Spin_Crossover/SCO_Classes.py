@@ -137,11 +137,11 @@ class sco_system(system):
             mol.scope_FeNdist, mol.scope_FeNangle, mol.scope_epsylon = geom_sco_from_xyz(mol.labels, mol.coord, debug=0)
             mol.scope_guess_spin = guess_spin_state(int(mol.metals[0].charge), mol.scope_FeNdist[0], debug=0)
 
-        ## Evaluates in pairs to make sure we get the 'same' molecule both both spin states
+        ## Evaluates in pairs to make sure we get the 'same' molecule (same charge and chemical composition) for both spin states
         found_refs = False
         for idx, mol1 in enumerate(pool):
             for jdx, mol2 in enumerate(pool):
-                if jdx != idx and not found_hs and not found_ls: 
+                if jdx != idx and not found_refs:
                     if mol1.scope_guess_spin == 'HS' and mol2.scope_guess_spin == 'LS' and mol1.totcharge == mol2.totcharge and mol1 == mol2:
                         found_refs = True
                         hs = deepcopy(mol1) #I'm making a deepcopy to avoid issues with references
