@@ -13,7 +13,10 @@ class collection(object):
         self.datas          = []
 
     def get_values(self):
-        return np.asarray(list([data.value for data in self.datas]))
+        return np.asarray([data.value for data in self.datas])
+
+    def get_variables(self):
+        return np.asarray([getattr(d,self.variable) for d in self.datas])
 
     def add_data(self, data: object):
         if not hasattr(self,"units"):    self.units    = data.units
@@ -30,7 +33,18 @@ class collection(object):
 
     def view(self):
         import matplotlib.pyplot as plt
-        plt.plot(self.get_values())
+        plt.style.use('seaborn-v0_8-whitegrid')
+        fig, ax = plt.subplots(figsize=(6, 4))
+        x = self.get_variables()
+        y = self.get_values()
+        ax.scatter(x, y, color='blue', edgecolor='k', s=20, alpha=0.8, label='Data points')
+        ax.plot(x, y, color='red', linewidth=2, label='Trend')
+        ax.set_xlabel(str(self.variable), fontsize=12)
+        ax.set_ylabel(f"{self.key} (in {str(self.datas[0].units)})", fontsize=12)
+        ax.set_title(f"{self.variable} vs {self.key} (in {self.datas[0].units})", fontsize=14, weight='bold')
+        ax.legend(frameon=True, shadow=False)
+        ax.grid(True, linestyle='--', alpha=0.7)
+        plt.tight_layout()
         plt.show()
 
 ####################
