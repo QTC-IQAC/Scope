@@ -185,9 +185,8 @@ def plot_ir_spectrum(vnms, xmin=None, xmax=None, broadening=10.0, points=2000, k
             raise ValueError("kind must be 'gaussian' or 'lorentzian'")
 
     # Normalize Gaussian so height matches IR_int approximately
-    if kind.lower() == "gaussian":
-        spectrum *= 1/(broadening*np.sqrt(2*np.pi))
-        spectrum *= broadening
+    #if kind.lower() == "gaussian":
+    #    spectrum *= 1/(broadening*np.sqrt(2*np.pi))
 
     # Plot
     plt.figure(figsize=(8,4))
