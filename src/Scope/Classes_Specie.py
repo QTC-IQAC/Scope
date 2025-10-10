@@ -89,7 +89,7 @@ class specie(object):
 
     ######
     def save(self, filepath):
-        from .Read_Write import save_binary
+        from Scope.Read_Write import save_binary
         save_binary(self, filepath)
 
     ######
@@ -521,8 +521,8 @@ class specie(object):
     ######
     def view(self, show_indices: bool=False, size: str='default'):
         import plotly.graph_objects as go
-        from .Read_Write import set_scene
-        from .Elementdata import ElementData  
+        from Scope.Read_Write import set_scene
+        from Scope.Elementdata import ElementData  
         elemdatabase = ElementData()
 
         size_map = {'default': (600, 600, 8, 9), 'small': (400, 400, 6, 7), 

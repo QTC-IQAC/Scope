@@ -14,42 +14,52 @@ def interpret_software(name: str):
 ##### INPUT CLASS #####
 #######################
 class input_data(object):
-    def __init__(self, f_name: str, section=None, debug=0):
-        if f_name != '': self.read(f_name, section, debug=debug)
-        #self.type = "input_data"
+    def __init__(self, content: str=None, section=None, isfile: bool=True, debug=0):
+        
+        if isfile: 
+            content = os.path.abspath(content) 
+            if not os.path.isfile(os.path.abspath(content)): raise FileNotFoundError(f"File not found: {content}")
+
+        # Correct the section, in case the user forgot the &
+        if section is not None:
+            if section[0] != '&': section = f"&{section}"
+
+        self.type     = "input_data"
+        self.section  = section
+        self.read(content, section, isfile=isfile, debug=debug)
  
-    def read(self, f_name: str, section=None, debug: int=0):
+    def read(self, source: str, section: str=None, isfile: bool=True, debug: int=0):
         dct = dict()
-        with open(f_name, 'r') as f:
-            canread = False
-            for idx, line in enumerate(f.readlines()):
 
-                if line[0] == '#' or line == '\n': continue       ### Ignores lines commented with #
-                line = line.strip()
-                if debug > 0: print("INPUT DATA: Doing line", idx, line) 
+        ## Reads from file or content string
+        if isfile: 
+            from Scope.Parse_General import read_lines_file 
+            lines    = read_lines_file(os.path.abspath(source)) 
+        else:
+            lines    = source.strip().split('\n')
 
-                # Establishes the section of the input to read
-                if section is not None:
-                    if line.startswith(section) and not canread: 
-                        if debug > 0: print("INPUT_DATA: Start of section", section, "found in line", idx) 
-                        canread = True #; continue
-                    elif line.startswith('/') and canread:
-                        canread = False #; continue
-                        if debug > 0: print("INPUT_DATA: end of section", section, "found in line", idx) 
-                else: canread = True
-                
-                if canread:
-                    data        = line.split('#')[0]
-                    if len(data.split('=')) == 2: 
-                        key, value  = data.split('=')
-                        key         = key.strip()
-                        value       = value.strip()
-                        ### All capital letters are converted to lower letters
-                        if type(key) == str:   key   = key.lower()   
-                        if type(value) == str: 
-                            if "/" not in value and key != 'branch' and value != 'True' and value != 'False': value  = value.lower() # Except paths
-                        if debug > 0: print("key:", key, "value:", value)
-                        dct[key] = value
+        ## Reads Section Part
+        if section is not None:      section_lines = read_section(lines, section=section, debug=debug) 
+        else:                        section_lines = lines
+        if len(section_lines) == 0:  
+            print(f"INPUT_DATA.READ: Section '{section}' is empty") 
+            self.set({})
+            return self
+        elif debug > 0:              print(f"INPUT_DATA.READ: {len(section_lines)} lines found in section {section}") 
+
+        ## Creates Dictionary
+        for idx, line in enumerate(section_lines):
+            data        = line.split('#')[0]
+            if len(data.split('=')) == 2: 
+                key, value      = data.split('=')
+                key             = key.strip()
+                value           = value.strip()
+                ### All capital letters are converted to lower letters
+                if type(key)    == str:   key   = key.lower()   
+                if type(value)  == str: 
+                    if "/" not in value and key != 'branch' and value != 'True' and value != 'False': value  = value.lower() # Except paths
+                if debug > 0: print("INPUT_DATA.READ: read entry -> key:", key, "value:", value)
+                dct[key] = value
         self.set(dct)
         return self
 
@@ -87,7 +97,7 @@ class input_data(object):
         return self
 
     def __repr__(self):
-        string    = 'self.{:15}| {:20}| {:10}\n'
+        string    = 'self.{:20}| {:20}| {:10}\n'
         to_print  = 'Formatted input interpretation: ( self -> Instance of class Input() )\n'
         to_print+= '---------------------------------------------------\n'
         to_print += string.format('Key', 'Data Type', 'Value')
@@ -130,7 +140,10 @@ def fill_environment_data(data: object, debug: int=0):
 
 def fill_options_data(data: object, debug: int=0):
     ## Adds defaults to options data
-    ## No defaults to add for the moment
+    if not hasattr(data,"want_submit"):       data._add_attr("want_submit",True) 
+    if not hasattr(data,"ignore_submitted"):  data._add_attr("ignore_submitted",False) 
+    if not hasattr(data,"overwrite_inputs"):  data._add_attr("overwrite_inputs",True) 
+    if not hasattr(data,"overwrite_outputs"): data._add_attr("overwrite_outputs",True) 
     return data
 
 def fill_job_data(data: object, debug: int=0):
@@ -210,7 +223,6 @@ def fill_qc_data(data: object, debug: int=0):
     return data
 
 #######################
-
 def set_environment_data(file_path, section="&environment", debug: int=0):
     environment = input_data(f_name=file_path, section=section, debug=debug)
     environment = fill_environment_data(environment)
@@ -231,3 +243,21 @@ def set_qc_data(file_path, section="&qc_data", debug: int=0):
     qc_data = fill_qc_data(qc_data)
     return qc_data
 
+#######################
+def read_section(lines: list, section: str, debug: int=0):
+    # Establishes the section of the input to read
+    section_lines = []
+    canread = False
+    for idx, line in enumerate(lines):
+        if line.startswith(section) and not canread: 
+            if debug > 0: print("INPUT_DATA.READ_SECTION: Start of section", section, "found in line", idx) 
+            canread = True #; continue
+        elif line.startswith('/') and canread:
+            canread = False #; continue
+            if debug > 0: print("INPUT_DATA.READ_SECTION: end of section", section, "found in line", idx) 
+        elif not line.startswith('/') and canread and len(line) > 0:
+            if debug > 0: print(f"INPUT_DATA.READ_SECTION: reading line {line}")
+            if line[0] == '#' or line == '\n': continue  ### Ignores lines commented with #
+            line = line.strip()
+            section_lines.append(line)
+    return section_lines

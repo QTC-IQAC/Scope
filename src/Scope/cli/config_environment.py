@@ -3,7 +3,7 @@ from Scope.Classes_Environment import environment
 
 def parse_args():
     parser = ArgumentParser(prog="scope_config", description="Configure a new Scope Environment")
-    parser.add_argument('-n', '--name',  type=str, help='Name of the environment.')
+    parser.add_argument('-n', '--name',  type=str, help='Suffix to be added to the name of the environment. File will be called: scope_env_NAME.npy}')
     return parser.parse_args()
 
 def main():
@@ -12,7 +12,8 @@ def main():
     env = environment(args.name)
 
     print("")
-    print(f"\tEnvironment {env.name} Created. We will now ...")
+    print(f"\tEnvironment scope_env_{env.name}.npy Created. We will now ...")
+    print("")
     print(f"\t 1) Set the Paths for the SOURCE, CALCULATIONS and SYSTEMS folders associated with this environment") 
     print("")
     print(f"\tIf the Computer has Computation Partitions recognised by SLURM or SGE, we will also:")
@@ -31,8 +32,8 @@ def main():
     print(env)
 
     print("")
-    #print(f"\t A JSON Config File was also saved in {config_path}")
-    #print("")
+    print(f"\t A JSON Config File was also saved in {config_path}")
+    print("")
     print(f"\t You can overwrite your selections by loading the binary and:")
     print(f"\t 1) To change Paths:                         env.set_paths():")
     print(f"\t 2) To change Storage Path:                  env.set_storage_path():")

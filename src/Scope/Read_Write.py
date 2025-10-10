@@ -62,6 +62,8 @@ def read_user_input(message: str, rtext: bool=False, rtext_options: list=[], rty
 ##########
 def save_json(dict, pathfile):
     import json
+    dir_name = os.path.dirname(pathfile)
+    os.makedirs(dir_name, exist_ok=True)
     with open(pathfile, "w") as f:
         json.dump(dict, f) 
 
@@ -80,6 +82,15 @@ def load_environment(name: str):
     env                 = load_binary(config_file_path)
     return env
 
+##########
+## Text ##
+##########
+def save_text(variable, pathfile):
+    dir_name = os.path.dirname(pathfile)
+    os.makedirs(dir_name, exist_ok=True)
+    with open(pathfile, "w") as f:
+        f.write(variable)
+
 ##############
 ## Binaries ##
 ##############
@@ -91,9 +102,9 @@ def load_binary(pathfile):
 
 def save_binary(variable, pathfile):
     import tempfile
-    pathfile = pathfile.replace("lustre", "home")
     # Write to a temporary file first
     dir_name = os.path.dirname(pathfile)
+    os.makedirs(dir_name, exist_ok=True)
     try:
         with tempfile.NamedTemporaryFile(dir=dir_name, delete=False) as tmp_file:
             pickle.dump(variable, tmp_file)
@@ -114,16 +125,15 @@ def read_xyz(xyz_file):
     assert(xyz_file[-4:] == ".xyz")
     labels = []
     coords = []
-    try:    xyz = open(xyz_file, "r")
+    try:    xyz = open(xyz_file, "r").readlines()
     except: print("Could not read xyz file: {0}".format(xyz_file))
-    for line in xyz:
+    for line in xyz[2:]:
         line_data = line.split()
         if len(line_data) == 4:
             label, x, y, z = line.split()
             coords.append([float(x), float(y), float(z)])
             labels.append(label)
         else: print("I can't read the xyz. It has =/ than 4 columns")
-    xyz.close()
     return labels, coords
 
 def write_xyz(path, labels, coords, charge: int=0, spin: int=1, append: bool=False):

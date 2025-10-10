@@ -241,7 +241,7 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
                 print(f"U {u[0]}-3d {comp.qc_data.uterm}", file=inp)
 
 ###################################################
-def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", version: float=6.4): 
+def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", version: float=7.0): 
     version = str(version)
     with open(comp.sub_path, 'w+') as sub:
         print(f"#!/bin/bash", file=sub)
@@ -255,10 +255,6 @@ def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", v
         print(f"#SBATCH --time={queue.time_limit}", file=sub)
         print(f"", file=sub)
         print(f"module load {module}", file=sub)
-          #if   version == 6.4:   print(f"module load apps/quantumespresso/6.4.1", file=sub)
-          #elif version == 7.0:   print(f"module load quantumespresso/7.0", file=sub)
-          #elif version == 7.2:   print(f"module load quantumespresso/7.2", file=sub)
-          #else:                  print(f"UNKNOWN VERSION",version)
         print(f"", file=sub)
         print(f"set OMP_NUM_THREADS=1", file=sub)
         print(f"ulimit -l unlimited", file=sub)

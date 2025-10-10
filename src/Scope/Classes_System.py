@@ -76,6 +76,7 @@ class system(object):
     def add_source(self, name: str, new_source: object, overwrite: bool=False, debug: int=0):
         ## Links the system to the source
         new_source._sys = self
+        if not hasattr(new_source,"name"): new_source.name = name
         ## Search if source with the same name already exists
         found, source = self.find_source(name, debug=debug)
         ## If not, it is added
@@ -86,7 +87,7 @@ class system(object):
             self.sources = [s for s in self.sources if s.name.lower() != name.lower()]
             self.sources.append(new_source)
         else: 
-            print(f"ADD_SOURCE: Source with name {new_source.name} already exists in system") 
+            print(f"ADD_SOURCE: Source with name '{new_source.name}' already exists in system") 
             print(f"If you would like to Overwrite, specify overwrite=True")
         return self.sources
 
@@ -101,6 +102,15 @@ class system(object):
 
     ######
     def read_paths_from_environment(self, environment: object, debug: int=0) -> None: 
+        """
+        Modifies the paths associated with all branches, recipes, jobs, and computation files of a system
+        Based on the paths stored in the environment object
+        Args:
+            environment (object): The environment to which the system paths must be updated
+            debug (int, optional): Debug level. Defaults to 0.
+        Returns:
+            bool: Returns True if the system paths were updated. Otherwise false
+        """
         reset = False
 
         ## Fix for older versions
@@ -219,3 +229,27 @@ class system(object):
                 print("SYSTEM.ADD_STATE: you're trying to create a state that already exists in _source.")
                 print("SYSTEM.ADD_STATE: use function called 'find_state' instead to retrieve existing state")
         if not found: self.states.append(state)
+
+    ############################################
+    ### Functions to Load Simple XYZ Sources ###
+    ############################################
+    def load_single_xyz(self, filepath: str, overwrite: bool=False, debug: int=0):
+        ## xyz files can only be of species, not unit cells. Unit Cells require the unit cell vectors or parameters
+        from Scope.Classes_Specie import specie
+        from Scope.Read_Write import read_xyz
+        dir  = os.path.dirname(filepath)
+        file = os.path.basename(filepath)
+        name = file.split('.')[0]
+
+        labels, coords = read_xyz(filepath)
+        new_specie = specie(labels, coords)
+
+        self.add_source(name, new_specie, overwrite=overwrite)
+
+    def load_multiple_xyz(self, folder: str, overwrite: bool=False, debug: int=0):
+        if folder[-1] != '/': folder += '/'
+        if not os.path.isdir(folder): return None
+        for file in sorted(os.listdir(os.path.abspath(folder))):
+            if os.path.isfile(folder+file):
+                self.load_single_xyz(folder+file, overwrite=overwrite, debug=debug)
+        return self

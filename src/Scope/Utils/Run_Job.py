@@ -87,7 +87,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
         job_data         = set_job_data(job_path, section="&job_data"           , debug=0)
         qc_data          = set_qc_data(job_path, section="&qc_data"             , debug=0)
 
-        #### 1.2-Loads Environment and Enriches with User Choices: Global Env can be a string or the object itself
+        #### 1.2-Loads Environment and Enriches with User Choices
         global_env.read_job_specs(job_path, debug=0)
 
         #### 1.3-Forces some options in case the environment is not that of a computation cluster

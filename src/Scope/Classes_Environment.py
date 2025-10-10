@@ -286,7 +286,7 @@ class environment(object):
 #######################################
     def save_config(self, filepath=None):
         from platformdirs import user_config_dir
-        from .Read_Write import save_json
+        from Scope.Read_Write import save_json
 
         if      filepath is None and hasattr(self,"filepath"):          pass
         elif    filepath is not None and hasattr(self,"filepath"):      self.filepath = filepath
@@ -295,8 +295,8 @@ class environment(object):
         
         config_dir = user_config_dir("scope")
         self.config_path = os.path.join(config_dir, f"config_{self.name}.json")
-        os.makedirs(config_dir, exist_ok=True)
-        config_dict = {f"{self.name}_env_filepath": self.filepath}
+        #os.makedirs(config_dir, exist_ok=True)
+        config_dict = {f"scope_env_{self.name}_filepath": self.filepath}
         save_json(config_dict, self.config_path)
         return self.config_path
 

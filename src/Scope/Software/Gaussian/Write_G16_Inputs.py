@@ -24,7 +24,7 @@ def gen_G16_input(comp, debug: int=0):
 
     assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in comp.qc_data"
     exists, istate    = find_state(source, comp.qc_data.istate)
-    assert exists, f"istate = {comp.qc_data.istate} does not exist" 
+    assert exists, f"istate = {comp.qc_data.istate} does not exist in source" 
     assert hasattr(istate,"labels"), f"istate = {comp.qc_data.istate} doesn't have labels"
     assert hasattr(istate,"coord"),  f"istate = {comp.qc_data.istate} doesn't have coordinates"
 

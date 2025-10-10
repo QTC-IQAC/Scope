@@ -38,7 +38,6 @@ class collection(object):
         x = self.get_variables()
         y = self.get_values()
         ax.scatter(x, y, color='blue', edgecolor='k', s=20, alpha=0.8, label='Data points')
-        ax.plot(x, y, color='red', linewidth=2, label='Trend')
         ax.set_xlabel(str(self.variable), fontsize=12)
         ax.set_ylabel(f"{self.key} (in {str(self.datas[0].units)})", fontsize=12)
         ax.set_title(f"{self.variable} vs {self.key} (in {self.datas[0].units})", fontsize=14, weight='bold')
