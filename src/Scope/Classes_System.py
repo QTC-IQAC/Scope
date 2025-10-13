@@ -1,14 +1,12 @@
 #####################################
 ##### Contains the SYSTEM Class #####
 #####################################
-
 import os
-import numpy as np
 from Scope.Read_Write import save_binary
 from Scope.Workflow.Branch import branch
 
 class system(object):
-    def __init__(self, name: str, environment: object) -> None:
+    def __init__(self, name: str) -> None:
         self.version              = "1.0"
         self.type                 = "system"
         self.subtype              = "system"
@@ -21,8 +19,8 @@ class system(object):
         self.branches             = []
         self.states               = []
 
-        ## Paths
-        self.read_paths_from_environment(environment)
+        ### Paths
+        #self.set_paths_from_environment(environment)
 
     ######
     def __repr__(self, indirect: bool=False):
@@ -101,64 +99,103 @@ class system(object):
         return True
 
     ######
-    def read_paths_from_environment(self, environment: object, debug: int=0) -> None: 
+    def set_paths(self, create_folders: bool=True, debug: int=0) -> None: 
+        from Scope.Read_Write import complete_path
         """
-        Modifies the paths associated with all branches, recipes, jobs, and computation files of a system
-        Based on the paths stored in the environment object
+        Modifies the paths associated with the system, as well as the branches, recipes, jobs, and computation files of a system
         Args:
-            environment (object): The environment to which the system paths must be updated
             debug (int, optional): Debug level. Defaults to 0.
-        Returns:
-            bool: Returns True if the system paths were updated. Otherwise false
+        Returns: None
         """
-        reset = False
+        import readline
+        # Set up autocomplete
+        readline.set_completer_delims(' \t\n;')
+        readline.parse_and_bind("tab: complete")
+        readline.set_completer(complete_path)
 
-        ## Fix for older versions
-        if not hasattr(environment,"sources_path"):
-            if hasattr(environment,"cell2mol_path"):  environment.sources_path = environment.cell2mol_path
-            else: print("SYSTEM.READ_PATHS_FROM_ENV: WARNING: no sources_path in environment"); return False
-
-        ## Environment Sends the Global Paths
-        target_sources_path         = f"{environment.sources_path}{self.name}/"
-        target_calcs_path           = f"{environment.calcs_path}{self.name}/"
-        target_sys_path             = f"{environment.sys_path}{self.name}/"
-        target_sys_file             = f"{environment.sys_path}{self.name}/{self.name}.npy"
-
-        ## We make sure that those exist:
-        #if not os.path.isdir(target_sys_path) or os.path.isdir(target_calcs_path) or os.path.isdir(target_sources_path):  
-        #    print("SYSTEM.READ_PATHS_FROM_ENV: WARNING: folders do not exist")
-        #    return False
-
-        reset = True
-        self.sources_path         = target_sources_path 
-        self.calcs_path           = target_calcs_path 
-        self.sys_path             = target_sys_path
-        self.sys_file             = target_sys_file
+        ## Reads User Choice for Paths
+        self.sources_path   = os.path.abspath(str(input("\tPlease Specify Sources Path for System (with autocomplete): ")).strip())
+        self.calcs_path     = os.path.abspath(str(input("\tPlease Specify Calculations Path for System (with autocomplete): ")).strip())
+        self.sys_path       = os.path.abspath(str(input("\tPlease Specify Systems Path for System (with autocomplete): ")).strip())
+        if self.sources_path[-1]    != '/': self.sources_path  += '/'
+        if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
+        if self.sys_path[-1]        != '/': self.sys_path      += '/'
+        ## Sets Default sys_file name
+        self.sys_file       = f"{self.sys_path}{self.name}/{self.name}.npy"
+        ## Create Folders if necessary:
+        if not os.path.isdir(self.sys_path)     and create_folders: os.makedirs(self.sys_path)
+        if not os.path.isdir(self.calcs_path)   and create_folders: os.makedirs(self.calcs_path)
+        if not os.path.isdir(self.sources_path) and create_folders: os.makedirs(self.sources_path)
         if debug > 0: 
-            print(f"RESET_PATHS: new paths:")
+            print(f"SYSTEM.SET_PATHS: new paths:")
             print(f"Source path: {self.sources_path}")
             print(f"Calcs path:  {self.calcs_path}")
             print(f"System path: {self.sys_path}")
             print(f"System file: {self.sys_file}")
+        ## Chance all paths
+        self.set_paths_down_hierarchy(debug=debug)
 
-        ## We go down the hierarchy to change branch, recipe, jobs, and calculation paths:
+    ######
+    def set_paths_from_environment(self, environment: object, create_folders: bool=True, debug: int=0) -> None: 
+        """
+        Modifies the paths associated with the system, as well as the branches, recipes, jobs, and computation files of a system
+        Based on the paths stored in the environment object
+        Args:
+            environment (object): The environment to which the system paths must be updated
+            debug (int, optional): Debug level. Defaults to 0.
+        Returns: None
+        """
+        ## Fix for older versions
+        if not hasattr(environment,"sources_path"):
+            if hasattr(environment,"cell2mol_path"):  environment.sources_path = environment.cell2mol_path
+            else: print("SYSTEM.SET_PATHS_FROM_ENV: WARNING: no sources_path in environment"); return False
+
+        ## Environment Sends the Global Paths
+        self.sources_path         = f"{environment.sources_path}{self.name}/"
+        self.calcs_path           = f"{environment.calcs_path}{self.name}/"
+        self.sys_path             = f"{environment.sys_path}{self.name}/"
+        self.sys_file             = f"{environment.sys_path}{self.name}/{self.name}.npy"
+
+        ## Create Folders if necessary:
+        if not os.path.isdir(self.sys_path)     and create_folders: os.makedirs(self.sys_path)
+        if not os.path.isdir(self.calcs_path)   and create_folders: os.makedirs(self.calcs_path)
+        if not os.path.isdir(self.sources_path) and create_folders: os.makedirs(self.sources_path)
+
+        if debug > 0: 
+            print(f"SYSTEM.SET_PATHS_FROM_ENV: new paths:")
+            print(f"Source path: {self.sources_path}")
+            print(f"Calcs path:  {self.calcs_path}")
+            print(f"System path: {self.sys_path}")
+            print(f"System file: {self.sys_file}")
+        self.set_paths_down_hierarchy(debug=debug)
+
+    ######
+    def set_paths_down_hierarchy(self, create_folders: bool=False, debug: int=0) -> None:
+        """
+        Modifies the paths associated with all well branches, recipes, jobs, and computation files of a system
+        Based on the paths stored in this system-class object
+        Args:
+            debug (int, optional): Debug level. Defaults to 0.
+        Returns: None
+        """
         for br in self.branches:
-            tmp = target_calcs_path+br.keyword+'/'
-            if os.path.isdir(tmp): br.path = tmp 
-            else: print(f"RESET_PATHS: {tmp} path does not exist")
+            br.path = self.calcs_path+br.keyword+'/'
+            if create_folders: os.makedirs(br.path, exist_ok=True)
+            if debug > 0: print(f"SET_PATHS_DOWN_HIERARCHY: new branch path: {br.path}")
             for rec in br.recipes:
-                rec.path = br.path
+                rec.path = br.path              ## Recipe Path is the same as branch, and is a folder
                 for job in rec.jobs:
-                    job.path = rec.path
+                    job.path = rec.path         ## Job Path is the same as branch, and is a folder. Except for finite differences jobs
+                    if job.setup == "findiff": 
+                        job.path = job.path+"findiff/"
+                        if create_folders: os.makedirs(rec.path, exist_ok=True)
                     for comp in job.computations:
-                        if job.setup == "findiff" and os.path.isdir(job.path+"findiff"): comp.path = job.path+"findiff_test2/"
-                        else:                                                            comp.path = job.path
-                        comp.inp_path = comp.path+comp.inp_name
-                        comp.out_path = comp.path+comp.out_name
-                        comp.sub_path = comp.path+comp.sub_name
+                        comp.path = job.path                     ## Computation paths is the same as branch folder
+                        comp.inp_path = comp.path+comp.inp_name  ## inp_path is a file
+                        comp.out_path = comp.path+comp.out_name  ## out_path is a file
+                        comp.sub_path = comp.path+comp.sub_name  ## sub_path is a file
                         comp.check_files()
-                        if debug > 0: print(f"RESET_PATHS: new computation path: {comp.inp_path}")
-        return reset
+                        if debug > 0: print(f"SET_PATHS_DOWN_HIERARCHY: new computation path: {comp.inp_path}")
 
     #########################################################
     ### Functions to Interact with Computational Workflow ###

@@ -307,3 +307,14 @@ def prepare_specie_figure(specie, bond_thr):
 
     # Return figure, midpoints, and bond pairs (for bond-related data plotting)
     return fig, midpoints, bond_pairs
+
+#######################
+#### Autocompleter ####
+#######################
+def complete_path(text, state):
+    """Autocomplete for filesystem paths"""
+    matches = glob.glob(text + '*')  # expand matching files/dirs
+    if state < len(matches):
+        return matches[state]
+    else:
+        return None

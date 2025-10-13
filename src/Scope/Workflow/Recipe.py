@@ -27,7 +27,8 @@ class recipe(object):
         new_job               = job(job_data, _recipe=self)
         self.jobs.append(new_job)
         return new_job 
-    
+
+    ######
     def remove_job(self, keyword=None, hierarchy=None):
         found = False
         if keyword is None and hierarchy is None: print("Error removing job, please indicate either keyword, or hierarchy number")
@@ -42,6 +43,7 @@ class recipe(object):
                     if jb.hierarchy == hierarchy and not found: found = True; found_idx = idx
         if found: del self.jobs[found_idx]
 
+    ######
     def remove_output_lines(self):
         for job in self.jobs:
             for comp in job.computations:
@@ -49,46 +51,35 @@ class recipe(object):
 
 #########################
     def find_job(self, keyword=None, hierarchy=None, job_data=None, debug: int=0):
-        found_job = False
-
         if keyword is None and hierarchy is None and job_data is not None:
             assert hasattr(job_data,"keyword") and hasattr(job_data,"hierarchy")
-            if debug > 1: print(f"Searching Job with keyword: '{job_data.keyword}' and hierarchy '{job_data.hierarchy}'")
-            for idx, jb in enumerate(self.jobs):
-                if jb.keyword == job_data.keyword and jb.hierarchy == job_data.hierarchy and not found_job:
-                    this_job = jb
-                    found_job = True
-                    if debug > 1: print(f"Job found")
-
+            if debug > 1: print(f"RECIPE.FIND_JOB: Searching Job with keyword: '{job_data.keyword}' and hierarchy '{job_data.hierarchy}'")
+            for jb in self.jobs:
+                if jb.keyword == job_data.keyword and jb.hierarchy == job_data.hierarchy:
+                    if debug > 1: print(f"RECIPE.FIND_JOB: Job found")
+                    return True, jb
         elif keyword is None and hierarchy is not None and job_data is None:  
             assert type(hierarchy) == int
-            if debug > 1: print(f"Searching Job with and hierarchy '{hierarchy}'")
-            for idx, jb in enumerate(self.jobs):
-                if jb.hierarchy == hierarchy and not found_job:
-                    this_job = jb
-                    found_job = True
-                    if debug > 1: print(f"Job found")
-
+            if debug > 1: print(f"RECIPE.FIND_JOB: Searching Job with and hierarchy '{hierarchy}'")
+            for jb in self.jobs:
+                if jb.hierarchy == hierarchy:
+                    if debug > 1: print(f"RECIPE.FIND_JOB: Job found")
+                    return True, jb
         elif keyword is not None and hierarchy is None and job_data is None:  
             assert type(keyword) == str
-            if debug > 1: print(f"Searching Job with and keyword '{keyword}'")
-            for idx, jb in enumerate(self.jobs):
-                if jb.keyword == keyword and not found_job:
-                    this_job = jb
-                    found_job = True
-                    if debug > 1: print(f"Job found")
-
+            if debug > 1: print(f"RECIPE.FIND_JOB: Searching Job with and keyword '{keyword}'")
+            for jb in self.jobs:
+                if jb.keyword == keyword:
+                    if debug > 1: print(f"RECIPE.FIND_JOB: Job found")
+                    return True, jb
         elif keyword is not None and hierarchy is not None and job_data is None:  
             assert type(keyword) == str and type(hierarchy) == int
-            if debug > 1: print(f"Searching Job with keyword: '{keyword}' and hierarchy '{hierarchy}'")
+            if debug > 1: print(f"RECIPE.FIND_JOB: Searching Job with keyword: '{keyword}' and hierarchy '{hierarchy}'")
             for jb in self.jobs:
-                if jb.keyword == keyword and jb.hierarchy == hierarchy and not found_job:
-                    this_job = jb
-                    found_job = True
-                    if debug > 1: print(f"Job found")
-
-        if found_job: return found_job, this_job
-        else: return found_job, None
+                if jb.keyword == keyword and jb.hierarchy == hierarchy:
+                    if debug > 1: print(f"RECIPE.FIND_JOB: Job found")
+                    return True, jb
+        return False, None
 
 ####################
 ### Registration ###
