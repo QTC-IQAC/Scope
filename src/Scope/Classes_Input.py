@@ -42,7 +42,7 @@ class input_data(object):
         if section is not None:      section_lines = read_section(lines, section=section, debug=debug) 
         else:                        section_lines = lines
         if len(section_lines) == 0:  
-            print(f"INPUT_DATA.READ: Section '{section}' is empty") 
+            print(f"INPUT_DATA.READ: Section '{section}' is empty. Only defaults will be taken") 
             self.set({})
             return self
         elif debug > 0:              print(f"INPUT_DATA.READ: {len(section_lines)} lines found in section {section}") 

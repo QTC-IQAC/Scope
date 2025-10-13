@@ -99,7 +99,7 @@ def get_unpaired_elec(label, spin):
     else: print("get_unpaired_elec: label and/or spin not in library"); return None
 
 #################
-def get_spin_config(source: object, metal_spins, debug: int=0):
+def get_spin_config(source: object, metal_spins: list, debug: int=0):
 
     if debug > 0: print(f"GET_SPIN_CONFIG: Preparing Spin Configuration for New Computation Involving source: {source.name}")
     if debug > 0: print(f"GET_SPIN_CONFIG: Received metal_spins", metal_spins)

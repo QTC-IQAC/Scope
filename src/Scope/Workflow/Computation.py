@@ -33,12 +33,13 @@ class computation(object):
         ### SPIN ###
         ############
         ## For the moment, self.spin is just a string with HS or LS 
-        ## Spin Config can be used to define more complex spin states. 
-        ## Particularly in crystals with intermediate spin states, which are not implemented yet
+        ## Spin Config can be used to define more complex spin states...
+        ## ...particularly in crystals with intermediate spin states, which are not implemented yet
         ############
-        if not hasattr(self.qc_data,"spin"): self.spin             = self._job._recipe.source.spin
-        else:                                self.spin             = qc_data.spin
-        self.spin_config = get_spin_config(self._job._recipe.source, self.spin, debug=debug)
+        if   hasattr(self.qc_data,"spin"):   self.spin = qc_data.spin
+        elif hasattr(self.source,"spin"):    self.spin = self.source.spin
+        else:                                self.spin = "LS"
+        self.spin_config = get_spin_config(self.source, self.spin, debug=debug)
 
     #####################
     ### Name of Files ###

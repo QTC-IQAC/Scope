@@ -49,7 +49,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
     ### STEP 0: Loading Files ###
     #############################
     ## 0.1 Verifies that all files exist
-    if not verify_files(sys_path, global_env, job_paths, debug=1): raise ValueError("RUN_JOB: File verification failed")
+    if not verify_files(sys_path, global_env, job_paths, debug=debug): raise ValueError("RUN_JOB: File verification failed")
 
     ## 0.2-Checks status of branch in system. This is to avoid loading the system if calculations for that branch are already finished
     if not verify_status(sys_path, job_paths, debug=debug): 
@@ -66,8 +66,8 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
         global_env = load_binary(global_env) 
         if debug > 0: print(f"RUN_JOB, step 0.4: Environment Loaded")
 
-    ## 0.5 Verifies that all relevant paths inside system and environment.
-    if not verify_paths(global_env, sys): raise ValueError("RUN_JOB: Path verification failed")
+    ### 0.5 Verifies that all relevant paths inside system and environment.
+    if not verify_paths(global_env, sys, debug=debug): raise ValueError("RUN_JOB: Path verification failed")
 
     ###################
     #### MAIN LOOP ####
@@ -108,11 +108,11 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
         # If job_data.recipe == 'all' as a str or in a list, it converts it to a list of all recipe names in the branch
         if isinstance(job_data.recipe, str):
             if job_data.recipe.lower() == 'all': 
-                job_data.recipe = [rec.name for rec in this_branch.recipes]
+                job_data.recipe = [rec.name for rec in sys.sources]
                 print(f"RUN_JOB, step 1.5: job_data.recipe contained 'all'. It was adapted to {job_data.recipe}")
         elif isinstance(job_data.recipe, list):
             if len(job_data.recipe) == 1 and 'all' in [x.lower() for x in job.data.recipe]:
-                job_data.recipe = [rec.name for rec in this_branch.recipes]
+                job_data.recipe = [rec.name for rec in sys.sources]
                 print(f"RUN_JOB, step 1.5: job_data.recipe contained 'all'. It was adapted to {job_data.recipe}")
 
         for rec in job_data.recipe if isinstance(job_data.recipe, list) else list([job_data.recipe]):   ### Works when job_data.recipe is a str or a list
@@ -316,19 +316,20 @@ def verify_files(sys_path: str, global_env: str | object, job_paths: list, debug
 
 ######
 def verify_paths(global_env: object, sys: object, debug: int=0) -> bool: 
-    if global_env.check_paths(debug=1): 
+    ## Check Env Paths
+    if global_env.check_paths(debug=debug): 
         if debug > 0: print(f"RUN_JOB.VERIFY_PATHS: Environment Paths were Located")
     else:
         raise    ValueError(f"RUN_JOB.VERIFY_PATHS: Environment Paths were NOT Located. Please check paths in environment at {global_env.filepath}")
+
+    ## Check Sys Paths
     if sys.check_paths(debug=debug):
         if debug > 0: print(f"RUN_JOB.VERIFY_PATHS: System Paths were Located")
     else:  
         if debug > 0: print(f"RUN_JOB.VERIFY_PATHS: System Paths were NOT Located. Resetting from Environment")
-        updated = sys.read_paths_from_environment(global_env, debug=0)  ## Checks and resets paths if necessary
-        if updated and debug > 0: 
-            print(f"RUN_JOB.VERIFY_PATHS: system paths reset")
-        else:
-            raise ValueError(f"RUN_JOB.VERIFY_PATHS: System Paths could not be RESET. Please check paths in system at {sys.filepath}")
+        update = sys.set_paths_from_environment(global_env, debug=debug)  ## Checks and resets paths if necessary
+        if not update: raise ValueError(f"RUN_JOB.VERIFY_PATHS: System Paths could not be RESET. Please check paths in system at {sys.sys_file}")
+        else: print(f"RUN_JOB.VERIFY_PATHS: system paths reset")
     return True
 
 ######

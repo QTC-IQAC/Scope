@@ -35,6 +35,7 @@ class system(object):
         to_print += f' Source Path           = {self.sources_path}\n'  ## Path where files with molecular or cell structures are stored
         to_print += f' Calculations Path     = {self.calcs_path}\n'    ## Path where folders with calculations will be stored
         to_print += f' System File Path      = {self.sys_path}\n'      ## Path where the system object is stored
+        to_print += f' System File Name      = {self.sys_file}\n'      ## Full system path
         if len(self.sources) > 0:
             to_print += '\n'
             to_print += f' # of Sources          = {len(self.sources)}\n'
@@ -74,9 +75,10 @@ class system(object):
     def add_source(self, name: str, new_source: object, overwrite: bool=False, debug: int=0):
         ## Links the system to the source
         new_source._sys = self
-        if not hasattr(new_source,"name"): new_source.name = name
         ## Search if source with the same name already exists
         found, source = self.find_source(name, debug=debug)
+        ## Sources Must Have a Name
+        if not hasattr(new_source,"name"): new_source.name = name
         ## If not, it is added
         if not found: 
             self.sources.append(new_source)
@@ -160,6 +162,8 @@ class system(object):
         if not os.path.isdir(self.sys_path)     and create_folders: os.makedirs(self.sys_path)
         if not os.path.isdir(self.calcs_path)   and create_folders: os.makedirs(self.calcs_path)
         if not os.path.isdir(self.sources_path) and create_folders: os.makedirs(self.sources_path)
+        if not create_folders and (not os.path.isdir(self.sys_path) or not os.path.isdir(self.calcs_path) or not os.path.isdir(self.sources_path)):
+            print(f"SYSTEM.SET_PATHS_FROM_ENV: New Folders Could not be created. Please Use create_folders=True")
 
         if debug > 0: 
             print(f"SYSTEM.SET_PATHS_FROM_ENV: new paths:")
@@ -168,9 +172,10 @@ class system(object):
             print(f"System path: {self.sys_path}")
             print(f"System file: {self.sys_file}")
         self.set_paths_down_hierarchy(debug=debug)
+        return True
 
     ######
-    def set_paths_down_hierarchy(self, create_folders: bool=False, debug: int=0) -> None:
+    def set_paths_down_hierarchy(self, create_folders: bool=True, debug: int=0) -> None:
         """
         Modifies the paths associated with all well branches, recipes, jobs, and computation files of a system
         Based on the paths stored in this system-class object
@@ -203,10 +208,8 @@ class system(object):
     def add_branch(self, name: str, debug: int=0):
         new_branch = branch(self.calcs_path+name, name, self, debug=debug)
         if not os.path.isdir(self.calcs_path+name): 
-            try: os.makedirs(self.calcs_path+name)
-            except Exception as exc:
-                 print(f"Error creating branch folder in {self.calcs_path+name}")
-                 print(exc)
+            if debug > 0: print(f"SYSTEM.ADD_BRANCH: creating branch in {self.calcs_path}{name}")
+            os.makedirs(self.calcs_path+name, exist_ok=True)
         self.branches.append(new_branch)
         return new_branch
 
@@ -280,6 +283,10 @@ class system(object):
 
         labels, coords = read_xyz(filepath)
         new_specie = specie(labels, coords)
+
+        # Create the Initial State
+        ini_state  = new_specie.add_state("initial")
+        ini_state.set_geometry(labels, coords)
 
         self.add_source(name, new_specie, overwrite=overwrite)
 
