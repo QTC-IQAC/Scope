@@ -108,11 +108,17 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
         # If job_data.recipe == 'all' as a str or in a list, it converts it to a list of all recipe names in the branch
         if isinstance(job_data.recipe, str):
             if job_data.recipe.lower() == 'all': 
-                job_data.recipe = [rec.name for rec in sys.sources]
+                if debug > 0: 
+                    for sou in sys.sources:
+                        print("RUN_JOB, step 1.5", sou.name)
+                job_data.recipe = [sou.name for sou in sys.sources]
                 print(f"RUN_JOB, step 1.5: job_data.recipe contained 'all'. It was adapted to {job_data.recipe}")
         elif isinstance(job_data.recipe, list):
             if len(job_data.recipe) == 1 and 'all' in [x.lower() for x in job.data.recipe]:
-                job_data.recipe = [rec.name for rec in sys.sources]
+                if debug > 0: 
+                    for sou in sys.sources:
+                        print("RUN_JOB, step 1.5", sou.name)
+                job_data.recipe = [sou.name for sou in sys.sources]
                 print(f"RUN_JOB, step 1.5: job_data.recipe contained 'all'. It was adapted to {job_data.recipe}")
 
         for rec in job_data.recipe if isinstance(job_data.recipe, list) else list([job_data.recipe]):   ### Works when job_data.recipe is a str or a list
