@@ -37,3 +37,10 @@ include-package-data = false
 [build-system]
 requires = ["setuptools>=42", "wheel", "numpy<=1.22.4"]
 build-backend = "setuptools.build_meta"
+
+[tool.pytest.ini_options]
+addopts = "--nbval --current-env --disable-warnings -q"
+testpaths = [
+    "tutorials/0-Navigate_Molecule_Hierarchy.ipynb",
+    "tutorials/1-Navigate_Computation_Hierarchy.ipynb",
+]
