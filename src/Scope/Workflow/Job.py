@@ -27,16 +27,16 @@ class job(object):
         self.suffix           = job_data.suffix
         self.requisites       = job_data.requisites
         self.constrains       = job_data.constrains
-        self.setup            = job_data.setup.lower()
+        self.job_setup        = job_data.job_setup.lower()
         self.must_be_good     = job_data.must_be_good                
 
         ## Corrects self.path in case the user forgets to add '/' 
         if self.path[-1] != '/': self.path += '/'
-        ## Corrects self.setup in case the user forgets to change
-        if self.keyword == 'findiff' or self.keyword == 'findif': self.setup == 'findiff'
+        ## Corrects self.job_setup in case the user forgets to change
+        if self.keyword == 'findiff' or self.keyword == 'findif': self.job_setup == 'findiff'
         
     def check_job_data(self, job_path: str, debug: int=0):
-        from ..Classes_Input import set_job_data, set_qc_data
+        from Scope.Classes_Input import set_job_data
         if debug > 0: print(f"CHECK_JOB_DATA: reading job_data from path: {job_path}")
         new_job_data    = set_job_data(job_path, section="&job_data" , debug=0)
         old_job_data    = self.job_data 
@@ -57,7 +57,7 @@ class job(object):
         self.suffix           = new_job_data.suffix
         self.requisites       = new_job_data.requisites
         self.constrains       = new_job_data.constrains
-        self.setup            = new_job_data.setup.lower()
+        self.job_setup        = new_job_data.job_setup.lower()
         self.must_be_good     = new_job_data.must_be_good                
         self.check_requisites()
 
@@ -171,7 +171,7 @@ class job(object):
         #####################
         ## 1- Setup for regular computations: "1 job => 1 computation"
         #####################
-        if self.setup == "regular" or self.setup == "reg":
+        if self.job_setup == "regular" or self.job_setup == "reg":
             exists, new_comp = self.find_computation()
             if not exists: new_comp = self.add_computation(qc_data, 1, self.path, comp_keyword="", is_update=False, debug=debug)
             new_comp.qc_data._add_attr("istate",self.istate)         
@@ -182,7 +182,7 @@ class job(object):
         #####################
         ## 2- Setup to create displaced geometries using VNM to escape from local minima
         #####################
-        elif self.setup == "displacement" or self.setup == "disp":
+        elif self.job_setup == "displacement" or self.job_setup == "disp":
             
             if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: setting displacement starting from {self.istate}")
             exists, initial_state = find_state(source, self.istate)
@@ -238,7 +238,7 @@ class job(object):
         #####################
         ## 3- Setup for finite Differences
         #####################
-        elif self.setup == "findiff": 
+        elif self.job_setup == "findiff": 
             print(f"SET COMPUTATIONS FROM SETUP: findiff selected")
             found, initial_state = find_state(source, self.istate)
             if not found: print(f"SET COMPUTATIONS FROM SETUP: initial state not found")
@@ -285,7 +285,7 @@ class job(object):
             new_comp.set_paths()
             if not hasattr(self,"energies"): self.energies = np.zeros((self.job_data.max_steps))
 
-        else: print(f"SET COMPUTATIONS FROM SETUP: {self.setup=} not recognized. No computations were created")
+        else: print(f"SET COMPUTATIONS FROM SETUP: {self.job_setup=} not recognized. No computations were created")
 
 ###############################
 ## Continuation Computations ##
@@ -402,7 +402,7 @@ class job(object):
 #        ############################################################
 #        ## Findiff Setup: we extract frequencies at the job level ##
 #        ############################################################
-#        if allgood and self.setup == 'findiff': 
+#        if allgood and self.job_setup == 'findiff': 
 #            if debug > 1: print("------------------------------------------")
 #            if debug > 1: print("Registering Finite Differences of this job")
 #            if debug > 1: print("------------------------------------------")
@@ -432,9 +432,9 @@ class job(object):
         to_print += f' Job hierarchy         = {self.hierarchy}\n'
         to_print += f' Job requisites        = {self.requisites}\n'
         to_print += f' Job constrains        = {self.constrains}\n'
-        to_print += f' Job setup             = {self.setup}\n'
+        to_print += f' Job setup             = {self.job_setup}\n'
         to_print += f' Num Computations      = {len(self.computations)}\n'
-        if self.setup == "rep_opt": to_print += f' Num Steps             = {self.get_max_step()}\n'
+        if self.job_setup == "rep_opt": to_print += f' Num Steps             = {self.get_max_step()}\n'
         to_print += '----------------------------------------------------\n'
         to_print += f' self.isregistered (Temp) = {self.isregistered}\n'
         to_print += f' self.isgood       (Temp) = {self.isgood}\n' 

@@ -1,7 +1,5 @@
 #!/usr/bin/env python3
 import os
-import sys
-import pwd
 from Scope.Classes_Environment  import *
 from Scope.Classes_Input        import *
 from Scope.Classes_State        import *
@@ -107,6 +105,16 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
         ##################
         ### 1.5 RECIPE ###
         ##################
+        # If job_data.recipe == 'all' as a str or in a list, it converts it to a list of all recipe names in the branch
+        if isinstance(job_data.recipe, str):
+            if job_data.recipe.lower() == 'all': 
+                job_data.recipe = [rec.name for rec in this_branch.recipes]
+                print(f"RUN_JOB, step 1.5: job_data.recipe contained 'all'. It was adapted to {job_data.recipe}")
+        elif isinstance(job_data.recipe, list):
+            if len(job_data.recipe) == 1 and 'all' in [x.lower() for x in job.data.recipe]:
+                job_data.recipe = [rec.name for rec in this_branch.recipes]
+                print(f"RUN_JOB, step 1.5: job_data.recipe contained 'all'. It was adapted to {job_data.recipe}")
+
         for rec in job_data.recipe if isinstance(job_data.recipe, list) else list([job_data.recipe]):   ### Works when job_data.recipe is a str or a list
 
             exists, this_recipe             = this_branch.find_recipe(rec)
@@ -205,7 +213,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
                             if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
 
                         ## 4.3 Cases meant to be repetitive. Next step added to JOB object 
-                        if this_job.setup == "rep_opt" and comp.isgood:
+                        if this_job.job_setup == "rep_opt" and comp.isgood:
                             from Scope.Other import check_convergence
  
                             ## 4.3.1 Collects energies from state in this step
@@ -280,7 +288,7 @@ def get_status(sys_folder: str, branch_name: str, debug: int=0):
 
     ## If system file does not exist
     if not os.path.isdir(f"{sys_folder}"):
-        print(f"RUN_JOB.GET_STATUS: System path {sys_path} does not exist")
+        print(f"RUN_JOB.GET_STATUS: System path {sys_folder} does not exist")
         return "absent"
 
     ## Otherwise.. it looks for files with standardized names (see setup functions in Scope.Workflow.Branch)

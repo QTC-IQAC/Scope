@@ -13,14 +13,13 @@ elemdatabase = ElementData()
 
 #######################
 def gen_G16_input(comp, debug: int=0):
-    source = comp._job._recipe.source
-    
     ## 1-Change some variable names to simplify calls
-    jobtype = comp.qc_data.jobtype
+    source     = comp._job._recipe.source
+    jobtype    = comp.qc_data.jobtype
     functional = comp.qc_data.functional
-    basis = comp.qc_data.basis
-    loose_opt = comp.qc_data.loose_opt
-    tight_opt = comp.qc_data.tight_opt
+    basis      = comp.qc_data.basis
+    loose_opt  = comp.qc_data.loose_opt
+    tight_opt  = comp.qc_data.tight_opt
 
     assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in comp.qc_data"
     exists, istate    = find_state(source, comp.qc_data.istate)
@@ -39,18 +38,19 @@ def gen_G16_input(comp, debug: int=0):
         commandline.append(" scf=(maxconventionalcycles=200,xqc)")
 
         ## 2.2-Functional
-        if   functional == "pbe":       commandline.append(" UPBEPBE")
+        if   functional == "pbe":     commandline.append(" UPBEPBE")
         elif functional == "b3lyp":   commandline.append(" UB3LYP")
         elif functional == "b3lyp*":  commandline.append(" UB3LYP IOp(3/76=1000002000) IOp(3/77=0720008000) IOp(3/78=0810010000)")
         elif functional == "b3lyp**": commandline.append(" UB3LYP IOp(3/76=1000001500) IOp(3/77=0720008500) IOp(3/78=0810010000)")
         else: print("G16_INPUT: functional", functional, "not recognized")
 
         ## 2.3-Basis
-        if basis == "def2sv":      commandline.append(" def2SV")
+        if   basis == "def2sv":    commandline.append(" def2SV")
         elif basis == "def2svp":   commandline.append(" def2SVP")
         elif basis == "def2tzv":   commandline.append(" def2TZV")
         elif basis == "def2tzvp":  commandline.append(" def2TZVP")
         elif basis == "def2tzvpp": commandline.append(" def2TZVPP")
+        elif basis == "sto-3g":    commandline.append(" STO-3G")
         else: print("G16_INPUT: basis", basis, "not recognized")
 
         ## 2.4-Jobtype

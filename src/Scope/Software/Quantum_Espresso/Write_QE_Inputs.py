@@ -39,13 +39,13 @@ def gen_QE_input(comp: object, environment: object, debug: int=0):
     else: print(f"GEN_QE_input: unrecognised {source.type=}")
 
     ## 3-Determines the PP_Library path
-    if not hasattr(comp.qc_data,"PP_Library"): f"PP_Library could not be found. Please set it in the qc_data.section of the Job"
+    if not hasattr(comp.qc_data,"pp_library"): f"PP_Library could not be found. Please set it in the qc_data.section of the Job"
     import Scope ## Trick to retrieve the relative path
     PP_path = os.path.abspath(Scope.__file__).replace("__init__.py","Software/Quantum_Espresso/PP_Libraries/")
-    if   comp.qc_data.PP_Library.lower() == "efficiency":  PP_path += "Efficiency/"
-    elif comp.qc_data.PP_Library.lower() == "precision":   PP_path += "Precision/"
-    elif comp.qc_data.PP_Library.lower() == "vanderbilt":  PP_path += "Vanderbilt_USPP/"
-    else: raise ValueError(f"GEN_QE_INPUT: could not recognise PP_library: {comp.qc_data.PP_Library}")
+    if   comp.qc_data.pp_library.lower() == "efficiency":  PP_path += "Efficiency/"
+    elif comp.qc_data.pp_library.lower() == "precision":   PP_path += "Precision/"
+    elif comp.qc_data.pp_library.lower() == "vanderbilt":  PP_path += "Vanderbilt_USPP/"
+    else: raise ValueError(f"GEN_QE_INPUT: could not recognise PP_library: {comp.qc_data.pp_library}")
 
     ## Checks requisites
     if system_type == "cell":     

@@ -193,13 +193,13 @@ class computation(object):
         if not hasattr(self,'output_lines'): self.read_lines()
         ## Gaussian Computations
         if   self.software == 'g16': 
-            from ..Software.Gaussian.G16_Class_Output import g16_output
+            from Scope.Software.Gaussian.G16_Class_Output import g16_output
             allowed_types = ['specie']
             assert self._job._recipe.source.type in allowed_types
             self.output = g16_output(self.output_lines, self)
         ## Quantum Espresso Computations
         elif self.software == 'qe':  
-            from ..Software.Quantum_Espresso.QE_Class_Output import qe_output
+            from Scope.Software.Quantum_Espresso.QE_Class_Output import qe_output
             allowed_types = ['specie', 'cell']
             assert self._job._recipe.source.type in allowed_types
             self.output = qe_output(self.output_lines, self)

@@ -1,0 +1,33 @@
+
+&environment
+   max_jobs         = 12
+   max_procs        = 20
+   requested_procs  = 1
+/
+
+&options
+/
+
+&job_data
+   branch       = 'Isolated'
+   recipe       = 'all'
+   job_setup    = 'regular'
+   suffix       = 'scf'
+   keyword      = 'pbe scf'
+
+   istate       = 'initial'
+   fstate       = 'initial'
+
+   hierarchy    = 1
+   requisites   = []
+   constrains   = ['self']
+   must_be_good = False
+/
+
+&qc_data
+   software     = 'g16'
+   jobtype      = 'scf'
+   functional   = 'pbe'
+   basis        = 'sto-3g'
+   is_grimme    = True
+/

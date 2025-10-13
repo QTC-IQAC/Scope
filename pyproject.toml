@@ -14,17 +14,25 @@ dependencies = [
 ]
 
 [project.optional-dependencies]
-jupyter = ["ipykernel==6.30.1", "plotly==6.3.0", "nbformat==5.10.4"]
+jupyter   = ["ipykernel==6.30.1", "plotly==6.3.0", "nbformat==5.10.4"]
+tutorials = ["jupyter","matplotlib >= 3.8.0"]
+dev       = ["pytest","nbval","pytest-cov","pre-commit"]
 
 # Where your CLI entry point lives
 [project.scripts]
-scope_config     = "Scope.cli.config_environment:main"
-scope_run_job    = "Scope.cli.run_job:main"
-scope_sco_single = "Scope.Spin_Crossover.cli.create_from_cell2mol:main"
-scope_sco_many   = "Scope.Spin_Crossover.cli.create_many_cell2mol:main"
+# Downloads
+scope_download_tutorials = "Scope.cli.download_tutorials:main"
+# General
+scope_config             = "Scope.cli.config_environment:main"
+scope_run_job            = "Scope.cli.run_job:main"
+# Spin_Crossover Related
+scope_sco_single         = "Scope.Spin_Crossover.cli.create_from_cell2mol:main"
+scope_sco_many           = "Scope.Spin_Crossover.cli.create_many_cell2mol:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+[tool.setuptools]
+include-package-data = false
 
 [build-system]
 requires = ["setuptools>=42", "wheel", "numpy<=1.22.4"]

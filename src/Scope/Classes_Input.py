@@ -148,34 +148,27 @@ def fill_options_data(data: object, debug: int=0):
 
 def fill_job_data(data: object, debug: int=0):
     ## Adds defaults to job_data
-    if not hasattr(data,"branch"):        print("WARNING: job_data is missing branch"),    sys.exit()
-    if not hasattr(data,"recipe"):        print("WARNING: job_data is missing recipe"),    sys.exit()
-    if not hasattr(data,"hierarchy"):     print("WARNING: job_data is missing hierarchy"), sys.exit()
+    if not hasattr(data,"branch"):        raise ValueError("WARNING: job_data is missing 'branch' input variable")
+    if not hasattr(data,"hierarchy"):     raise ValueError("WARNING: job_data is missing 'hierarchy' input variable")  ## This shouldn't be mandatory, I need to fix it
+    if not hasattr(data,"recipe"):        data._add_attr("recipe",str('all')),    
     if not hasattr(data,"suffix"):        data._add_attr("suffix", str(data.hierarchy))
-    #if not hasattr(data,"keyword"):       data._add_attr("keyword", str("scf"))  ## In case I implement the available_keywords below
     if not hasattr(data,"keyword"):       data._add_attr("keyword", str(data.suffix))
     if not hasattr(data,"istate"):        data._add_attr("istate", str("initial"))
     if not hasattr(data,"fstate"):        data._add_attr("fstate", str(data.suffix))
-    if not hasattr(data,"setup"):         data._add_attr("setup", "regular")
+    if not hasattr(data,"job_setup"):     data._add_attr("job_setup", "regular")
     if not hasattr(data,"requisites"):    data._add_attr("requisites", [])
     if not hasattr(data,"constrains"):    data._add_attr("constrains", ['self'])
     if not hasattr(data,"must_be_good"):  data._add_attr("must_be_good", False)
 
     ## Adds defaults for rep_opt job setup type
-    if data.setup == 'rep_opt' and not hasattr(data,"energy_thres"): data._add_attr("energy_thres",float(1e-5))
-    if data.setup == 'rep_opt' and not hasattr(data,"max_steps"):    data._add_attr("max_steps",int(10))
-    if data.setup == 'rep_opt' and not hasattr(data,"energiess"):    data._add_attr("energies",np.zeros((data.max_steps)))
+    if data.job_setup == 'rep_opt' and not hasattr(data,"energy_thres"): data._add_attr("energy_thres",float(1e-5))
+    if data.job_setup == 'rep_opt' and not hasattr(data,"max_steps"):    data._add_attr("max_steps",int(10))
+    if data.job_setup == 'rep_opt' and not hasattr(data,"energiess"):    data._add_attr("energies",np.zeros((data.max_steps)))
 
     ## Modifies some attributes to avoid blank spaces and dashes, and to use lower letters
     data._mod_attr("keyword",str(data.keyword.lower().replace("-","_").replace(" ","_")))
     data._mod_attr("istate",str(data.istate.lower().replace("-","_").replace(" ","_")))
     data._mod_attr("fstate",str(data.fstate.lower().replace("-","_").replace(" ","_")))
-
-   # available_keywords = ["opt", "relax", "freq", "scf", "vc-relax"]
-   # if data.keyword not in available_keywords:
-   #     print("----------------------------------")
-   #     print("WARNING: job_keyword not available")
-   #     print("----------------------------------"); exit() 
 
     ## Modifies the list of requisites and constrains to avoid blanks and dashes
     tmp_req = []
@@ -186,17 +179,16 @@ def fill_job_data(data: object, debug: int=0):
     for c in data.constrains:
         tmp_con.append(c.replace("-","_").replace(" ","_"))
     data._mod_attr("constrains",tmp_con)
-
     return data
 
 def fill_qc_data(data: object, debug: int=0):
     ## Adds defaults to qc_data
-    if not hasattr(data,"software"):      print("WARNING: qc_data is missing software"); sys.exit()
+    if not hasattr(data,"software"):      raise ValueError("ERROR: qc_data is missing 'software' input variable")
     else:                                 data._add_attr("software", interpret_software(data.software))
 
     if data.software == "g16":
-        if not hasattr(data,"functional"):    data._add_attr("functional", "B3LYP**")
-        if not hasattr(data,"basis"):         data._add_attr("basis", "def2SVP")
+        if not hasattr(data,"functional"):    data._add_attr("functional", "b3lyp**")
+        if not hasattr(data,"basis"):         data._add_attr("basis", "sto-3g")
         if not hasattr(data,"jobtype"):       data._add_attr("jobtype", "scf")
         if not hasattr(data,"loose_opt"):     data._add_attr("loose_opt", False)
         if not hasattr(data,"tight_opt"):     data._add_attr("tight_opt", False)
@@ -205,7 +197,7 @@ def fill_qc_data(data: object, debug: int=0):
 
     elif data.software == "qe":
         if not hasattr(data,"version"):       data._add_attr("version", float(7.0))
-        if not hasattr(data,"PP_Library"):    data._add_attr("PP_Library", "vanderbilt")
+        if not hasattr(data,"pp_library"):    data._add_attr("pp_library", "vanderbilt")
         if not hasattr(data,"jobtype"):       data._add_attr("jobtype", "scf")
         if not hasattr(data,"functional"):    data._add_attr("functional", "pbe")
         if not hasattr(data,"is_hubbard"):    data._add_attr("is_hubbard", False)
@@ -220,26 +212,35 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"pressure"):      data._add_attr("pressure", int(0))
         if not hasattr(data,"forc_conv"):     data._add_attr("forc_conv", float(1e-5))
         if not hasattr(data,"elec_conv"):     data._add_attr("elec_conv", float(1e-5))
+
+        available_jobtypes = ["opt", "relax", "freq", "scf", "vc-relax"]
+        if data.jobtype not in available_jobtypes: raise ValueError(f"{data.jobtype} is not implemented")
+
+    if data.keyword not in available_keywords:
+        print("----------------------------------")
+        print("WARNING: job_keyword not available")
+        print("----------------------------------"); exit()
+
     return data
 
 #######################
-def set_environment_data(file_path, section="&environment", debug: int=0):
-    environment = input_data(f_name=file_path, section=section, debug=debug)
+def set_environment_data(content, section="&environment", isfile: bool=True, debug: int=0):
+    environment = input_data(f_name=content, section=section, isfile=isfile, debug=debug)
     environment = fill_environment_data(environment)
     return environment
 
-def set_options_data(file_path, section="&options", debug: int=0):
-    options = input_data(f_name=file_path, section=section, debug=debug)
+def set_options_data(content, section="&options", isfile: bool=True, debug: int=0):
+    options = input_data(f_name=content, section=section, isfile=isfile, debug=debug)
     options = fill_options_data(options)
     return options
 
-def set_job_data(file_path, section="&job_data", debug: int=0):
-    job_data = input_data(f_name=file_path, section=section, debug=debug)
+def set_job_data(content, section="&job_data", isfile: bool=True, debug: int=0):
+    job_data = input_data(f_name=content, section=section, isfile=isfile, debug=debug)
     job_data = fill_job_data(job_data)
     return job_data
 
-def set_qc_data(file_path, section="&qc_data", debug: int=0):
-    qc_data = input_data(f_name=file_path, section=section, debug=debug)
+def set_qc_data(content, section="&qc_data", isfile: bool=True, debug: int=0):
+    qc_data = input_data(f_name=content, section=section, isfile=isfile, debug=debug)
     qc_data = fill_qc_data(qc_data)
     return qc_data
 
