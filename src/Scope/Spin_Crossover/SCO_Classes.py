@@ -17,12 +17,11 @@ from Scope.Spin_Crossover.SCO_Structure import *
 ##### SYSTEM Object Adapted to SCO #####
 ########################################
 class sco_system(system):
-    def __init__(self, refcode: str, environment: object) -> None:
-        system.__init__(self, refcode, environment)
+    def __init__(self, refcode: str) -> None:
+        system.__init__(self, refcode)
         self.subtype              = "sco_system" 
         self.refcode              = refcode
         self.refcode_wo_digits    = ''.join([i for i in refcode if not i.isdigit()])
-        #self.read_paths_from_environment(environment)
 
     def __repr__(self):
         to_print  = ''

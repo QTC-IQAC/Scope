@@ -216,31 +216,26 @@ def fill_qc_data(data: object, debug: int=0):
         available_jobtypes = ["opt", "relax", "freq", "scf", "vc-relax"]
         if data.jobtype not in available_jobtypes: raise ValueError(f"{data.jobtype} is not implemented")
 
-    if data.keyword not in available_keywords:
-        print("----------------------------------")
-        print("WARNING: job_keyword not available")
-        print("----------------------------------"); exit()
-
     return data
 
 #######################
 def set_environment_data(content, section="&environment", isfile: bool=True, debug: int=0):
-    environment = input_data(f_name=content, section=section, isfile=isfile, debug=debug)
+    environment = input_data(content=content, section=section, isfile=isfile, debug=debug)
     environment = fill_environment_data(environment)
     return environment
 
 def set_options_data(content, section="&options", isfile: bool=True, debug: int=0):
-    options = input_data(f_name=content, section=section, isfile=isfile, debug=debug)
+    options = input_data(content=content, section=section, isfile=isfile, debug=debug)
     options = fill_options_data(options)
     return options
 
 def set_job_data(content, section="&job_data", isfile: bool=True, debug: int=0):
-    job_data = input_data(f_name=content, section=section, isfile=isfile, debug=debug)
+    job_data = input_data(content=content, section=section, isfile=isfile, debug=debug)
     job_data = fill_job_data(job_data)
     return job_data
 
 def set_qc_data(content, section="&qc_data", isfile: bool=True, debug: int=0):
-    qc_data = input_data(f_name=content, section=section, isfile=isfile, debug=debug)
+    qc_data = input_data(content=content, section=section, isfile=isfile, debug=debug)
     qc_data = fill_qc_data(qc_data)
     return qc_data
 

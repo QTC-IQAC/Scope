@@ -56,7 +56,8 @@ def main():
         sys.exit()
 
     print(f"\tLoading Source From Path {source_path}: ")
-    new_sys = sco_system(system_name, env)
+    new_sys = sco_system(system_name)
+    new_sys.set_paths_from_environment(env)
     new_sys.load_multiple_cell2mol_folders(source_path, debug=debug)
     worked1 = new_sys.set_reference_cells(overwrite=overwrite, debug=debug)
     worked2 = new_sys.set_reference_molecs(overwrite=overwrite, debug=debug)
