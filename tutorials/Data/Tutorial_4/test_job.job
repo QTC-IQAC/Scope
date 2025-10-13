@@ -11,7 +11,7 @@
 &job_data
    branch       = 'Isolated'
    recipe       = ['reference']
-   setup        = 'regular'
+   job_setup    = 'regular'
    suffix       = 'opt'
    keyword      = 'pbe opt'
 
