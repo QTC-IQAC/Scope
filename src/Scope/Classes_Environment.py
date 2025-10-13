@@ -672,6 +672,7 @@ class environment(object):
 ###  Paths  ###
 ###############
     def set_storage_path(self, debug: int=0):
+        from Scope.Read_Write import complete_path
         # Configure readline to use tab completion
         readline.set_completer_delims(' \t\n;')
         readline.parse_and_bind("tab: complete")
@@ -687,6 +688,7 @@ class environment(object):
     #    return self.storage_path
 
     def set_scope_program(self, debug: int=0):
+        from Scope.Read_Write import complete_path
         readline.set_completer_delims(' \t\n;')
         readline.parse_and_bind("tab: complete")
         readline.set_completer(complete_path)
@@ -695,6 +697,7 @@ class environment(object):
         return self.scope_program
 
     def set_paths(self, debug: int=0):
+        from Scope.Read_Write import complete_path
         print("\t--------------------------------------------------------------------------------------------------------------")
         print("\tSCOPE connects a list of sources (molecules/cells), with their computations, and analyses")
         print("\tThe data is stored in system files. Please define the GENERAL paths where these 3 elements will be stored.")
@@ -805,12 +808,3 @@ class environment(object):
         except:   attr = value
         if hasattr(self,"dct"): self.dct[key] = attr
         setattr(self, key, attr)
-
-####
-def complete_path(text, state):
-    """Autocomplete for filesystem paths"""
-    matches = glob.glob(text + '*')  # expand matching files/dirs
-    if state < len(matches):
-        return matches[state]
-    else:
-        return None
