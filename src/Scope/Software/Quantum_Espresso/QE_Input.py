@@ -191,7 +191,7 @@ def gen_QE_input(comp: object, debug: int=0):
         #///////////////////////////////////////////////////////////////////////////
         print("ATOMIC_POSITIONS angstrom", file=inp)
         # First, it prints the metal atoms
-        for idx in enumerate(istate.atoms):
+        for idx, at in enumerate(istate.atoms):
             if idx in metal_indices:
                 if at.spin == 0: l = at.label
                 else:            l = at.get_decorated_label(typ="spin") 

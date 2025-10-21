@@ -54,7 +54,6 @@ class specie(object):
     ## Charge and Spin ##
     #####################
     ## To avoid conflicts, these are properties that are updated every time they are called. The info is always taken from the atom objects
-
     @property
     def charge(self):
         if not hasattr(self,"atoms"): self.set_atoms()
@@ -164,7 +163,18 @@ class specie(object):
                 if p.subtype.lower() == subtype.lower(): return self.parents_indices[idx]
         return None
 
-    ######
+    ###########
+    ## Other ##
+    ###########
+    def rmsd(self, other, reorder=True, center_method='centroid', debug: int=0):
+        from .Other import rmsd
+        value = rmsd(self.labels, self.coord, other.labels, other.coord, reorder=reorder, center_method=center_method, debug=debug)   
+        return value
+
+    def save(self, filepath):
+        from Scope.Read_Write import save_binary
+        save_binary(self, filepath)
+
     def get_centroid(self):
         self.centroid = compute_centroid(self.coord)
         if hasattr(self,"frac_coord"): self.frac_centroid = compute_centroid(self.frac_coord)
@@ -575,18 +585,6 @@ class specie(object):
         if debug > 0: print(f"SPECIE.FIND_STATE: state {search_name} not found")
         return False, None
 
-    ###########
-    ## Other ##
-    ###########
-    def rmsd(self, other, reorder=True, center_method='centroid', debug: int=0):
-        from .Other import rmsd
-        value = rmsd(self.labels, self.coord, other.labels, other.coord, reorder=reorder, center_method=center_method, debug=debug)   
-        return value
-
-    ######
-    def save(self, filepath):
-        from Scope.Read_Write import save_binary
-        save_binary(self, filepath)
 
     ###################################
     ### Functions to print/visualize ##
