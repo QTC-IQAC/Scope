@@ -81,7 +81,6 @@ class specie(object):
 
     @property
     def ismagnetic(self):
-        self.ismagnetic = False
         for at_s in self.atomic_spins:
             if at_s != 0: return True
         return False
@@ -324,7 +323,14 @@ class specie(object):
                     if ismetal: newatom = metal(l, self.coord[idx], radii=self.radii[idx])
                     else:       newatom =  atom(l, self.coord[idx], radii=self.radii[idx])
                 if debug > 0: print(f"SPECIE.SET_ATOMS: added atom to specie: {self.formula}")
+
+                # Add specie as parent of the atom
                 newatom.add_parent(self, index=idx)
+                # Add other parents of the molecule, as parents of the atom
+                for par in self.parents:
+                    parent_indices = self.get_parent_indices(par.subtype)
+                    newatom.add_parent(par, parent_indices[idx])
+
                 newatom.set_charge(int(0)) # initializes charge to 0 as a default.
                 newatom.set_spin(int(0))   # initializes spin to 0 as a default.
                 self.atoms.append(newatom)

@@ -190,10 +190,18 @@ def gen_QE_input(comp: object, debug: int=0):
         #// Atom Coords, taken from the state object. Using the provided istate  ///
         #///////////////////////////////////////////////////////////////////////////
         print("ATOMIC_POSITIONS angstrom", file=inp)
+        # First, it prints the metal atoms
+        for idx in enumerate(istate.atoms):
+            if idx in metal_indices:
+                if at.spin == 0: l = at.label
+                else:            l = at.get_decorated_label(typ="spin") 
+                print(f"{l:4}        {at.coord[0]:12.6f}   {at.coord[1]:12.6f}   {at.coord[2]:12.6f}", file=inp)
+        # Then the rest
         for idx, at in enumerate(istate.atoms):
-            if at.spin == 0: l = at.label
-            else:            l = at.get_decorated_label(typ="spin") 
-            print(f"{l:4}        {at.coord[0]:12.6f}   {at.coord[1]:12.6f}   {at.coord[2]:12.6f}", file=inp)
+            if idx not in metal_indices:
+                if at.spin == 0: l = at.label
+                else:            l = at.get_decorated_label(typ="spin") 
+                print(f"{l:4}        {at.coord[0]:12.6f}   {at.coord[1]:12.6f}   {at.coord[2]:12.6f}", file=inp)
         print("K_POINTS gamma", file=inp)
 
         #/////////////////////////////

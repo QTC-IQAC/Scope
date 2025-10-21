@@ -163,7 +163,7 @@ class sco_system(system):
         # Creates Initial States:
         hs_ini_state = hs.add_state("initial")
         hs_ini_state.set_geometry(hs.labels, hs.coord)
-        hs_ini_state.set_spin_config(2, typ='metals')  # For HS, spin multiplicity must be set at 2, in the metal centers
+        hs_ini_state.set_spin_config(4, typ='metals')  # For HS, spin multiplicity must be set at 4, in the metal centers
 
         ls_ini_state = ls.add_state("initial")
         ls_ini_state.set_geometry(ls.labels, ls.coord)
@@ -248,7 +248,7 @@ class sco_system(system):
         hs_ini_state.set_geometry(hs.labels, hs.coord)
         hs_ini_state.set_cell(hs.cell_vector, hs.cell_param)
         hs_ini_state.get_moleclist()
-        hs_ini_state.set_spin_config(2, typ='metals')  # For HS, spin multiplicity must be set at 2, in the metal centers
+        hs_ini_state.set_spin_config(4, typ='metals')  # For HS, spin multiplicity must be set at 4, in the metal centers
         
         ls_ini_state = ls.add_state("initial")
         ls_ini_state.set_geometry(ls.labels, ls.coord)

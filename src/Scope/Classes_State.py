@@ -86,9 +86,9 @@ class state(object):
 
     def set_geometry_from_moleclist(self, overwrite: bool=False, debug: int=0):
         if not hasattr(self,"moleclist"): self.get_moleclist(overwrite=overwrite, debug=debug)
-        self.labels      = []
-        self.coord       = []
-        indices     = []
+        self.labels     = []
+        self.coord      = []
+        indices         = []
         for mol in self.moleclist:
             if not hasattr(mol,"atoms"): mol.set_atoms()
             for idx, at in enumerate(mol.atoms):
@@ -164,7 +164,6 @@ class state(object):
 
     @property
     def ismagnetic(self):
-        self.ismagnetic = False
         for at_s in self.atomic_spins:
             if at_s != 0: return True
         return False
@@ -178,7 +177,7 @@ class state(object):
 #### Operations with Molecules ####
 ###################################
     def get_moleclist(self, overwrite: bool=False, debug: int=0):
-        from .Classes_Specie import molecule
+        from Scope.Classes_Specie import molecule
 
         # Overwrite
         if not overwrite and hasattr(self,"moleclist"): 
@@ -242,19 +241,27 @@ class state(object):
         return self.ncomplex
     
     ######
-    def get_atoms(self):
-        if not hasattr(self,"moleclist"): self.get_moleclist()
+    def get_atoms(self, debug: int=0):
+        ## Retrieves a list of atoms, extracted from the molecules in moleclist.
+        ## The challenge is that the atoms do not necessarily appear in the same order as in labels/coord, so we need to reorder them
+        if not hasattr(self,"moleclist"): 
+            if debug > 0: print(f"STATE.GET_ATOMS: generating moleclist")
+            self.get_moleclist(debug=debug)
+
         self.atoms = []
+        tmp_indices = []
         for mol in self.moleclist:
             for at in mol.atoms:
+                tmp_indices.append(at.get_parent_index(self._source.subtype))  ## We get the index of the atom in the source of this state
                 self.atoms.append(at)
+        self.atoms = [x for _, x in sorted(zip(tmp_indices, self.atoms), key=lambda pair: pair[0])]
         return self.atoms
 
 ####################################
 #### Specific to Spin Crossover ####
 ####################################
     def get_SCO_geom(self, debug: int=0):
-        from .Spin_Crossover.SCO_Structure import geom_sco_from_xyz
+        from Scope.Spin_Crossover.SCO_Structure import geom_sco_from_xyz
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"Found Fragmented molecules in the geometry of state: {self.name}"
         if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
@@ -267,7 +274,7 @@ class state(object):
     def reconstruct(self, debug: int=0):
         assert hasattr(self,"cell_vector")
         if not hasattr(self._source,"refmoleclist"): print("CLASS STATE.RECONSTRUCT: _source does not have refmoleclist"); return None
-        from .Read_Write import HiddenPrints
+        from Scope.Read_Write import HiddenPrints
         if debug > 0: print("CLASS_STATE.RECONSTRUCT: reconstructing cell of state", self)
         with HiddenPrints():
             finished = False

@@ -294,7 +294,6 @@ class cell(object):
 
     @property
     def ismagnetic(self):
-        self.ismagnetic = False
         for at_s in self.atomic_spins:
             if at_s != 0: return True
         return False
@@ -406,6 +405,7 @@ class cell(object):
         if not indirect: to_print += '-------------------------------\n'
         to_print += f' Version               = {self.version}\n'
         to_print += f' Type                  = {self.type}\n'
+        to_print += f' SubType               = {self.subtype}\n'
         to_print += f' Name                  = {self.name}\n'
         to_print += f' Num Atoms             = {self.natoms}\n'
         to_print += f' Cell Parameters a:c   = {self.cell_param[0:3]}\n'
