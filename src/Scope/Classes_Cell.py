@@ -300,8 +300,7 @@ class cell(object):
    
     @property
     def spin_multiplicity(self):
-        self.spin_multiplicity = int(self.spin + 1)
-        return self.spin_multiplicity 
+        return int(self.spin + 1) 
 
     def reset_charge_assignment(self, debug: int=0):
         if not hasattr(self,"moleclist"): return None

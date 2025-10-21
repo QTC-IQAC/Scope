@@ -73,7 +73,7 @@ def gen_G16_input(comp, debug: int=0):
         print("", file=inp) 
         print(f"Title Card", file=inp) 
         print("", file=inp) 
-        print(f"{source.charge} {comp.spin_config.multiplicity}", file=inp) 
+        print(f"{source.charge} {source.spin_multiplicity}", file=inp) 
 
         ##################################################################
         ### Coordinates, which are taken from the initial state object ###

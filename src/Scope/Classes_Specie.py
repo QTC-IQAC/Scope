@@ -86,8 +86,7 @@ class specie(object):
    
     @property
     def spin_multiplicity(self):
-        self.spin_multiplicity = int(self.spin + 1)
-        return self.spin_multiplicity 
+        return int(self.spin + 1) 
 
     def set_atomic_charges(self, atomic_charges: list) -> None:
         if not hasattr(self,"atoms"): self.set_atoms()

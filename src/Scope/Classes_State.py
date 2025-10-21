@@ -141,25 +141,25 @@ class state(object):
     @property
     def charge(self):
         if not hasattr(self,"atoms"): self.get_atoms()
-        if not all(hasattr(at,"charge") for at in self.atoms): return int(0)
+        if not all(hasattr(at,"charge") for at in self.atoms): return None
         return np.sum(at.charge for at in self.atoms)
 
     @property
     def atomic_charges(self):
         if not hasattr(self,"atoms"): self.get_atoms()
-        if not all(hasattr(at,"charge") for at in self.atoms): return [0]*self.natoms
+        if not all(hasattr(at,"charge") for at in self.atoms): return None
         return [at.charge for at in self.atoms]
 
     @property
     def spin(self):
         if not hasattr(self,"atoms"): self.get_atoms()
-        if not all(hasattr(at,"spin") for at in self.atoms): return int(0)
+        if not all(hasattr(at,"spin") for at in self.atoms): return None
         return np.sum(at.spin for at in self.atoms)
 
     @property
     def atomic_spins(self):
         if not hasattr(self,"atoms"): self.get_atoms()
-        if not all(hasattr(at,"spin") for at in self.atoms): return [0]*self.natoms
+        if not all(hasattr(at,"spin") for at in self.atoms): return None
         return [at.spin for at in self.atoms]
 
     @property
@@ -170,8 +170,7 @@ class state(object):
    
     @property
     def spin_multiplicity(self):
-        self.spin_multiplicity = int(self.spin + 1)
-        return self.spin_multiplicity 
+        return int(self.spin + 1)
 
 ###################################
 #### Operations with Molecules ####
