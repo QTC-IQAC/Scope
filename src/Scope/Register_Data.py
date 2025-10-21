@@ -32,7 +32,7 @@ def reg_general(comp: object, debug: int=0):
 def reg_optimization(comp: object, debug: int=0):
 
     ### For simplicity...
-    source = comp._job._recipe.source
+    source = comp.source
 
     ### 0-In Case Reg_General hasn't been run:
     if not hasattr(comp,"output"): reg_general(comp)
@@ -52,27 +52,28 @@ def reg_optimization(comp: object, debug: int=0):
 
     worked = False
     if new_coord is not None:
-        try: 
-            ### 2-Stores Results in the State Object
-            exists, fstate = source.find_state(comp.qc_data.fstate, debug=debug)   ## If exists, it will be updated
-            if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug) 
-            fstate.set_geometry(labels, new_coord)
-            fstate.set_spin_config(comp.spin_config)
-            if source.type == "cell": 
-                fstate.set_cell(cellvec, cellparam)
-                fstate.get_moleclist()
-                fstate.check_fragmentation(reconstruct=True, debug=debug)
-            #fstate.add_computation(comp)
-            worked = True
-        except Exception as exc:
-            print("Exception storing results for registry optimization", exc)
+        ### 3a-Stores Results in the State Object
+        exists, fstate        = source.find_state(comp.qc_data.fstate, debug=debug)  ## If exists, it will be updated
+        if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created
+        fstate.set_geometry(labels, new_coord)                                       ## New geometry is stored
+        if source.type == "cell": 
+            fstate.set_cell(cellvec, cellparam)
+            fstate.get_moleclist()
+            fstate.check_fragmentation(reconstruct=True, debug=debug)
+        ### 3b-Copies the Spin Configuration
+        exists, istate        = source.find_state(comp.qc_data.istate, debug=debug)  ## Initial State
+        if not exists: raise Exception("REG_ENERGY: Initial State not found, cannot copy Spin Configuration")
+        fstate.set_spin_config(istate.spin_config, istate.spin_config_type)          ## Spin Configuration is Copied
+        ### 3c-Computation is linked to the fstate
+        fstate.add_computation(comp)
+        worked = True
     return worked
 
 ###########################################
 def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
 
     ### For simplicity...
-    source = comp._job._recipe.source
+    source = comp.source
 
     ### 0-In Case Reg_General hasn't been run:
     if not hasattr(comp,"output"): reg_general(comp)
@@ -83,8 +84,14 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
     forces = comp.output.get_forces_last_complete_block()
 
     ### 2-Saving Data in fstate ###
-    exists, fstate = source.find_state(comp.qc_data.fstate, debug=debug)   ## If exists, it will be updated
-    if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug) 
+    exists, fstate = source.find_state(comp.qc_data.fstate, debug=debug)         ## If exists, it will be updated
+    if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created 
+    ### Copies the Spin Configuration
+    exists, istate        = source.find_state(comp.qc_data.istate, debug=debug)  ## Initial State
+    if not exists: raise Exception("REG_ENERGY: Initial State not found, cannot copy Spin Configuration")
+    fstate.set_spin_config(istate.spin_config, istate.spin_config_type)          ## Spin Configuration is Copied
+    ### Computation is linked to the fstate
+    fstate.add_computation(comp)
 
     if VNMs is not None:
         fstate.set_VNMs(VNMs)
@@ -92,15 +99,13 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
         worked = True
         comp.isgood = True 
         if debug > 0: print("REG_FREQUENCIES: VNMs were parsed")
-    else:
-        print("REG_FREQUENCIES: could not parse frequencies")
+    else: print("REG_FREQUENCIES: could not parse frequencies")
 
     ### Forces do not condition "worked" nor "comp.isgood"
     if forces is not None: 
         fstate.set_forces(forces)
         if debug > 0: print("REG_FREQUENCIES: atomic forces were parsed")
-    else:                  
-        print("REG_FREQUENCIES: could not parse forces")
+    else: print("REG_FREQUENCIES: could not parse forces")
 
     return worked
 
@@ -108,7 +113,7 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
 def reg_energy(comp: object, debug: int=0):
 
     ### For simplicity...
-    source = comp._job._recipe.source
+    source = comp.source
 
     ### 0-In Case Reg_General hasn't been run:
     if not hasattr(comp,"output"): reg_general(comp)
@@ -128,10 +133,16 @@ def reg_energy(comp: object, debug: int=0):
     ### Storage ###
     worked = False
     if energy is not None or forces is not None:
-        exists, fstate = source.find_state(comp.qc_data.fstate, debug=debug)   ## If exists, it will be updated
-        if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug) 
+        # Saves data
+        exists, fstate        = source.find_state(comp.qc_data.fstate, debug=debug)  ## If exists, it will be updated
+        if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created 
         if energy is not None: fstate.set_energy(energy, 'au')
         if forces is not None: fstate.set_forces(forces)
+        # Copies the Spin Configuration
+        exists, istate        = source.find_state(comp.qc_data.istate, debug=debug)  ## Initial State
+        if not exists: raise Exception("REG_ENERGY: Initial State not found, cannot copy Spin Configuration")
+        fstate.set_spin_config(istate.spin_config, istate.spin_config_type)          ## Spin Configuration is Copied
+        # Computation is linked to the fstate
         fstate.add_computation(comp)
         worked = True
 

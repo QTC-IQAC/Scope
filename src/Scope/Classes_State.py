@@ -137,6 +137,8 @@ class state(object):
                 print(f"STATE.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to molecule {mol.formula} in index {idx}")
                 print(f"STATE.SET_SPIN_CONFIG: Formal SPIN is added to the first atom of the molecule: {mol.atoms[0].label}")
                 mol.atoms[0].set_spin(spins[pointer]); pointer += 1
+        self.spin_config = spins
+        self.spin_config_type = typ
 
     @property
     def charge(self):
