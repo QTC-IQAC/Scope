@@ -123,7 +123,7 @@ class system(object):
         if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
         if self.sys_path[-1]        != '/': self.sys_path      += '/'
         ## Sets Default sys_file name
-        self.sys_file       = f"{self.sys_path}{self.name}/{self.name}.npy"
+        self.sys_file       = f"{self.sys_path}{self.name}.npy"
         ## Create Folders if necessary:
         if not os.path.isdir(self.sys_path)     and create_folders: os.makedirs(self.sys_path)
         if not os.path.isdir(self.calcs_path)   and create_folders: os.makedirs(self.calcs_path)
@@ -229,6 +229,7 @@ class system(object):
 
     ######
     def find_branch(self, name: str, debug: int=0):
+        name = name.lower()
         if debug > 1: print(f"FIND_BRANCH. Finding branch with name:", name)
         if debug > 1: print(f"FIND_BRANCH. There are {len(self.branches)} branches in system")
         if len(self.branches) == 0: return False, None

@@ -37,67 +37,22 @@ class cell(object):
             self.cell_param       = cell_param
         self.frac_coord           = cart2frac(self.coord, self.cell_vector)
 
-    def __repr__(self, indirect: bool=False):
-        to_print = ''   
-        if not indirect: to_print += '-------------------------------\n'
-        if not indirect: to_print += '   >>> SCOPE CELL Object >>>   \n'
-        if not indirect: to_print += '-------------------------------\n'
-        to_print += f' Version               = {self.version}\n'
-        to_print += f' Type                  = {self.type}\n'
-        to_print += f' Name                  = {self.name}\n'
-        to_print += f' Num Atoms             = {self.natoms}\n'
-        to_print += f' Cell Parameters a:c   = {self.cell_param[0:3]}\n'
-        to_print += f' Cell Parameters al:ga = {self.cell_param[3:6]}\n'
-        if hasattr(self,"moleclist"):  
-            to_print += f' # Molecules:          = {len(self.moleclist)}\n'
-            to_print += f' With Formulae:                               \n'
-            for idx, m in enumerate(self.moleclist):
-                to_print += f'    {idx}: {m.formula} \n'
-        to_print += '-------------------------------\n'
-        if hasattr(self,"refmoleclist"):
-            to_print += f' # of Ref Molecules:   = {len(self.refmoleclist)}\n'
-            to_print += f' With Formulae:                                  \n'
-            for idx, ref in enumerate(self.refmoleclist):
-                to_print += f'    {idx}: {ref.formula} \n'
-        if not indirect: to_print += '\n'
-        return to_print
-
-    ######
+    ###########
+    ## Other ##
+    ###########
     def save(self, filepath):
         save_binary(self, filepath)
 
-    ######
     def associate_cif(self, cif: object) -> None:
-        self.cif       = cif 
+        self.cif       = cif
         return self.cif
 
-    ######
     def set_path(self, path: str) -> None:
         self.path = path
 
-    ######
-    def fix_cell_coord(self, debug: int=0) -> None:
-        ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell. 
-        ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
-        if not hasattr(self,"moleclist"): self.get_moleclist()
-
-        self.labels = []
-        self.coord  = []
-        indices     = []
-        for mol in self.moleclist:
-            for idx, a in enumerate(mol.atoms):
-                self.labels.append(a.label)
-                self.coord.append(a.coord)
-                if hasattr(a,"parent_index"): indices.append(a.parent_index)
-                elif hasattr(a,"index"):      indices.append(a.index)
-                else:                         indices.append(idx)
-
-        ## Below is to order the atoms as in the original cell, using the indices stored in the molecule object
-        self.labels = [x for _, x in sorted(zip(indices, self.labels), key=lambda pair: pair[0])]
-        self.coord  = [x for _, x in sorted(zip(indices, self.coord), key=lambda pair: pair[0])]
-        assert len(self.labels) == len(self.coord)
-        return self.coord
-
+    #############
+    ## Parents ##
+    #############
     ## This function mimics the specie-class function with the same name
     def check_parent(self, subtype):
         if subtype == "cell": return True
@@ -113,7 +68,9 @@ class cell(object):
         if subtype == "cell": return list(range(0,self.natoms))
         else:                 return None
 
-    ######
+    ##################
+    ## Connectivity ##
+    ##################
     def get_adjmatrix(self):
         isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord)
         if isgood:
@@ -159,8 +116,38 @@ class cell(object):
         return self.fragmented
 
     ######
-    def get_moleclist(self, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
+    def fix_cell_coord(self, debug: int=0) -> None:
+        ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell.
+        ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
+        if not hasattr(self,"moleclist"): self.get_moleclist()
 
+        self.labels = []
+        self.coord  = []
+        indices     = []
+        for mol in self.moleclist:
+            for idx, a in enumerate(mol.atoms):
+                self.labels.append(a.label)
+                self.coord.append(a.coord)
+                if hasattr(a,"parent_index"): indices.append(a.parent_index)
+                elif hasattr(a,"index"):      indices.append(a.index)
+                else:                         indices.append(idx)
+
+        ## Below is to order the atoms as in the original cell, using the indices stored in the molecule object
+        self.labels = [x for _, x in sorted(zip(indices, self.labels), key=lambda pair: pair[0])]
+        self.coord  = [x for _, x in sorted(zip(indices, self.coord), key=lambda pair: pair[0])]
+        assert len(self.labels) == len(self.coord)
+        return self.coord
+
+    ######
+    def get_atoms(self):
+        if not hasattr(self,"moleclist"): self.get_moleclist()
+        self.atoms = []
+        for mol in self.moleclist:
+            for at in enumerate(mol.atoms):
+                self.atoms.append(at)
+        return self.atoms
+
+    def get_moleclist(self, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
         ## Overwrite and Warning
         if not overwrite and hasattr(self,"moleclist"): 
             if debug > 0: print(f"CELL.GET_MOLECLIST. Moleclist already exists and default is overwrite=False")
@@ -278,13 +265,82 @@ class cell(object):
                 self.moleclist.append(newmolec)         
             return self.moleclist
 
-    ######
+    #####################
+    ## Charge and Spin ##
+    #####################
+    @property
+    def charge(self):
+        if not hasattr(self,"atoms"): self.get_atoms()
+        if not all(hasattr(at,"charge") for at in self.atoms): return None
+        return np.sum(at.charge for at in self.atoms)
+
+    @property
+    def atomic_charges(self):
+        if not hasattr(self,"atoms"): self.get_atoms()
+        if not all(hasattr(at,"charge") for at in self.atoms): return None
+        return [at.charge for at in self.atoms]
+
+    @property
+    def spin(self):
+        if not hasattr(self,"atoms"): self.get_atoms()
+        if not all(hasattr(at,"spin") for at in self.atoms): return None
+        return np.sum(at.spin for at in self.atoms)
+
+    @property
+    def atomic_spins(self):
+        if not hasattr(self,"atoms"): self.get_atoms()
+        if not all(hasattr(at,"spin") for at in self.atoms): return None
+        return [at.spin for at in self.atoms]
+
+    @property
+    def ismagnetic(self):
+        self.ismagnetic = False
+        for at_s in self.atomic_spins:
+            if at_s != 0: return True
+        return False
+   
+    @property
+    def spin_multiplicity(self):
+        self.spin_multiplicity = int(self.spin + 1)
+        return self.spin_multiplicity 
+
     def reset_charge_assignment(self, debug: int=0):
         if not hasattr(self,"moleclist"): return None
         for mol in self.moleclist:
             mol.reset_charge()
 
+    #########################################
+    ### Functions to Interact with States ###
+    #########################################
+    def add_state(self, name: object, debug: int=0):
+        from Scope.Classes_State import state
+        if not hasattr(self,"states"): setattr(self,"states",list([]))
+        exists, new_state = self.find_state(name)
+        if exists:  
+            if debug > 0: print(f"CELL.ADD_STATE. State with same {name=} found, returning it")
+            return new_state
+        else:
+            if debug > 0: print("CELL.ADD_STATE. Creating new state, returning it")
+            new_state = state(self, name, debug=debug)
+            self.states.append(new_state)
+        return new_state
+
     ######
+    def find_state(self, search_name: str, debug: int=0):
+        from Scope.Classes_State import state
+        if not hasattr(self,"states"): return False, None
+        if debug > 0: print(f"CELL.FIND_STATE: Searching {search_name} in Cell object with {len(self.states)} states")
+        for sta in self.states:
+            if debug > 0: print(f"CELL.FIND_STATE: Comparing {search_name} with {sta.name}")
+            if sta.name == search_name: 
+                if debug > 0: print(f"CELL.FIND_STATE: state {search_name} found")
+                return True, sta
+        if debug > 0: print(f"CELL.FIND_STATE: state {search_name} not found")
+        return False, None
+    
+    ################################
+    ## Visualization and Printing ##
+    ################################
     def view(self, size: str='default'):
         """
         Visualizes the 3D structure of the cell using Plotly.
@@ -343,34 +399,30 @@ class cell(object):
         set_scene(fig, positions, width=width, height=height)
         fig.show()
 
-    #########################################
-    ### Functions to Interact with States ###
-    #########################################
-    def add_state(self, name: object, debug: int=0):
-        from Scope.Classes_State import state
-        if not hasattr(self,"states"): setattr(self,"states",list([]))
-        exists, new_state = self.find_state(name)
-        if exists:  
-            if debug > 0: print(f"CELL.ADD_STATE. State with same {name=} found, returning it")
-            return new_state
-        else:
-            if debug > 0: print("CELL.ADD_STATE. Creating new state, returning it")
-            new_state = state(self, name, debug=debug)
-            self.states.append(new_state)
-        return new_state
-
-    ######
-    def find_state(self, search_name: str, debug: int=0):
-        from Scope.Classes_State import state
-        if not hasattr(self,"states"): return False, None
-        if debug > 0: print(f"CELL.FIND_STATE: Searching {search_name} in Cell object with {len(self.states)} states")
-        for sta in self.states:
-            if debug > 0: print(f"CELL.FIND_STATE: Comparing {search_name} with {sta.name}")
-            if sta.name == search_name: 
-                if debug > 0: print(f"CELL.FIND_STATE: state {search_name} found")
-                return True, sta
-        if debug > 0: print(f"CELL.FIND_STATE: state {search_name} not found")
-        return False, None
+    def __repr__(self, indirect: bool=False):
+        to_print = ''   
+        if not indirect: to_print += '-------------------------------\n'
+        if not indirect: to_print += '   >>> SCOPE CELL Object >>>   \n'
+        if not indirect: to_print += '-------------------------------\n'
+        to_print += f' Version               = {self.version}\n'
+        to_print += f' Type                  = {self.type}\n'
+        to_print += f' Name                  = {self.name}\n'
+        to_print += f' Num Atoms             = {self.natoms}\n'
+        to_print += f' Cell Parameters a:c   = {self.cell_param[0:3]}\n'
+        to_print += f' Cell Parameters al:ga = {self.cell_param[3:6]}\n'
+        if hasattr(self,"moleclist"):  
+            to_print += f' # Molecules:          = {len(self.moleclist)}\n'
+            to_print += f' With Formulae:                               \n'
+            for idx, m in enumerate(self.moleclist):
+                to_print += f'    {idx}: {m.formula} \n'
+        to_print += '-------------------------------\n'
+        if hasattr(self,"refmoleclist"):
+            to_print += f' # of Ref Molecules:   = {len(self.refmoleclist)}\n'
+            to_print += f' With Formulae:                                  \n'
+            for idx, ref in enumerate(self.refmoleclist):
+                to_print += f'    {idx}: {ref.formula} \n'
+        if not indirect: to_print += '\n'
+        return to_print
 
 ######################
 ####    IMPORT    ####

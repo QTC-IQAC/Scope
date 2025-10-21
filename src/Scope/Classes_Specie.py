@@ -50,9 +50,13 @@ class specie(object):
         ## Bonds
         self.has_bonds            = False
 
-    ###### These properties are updated every time they are called. The info is always taken from the atom objects
+    #####################
+    ## Charge and Spin ##
+    #####################
+    ## To avoid conflicts, these are properties that are updated every time they are called. The info is always taken from the atom objects
+
     @property
-    def totcharge(self):
+    def charge(self):
         if not hasattr(self,"atoms"): self.set_atoms()
         if not all(hasattr(at,"charge") for at in self.atoms): return None
         return np.sum(at.charge for at in self.atoms)
@@ -63,36 +67,45 @@ class specie(object):
         if not all(hasattr(at,"charge") for at in self.atoms): return None
         return [at.charge for at in self.atoms]
 
-    ######
-    def __repr__(self, indirect: bool=False):
-        to_print                   = ''
-        if not indirect: to_print += '------------------------------------------------\n'
-        if not indirect: to_print += '------------- SCOPE SPECIE Object --------------\n'
-        if not indirect: to_print += '------------------------------------------------\n'
-        to_print += f' Version               = {self.version}\n'
-        to_print += f' Type                  = {self.type}\n'
-        if hasattr(self,'subtype'):        to_print += f' Sub-Type              = {self.subtype}\n'
-        to_print += f' Number of Atoms       = {self.natoms}\n'
-        to_print += f' Formula               = {self.formula}\n'
-        if hasattr(self,"parents"):        to_print += f' Number of Parents     = {len(self.parents)}\n'
-        if hasattr(self,"totcharge"):      to_print += f' Total Charge          = {self.totcharge}\n'
-        if hasattr(self,"spin"):           to_print += f' Spin                  = {self.spin}\n'
-        if hasattr(self,"smiles"):         to_print += f' SMILES                = {self.smiles}\n'
-        if hasattr(self,"adjmat"):         to_print += f' Has Adjacency Matrix  = YES\n'
-        else:                              to_print += f' Has Adjacency Matrix  = NO \n'
-        if not hasattr(self,"has_bonds"):  to_print += f' Has Bonds             = NO\n'
-        else:
-            if self.has_bonds:             to_print += f' Has Bonds             = YES\n'
-            else:                          to_print += f' Has Bonds             = NO\n'
-        if not indirect: to_print += '\n'
-        return to_print
+    @property
+    def spin(self):
+        if not hasattr(self,"atoms"): self.set_atoms()
+        if not all(hasattr(at,"spin") for at in self.atoms): return None
+        return np.sum(at.spin for at in self.atoms)
 
-    ######
-    def save(self, filepath):
-        from Scope.Read_Write import save_binary
-        save_binary(self, filepath)
+    @property
+    def atomic_spins(self):
+        if not hasattr(self,"atoms"): self.set_atoms()
+        if not all(hasattr(at,"spin") for at in self.atoms): return None
+        return [at.spin for at in self.atoms]
 
-    ######
+    @property
+    def ismagnetic(self):
+        self.ismagnetic = False
+        for at_s in self.atomic_spins:
+            if at_s != 0: return True
+        return False
+   
+    @property
+    def spin_multiplicity(self):
+        self.spin_multiplicity = int(self.spin + 1)
+        return self.spin_multiplicity 
+
+    def set_atomic_charges(self, atomic_charges: list) -> None:
+        if not hasattr(self,"atoms"): self.set_atoms()
+        assert len(self.atoms) == len(atomic_charges)
+        for idx, a in enumerate(self.atoms):
+            a.set_charge(atomic_charges[idx])
+
+    def set_atomic_spins(self, atomic_spins: list) -> None:
+        if not hasattr(self,"atoms"): self.set_atoms()
+        assert len(self.atoms) == len(atomic_spins)
+        for idx, a in enumerate(self.atoms):
+            a.set_spin(atomic_spins[idx])
+
+    ######################
+    ## Parent Functions ##
+    ######################
     def add_parent(self, parent: object, indices: list, overwrite: bool=True, debug: int=0):
         ## associates a parent specie to self. The atom indices of self in parent are given in "indices"
         ## if parent of the same subtype already in self.parent then it is overwritten
@@ -203,25 +216,77 @@ class specie(object):
         self.adj_types = get_adjacency_types(self.labels, self.adjmat)
         return self.adj_types
 
-    ######
-    def reset_charge(self):
-        if hasattr(self,"totcharge"):      delattr(self,"totcharge")
-        if hasattr(self,"atomic_charges"): delattr(self,"atomic")
-        if hasattr(self,"smiles"):         delattr(self,"smiles")
-        if hasattr(self,"rdkit_obj"):      delattr(self,"rdkit_obj")
-        if hasattr(self,"poscharges"):     delattr(self,"poscharges") 
-        for a in self.atoms:               
-            a.reset_charge() 
-
-    ######
-    def set_charges(self, atomic_charges: list) -> None:
-        if not hasattr(self,"atoms"): self.set_atoms()
-        assert len(self.atoms) == len(atomic_charges)
-        for idx, a in enumerate(self.atoms):
-            a.set_charge(atomic_charges[idx])
-
-    ######
+    #####################
+    ## Atoms and Bonds ##
+    #####################
     def set_atoms(self, atomlist=None, create_adjacencies: bool=False, debug: int=0):
+        """
+        Set or create Atom objects for this Specie, and optionally initialize adjacency data.
+        This method populates the self.atoms list for this Specie instance in one of two ways:
+        1. If `atomlist` is provided, it copies that list into self.atoms and re-parents each
+            atom to this Specie (calling atom.add_parent(self, index=...)).
+        2. If `atomlist` is None, it constructs new Atom or Metal objects from the Specie's
+            labels, coordinates and radii, sets their parent to this Specie, and appends them
+            to self.atoms.
+        After populating self.atoms, if `create_adjacencies` is True the method ensures the
+        Specie has adjacency matrices (adjmat and madjmat) by calling get_adjmatrix()
+        and get_metal_adjmatrix() as needed, and then calls each atom's set_adjacencies(...)
+        to provide per-atom adjacency rows and neighbor counts.
+        Parameters
+        ----------
+        atomlist : list, optional
+             If provided, a sequence of existing atom-like objects to assign to this Specie.
+             Each element will be copied into self.atoms and re-parented (add_parent).
+             If None (default) new atom objects are created from this Specie's labels/coords.
+        create_adjacencies : bool, optional
+             If True, compute or retrieve adjacency matrices for the Specie and call
+             each atom's set_adjacencies(...) with the appropriate rows and neighbor counts.
+             Default is False.
+        debug : int, optional
+             Verbosity/debug level. When > 0 the method emits informational prints about
+             progress and decisions (e.g. whether an element is treated as a metal,
+             creation of atoms, parent-setting, etc.). Default is 0.
+        Behavior and notes
+        ------------------
+        - When constructing atoms from scratch, the method iterates over self.labels. For
+          each label it determines whether to instantiate a Metal or Atom class (via
+          elemdatabase.elementblock and get_non_transition_metal_idxs), then creates the
+          object with cartesian coordinates (self.coord[idx]) and, if available,
+          fractional coordinates (self.frac_coord[idx]). Radii are passed from
+          self.radii[idx] when present.
+        - If a parent cell exists and fractional coordinates have not yet been computed,
+          the method will attempt to compute them by calling get_fractional_coord(...).
+        - Newly created or assigned atom objects receive a parent relationship through
+          atom.add_parent(self, index=idx).
+        - If create_adjacencies is True the method will:
+             - Ensure self.adjmat exists (calling get_adjmatrix() if necessary).
+             - Ensure self.madjmat exists (calling get_metal_adjmatrix() if necessary).
+             - For each atom i, call atom.set_adjacencies(self.adjmat[i],
+                self.madjmat[i], self.adjnum[i], self.madjnum[i]) — those arrays/attributes
+                must therefore be present or produced by the adjacency-generation methods.
+        - The method mutates self (self.atoms and potentially adjacency-related attributes)
+          and also invokes methods on atom objects (add_parent and set_adjacencies).
+        Returns
+        -------
+        None
+        Raises
+        ------
+        IndexError
+             If lengths of self.labels, self.coord, self.radii or self.frac_coord (when present)
+             do not match, or an index is out of range while constructing atoms.
+        AttributeError
+             If expected helper attributes/methods (e.g. elemdatabase, metal/atom classes,
+             get_fractional_coord, get_adjmatrix, get_metal_adjmatrix) are missing.
+        RuntimeError
+             If adjacency creation is requested but adjacency methods fail to produce
+             compatible adjmat/madjmat and neighbor count arrays.
+        Example
+        -------
+        # Attach an existing list of atom objects to a specie and also initialize adjacencies:
+        specie.set_atoms(atomlist=prebuilt_atoms, create_adjacencies=True, debug=1)
+        # Create atoms from labels/coords stored on the specie without adjacency setup:
+        specie.set_atoms()
+        """
         ## If the atom objects already exist, and you want to set them in self from a different specie
         if atomlist is not None: 
             if debug > 0: print(f"SPECIE.SET_ATOMS: received atomlist, with first atom: {atomlist[0]}")
@@ -260,30 +325,17 @@ class specie(object):
                     else:       newatom =  atom(l, self.coord[idx], radii=self.radii[idx])
                 if debug > 0: print(f"SPECIE.SET_ATOMS: added atom to specie: {self.formula}")
                 newatom.add_parent(self, index=idx)
+                newatom.set_charge(int(0)) # initializes charge to 0 as a default.
+                newatom.set_spin(int(0))   # initializes spin to 0 as a default.
                 self.atoms.append(newatom)
         
         if create_adjacencies:
+            ## Creates adjacency matrices if they do not exist, and sets the adjacencies in each atom
             if not hasattr(self,"adjmat"):  self.get_adjmatrix()
             if not hasattr(self,"madjmat"): self.get_metal_adjmatrix()
             if self.adjmat is not None and self.madjmat is not None: 
                 for idx, at in enumerate(self.atoms): 
                     at.set_adjacencies(self.adjmat[idx],self.madjmat[idx],self.adjnum[idx],self.madjnum[idx])
-
-    ######
-    def inherit_adjmatrix(self, parent_subtype: str, debug: int=0):
-        exists  = self.check_parent(parent_subtype)
-        if not exists: 
-            print(f"SPECIE.INHERIT. {parent_subtype=} does not exist")
-            return None
-        parent  = self.get_parent(parent_subtype)
-        indices = self.get_parent_indices(parent_subtype)
-        if not hasattr(parent,"madjnum"): 
-            print(f"SPECIE.INHERIT. {parent_subtype=} does not have madjnum")
-            return None 
-        self.madjmat = np.stack(extract_from_list(indices, parent.madjmat, dimension=2), axis=0)
-        self.madjnum = np.stack(extract_from_list(indices, parent.madjnum, dimension=1), axis=0)
-        self.adjmat  = np.stack(extract_from_list(indices, parent.adjmat, dimension=2), axis=0)
-        self.adjnum  = np.stack(extract_from_list(indices, parent.adjnum, dimension=1), axis=0)
 
     ######
     def set_bonds(self, debug: int=0):
@@ -385,13 +437,31 @@ class specie(object):
         self.has_bonds = True
         return True 
 
-    ######
+    ############################
+    ## Connectivity Functions ##
+    ############################
     def set_factors(self, cov_factor: float=1.3, metal_factor: float=1.0) -> None:
         self.cov_factor   = cov_factor
         self.metal_factor = metal_factor
         if hasattr(self,"atoms"):
             for at in self.atoms:
                 at.set_factors(cov_factor=self.cov_factor, metal_factor=self.metal_factor)
+
+    ######
+    def inherit_adjmatrix(self, parent_subtype: str, debug: int=0):
+        exists  = self.check_parent(parent_subtype)
+        if not exists: 
+            print(f"SPECIE.INHERIT. {parent_subtype=} does not exist")
+            return None
+        parent  = self.get_parent(parent_subtype)
+        indices = self.get_parent_indices(parent_subtype)
+        if not hasattr(parent,"madjnum"): 
+            print(f"SPECIE.INHERIT. {parent_subtype=} does not have madjnum")
+            return None 
+        self.madjmat = np.stack(extract_from_list(indices, parent.madjmat, dimension=2), axis=0)
+        self.madjnum = np.stack(extract_from_list(indices, parent.madjnum, dimension=1), axis=0)
+        self.adjmat  = np.stack(extract_from_list(indices, parent.adjmat, dimension=2), axis=0)
+        self.adjnum  = np.stack(extract_from_list(indices, parent.adjnum, dimension=1), axis=0)
 
     ######
     def get_adjmatrix(self):
@@ -464,10 +534,6 @@ class specie(object):
         return occurrence
 
     ######
-    def set_spin(self, spin: int) -> None:
-        self.spin = spin
-
-    ######
     def check_fragmentation(self, cov_factor: float=1.3, metal_factor: float=None, debug: int=0):
         blocklist = split_species(self.labels, self.coord, cov_factor=cov_factor)
         if len(blocklist) > 1: self.isfragmented = True
@@ -503,15 +569,46 @@ class specie(object):
         if debug > 0: print(f"SPECIE.FIND_STATE: state {search_name} not found")
         return False, None
 
-    ######
+    ###########
+    ## Other ##
+    ###########
     def rmsd(self, other, reorder=True, center_method='centroid', debug: int=0):
         from .Other import rmsd
         value = rmsd(self.labels, self.coord, other.labels, other.coord, reorder=reorder, center_method=center_method, debug=debug)   
         return value
 
+    ######
+    def save(self, filepath):
+        from Scope.Read_Write import save_binary
+        save_binary(self, filepath)
+
     ###################################
     ### Functions to print/visualize ##
     ###################################
+    def __repr__(self, indirect: bool=False):
+        to_print                   = ''
+        if not indirect: to_print += '------------------------------------------------\n'
+        if not indirect: to_print += '------------- SCOPE SPECIE Object --------------\n'
+        if not indirect: to_print += '------------------------------------------------\n'
+        to_print += f' Version               = {self.version}\n'
+        to_print += f' Type                  = {self.type}\n'
+        to_print += f' Sub-Type              = {self.subtype}\n'
+        to_print += f' Number of Atoms       = {self.natoms}\n'
+        to_print += f' Formula               = {self.formula}\n'
+        to_print += f' Charge                = {self.charge}\n'
+        to_print += f' Spin                  = {self.spin}\n'
+        if hasattr(self,"smiles"):         to_print += f' SMILES                = {self.smiles}\n'
+        if hasattr(self,"parents"):        to_print += f' Number of Parents     = {len(self.parents)}\n'
+        if hasattr(self,"adjmat"):         to_print += f' Has Adjacency Matrix  = YES\n'
+        else:                              to_print += f' Has Adjacency Matrix  = NO \n'
+        if not hasattr(self,"has_bonds"):  to_print += f' Has Bonds             = NO\n'
+        else:
+            if self.has_bonds:             to_print += f' Has Bonds             = YES\n'
+            else:                          to_print += f' Has Bonds             = NO\n'
+        if not indirect: to_print += '\n'
+        return to_print
+
+    ######
     def print_xyz(self):
         print(self.natoms)
         print("")
@@ -622,13 +719,8 @@ class molecule(specie):
 
     ######
     def reset_charge(self):
-        specie.reset_charge(self)      ## First, uses the generic specie-class function for itself and its atoms
-        if hasattr(self,"ligands"):    ## Second, resets the child classes 
-            for lig in self.ligands:
-                lig.reset_charge()
-        if hasattr(self,"metals"):    
-            for met in self.metals:
-                met.reset_charge()
+        for at in self.atoms:
+            at.set_charge(0)
 
     ######
     def split_complex(self, debug: int=0):
@@ -832,8 +924,8 @@ class ligand(specie):
         if not indirect: to_print += '------------- SCOPE LIGAND Object --------------\n'
         if not indirect: to_print += '------------------------------------------------\n'
         to_print += specie.__repr__(self, indirect=True)
-        if hasattr(self,"rdkit_obj"):  to_print += f' # HAS RDKIT OBJECT    = YES\n'
-        else:                          to_print += f' # HAS RDKIT OBJECT    = NO\n'
+        if hasattr(self,"rdkit_obj"):  to_print += f' Has RDKIT Object      = YES\n'
+        else:                          to_print += f' Has RDKIT Object      = NO\n'
         if not indirect: to_print += '\n'
         return to_print
 
@@ -1044,16 +1136,12 @@ class ligand(specie):
                     print(f"     N:  {self.atomic_charges[n_idx]}")
                     print(f"     Se: {self.atomic_charges[se_idx]}")
                     print(f"     C:  {self.atomic_charges[c_idx]}")
-                    print(f"   Old total charge: {self.totcharge}")
+                    print(f"   Old total charge: {self.charge}")
 
                 # Also in ligand object
                 self.atoms[n_idx].charge    = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
                 self.atoms[c_idx].charge    = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()
                 self.atoms[se_idx].charge   = rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge() 
-                #self.atomic_charges[n_idx]  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge() 
-                #self.atomic_charges[c_idx]  = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge() 
-                #self.atomic_charges[se_idx] = rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge() 
-                #self.totcharge              = np.sum(self.atomic_charges)
 
                 if debug > 0:
                     print(f"   New ligand atom charges:")
@@ -1064,7 +1152,7 @@ class ligand(specie):
                     print(f"     N:  {self.atomic_charges[n_idx]}")
                     print(f"     Se: {self.atomic_charges[se_idx]}")
                     print(f"     C:  {self.atomic_charges[c_idx]}")
-                    print(f"   New total charge: {self.totcharge}")
+                    print(f"   New total charge: {self.charge}")
 
                 # Update the molecule
                 mol = rw_mol.GetMol()
@@ -1129,17 +1217,13 @@ class ligand(specie):
                     print(f"     N:  {self.atomic_charges[n_idx]}")
                     print(f"     Se: {self.atomic_charges[se_idx]}")
                     print(f"     C:  {self.atomic_charges[c_idx]}")
-                    print(f"   Old total charge: {self.totcharge}")
+                    print(f"   Old total charge: {self.charge}")
 
 
                 # Also in ligand object
                 self.atoms[n_idx].charge    = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
                 self.atoms[c_idx].charge    = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()
                 self.atoms[se_idx].charge   = rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge() 
-                #self.atomic_charges[n_idx]  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge() 
-                #self.atomic_charges[c_idx]  = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge() 
-                #self.atomic_charges[se_idx] = rw_mol.GetAtomWithIdx(se_idx).GetFormalCharge() 
-                #self.totcharge              = np.sum(self.atomic_charges)
 
                 if debug > 0:
                     print(f"   New ligand atom charges:")
@@ -1150,7 +1234,7 @@ class ligand(specie):
                     print(f"     N:  {self.atomic_charges[n_idx]}")
                     print(f"     Se: {self.atomic_charges[se_idx]}")
                     print(f"     C:  {self.atomic_charges[c_idx]}")
-                    print(f"   New total charge: {self.totcharge}")
+                    print(f"   New total charge: {self.charge}")
 
                 # Update the molecule
                 mol = rw_mol.GetMol()
@@ -1215,17 +1299,13 @@ class ligand(specie):
                     print(f"     N:  {self.atomic_charges[n_idx]}")
                     print(f"     S:  {self.atomic_charges[s_idx]}")
                     print(f"     C:  {self.atomic_charges[c_idx]}")
-                    print(f"   Old total charge: {self.totcharge}")
+                    print(f"   Old total charge: {self.charge}")
 
 
                 # Also in ligand object
                 self.atoms[n_idx].charge    = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
                 self.atoms[c_idx].charge    = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()
                 self.atoms[s_idx].charge    = rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge() 
-                #self.atomic_charges[n_idx]  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge() 
-                #self.atomic_charges[c_idx]  = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge() 
-                #self.atomic_charges[s_idx]  = rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge() 
-                #self.totcharge              = np.sum(self.atomic_charges)
 
                 if debug > 0:
                     print(f"   New ligand atom charges:")
@@ -1236,7 +1316,7 @@ class ligand(specie):
                     print(f"     N:  {self.atomic_charges[n_idx]}")
                     print(f"     S:  {self.atomic_charges[s_idx]}")
                     print(f"     C:  {self.atomic_charges[c_idx]}")
-                    print(f"   New total charge: {self.totcharge}")
+                    print(f"   New total charge: {self.charge}")
 
                 # Update the molecule
                 mol = rw_mol.GetMol()
@@ -1301,16 +1381,12 @@ class ligand(specie):
                     print(f"     N:  {self.atomic_charges[n_idx]}")
                     print(f"     S:  {self.atomic_charges[s_idx]}")
                     print(f"     C:  {self.atomic_charges[c_idx]}")
-                    print(f"   Old total charge: {self.totcharge}")
+                    print(f"   Old total charge: {self.charge}")
 
                 # Also in ligand object
                 self.atoms[n_idx].charge    = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge()
                 self.atoms[c_idx].charge    = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge()
                 self.atoms[s_idx].charge    = rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge() 
-                #self.atomic_charges[n_idx]  = rw_mol.GetAtomWithIdx(n_idx).GetFormalCharge() 
-                #self.atomic_charges[c_idx]  = rw_mol.GetAtomWithIdx(c_idx).GetFormalCharge() 
-                #self.atomic_charges[s_idx]  = rw_mol.GetAtomWithIdx(s_idx).GetFormalCharge() 
-                #self.totcharge              = np.sum(self.atomic_charges)
 
                 if debug > 0:
                     print(f"   New ligand atom charges:")
@@ -1321,7 +1397,7 @@ class ligand(specie):
                     print(f"     N:  {self.atomic_charges[n_idx]}")
                     print(f"     S:  {self.atomic_charges[s_idx]}")
                     print(f"     C:  {self.atomic_charges[c_idx]}")
-                    print(f"   New total charge: {self.totcharge}")
+                    print(f"   New total charge: {self.charge}")
 
                 # Update the molecule
                 mol = rw_mol.GetMol()
@@ -1617,7 +1693,7 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
 
     ### Charges
     if hasattr(mol,"atcharge"):
-        new_molec.set_charges(mol.atcharge)
+        new_molec.set_atomic_charges(mol.atcharge)
         if debug > 0: print(f"IMPORT MOLEC: imported atomic charges")
 
     ## Fractional coordinates
@@ -1657,7 +1733,7 @@ def import_ligand(lig: object, parent: object=None, debug: int=0) -> object:
 
     ## Charges
     if hasattr(lig,"atcharge"):        
-        new_ligand.set_charges(lig.atcharge)
+        new_ligand.set_atomic_charges(lig.atcharge)
         if debug > 0: print(f"IMPORT LIGAND: imported atomic charges")
 
     ## Smiles
@@ -1737,7 +1813,7 @@ def import_group(old_group: object, parent: object=None, debug: int=0) -> object
 
     ### Charges
     if hasattr(old_group,"atcharge"):
-        new_group.set_charges(old_group.atcharge)
+        new_group.set_atomic_charges(old_group.atcharge)
         if debug > 0: print(f"IMPORT GROUP: imported atomic charges")
 
     ## Atoms

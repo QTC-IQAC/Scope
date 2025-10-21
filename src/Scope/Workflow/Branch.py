@@ -54,6 +54,7 @@ class branch(object):
                     comp.delete_lines()
     
     def find_recipe(self, name: str, debug: int=0):
+        name = name.lower()
         if debug > 1: print(f"BRANCH.FIND_RECIPE: Searching Recipe with {name=}:") 
         for rec in self.recipes:
             if debug > 1: print(f"BRANCH.FIND_RECIPE: Comparing with",rec.name)

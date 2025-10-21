@@ -141,7 +141,7 @@ class sco_system(system):
         for idx, mol1 in enumerate(pool):
             for jdx, mol2 in enumerate(pool):
                 if jdx != idx and not found_refs:
-                    if mol1.scope_guess_spin == 'HS' and mol2.scope_guess_spin == 'LS' and mol1.totcharge == mol2.totcharge and mol1 == mol2:
+                    if mol1.scope_guess_spin == 'HS' and mol2.scope_guess_spin == 'LS' and mol1.charge == mol2.charge and mol1 == mol2:
                         found_refs = True
                         hs = deepcopy(mol1) #I'm making a deepcopy to avoid issues with references
                         ls = deepcopy(mol2)
@@ -151,13 +151,11 @@ class sco_system(system):
 
         ## Prepares the species:
         hs.name = "ref_hs_mol"
-        hs.spin = "HS"
         hs.set_bonds()              
         hs.fix_ligands_rdkit_obj()
         self.add_source(hs.name, hs)
 
         ls.name = "ref_ls_mol"
-        ls.spin = "LS"
         ls.set_bonds()              
         ls.fix_ligands_rdkit_obj()
         self.add_source(ls.name, ls)
@@ -165,6 +163,8 @@ class sco_system(system):
         # Creates Initial States:
         hs_ini_state = hs.add_state("initial")
         hs_ini_state.set_geometry(hs.labels, hs.coord)
+        hs_ini_state.set_spin_config(2, typ='metals')  # For HS, spin multiplicity must be set at 2, in the metal centers
+
         ls_ini_state = ls.add_state("initial")
         ls_ini_state.set_geometry(ls.labels, ls.coord)
 
@@ -228,7 +228,6 @@ class sco_system(system):
 
         ## Prepares the cells:
         hs.name = "ref_hs_cell"
-        hs.spin = "HS"
         hs._sys = self
         for mol in hs.moleclist:
             mol.set_bonds()
@@ -236,7 +235,6 @@ class sco_system(system):
         self.add_source(hs.name, hs)
 
         ls.name = "ref_ls_cell"
-        ls.spin = "LS"
         ls._sys = self
         for mol in ls.moleclist:
             mol.set_bonds()
@@ -250,6 +248,7 @@ class sco_system(system):
         hs_ini_state.set_geometry(hs.labels, hs.coord)
         hs_ini_state.set_cell(hs.cell_vector, hs.cell_param)
         hs_ini_state.get_moleclist()
+        hs_ini_state.set_spin_config(2, typ='metals')  # For HS, spin multiplicity must be set at 2, in the metal centers
         
         ls_ini_state = ls.add_state("initial")
         ls_ini_state.set_geometry(ls.labels, ls.coord)

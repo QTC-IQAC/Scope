@@ -27,19 +27,6 @@ class computation(object):
         self.run_number       = self.set_run_number() 
         self.states           = []
         self.source           = _job._recipe.source      ## Just to simplify calling this variable 
-        self.sys_name         = self.source._sys.name    ## Just to simplify calling this variable 
-
-        ############
-        ### SPIN ###
-        ############
-        ## For the moment, self.spin is just a string with HS or LS 
-        ## Spin Config can be used to define more complex spin states...
-        ## ...particularly in crystals with intermediate spin states, which are not implemented yet
-        ############
-        if   hasattr(self.qc_data,"spin"):   self.spin = qc_data.spin
-        elif hasattr(self.source,"spin"):    self.spin = self.source.spin
-        else:                                self.spin = "LS"
-        self.spin_config = get_spin_config(self.source, self.spin, debug=debug)
 
     #####################
     ### Name of Files ###
@@ -67,19 +54,20 @@ class computation(object):
                     if debug > 2: print(f"comp.GET_NAME_FROM_CONFIG: modifying {mod=} in new_filename")
         return new_filename
 
-    def set_filename(self, use_name: bool=True, use_suffix: bool=True, use_step: bool=False, use_run_number: bool=True, use_spin: bool=True, debug: int=0):
+    def set_filename(self, use_sys_name: bool=True, use_sou_name: bool=True, use_suffix: bool=True, use_step: bool=False, use_run_number: bool=True, use_spin: bool=True, debug: int=0):
         ### Here is the convention I'm using to name files. It is better not to change once computations have been submitted
         ### Uses a filename-class object, as defined below, defined as a sum of items
         if not hasattr(self,"run_number"): self.set_run_number() 
         self.filename = filename()   ## Class defined at the end of this file
-        if use_name:           new_item = filename_item("name",       self.sys_name);       self.filename.add_item(new_item)
-        if use_suffix:         new_item = filename_item("suffix",     self._job.suffix);    self.filename.add_item(new_item)
+        if use_sys_name:       new_item = filename_item("sys_name",   self.source._sys.name);  self.filename.add_item(new_item)
+        if use_sou_name:       new_item = filename_item("sou_name",   self.source.name);       self.filename.add_item(new_item)
+        if use_suffix:         new_item = filename_item("suffix",     self._job.suffix);       self.filename.add_item(new_item)
         if use_step:           # Only step=2 and above are printed in name 
             new_item = filename_item("step",       self.step,'s')
             new_item.set_min_value(int(2))
             self.filename.add_item(new_item)
         if use_run_number:     new_item = filename_item("run_number", self.run_number,'r'); self.filename.add_item(new_item)
-        if use_spin:           new_item = filename_item("spin",       self.spin);           self.filename.add_item(new_item)
+        #if use_spin:           new_item = filename_item("spin",       self.spin);           self.filename.add_item(new_item)
         if self.keyword != '': new_item = filename_item("keyword",    self.keyword);        self.filename.add_item(new_item)
         return self.filename
 
@@ -303,8 +291,8 @@ class computation(object):
  
 ###########################################
     def run(self, environment: object, options: object, debug: int=0) -> None:
-        from Scope.Software.Quantum_Espresso.Write_QE_Inputs    import gen_QE_input, gen_QE_subfile 
-        from Scope.Software.Gaussian.Write_G16_Inputs           import gen_G16_input, gen_G16_subfile 
+        from Scope.Software.Quantum_Espresso.QE_Input    import gen_QE_input, gen_QE_subfile 
+        from Scope.Software.Gaussian.G16_Input           import gen_G16_input, gen_G16_subfile 
 
         ## 0-Checks that Resources are available
         if options.want_submit: sent_procs, sent_jobs = environment.get_user_requested(debug=debug)
@@ -323,7 +311,7 @@ class computation(object):
             self.check_files()
             if not self.input_exists or options.overwrite_inputs:
                 if self.software == 'g16':  gen_G16_input(self, debug=0)
-                elif self.software == 'qe': gen_QE_input(self, environment, debug=0)
+                elif self.software == 'qe': gen_QE_input(self, debug=0)
             if not self.subfile_exists or options.overwrite_inputs:
                 if self.software == 'g16':  gen_G16_subfile(self, queue=askqueue, module=environment.g16_module, procs=askprocs, savechk=False)
                 elif self.software == 'qe': gen_QE_subfile(self, queue=askqueue, module=environment.qe_module, procs=askprocs)
@@ -419,7 +407,7 @@ class computation(object):
         to_print += f' Comp index            = {self.index}\n' 
         to_print += f' Comp step             = {self.step}\n' 
         to_print += f' Comp run_number       = {self.run_number}\n' 
-        to_print += f' Comp spin             = {self.spin}\n'
+        #to_print += f' Comp spin             = {self.spin}\n'
         to_print += f' Comp keyword          = {self.keyword}\n' 
         to_print += f' Comp inp_path         = {self.inp_path}\n' 
         to_print += f' Comp out_path         = {self.out_path}\n' 

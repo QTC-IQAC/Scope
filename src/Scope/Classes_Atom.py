@@ -30,6 +30,30 @@ class atom(object):
         if radii is None:                 self.radii = get_radii(label)
         else:                             self.radii = radii
 
+    #####################
+    ## Spin and Charge ##
+    #####################
+    def reset_charge(self) -> None:
+        if hasattr(self,"charge"):     delattr(self,"charge")
+        if hasattr(self,"poscharges"): delattr(self,"poscharges")
+
+    ######
+    def set_charge(self, charge: int) -> None:
+        self.charge = int(charge)
+
+    ######
+    def set_spin(self, spin: int) -> None:
+        self.spin           = int(spin)
+        self.multiplicity   = int(spin + 1)
+        self.ms             = float(spin/2)
+
+    ######
+    def get_decorated_label(self, typ: str="spin"):
+        ## Function for Quantum Espresso Inputs
+        if   typ.lower() == "spin" and hasattr(self,"spin"):                   return self.label + str(self.spin)
+        elif typ.lower() == "multiplicity" and hasattr(self,"multiplicity"):   return self.label + str(self.multiplicity)
+        else: print("ATOM.GET_MOD_LABEL: {typ=} is not implemented")
+
     ######
     def __repr__(self, indirect: bool=False):
         to_print = ''
@@ -154,14 +178,6 @@ class atom(object):
                 found = True    ### It means that the same bond has already been defined
         if not found: self.bonds.append(newbond)
 
-    ######
-    def reset_charge(self) -> None:
-        if hasattr(self,"charge"):     delattr(self,"charge")
-        if hasattr(self,"poscharges"): delattr(self,"poscharges")
-
-    ######
-    def set_charge(self, charge: int) -> None:
-        self.charge = int(charge)
 
     ######
     def set_adjacencies(self, adjmat, madjmat, connectivity: int, metal_connectivity: int=0):
@@ -551,7 +567,17 @@ def import_atom(old_atom: object, parent: object=None, index: int=None, debug: i
             if new_atom.subtype == "atom"  and debug > 0: print(f"IMPORT ATOM: atom charge set to {new_atom.charge}") 
             if new_atom.subtype == "metal" and debug > 0: print(f"IMPORT ATOM: metal charge set to {new_atom.charge}") 
     else:
-        if debug > 0: print(f"IMPORT ATOM: no charge found for old atom {old_atom.label}")
+        if debug > 0: print(f"IMPORT ATOM: no charge found for old atom {old_atom.label}. Setting Default: charge=0")
+        new_atom.set_charge(int(0))
+
+    ## Spin.
+    if debug > 0: print(f"IMPORT ATOM: now trying to import spin") 
+    if hasattr(old_atom,"spin"):
+        if type(old_atom.spin) == int:    
+            new_atom.set_spin(old_atom.spin)
+    else:
+        if debug > 0: print(f"IMPORT ATOM: no spin found for old atom {old_atom.label}. Setting Default: spin=0")
+        new_atom.set_spin(int(0))
 
     ## Connectivity
     if debug > 0: print(f"IMPORT ATOM: inheriting connectivity for {new_atom.subtype=}")

@@ -111,14 +111,14 @@ class recipe(object):
         if hasattr(self.source,"name"):      to_print += f' Source Name                 = {self.source.name}\n'
         if hasattr(self.source,"spin"):      to_print += f' Source Spin                 = {self.source.spin}\n'
         if hasattr(self.source,"phase"):     to_print += f' Source Phase                = {self.source.phase}\n'
-        to_print += f' Source Type                  = {self.source.type}\n'
-        to_print += f' Source sub-Type              = {self.source.subtype}\n'
+        to_print += f' Source Type                 = {self.source.type}\n'
+        to_print += f' Source sub-Type             = {self.source.subtype}\n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' Recipe Name (from Source)    = {self.name}\n'
-        to_print += f' Num Jobs                     = {len(self.jobs)}\n'
+        to_print += f' Recipe Name (from Source)   = {self.name}\n'
+        to_print += f' Num Jobs                    = {len(self.jobs)}\n'
         if len(self.jobs) > 0: 
             self.jobs.sort(key=lambda x: x.hierarchy)
-            to_print += f'\tLast Job Keyword      = {self.jobs[-1].keyword}\n'
-            to_print += f'\tLast Job Hierarchy    = {self.jobs[-1].hierarchy}\n'
+            to_print += f'\tLast Job Keyword     = {self.jobs[-1].keyword}\n'
+            to_print += f'\tLast Job Hierarchy   = {self.jobs[-1].hierarchy}\n'
         to_print += '\n'
         return to_print
