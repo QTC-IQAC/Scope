@@ -98,7 +98,6 @@ def gen_QE_input(comp: object, debug: int=0):
         if   system_type == "molecule": print(f"    ibrav=1, celldm(1)={comp.qc_data.cubeside}", file=inp)
         elif system_type == "cell":     print(f"    ibrav=0,", file=inp)
         print(f"    nat={istate.natoms}, ntyp={nspecies}, ecutwfc={int(min_cowfc)}, ecutrho={float(min_corho)}", file=inp)
-        #if not hasattr(comp.spin_config,"ismagnetic"): comp.spin_config.get_total_magnetization()
         print(f"    nspin=2,", file=inp)
         print(f"    tot_charge={istate.charge}", file=inp)
         print(f"    tot_magnetization={istate.spin}", file=inp)

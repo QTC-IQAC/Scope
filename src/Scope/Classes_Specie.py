@@ -100,6 +100,16 @@ class specie(object):
         for idx, a in enumerate(self.atoms):
             a.set_spin(atomic_spins[idx])
 
+    def set_total_spin(self, total_spin: int):
+        if not hasattr(self,"atoms"): self.set_atoms()
+        self.atoms[0].set_spin(total_spin)
+        return self.spin
+
+    def set_total_charge(self, total_charge: int):
+        if not hasattr(self,"atoms"): self.set_atoms()
+        self.atoms[0].set_charge(total_charge)
+        return self.charge
+
     ######################
     ## Parent Functions ##
     ######################
@@ -720,10 +730,38 @@ class molecule(specie):
         if not indirect: to_print += '\n'
         return to_print
 
-    ######
+    #####################
+    ## Charge and Spin ##
+    #####################
     def reset_charge(self):
         for at in self.atoms:
             at.set_charge(0)
+
+    def set_spin_config(self, spins: list | int, typ: str='metal', debug: int=0):
+        typ = typ.lower()
+        if typ == 'metals': typ = 'metal'
+        ## Verbose
+        if debug > 0: 
+            print(f"SPECIE.SET_SPIN_CONFIG: Preparing Spin Configuration for Specie {self.formula}")
+            print(f"SPECIE.SET_SPIN_CONFIG: Received spins", spins)
+            print(f"SPECIE.SET_SPIN_CONFIG: Received typ", typ)
+        ## Checks
+        if typ == 'metal' and self.iscomplex:
+            if not hasattr(self,"metals"): self.split_complex(debug=debug)
+            if isinstance(spins, int): spins = [spins] * len(self.metals)
+            assert len(spins) == len(self.metals), f"SPECIE.SET_SPIN_CONFIG: number of spins provided ({len(spins)}) does not match number of metals in molecule ({len(self.metals)})"
+
+        ## Allocates the list of spins to the molecules in moleclist. Each item in spins corresponds to a molecule in the cell 
+        pointer = 0
+        if typ == 'metal': 
+            for met in self.metals:
+                print(f"SPECIE.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to metal atom {met.label}")
+                met.set_spin(spins[pointer]); pointer += 1  
+        elif typ == 'any':        
+            for at in self.atoms:
+                print(f"SPECIE.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to atom {met.label}")
+                at.set_spin(spins[pointer]); pointer += 1  
+        return self.spin
 
     ######
     def split_complex(self, debug: int=0):

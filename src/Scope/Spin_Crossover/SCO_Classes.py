@@ -152,18 +152,19 @@ class sco_system(system):
         ## Prepares the species:
         hs.name = "ref_hs_mol"
         hs.set_bonds()              
+        hs.set_spin_config(4, typ='metals') 
         hs.fix_ligands_rdkit_obj()
         self.add_source(hs.name, hs)
 
         ls.name = "ref_ls_mol"
         ls.set_bonds()              
+        ls.set_spin_config(0, typ='metals') # Not strictly necessary, but for clarity 
         ls.fix_ligands_rdkit_obj()
         self.add_source(ls.name, ls)
 
         # Creates Initial States:
         hs_ini_state = hs.add_state("initial")
         hs_ini_state.set_geometry(hs.labels, hs.coord)
-        hs_ini_state.set_spin_config(4, typ='metals')  # For HS, spin multiplicity must be set at 4, in the metal centers
 
         ls_ini_state = ls.add_state("initial")
         ls_ini_state.set_geometry(ls.labels, ls.coord)

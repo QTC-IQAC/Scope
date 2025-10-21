@@ -33,7 +33,6 @@ class state(object):
     cell_vector : array-like            Cell vectors for periodic systems.
     cell_param : array-like             Cell parameters.
     forces : array-like                 Forces on atoms.
-    spin_config : object                Spin configuration.
     atoms : list                        List of atom objects.
     moleclist : list                    List of molecule objects in the state.
     ncomplex : int                      Number of Transition Metal Complexes in the state.
@@ -46,7 +45,6 @@ class state(object):
     set_geometry_from_moleclist()       Set geometry from the list of molecule objects.
     set_cell()                          Set cell vectors and parameters.
     set_forces()                        Set atomic forces.
-    set_spin_config()                   Set spin configuration.
     set_atoms()                         Set atom objects from molecule list.
     get_moleclist()                     Generate molecule list from geometry.
     get_ncomplex()                      Count number of complex molecules.
@@ -71,6 +69,7 @@ class state(object):
         self.name         = name
         self.results      = dict()
         self.computations = []
+
 
 ############################################
 #### Basic Functions to add information ####
@@ -112,67 +111,25 @@ class state(object):
 #########################
 #### Charge and Spin ####
 #########################
-    def set_spin_config(self, spins: list | int, typ: str='metals', debug: int=0):
-        ## Verbose
-        if debug > 0: 
-            print(f"STATE.SET_SPIN_CONFIG: Preparing Spin Configuration for State {self.name}")
-            print(f"STATE.SET_SPIN_CONFIG: Received spins", spins)
-            print(f"STATE.SET_SPIN_CONFIG: Received typ", typ)
-        ## Checks
-        if typ == 'metals':
-            if isinstance(spins, int): spins = [spins] * self.get_ncomplex()
-            assert len(spins) == self.get_ncomplex(), f"STATE.SET_SPIN_CONFIG: number of spins provided ({len(spins)}) does not match number of complexes in state ({self.get_ncomplex()})"
-        elif typ != 'metals':
-            assert len(spins) == len(self.moleclist), f"STATE.SET_SPIN_CONFIG: number of spins provided ({len(spins)}) does not match number of molecules in state ({len(self.moleclist)})"
-
-        ## Allocates the list of spins to the molecules in moleclist. Each item in spins corresponds to a molecule in the cell 
-        pointer = 0
-        if not hasattr(self,"moleclist"): self.get_moleclist()
-        for idx, mol in enumerate(self.moleclist):
-            if typ == 'metals' and mol.iscomplex: 
-                print(f"STATE.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to the metal of molecule {mol.formula} in index {idx}")
-                print(f"STATE.SET_SPIN_CONFIG: Formal SPIN is added to the first metal of the molecule: {mol.metals[0].label}")
-                mol.metals[0].set_spin(spins[pointer]); pointer += 1  
-            elif typ != 'metals':                 
-                print(f"STATE.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to molecule {mol.formula} in index {idx}")
-                print(f"STATE.SET_SPIN_CONFIG: Formal SPIN is added to the first atom of the molecule: {mol.atoms[0].label}")
-                mol.atoms[0].set_spin(spins[pointer]); pointer += 1
-        self.spin_config = spins
-        self.spin_config_type = typ
-
+    ## The Spin and Charge of a State is always taken from the Source (Specie or Cell)
     @property
     def charge(self):
-        if not hasattr(self,"atoms"): self.get_atoms()
-        if not all(hasattr(at,"charge") for at in self.atoms): return None
-        return np.sum(at.charge for at in self.atoms)
-
+        return self._source.charge
     @property
     def atomic_charges(self):
-        if not hasattr(self,"atoms"): self.get_atoms()
-        if not all(hasattr(at,"charge") for at in self.atoms): return None
-        return [at.charge for at in self.atoms]
-
+        return self._source.atomic_charges
     @property
     def spin(self):
-        if not hasattr(self,"atoms"): self.get_atoms()
-        if not all(hasattr(at,"spin") for at in self.atoms): return None
-        return np.sum(at.spin for at in self.atoms)
-
+        return self._source.spin
     @property
     def atomic_spins(self):
-        if not hasattr(self,"atoms"): self.get_atoms()
-        if not all(hasattr(at,"spin") for at in self.atoms): return None
-        return [at.spin for at in self.atoms]
-
+        return self._source.atomic_spins
     @property
     def ismagnetic(self):
-        for at_s in self.atomic_spins:
-            if at_s != 0: return True
-        return False
-   
+        return self._source.ismagnetic
     @property
     def spin_multiplicity(self):
-        return int(self.spin + 1)
+        return self._source.spin_multiplicity
 
 ###################################
 #### Operations with Molecules ####

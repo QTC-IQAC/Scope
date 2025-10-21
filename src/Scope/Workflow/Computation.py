@@ -148,7 +148,7 @@ class computation(object):
     #### QC_DATA-related functions ####
     ###################################
     def check_qc_data(self, job_path: str, debug: int=0):
-        from ..Classes_Input import set_qc_data
+        from Scope.Classes_Input import set_qc_data
         old_qc_data    = deepcopy(self.qc_data)
         new_qc_data    = set_qc_data(job_path, section="&qc_data" , debug=0)
         if new_qc_data != old_qc_data: 
@@ -182,13 +182,13 @@ class computation(object):
         if not hasattr(self,'output_lines'): self.read_lines()
         ## Gaussian Computations
         if   self.software == 'g16': 
-            from Scope.Software.Gaussian.G16_Class_Output import g16_output
+            from Scope.Software.Gaussian.G16_Output import g16_output
             allowed_types = ['specie']
             assert self._job._recipe.source.type in allowed_types
             self.output = g16_output(self.output_lines, self)
         ## Quantum Espresso Computations
         elif self.software == 'qe':  
-            from Scope.Software.Quantum_Espresso.QE_Class_Output import qe_output
+            from Scope.Software.Quantum_Espresso.QE_Output import qe_output
             allowed_types = ['specie', 'cell']
             assert self._job._recipe.source.type in allowed_types
             self.output = qe_output(self.output_lines, self)

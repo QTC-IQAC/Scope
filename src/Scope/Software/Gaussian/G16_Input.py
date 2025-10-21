@@ -14,7 +14,7 @@ elemdatabase = ElementData()
 #######################
 def gen_G16_input(comp, debug: int=0):
     ## 1-Change some variable names to simplify calls
-    source     = comp._job._recipe.source
+    source     = comp.source
     jobtype    = comp.qc_data.jobtype
     functional = comp.qc_data.functional
     basis      = comp.qc_data.basis
@@ -73,7 +73,7 @@ def gen_G16_input(comp, debug: int=0):
         print("", file=inp) 
         print(f"Title Card", file=inp) 
         print("", file=inp) 
-        print(f"{source.charge} {source.spin_multiplicity}", file=inp) 
+        print(f"{istate.charge} {istate.spin_multiplicity}", file=inp) 
 
         ##################################################################
         ### Coordinates, which are taken from the initial state object ###

@@ -30,7 +30,6 @@ def reg_general(comp: object, debug: int=0):
 
 ###########################################
 def reg_optimization(comp: object, debug: int=0):
-
     ### For simplicity...
     source = comp.source
 
@@ -60,11 +59,7 @@ def reg_optimization(comp: object, debug: int=0):
             fstate.set_cell(cellvec, cellparam)
             fstate.get_moleclist()
             fstate.check_fragmentation(reconstruct=True, debug=debug)
-        ### 3b-Copies the Spin Configuration
-        exists, istate        = source.find_state(comp.qc_data.istate, debug=debug)  ## Initial State
-        if not exists: raise Exception("REG_ENERGY: Initial State not found, cannot copy Spin Configuration")
-        fstate.set_spin_config(istate.spin_config, istate.spin_config_type)          ## Spin Configuration is Copied
-        ### 3c-Computation is linked to the fstate
+        ### 3b-Computation is linked to the fstate
         fstate.add_computation(comp)
         worked = True
     return worked
@@ -83,14 +78,10 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
     VNMs   = comp.output.get_vnms(witheigen=witheigen)
     forces = comp.output.get_forces_last_complete_block()
 
-    ### 2-Saving Data in fstate ###
+    ### 2a-Saving Data in fstate ###
     exists, fstate = source.find_state(comp.qc_data.fstate, debug=debug)         ## If exists, it will be updated
     if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created 
-    ### Copies the Spin Configuration
-    exists, istate        = source.find_state(comp.qc_data.istate, debug=debug)  ## Initial State
-    if not exists: raise Exception("REG_ENERGY: Initial State not found, cannot copy Spin Configuration")
-    fstate.set_spin_config(istate.spin_config, istate.spin_config_type)          ## Spin Configuration is Copied
-    ### Computation is linked to the fstate
+    ### 2b-Computation is linked to the fstate
     fstate.add_computation(comp)
 
     if VNMs is not None:
