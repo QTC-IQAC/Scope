@@ -37,6 +37,76 @@ class cell(object):
             self.cell_param       = cell_param
         self.frac_coord           = cart2frac(self.coord, self.cell_vector)
 
+    #####################
+    ## Charge and Spin ##
+    #####################
+    @property
+    def charge(self):
+        if not hasattr(self,"atoms"): self.get_atoms()
+        if not all(hasattr(at,"charge") for at in self.atoms): return None
+        return np.sum(at.charge for at in self.atoms)
+
+    @property
+    def atomic_charges(self):
+        if not hasattr(self,"atoms"): self.get_atoms()
+        if not all(hasattr(at,"charge") for at in self.atoms): return None
+        return [at.charge for at in self.atoms]
+
+    @property
+    def spin(self):
+        if not hasattr(self,"atoms"): self.get_atoms()
+        if not all(hasattr(at,"spin") for at in self.atoms): return None
+        return np.sum(at.spin for at in self.atoms)
+
+    @property
+    def atomic_spins(self):
+        if not hasattr(self,"atoms"): self.get_atoms()
+        if not all(hasattr(at,"spin") for at in self.atoms): return None
+        return [at.spin for at in self.atoms]
+
+    @property
+    def ismagnetic(self):
+        for at_s in self.atomic_spins:
+            if at_s != 0: return True
+        return False
+   
+    @property
+    def spin_multiplicity(self):
+        return int(self.spin + 1) 
+
+    #### 
+    def reset_charge_assignment(self, debug: int=0):
+        if not hasattr(self,"moleclist"): return None
+        for mol in self.moleclist:
+            mol.reset_charge()
+
+    ####
+    def set_spin_config(self, spins: list | int, typ: str='metals', debug: int=0):
+        ## Verbose
+        if debug > 0: 
+            print(f"CELL.SET_SPIN_CONFIG: Preparing Spin Configuration for Cell {self.name}")
+            print(f"CELL.SET_SPIN_CONFIG: Received spins", spins)
+            print(f"CELL.SET_SPIN_CONFIG: Received typ", typ)
+        ## Checks
+        if typ == 'metals':
+            if isinstance(spins, int): spins = [spins] * self.get_ncomplex()
+            assert len(spins) == self.get_ncomplex(), f"CELL.SET_SPIN_CONFIG: number of spins provided ({len(spins)}) does not match number of complexes in cell ({self.get_ncomplex()})"
+        elif typ != 'metals':
+            assert len(spins) == len(self.moleclist), f"CELL.SET_SPIN_CONFIG: number of spins provided ({len(spins)}) does not match number of molecules in cell ({len(self.moleclist)})"
+
+        ## Allocates the list of spins to the molecules in moleclist. Each item in spins corresponds to a molecule in the cell 
+        pointer = 0
+        if not hasattr(self,"moleclist"): self.get_moleclist()
+        for idx, mol in enumerate(self.moleclist):
+            if typ == 'metals' and mol.iscomplex: 
+                print(f"CELL.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to the metal of molecule {mol.formula} in index {idx}")
+                print(f"CELL.SET_SPIN_CONFIG: Formal SPIN is added to the first metal of the molecule: {mol.metals[0].label}")
+                mol.metals[0].set_spin(spins[pointer]); pointer += 1  
+            elif typ != 'metals':                 
+                print(f"CELL.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to molecule {mol.formula} in index {idx}")
+                print(f"CELL.SET_SPIN_CONFIG: Formal SPIN is added to the first atom of the molecule: {mol.atoms[0].label}")
+                mol.atoms[0].set_spin(spins[pointer]); pointer += 1
+
     ###########
     ## Other ##
     ###########
@@ -49,6 +119,19 @@ class cell(object):
 
     def set_path(self, path: str) -> None:
         self.path = path
+
+    def get_ncomplex(self, debug: int=0):
+        if debug > 0: print(f"CELL.GET_NCOMPLEX checking fragmentation")
+        if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
+        assert not self.fragmented, f"Found Fragmented molecules in the geometry of cell: {self.name}"
+         
+        if debug > 0: print(f"CELL.GET_NCOMPLEX getting moleclist")
+        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+        self.ncomplex = 0
+        for mol in self.moleclist:
+            if mol.iscomplex: self.ncomplex += 1
+        if debug > 0: print(f"CELL.GET_NCOMPLEX {self.ncomplex} complexes found in cell: {self.name}")
+        return self.ncomplex
 
     #############
     ## Parents ##
@@ -68,77 +151,9 @@ class cell(object):
         if subtype == "cell": return list(range(0,self.natoms))
         else:                 return None
 
-    ##################
-    ## Connectivity ##
-    ##################
-    def get_adjmatrix(self):
-        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord)
-        if isgood:
-            self.adjmat = adjmat
-            self.adjnum = adjnum
-        else:
-            self.adjmat = None
-            self.adjnum = None
-        return self.adjmat, self.adjnum
-
-    ######
-    def set_moleclist(self, moleclist: list) -> None:
-        self.moleclist = moleclist
-
-    ######
-    def check_fragmentation(self, reconstruct: bool = False, debug: int=0):
-
-        if not hasattr(self,"moleclist"): self.get_moleclist()
-        self.fragmented = False
-
-        # First comparison with ref_moleclist
-        for mol in self.moleclist:
-            found = False
-            for rmol in self.refmoleclist:
-                issame = compare_species(mol, rmol)  
-                if issame: found = True
-            if not found: self.fragmented = True
-
-        # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
-        if self.fragmented and reconstruct:
-            new_moleclist = self.reconstruct(debug=debug)
-            self.fragmented = False
-            for mol in new_moleclist:
-                found = False
-                for rmol in self.refmoleclist:
-                    issame = compare_species(mol, rmol)  
-                    if issame: found = True
-                if not found: self.fragmented = True
-            if not self.fragmented: 
-                self.moleclist = new_moleclist
-               #self.set_geometry_from_moleclist()
-
-        return self.fragmented
-
-    ######
-    def fix_cell_coord(self, debug: int=0) -> None:
-        ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell.
-        ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
-        if not hasattr(self,"moleclist"): self.get_moleclist()
-
-        self.labels = []
-        self.coord  = []
-        indices     = []
-        for mol in self.moleclist:
-            for idx, a in enumerate(mol.atoms):
-                self.labels.append(a.label)
-                self.coord.append(a.coord)
-                if hasattr(a,"parent_index"): indices.append(a.parent_index)
-                elif hasattr(a,"index"):      indices.append(a.index)
-                else:                         indices.append(idx)
-
-        ## Below is to order the atoms as in the original cell, using the indices stored in the molecule object
-        self.labels = [x for _, x in sorted(zip(indices, self.labels), key=lambda pair: pair[0])]
-        self.coord  = [x for _, x in sorted(zip(indices, self.coord), key=lambda pair: pair[0])]
-        assert len(self.labels) == len(self.coord)
-        return self.coord
-
-    ######
+    #########################
+    ## Atoms and Molecules ##
+    #########################
     def get_atoms(self):
         if not hasattr(self,"moleclist"): self.get_moleclist()
         self.atoms = []
@@ -147,6 +162,11 @@ class cell(object):
                 self.atoms.append(at)
         return self.atoms
 
+    ######
+    def set_moleclist(self, moleclist: list) -> None:
+        self.moleclist = moleclist
+    
+    ######
     def get_moleclist(self, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
         ## Overwrite and Warning
         if not overwrite and hasattr(self,"moleclist"): 
@@ -204,6 +224,72 @@ class cell(object):
             # Not needed here, as the reconstruction will take care of it
             self.moleclist.append(newmolec)
         return self.moleclist
+
+    ##################
+    ## Connectivity ##
+    ##################
+    def get_adjmatrix(self):
+        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord)
+        if isgood:
+            self.adjmat = adjmat
+            self.adjnum = adjnum
+        else:
+            self.adjmat = None
+            self.adjnum = None
+        return self.adjmat, self.adjnum
+
+    ######
+    def check_fragmentation(self, reconstruct: bool = False, debug: int=0):
+
+        if not hasattr(self,"moleclist"): self.get_moleclist()
+        self.fragmented = False
+
+        # First comparison with ref_moleclist
+        for mol in self.moleclist:
+            found = False
+            for rmol in self.refmoleclist:
+                issame = compare_species(mol, rmol)  
+                if issame: found = True
+            if not found: self.fragmented = True
+
+        # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
+        if self.fragmented and reconstruct:
+            new_moleclist = self.reconstruct(debug=debug)
+            self.fragmented = False
+            for mol in new_moleclist:
+                found = False
+                for rmol in self.refmoleclist:
+                    issame = compare_species(mol, rmol)  
+                    if issame: found = True
+                if not found: self.fragmented = True
+            if not self.fragmented: 
+                self.moleclist = new_moleclist
+               #self.set_geometry_from_moleclist()
+
+        return self.fragmented
+
+    ######
+    def fix_cell_coord(self, debug: int=0) -> None:
+        ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell.
+        ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
+        if not hasattr(self,"moleclist"): self.get_moleclist()
+
+        self.labels = []
+        self.coord  = []
+        indices     = []
+        for mol in self.moleclist:
+            for idx, a in enumerate(mol.atoms):
+                self.labels.append(a.label)
+                self.coord.append(a.coord)
+                if hasattr(a,"parent_index"): indices.append(a.parent_index)
+                elif hasattr(a,"index"):      indices.append(a.index)
+                else:                         indices.append(idx)
+
+        ## Below is to order the atoms as in the original cell, using the indices stored in the molecule object
+        self.labels = [x for _, x in sorted(zip(indices, self.labels), key=lambda pair: pair[0])]
+        self.coord  = [x for _, x in sorted(zip(indices, self.coord), key=lambda pair: pair[0])]
+        assert len(self.labels) == len(self.coord)
+        return self.coord
 
     ######
     def reconstruct(self, cov_factor: float=None, metal_factor: float=None, debug: int=0):
@@ -264,48 +350,6 @@ class cell(object):
                 if newmolec.iscomplex: newmolec.split_complex()
                 self.moleclist.append(newmolec)         
             return self.moleclist
-
-    #####################
-    ## Charge and Spin ##
-    #####################
-    @property
-    def charge(self):
-        if not hasattr(self,"atoms"): self.get_atoms()
-        if not all(hasattr(at,"charge") for at in self.atoms): return None
-        return np.sum(at.charge for at in self.atoms)
-
-    @property
-    def atomic_charges(self):
-        if not hasattr(self,"atoms"): self.get_atoms()
-        if not all(hasattr(at,"charge") for at in self.atoms): return None
-        return [at.charge for at in self.atoms]
-
-    @property
-    def spin(self):
-        if not hasattr(self,"atoms"): self.get_atoms()
-        if not all(hasattr(at,"spin") for at in self.atoms): return None
-        return np.sum(at.spin for at in self.atoms)
-
-    @property
-    def atomic_spins(self):
-        if not hasattr(self,"atoms"): self.get_atoms()
-        if not all(hasattr(at,"spin") for at in self.atoms): return None
-        return [at.spin for at in self.atoms]
-
-    @property
-    def ismagnetic(self):
-        for at_s in self.atomic_spins:
-            if at_s != 0: return True
-        return False
-   
-    @property
-    def spin_multiplicity(self):
-        return int(self.spin + 1) 
-
-    def reset_charge_assignment(self, debug: int=0):
-        if not hasattr(self,"moleclist"): return None
-        for mol in self.moleclist:
-            mol.reset_charge()
 
     #########################################
     ### Functions to Interact with States ###
