@@ -129,10 +129,6 @@ def reg_energy(comp: object, debug: int=0):
         if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created 
         if energy is not None: fstate.set_energy(energy, 'au')
         if forces is not None: fstate.set_forces(forces)
-        # Copies the Spin Configuration
-        exists, istate        = source.find_state(comp.qc_data.istate, debug=debug)  ## Initial State
-        if not exists: raise Exception("REG_ENERGY: Initial State not found, cannot copy Spin Configuration")
-        fstate.set_spin_config(istate.spin_config, istate.spin_config_type)          ## Spin Configuration is Copied
         # Computation is linked to the fstate
         fstate.add_computation(comp)
         worked = True
