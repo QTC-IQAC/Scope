@@ -103,12 +103,9 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
 
     return new_data
 
-def get_Selec(spin, outunits: str='au', nmol: int=1):
-    if   spin == "HS": multiplicity = int(5)
-    elif spin == "IS": multiplicity = int(3)
-    elif spin == "LS": multiplicity = int(1)
-    if outunits.lower()     == 'kj': value = float(8.314*np.log(multiplicity)/1000/nmol)
-    elif outunits.lower()   == 'au': value = float(8.314*np.log(multiplicity)/Constants.har2kJmol/1000/nmol)
+def get_Selec(spin_multiplicity, outunits: str='au', nmol: int=1):
+    if outunits.lower()     == 'kj': value = float(8.314*np.log(spin_multiplicity)/1000/nmol)
+    elif outunits.lower()   == 'au': value = float(8.314*np.log(spin_multiplicity)/Constants.har2kJmol/1000/nmol)
     return data("Selec", value, outunits,  'Scope.Thermal_Corrections.get_Selec()') 
 
 def get_Gibbs(Helec: float, Hvib: float, Selec: float, Svib: float, temp: float):

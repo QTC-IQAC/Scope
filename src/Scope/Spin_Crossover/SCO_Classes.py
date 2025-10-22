@@ -152,13 +152,13 @@ class sco_system(system):
         ## Prepares the species:
         hs.name = "ref_hs_mol"
         hs.set_bonds()              
-        hs.set_spin_config(4, typ='metals') 
+        hs.set_spin_metals(4, debug=debug) 
         hs.fix_ligands_rdkit_obj()
         self.add_source(hs.name, hs)
 
         ls.name = "ref_ls_mol"
         ls.set_bonds()              
-        ls.set_spin_config(0, typ='metals') # Not strictly necessary, but for clarity 
+        ls.set_spin_metals(0, debug=debug) # Not strictly necessary, but for clarity 
         ls.fix_ligands_rdkit_obj()
         self.add_source(ls.name, ls)
 
@@ -229,14 +229,14 @@ class sco_system(system):
 
         ## Prepares the cells:
         hs.name = "ref_hs_cell"
-        hs.set_spin_config(4, typ='metals')
+        hs.set_spin_metals(4, debug=debug)
         for mol in hs.moleclist:
             mol.set_bonds()
             if mol.iscomplex: mol.fix_ligands_rdkit_obj()
         self.add_source(hs.name, hs)
 
         ls.name = "ref_ls_cell"
-        ls.set_spin_config(0, typ='metals') # Not strictly necessary, but for clarity 
+        ls.set_spin_metals(0, debug=debug) # Not strictly necessary, but for clarity 
         for mol in ls.moleclist:
             mol.set_bonds()
             if mol.iscomplex: mol.fix_ligands_rdkit_obj()

@@ -566,55 +566,19 @@ class qe_output(object):
 #############
     def __repr__(self):
         to_print  = f'---------------------------------------------------\n'
-        to_print += f'   FORMATTED REPRESENTATION OF OUTPUT CLASS        \n'
+        to_print += f'          SCOPE QEspresso OUTPUT CLASS             \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f'#Lines            = {len(self.lines)}\n'
-        if hasattr(self,"last_block_status"):  to_print += f'Last Block Status = {self.last_block_status}\n'
-        if hasattr(self,"scf_blocks"):    to_print += f'#SCF Blocks       = {len(self.scf_blocks)}\n'
-        if hasattr(self,"opt_blocks"):    to_print += f'#OPT Blocks       = {len(self.opt_blocks)}\n'
-        if hasattr(self,"all_coords"):    to_print += f'#Coordinates      = {len(self.all_coords)}\n'
-        if hasattr(self,"all_energies"):  to_print += f'#Energies         = {len(self.all_energies)}\n'
-        if hasattr(self,"last_energy"):   to_print += f'Last Energy       = {self.last_energy}\n'
-        if hasattr(self,"last_volume"):   to_print += f'Last Volume       = {self.last_volume}\n'
-        if hasattr(self,"last_density"):  to_print += f'Last Density      = {self.last_density}\n'
-        if hasattr(self,"elapsed_time"):  to_print += f'Elapsed Time      = {self.elapsed_time}\n'
+        to_print += f' #Lines           = {len(self.lines)}\n'
+        to_print += f' Job Type         = {self.jobtype}\n'
+        to_print += f' Requisites       = {self.requisites}\n'
+        if hasattr(self,"last_block_status"):  to_print += f' Last Block Status = {self.last_block_status}\n'
+        if hasattr(self,"scf_blocks"):    to_print += f' #SCF Blocks       = {len(self.scf_blocks)}\n'
+        if hasattr(self,"opt_blocks"):    to_print += f' #OPT Blocks       = {len(self.opt_blocks)}\n'
+        if hasattr(self,"all_coords"):    to_print += f' #Coordinates      = {len(self.all_coords)}\n'
+        if hasattr(self,"all_energies"):  to_print += f' #Energies         = {len(self.all_energies)}\n'
+        if hasattr(self,"last_energy"):   to_print += f' Last Energy       = {self.last_energy}\n'
+        if hasattr(self,"last_volume"):   to_print += f' Last Volume       = {self.last_volume}\n'
+        if hasattr(self,"last_density"):  to_print += f' Last Density      = {self.last_density}\n'
+        if hasattr(self,"elapsed_time"):  to_print += f' Elapsed Time      = {self.elapsed_time}\n'
         to_print += f'---------------------------------------------------\n'
         return to_print
-
-################
-#### GENERAL ###
-################
-#    def execute_all_parsing(self, prop_name: str, function: str, debug: int=0):
-#        if function not in dir(self): print("Function not in class"); return None
-#        if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
-#        method = getattr(self,"function")
-#        prop = []
-#        for idx, b in enumerate(self.opt_blocks):
-#            init_line = b[0]+1
-#            last_line = b[1]+1
-#            step_prop  = method(self.lines[init_line:last_lines])
-#            if step_prop is not None: prop.append(step_prop)
-#        setattr(self,prop_name,prop)
-#        return getattr(self,prop_name)
-#
-#    def execute_last_parsing(self, prop_name: str, all_prop_name: str, function: str, debug: int=0):
-#        if not function in dir(self): return None
-#        method = getattr(self,"function")
-#        #if not hasattr(self,all_prop_name): self.execute_all_parsing(all_prop_name, function)
-#        if hasattr(self,all_prop_name): 
-#            var = getattr(self,all_prop_name)
-#            if len(var) > 0: 
-#                for v in var[-1::-1]:
-#                    if v is not None: prop = v; setattr(self,prop_name,prop); return getattr(self,prop_name)
-#        else:
-#            if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
-#            if len(self.opt_blocks) == 0: return None
-#
-#            for idx in range(len(self.opt_blocks),-1,-1):
-#                init_line = self.opt_blocks[idx][0]+1
-#                last_line = self.opt_blocks[idx][1]+1
-#                prop = method(self.lines[init_line:last_line])
-#                if prop is not None:
-#                    setattr(self,prop_name,prop)
-#                    return getattr(self,prop_name)
-

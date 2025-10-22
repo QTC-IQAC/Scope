@@ -1,7 +1,6 @@
 from copy import deepcopy
 import os
 from datetime import datetime
-from Scope.Classes_Spin                                 import *
 from Scope.Classes_Environment                          import * 
 from Scope.Register_Data                                import reg_general, reg_optimization, reg_frequencies, reg_energy
 from Scope.Parse_General                                import read_lines_file
@@ -392,7 +391,7 @@ class computation(object):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> >>> >>> COMPUTATION                     \n'
         to_print += f'---------------------------------------------------\n'
-        source = self._job._recipe.source
+        source = self.source
         to_print += f' Source Type           = {source.type}\n'
         to_print += f' Source sub-Type       = {source.subtype}\n'
         to_print += f' Branch Name           = {self._job._recipe._branch.name}\n'
@@ -407,7 +406,6 @@ class computation(object):
         to_print += f' Comp index            = {self.index}\n' 
         to_print += f' Comp step             = {self.step}\n' 
         to_print += f' Comp run_number       = {self.run_number}\n' 
-        #to_print += f' Comp spin             = {self.spin}\n'
         to_print += f' Comp keyword          = {self.keyword}\n' 
         to_print += f' Comp inp_path         = {self.inp_path}\n' 
         to_print += f' Comp out_path         = {self.out_path}\n' 
@@ -415,7 +413,8 @@ class computation(object):
         if self.isregistered: to_print += f' Comp isgood           = {self.isgood}\n' 
         if self.isregistered: to_print += f' Comp isfinished       = {self.isfinished}\n' 
         if self.isregistered: to_print += f' Comp elapsed_time     = {self.elapsed_time}\n' 
-        if hasattr(self,"output"): to_print += f'{self.output}\n'
+        if hasattr(self,"output"): to_print += f' Has OUTPUT            = YES\n'
+        else:                      to_print += f' Has OUTPUT            = NO\n'
         to_print += '\n'
         return to_print
 

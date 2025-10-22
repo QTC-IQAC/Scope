@@ -25,7 +25,7 @@ class cell(object):
 
         ## Gets Cell Parameters, Vectors and Fractional Coordinates
         if   cell_vector is None and cell_param is None:
-            raise ValueError("Either cell_vector or cell_param must be provided to create a cell object")
+            raise ValueError("CELL: Either cell_vector or cell_param must be provided to create a cell object")
         elif cell_vector is None and cell_param is not None:
             self.cell_param       = cell_param
             self.cell_vector      = cellparam_2_cellvec(cell_param)
@@ -75,37 +75,68 @@ class cell(object):
         return int(self.spin + 1) 
 
     #### 
-    def reset_charge_assignment(self, debug: int=0):
+    def reset_charge(self, debug: int=0):
         if not hasattr(self,"moleclist"): return None
         for mol in self.moleclist:
             mol.reset_charge()
 
+    def reset_spin(self, debug: int=0):
+        if not hasattr(self,"moleclist"): return None
+        for mol in self.moleclist:
+            mol.reset_spin()
+
     ####
-    def set_spin_config(self, spins: list | int, typ: str='metals', debug: int=0):
+    def set_spin_metals(self, spins: list | int, debug: int=0):
+        ## Function to simplify setting the spin for the Transition Metal Complexes of this cell
+        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+        ncomplex = self.get_ncomplex(debug=debug) 
+        if ncomplex == 0:
+            print(f"CELL.SET_SPIN_METALS: there are no Transition Metal Complexes in this cell")
+            return None
+        ## Checks
+        if isinstance(spins, int): spins = [spins] * len(ncomplex)  ## If spin is an integer, then it assumes it aplies to all metals
         ## Verbose
         if debug > 0: 
-            print(f"CELL.SET_SPIN_CONFIG: Preparing Spin Configuration for Cell {self.name}")
-            print(f"CELL.SET_SPIN_CONFIG: Received spins", spins)
-            print(f"CELL.SET_SPIN_CONFIG: Received typ", typ)
-        ## Checks
-        if typ == 'metals':
-            if isinstance(spins, int): spins = [spins] * self.get_ncomplex()
-            assert len(spins) == self.get_ncomplex(), f"CELL.SET_SPIN_CONFIG: number of spins provided ({len(spins)}) does not match number of complexes in cell ({self.get_ncomplex()})"
-        elif typ != 'metals':
-            assert len(spins) == len(self.moleclist), f"CELL.SET_SPIN_CONFIG: number of spins provided ({len(spins)}) does not match number of molecules in cell ({len(self.moleclist)})"
-
-        ## Allocates the list of spins to the molecules in moleclist. Each item in spins corresponds to a molecule in the cell 
+            print(f"CELL.SET_SPIN_METALS: Preparing Spin Configuration for Specie {self.formula}")
+            print(f"CELL.SET_SPIN_METALS: Received {spins=}")
+        ## Main
         pointer = 0
-        if not hasattr(self,"moleclist"): self.get_moleclist()
-        for idx, mol in enumerate(self.moleclist):
-            if typ == 'metals' and mol.iscomplex: 
-                print(f"CELL.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to the metal of molecule {mol.formula} in index {idx}")
-                print(f"CELL.SET_SPIN_CONFIG: Formal SPIN is added to the first metal of the molecule: {mol.metals[0].label}")
-                mol.metals[0].set_spin(spins[pointer]); pointer += 1  
-            elif typ != 'metals':                 
-                print(f"CELL.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to molecule {mol.formula} in index {idx}")
-                print(f"CELL.SET_SPIN_CONFIG: Formal SPIN is added to the first atom of the molecule: {mol.atoms[0].label}")
-                mol.atoms[0].set_spin(spins[pointer]); pointer += 1
+        for mol in self.moleclist:
+            if mol.iscomplex: 
+                if len(mol.metals) > 0: 
+                    print(f"CELL.SET_SPIN_METALS: Molecule {mol.formula} has more than one metal atom.") 
+                    print(f"Please set the spin for each molecule separately using mol.set_spin()")
+                else: 
+                    met = mol.metals[0]
+                    if debug > 0: print(f"CELL.SET_SPIN_METALS: Setting spin={spins[pointer]} to metal atom {met.label}")
+                    met.set_spin(spins[pointer]); pointer += 1
+        return self.spin
+
+#    def set_spin_metals(self, spins: list | int, typ: str='metals', debug: int=0):
+#        ## Verbose
+#        if debug > 0: 
+#            print(f"CELL.SET_SPIN_CONFIG: Preparing Spin Configuration for Cell {self.name}")
+#            print(f"CELL.SET_SPIN_CONFIG: Received spins", spins)
+#            print(f"CELL.SET_SPIN_CONFIG: Received typ", typ)
+#        ## Checks
+#        if typ == 'metals':
+#            if isinstance(spins, int): spins = [spins] * self.get_ncomplex()
+#            assert len(spins) == self.get_ncomplex(), f"CELL.SET_SPIN_CONFIG: number of spins provided ({len(spins)}) does not match number of complexes in cell ({self.get_ncomplex()})"
+#        elif typ != 'metals':
+#            assert len(spins) == len(self.moleclist), f"CELL.SET_SPIN_CONFIG: number of spins provided ({len(spins)}) does not match number of molecules in cell ({len(self.moleclist)})"
+#
+#        ## Allocates the list of spins to the molecules in moleclist. Each item in spins corresponds to a molecule in the cell 
+#        pointer = 0
+#        if not hasattr(self,"moleclist"): self.get_moleclist()
+#        for idx, mol in enumerate(self.moleclist):
+#            if typ == 'metals' and mol.iscomplex: 
+#                print(f"CELL.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to the metal of molecule {mol.formula} in index {idx}")
+#                print(f"CELL.SET_SPIN_CONFIG: Formal SPIN is added to the first metal of the molecule: {mol.metals[0].label}")
+#                mol.metals[0].set_spin(spins[pointer]); pointer += 1  
+#            elif typ != 'metals':                 
+#                print(f"CELL.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to molecule {mol.formula} in index {idx}")
+#                print(f"CELL.SET_SPIN_CONFIG: Formal SPIN is added to the first atom of the molecule: {mol.atoms[0].label}")
+#                mol.atoms[0].set_spin(spins[pointer]); pointer += 1
 
     ###########
     ## Other ##

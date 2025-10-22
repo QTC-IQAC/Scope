@@ -737,36 +737,54 @@ class molecule(specie):
         for at in self.atoms:
             at.set_charge(0)
 
-    def set_spin_config(self, spins: list | int, typ: str='metal', debug: int=0):
-        typ = typ.lower()
-        if typ == 'metals': typ = 'metal'
+    def reset_spin(self):
+        for at in self.atoms:
+            at.set_spin(0)
+
+    ######
+    def set_spin_metals(self, spins: list | int, debug: int=0):
+        ## Function to simplify setting the spin for the metals of this molecule
+        if not self.iscomplex: 
+            print(f"MOLECULE.SET_SPIN_METALS: there are no metals in this molecule")
+            return None
+        ## Checks
+        if not hasattr(self,"metals"): self.split_complex(debug=debug)
+        if isinstance(spins, int): spins = [spins] * len(self.metals)  ## If spin is an integer, then it assumes it aplies to all metals
         ## Verbose
         if debug > 0: 
-            print(f"SPECIE.SET_SPIN_CONFIG: Preparing Spin Configuration for Specie {self.formula}")
-            print(f"SPECIE.SET_SPIN_CONFIG: Received spins", spins)
-            print(f"SPECIE.SET_SPIN_CONFIG: Received typ", typ)
-        ## Checks
-        if typ == 'metal' and self.iscomplex:
-            if not hasattr(self,"metals"): self.split_complex(debug=debug)
-            if isinstance(spins, int): spins = [spins] * len(self.metals)
-            assert len(spins) == len(self.metals), f"SPECIE.SET_SPIN_CONFIG: number of spins provided ({len(spins)}) does not match number of metals in molecule ({len(self.metals)})"
-
-        ## Allocates the list of spins to the molecules in moleclist. Each item in spins corresponds to a molecule in the cell 
-        pointer = 0
-        if typ == 'metal': 
-            for met in self.metals:
-                print(f"SPECIE.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to metal atom {met.label}")
-                met.set_spin(spins[pointer]); pointer += 1  
-        elif typ == 'any':        
-            for at in self.atoms:
-                print(f"SPECIE.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to atom {met.label}")
-                at.set_spin(spins[pointer]); pointer += 1  
+            print(f"MOLECULE.SET_SPIN_METALS: Preparing Spin Configuration for Specie {self.formula}")
+            print(f"MOLECULE.SET_SPIN_METALS: Received {spins=}")
+        ## Main
+        for idx, met in enumerate(self.metals):
+            if debug > 0: print(f"MOLECULE.SET_SPIN_METALS: Setting spin={spins[idx]} to metal atom {met.label}")
+            met.set_spin(spins[idx])
         return self.spin
 
     ######
+    def set_charge_metals(self, charges: list | int, debug: int=0):
+        ## Function to simplify setting the spin for the metals of this molecule
+        if not self.iscomplex: 
+            print(f"MOLECULE.SET_CHARGE_METALS: there are no metals in this molecule")
+            return None
+        ## Checks
+        if not hasattr(self,"metals"): self.split_complex(debug=debug)
+        if isinstance(charges, int): charges = [charges] * len(self.metals)  ## If charge is an integer, then it assumes it aplies to all metals
+        ## Verbose
+        if debug > 0: 
+            print(f"MOLECULE.SET_CHARGE_METALS: Preparing Charge Configuration for Specie {self.formula}")
+            print(f"MOLECULE.SET_CHARGE_METALS: Received {charges=}")
+        ## Main
+        for idx, met in enumerate(self.metals):
+            if debug > 0: print(f"MOLECULE.SET_CHARGE_METALS: Setting spin={spins[pointer]} to metal atom {met.label}")
+            met.set_charge(charges[idx])
+        return self.charge
+
+    ###########
+    ## Other ##
+    ###########
     def split_complex(self, debug: int=0):
         if not hasattr(self,"atoms"): self.set_atoms()
-        if not self.iscomplex:        self.ligands = None; self.metals = None
+        if not self.iscomplex:        self.ligands = []; self.metals = []
         else: 
             self.ligands = []
             self.metals  = []

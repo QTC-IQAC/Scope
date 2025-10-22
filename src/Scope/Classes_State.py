@@ -11,7 +11,7 @@ elemdatabase = ElementData()
 ##############
 class state(object):
     """
-    State class for representing a physical or chemical state associated with a source (cell, molecule, or specie).
+    State class for representing a physical or chemical state associated with a source (cell or specie).
     This class provides methods for managing geometries, molecules, computations, vibrational normal modes (VNMs) and thermodynamic data
 
     Initiate
@@ -46,9 +46,9 @@ class state(object):
     set_cell()                          Set cell vectors and parameters.
     set_forces()                        Set atomic forces.
     set_atoms()                         Set atom objects from molecule list.
+    get_atoms()                         Retrieve list of atom objects from molecules.
     get_moleclist()                     Generate molecule list from geometry.
     get_ncomplex()                      Count number of complex molecules.
-    get_SCO_geom()                      Print spin crossover geometry for complex molecules.
     reconstruct()                       Attempt to reconstruct fragmented state geometry.
     check_fragmentation()               Check if the state geometry is fragmented.
     check_minimum()                     Check if the state is a minimum or almost a minimum.
@@ -101,9 +101,19 @@ class state(object):
         self.formula = labels2formula(self.labels)
         assert len(self.labels) == len(self.coord)
          
-    def set_cell(self, cell_vector, cell_param):
-        self.cell_vector  = cell_vector
-        self.cell_param   = cell_param
+    def set_cell(self, cell_vector: None, cell_param: None):
+        if   cell_vector is None and cell_param is None:
+            raise ValueError("STATE.SET_CELL: Either cell_vector or cell_param must be provided to set the cell")
+        elif cell_vector is None and cell_param is not None:
+            self.cell_param       = cell_param
+            self.cell_vector      = cellparam_2_cellvec(cell_param)
+        elif cell_vector is not None and cell_param is None:
+            self.cell_vector      = cell_vector
+            self.cell_param       = cellvec_2_cellparam(cell_vector)
+        else:
+            self.cell_vector      = cell_vector
+            self.cell_param       = cell_param
+        self.frac_coord           = cart2frac(self.coord, self.cell_vector)
 
     def set_forces(self, forces):
         self.forces      = forces
@@ -214,17 +224,6 @@ class state(object):
                 self.atoms.append(at)
         self.atoms = [x for _, x in sorted(zip(tmp_indices, self.atoms), key=lambda pair: pair[0])]
         return self.atoms
-
-####################################
-#### Specific to Spin Crossover ####
-####################################
-    def get_SCO_geom(self, debug: int=0):
-        from Scope.Spin_Crossover.SCO_Structure import geom_sco_from_xyz
-        if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
-        assert not self.fragmented, f"Found Fragmented molecules in the geometry of state: {self.name}"
-        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
-        for mol in self.moleclist:
-            if mol.iscomplex: print(geom_sco_from_xyz(self.labels, self.coord, debug=debug)) 
 
 ########################
 #### Reconstruction ####
@@ -489,7 +488,7 @@ class state(object):
         ############## Selec ##############
         if Selec is None:
             if overwrite or not "Selec" in self.results.keys():
-                self.add_result(get_Selec(self._source.spin, outunits='au', nmol=self.ncomplex), overwrite=overwrite)
+                self.add_result(get_Selec(self.spin_multiplicity, outunits='au', nmol=self.ncomplex), overwrite=overwrite)
         else: 
             if isinstance(Selec, data):
                 if overwrite or not "Selec" in self.results.keys():

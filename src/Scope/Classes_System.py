@@ -73,17 +73,17 @@ class system(object):
 
     ######
     def add_source(self, name: str, new_source: object, overwrite: bool=False, debug: int=0):
-        ## Links the system to the source
-        new_source._sys = self
-        ## Search if source with the same name already exists
-        found, source = self.find_source(name, debug=debug)
         ## Sources Must Have a Name
         if not hasattr(new_source,"name"): new_source.name = name
+        ## Search if source with the same name already exists
+        found, old_source = self.find_source(name, debug=debug)
         ## If not, it is added
         if not found: 
+            new_source._sys = self ## Links the system to the source 
             self.sources.append(new_source)
         ## If it exists, it is overwritten if specified 
-        elif overwrite: 
+        elif found and overwrite: 
+            new_source._sys = self ## Links the system to the source 
             self.sources = [s for s in self.sources if s.name.lower() != name.lower()]
             self.sources.append(new_source)
         else: 
@@ -96,7 +96,11 @@ class system(object):
     #############
     def check_paths(self, debug: int=0) -> bool:
         if not os.path.isfile(self.sys_file) or not os.path.isdir(self.sys_path) or not os.path.isdir(self.calcs_path) or not os.path.isdir(self.sources_path):  
-            if debug > 0: print("SYSTEM.CHECK_PATHS: WARNING: folders do not exist")
+            if debug > 0: 
+                if not os.path.isfile(self.sys_file):     print(f"SYSTEM.CHECK_PATHS: WARNING: System FILE does not exist {self.sys_file=}")
+                if not os.path.isfile(self.sys_path):     print(f"SYSTEM.CHECK_PATHS: WARNING: Systems Folder does not exist {self.sys_path=}")
+                if not os.path.isfile(self.calcs_path):   print(f"SYSTEM.CHECK_PATHS: WARNING: Calculations Folder does not exist {self.calcs_path=}")
+                if not os.path.isfile(self.sources_path): print(f"SYSTEM.CHECK_PATHS: WARNING: Sources Folder does not exist {self.sources_path=}")
             return False
         return True
 
@@ -281,14 +285,12 @@ class system(object):
         dir  = os.path.dirname(filepath)
         file = os.path.basename(filepath)
         name = file.split('.')[0]
-
-        labels, coords = read_xyz(filepath)
-        new_specie = specie(labels, coords)
-
-        # Create the Initial State
-        ini_state  = new_specie.add_state("initial")
-        ini_state.set_geometry(labels, coords)
-
+        labels, coord = read_xyz(filepath)
+        new_specie = specie(labels, coord)
+        ## Creates the Initial State
+        ini_state = new_specie.add_state("initial")
+        ini_state.set_geometry(new_specie.labels, new_specie.coord)
+        ## Adds the Specie as a Source of System
         self.add_source(name, new_specie, overwrite=overwrite)
 
     def load_multiple_xyz(self, folder: str, overwrite: bool=False, debug: int=0):

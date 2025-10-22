@@ -1,11 +1,24 @@
+######################################################
+#### Function that are Specific to Spin Crossover ####
+######################################################
 #!/usr/bin/env python3
-import sys
-import os
-import pwd
+#import sys
+#import os
+#import pwd
 
 from Scope.Classes_Data import *
 from Scope.Thermal_Corrections import *
-from Scope import Constants
+#from Scope import Constants
+
+######
+def get_SCO_geom(state: object, debug: int=0):
+    from Scope.Spin_Crossover.SCO_Structure import geom_sco_from_xyz
+    from Scope.Classes_State import state
+    if not hasattr(state,"fragmented"): state.check_fragmentation(reconstruct=True, debug=debug)
+    assert not state.fragmented, f"Found Fragmented molecules in the geometry of state: {state.name}"
+    if not hasattr(state,"moleclist"): state.get_moleclist(debug=debug)
+    for mol in state.moleclist:
+        if mol.iscomplex: print(geom_sco_from_xyz(state.labels, state.coord, debug=debug)) 
 
 ######
 def get_T12(branch: object, High_E_state: object, Low_E_state: object, Trange: range=range(10,501,1), ignore_not_minima: bool=False, flexible: bool=True, overwrite: bool=False, debug: int=0):

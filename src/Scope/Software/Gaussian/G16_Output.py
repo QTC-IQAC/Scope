@@ -380,19 +380,19 @@ class g16_output(object):
 #############
     def __repr__(self):
         to_print  = f'---------------------------------------------------\n'
-        to_print += f'   FORMATTED REPRESENTATION OF OUTPUT CLASS        \n'
+        to_print += f'          SCOPE Gaussian16 OUTPUT CLASS            \n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' #Lines           = {len(self.lines)}\n'
         to_print += f' Job Type         = {self.jobtype}\n'
         to_print += f' Requisites       = {self.requisites}\n'
-        if hasattr(self,"last_block_status"):  to_print += f'Last Block Status = {self.last_block_status}\n'
-        if hasattr(self,"scf_blocks"):   to_print += f'#SCF Blocks       = {len(self.scf_blocks)}\n'
-        if hasattr(self,"opt_blocks"):   to_print += f'#OPT Blocks       = {len(self.opt_blocks)}\n'
-        if hasattr(self,"all_coords"):   to_print += f'#Coordinates      = {len(self.all_coords)}\n'
-        if hasattr(self,"all_energies"): to_print += f'#Energies         = {len(self.all_energies)}\n'
-        if hasattr(self,"last_energy"):  to_print += f'Last Energy       = {self.last_energy}\n'
-        if hasattr(self,"elapsed_time"): to_print += f'Elapsed Time      = {self.elapsed_time}\n'
+        if hasattr(self,"last_block_status"):  to_print += f' Last Block Status = {self.last_block_status}\n'
+        if hasattr(self,"scf_blocks"):   to_print += f' #SCF Blocks       = {len(self.scf_blocks)}\n'
+        if hasattr(self,"opt_blocks"):   to_print += f' #OPT Blocks       = {len(self.opt_blocks)}\n'
+        if hasattr(self,"all_coords"):   to_print += f' #Coordinates      = {len(self.all_coords)}\n'
+        if hasattr(self,"all_energies"): to_print += f' #Energies         = {len(self.all_energies)}\n'
+        if hasattr(self,"last_energy"):  to_print += f' Last Energy       = {self.last_energy}\n'
+        if hasattr(self,"elapsed_time"): to_print += f' Elapsed Time      = {self.elapsed_time}\n'
         if hasattr(self,"frequencies"):  
-            if self.frequencies is not None: to_print += f'1st Frequency     = {self.frequencies[0]}\n'
+            if self.frequencies is not None: to_print += f' 1st Frequency     = {self.frequencies[0]}\n'
         to_print += f'---------------------------------------------------\n'
         return to_print
