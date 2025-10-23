@@ -39,7 +39,7 @@ pip install scipy rdkit platformdirs ipykernel plotly nbformat
 
 # Download Code and Install
 git clone --branch dev https://github.com/QTC-IQAC/Scope.git
-cd scope
+cd Scope
 pip install -e .
 ```
 
@@ -48,7 +48,7 @@ pip install -e .
 conda create --name scope python=3.10  ## Cosymlib does not accept higher versions
 conda activate scope
 git clone --branch dev https://github.com/QTC-IQAC/Scope.git
-cd scope
+cd Scope
 pip install -e .
 ```
 
