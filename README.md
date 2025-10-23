@@ -65,8 +65,6 @@ pip install -e .
 
   # Usage
 
-  ## Tutorials
-
 Tutorials are available at the github repository (https://github.com/QTC-IQAC/Scope.git):
 Alternatively, you can download and install those tutorials together with the main package, by doing:
 
@@ -75,8 +73,6 @@ pip install -e .[tutorials]
 ```
 
 rather than the bare "pip install -e ." that is suggested above: 
-
-- Configuration of an Environment
 
   # License
 
