@@ -35,7 +35,7 @@ where = ["src"]
 include-package-data = false
 
 [build-system]
-requires = ["setuptools>=42,<70", "wheel", "numpy<=1.22.4"]
+requires = ["setuptools>=42,<70", "setuptools-scm", "wheel", "numpy<=1.22.4"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]
