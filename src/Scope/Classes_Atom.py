@@ -33,60 +33,50 @@ class atom(object):
     #####################
     ## Spin and Charge ##
     #####################
-    def reset_charge(self) -> None:
-        if hasattr(self,"charge"):     delattr(self,"charge")
-        if hasattr(self,"poscharges"): delattr(self,"poscharges")
+    def reset_spin(self) -> None:
+        self.spin = int(0)
 
-    ######
+    def reset_charge(self) -> None:
+        self.charge = int(0)
+
     def set_charge(self, charge: int) -> None:
         self.charge = int(charge)
 
-    ######
     def set_spin(self, spin: int) -> None:
         self.spin           = int(spin)
         self.multiplicity   = int(spin + 1)
         self.ms             = float(spin/2)
 
-    ######
+    ###########
+    ## Other ##
+    ###########
+    def __eq__(self, other, check_coordinates: bool=False, debug: int=0):
+        if not isinstance(other, type(self)): return False
+        if debug > 0:
+            print("Comparing Atoms")
+            print(at1)
+            print(at2)
+        # Compares Species, Coordinates, Charge and Spin
+        if (at1.label != at2.label): return False
+        if hasattr(at1,"charge") and hasattr(at2,"charge"):
+            if (at1.charge != at2.charge): return False
+        if hasattr(at1,"spin") and hasattr(at2,"spin"):
+            if (at1.spin != at2.spin): return False
+        if check_coordinates:
+            if (at1.coord[0] != at2.coord[0]): return False
+            if (at1.coord[1] != at2.coord[1]): return False
+            if (at1.coord[2] != at2.coord[2]): return False
+        return True
+
     def get_decorated_label(self, typ: str="spin"):
         ## Function for Quantum Espresso Inputs
         if   typ.lower() == "spin" and hasattr(self,"spin"):                   return self.label + str(self.spin)
         elif typ.lower() == "multiplicity" and hasattr(self,"multiplicity"):   return self.label + str(self.multiplicity)
         else: print("ATOM.GET_MOD_LABEL: {typ=} is not implemented")
 
-    ######
-    def __repr__(self, indirect: bool=False):
-        to_print = ''
-        if not indirect: to_print += '------------------------------------------------\n'
-        if not indirect: to_print += '------------- SCOPE ATOM Object ----------------\n'
-        if not indirect: to_print += '------------------------------------------------\n'
-        to_print += f' Version                      = {self.version}\n'
-        to_print += f' Type                         = {self.type}\n'
-        if hasattr(self,'subtype'): to_print += f' Sub-Type                     = {self.subtype}\n'
-        to_print += f' Label                        = {self.label}\n'
-        to_print += f' Atomic Number                = {self.atnum}\n'
-        if hasattr(self,"charge"):     to_print += f' Atom Charge                  = {self.charge}\n'
-        # Adjacency and Metal Adjacency
-        if hasattr(self,"mconnec"):    to_print += f' Metal Adjacency (mconnec)    = {self.mconnec}\n'
-        elif hasattr(self,"madjnum"):  to_print += f' Metal Adjacency (madjnum)    = {self.madjnum}\n'
-        else:                          to_print += f' No Metal Adjacency Info\n'
-        if hasattr(self,"connec"):     to_print += f' Regular Adjacencies (connec) = {self.connec}\n'
-        elif hasattr(self,"adjnum"):   to_print += f' Regular Adjacencies (adjnum) = {self.adjnum}\n'
-        else:                          to_print += f' No Adjacency Info\n'
-        if not indirect: to_print += '\n'
-        return to_print
-
-    ######
-    def check_connectivity(self, other: object, debug: int=0):
-        ## Checks whether two atoms are connected (through the adjacency)
-        if not isinstance(other, type(self)): return False
-        labels = list([self.label,other.label])
-        coords = list([self.coord,other.coord])
-        isgood, adjmat, adjnum = get_adjmatrix(labels, coords)
-        if isgood and adjnum[0] > 0: return True
-        else:                        return False
-
-    ######
+    #############
+    ## Parents ##
+    #############
     def add_parent(self, parent: object, index: int, overwrite: bool=True, debug: int=0):
         ## associates a parent specie to self. The atom indices of self in parent are given in "indices"
         ## if parent of the same subtype already in self.parent then it is overwritten
@@ -124,7 +114,9 @@ class atom(object):
             if p.subtype == subtype: return self.parents_index[idx]
         return None
 
-    ######
+    ##################
+    ## Connectivity ##
+    ##################
     def inherit_connectivity(self, parent_subtype: str, debug: int=0):
         exists  = self.check_parent(parent_subtype)
         if not exists:
@@ -151,33 +143,6 @@ class atom(object):
         isgood, adjmat, adjnum = get_adjmatrix(labels, coords)
         if isgood and adjnum[0] > 0: return True
         else:                        return False
-
-    ######
-    def find_bond(self, end_idx: int, parent_str: str, debug: int=0):
-        ## Finds bond object in self.bonds. It needs an index, and the parent string to identify the parent.
-        ## Remember indices change between parents
-        if not hasattr(self,"bonds"): self.bonds = []
-        for b in self.bonds:
-            if   b.atom1.get_parent_index(parent_str) == end_idx and b.atom2.get_parent_index(parent_str) == self.get_parent_index(parent_str):
-                return b
-            elif b.atom2.get_parent_index(parent_str) == end_idx and b.atom1.get_parent_index(parent_str) == self.get_parent_index(parent_str):
-                return b
-        return None
-            
-    ######
-    def add_bond(self, newbond: object, debug: int=0):
-        if not hasattr(self,"bonds"): self.bonds = []
-        at1 = newbond.atom1
-        at2 = newbond.atom2
-        found = False
-        for b in self.bonds:
-            if (b.atom1 == at1 and b.atom2 == at2) or (b.atom1 == at2 and b.atom2 == at1): 
-                if debug > 0: print(f"ATOM.ADD_BOND found the same bond with atoms:") 
-                if debug > 0: print(f"atom1: {b.atom1}") 
-                if debug > 0: print(f"atom2: {b.atom2}") 
-                found = True    ### It means that the same bond has already been defined
-        if not found: self.bonds.append(newbond)
-
 
     ######
     def set_adjacencies(self, adjmat, madjmat, connectivity: int, metal_connectivity: int=0):
@@ -318,6 +283,58 @@ class atom(object):
             if debug > 0: print(f"ATOM.RESET_MCONN: final {mol.madjmat[met_idx,mol_idx]=} {mol.madjmat[mol_idx,met_idx]=}")
             if debug > 0: print(f"ATOM.RESET_MCONN: final {mol.adjmat[met_idx,mol_idx]=} {mol.adjmat[mol_idx,met_idx]=}")
 
+    ###########
+    ## Bonds ##
+    ###########
+    def find_bond(self, end_idx: int, parent_str: str, debug: int=0):
+        ## Finds bond object in self.bonds. It needs an index, and the parent string to identify the parent.
+        ## Remember indices change between parents
+        if not hasattr(self,"bonds"): self.bonds = []
+        for b in self.bonds:
+            if   b.atom1.get_parent_index(parent_str) == end_idx and b.atom2.get_parent_index(parent_str) == self.get_parent_index(parent_str):
+                return b
+            elif b.atom2.get_parent_index(parent_str) == end_idx and b.atom1.get_parent_index(parent_str) == self.get_parent_index(parent_str):
+                return b
+        return None
+            
+    ######
+    def add_bond(self, newbond: object, debug: int=0):
+        if not hasattr(self,"bonds"): self.bonds = []
+        at1 = newbond.atom1
+        at2 = newbond.atom2
+        found = False
+        for b in self.bonds:
+            if (b.atom1 == at1 and b.atom2 == at2) or (b.atom1 == at2 and b.atom2 == at1): 
+                if debug > 0: print(f"ATOM.ADD_BOND found the same bond with atoms:") 
+                if debug > 0: print(f"atom1: {b.atom1}") 
+                if debug > 0: print(f"atom2: {b.atom2}") 
+                found = True    ### It means that the same bond has already been defined
+        if not found: self.bonds.append(newbond)
+
+    ###################
+    ## Visualization ##
+    ###################
+    def __repr__(self, indirect: bool=False):
+        to_print = ''
+        if not indirect: to_print += '------------------------------------------------\n'
+        if not indirect: to_print += '------------- SCOPE ATOM Object ----------------\n'
+        if not indirect: to_print += '------------------------------------------------\n'
+        to_print += f' Version                      = {self.version}\n'
+        to_print += f' Type                         = {self.type}\n'
+        if hasattr(self,'subtype'): to_print += f' Sub-Type                     = {self.subtype}\n'
+        to_print += f' Label                        = {self.label}\n'
+        to_print += f' Atomic Number                = {self.atnum}\n'
+        if hasattr(self,"charge"):     to_print += f' Atom Charge                  = {self.charge}\n'
+        # Adjacency and Metal Adjacency
+        if hasattr(self,"mconnec"):    to_print += f' Metal Adjacency (mconnec)    = {self.mconnec}\n'
+        elif hasattr(self,"madjnum"):  to_print += f' Metal Adjacency (madjnum)    = {self.madjnum}\n'
+        else:                          to_print += f' No Metal Adjacency Info\n'
+        if hasattr(self,"connec"):     to_print += f' Regular Adjacencies (connec) = {self.connec}\n'
+        elif hasattr(self,"adjnum"):   to_print += f' Regular Adjacencies (adjnum) = {self.adjnum}\n'
+        else:                          to_print += f' No Adjacency Info\n'
+        if not indirect: to_print += '\n'
+        return to_print
+
 ###############
 #### METAL ####
 ###############
@@ -326,7 +343,25 @@ class metal(atom):
         atom.__init__(self, label, coord, frac_coord=frac_coord, radii=radii)
         self.subtype = "metal"
 
-    ######
+    ###########
+    ## Other ##
+    ###########
+    def __eq__(self, other, check_coordinates: bool=False, debug: int=0):
+        if not isinstance(other, type(self)): return False
+        same_atom = super().__eq__(other, check_coordinates=check_coordinates)
+        if not same_atom: return False
+        if not hasattr(self,"coord_sphere_formula"): self.get_coord_sphere_formula()
+        if not hasattr(other,"coord_sphere_formula"): other.get_coord_sphere_formula()
+        if (self.coord_sphere_formula != other.coord_sphere_formula):
+            if debug > 0: print("COMPARE_METALS. Different coordination sphere")
+            if debug > 0: print(self.coord_sphere_formula)
+            if debug > 0: print(other.coord_sphere_formula)
+            return False
+        return True 
+
+    ###################
+    ## Visualization ##
+    ###################
     def __repr__(self):
         to_print =  '-----------------------------------------------\n'
         to_print += '------------- SCOPE METAL Object --------------\n'
@@ -343,35 +378,9 @@ class metal(atom):
         else :            self.valence_elec = elemdatabase.elementgroup[self.label] - m_ox
         return self.valence_elec
 
-    ######
-    def get_cshm(self, ref_shape: str='OC-6', overwrite: bool=False, debug: int=0):
-        import cosymlib as cml
-        from Scope.CShM import get_CShM_ref
-        # Prepares coordiantes of the coordination sphere
-
-        if hasattr(self, "cshm") and not overwrite: return self.cshm
-
-        coord_sphere_coords = [self.coord]
-        coord_sphere_coords += [at.coord for at in self.get_coord_sphere()]
-        # Gets Coordinates of the reference shape
-        ref_coords = get_CShM_ref(ref_shape)
-
-        class CustomShape(cml.shape.Shape):
-            def get_positions(self):
-                return self._coordinates
-
-        ## Validate formula match
-        #if self.get_coord_sphere_formula() != "N6":
-        #    raise ValueError("Coordination sphere formula is not N6.")
-
-        # Wrap in shape objects
-        shape_current = CustomShape(np.array(coord_sphere_coords))
-        shape_reference = CustomShape(np.array(ref_coords))
-        self.cshm = shape_current.measure(shape_reference)
-
-        return self.cshm
-
-    ######
+    #########################
+    ## Coordination Sphere ##
+    #########################
     def get_coord_sphere_idx(self, debug: int=0):
         if not self.check_parent("molecule"): 
             print(f"METAL.Get_coord_sphere_idx. Metal does not have parent molecule")
@@ -399,17 +408,18 @@ class metal(atom):
         if debug > 0: print(f"METAL.Get_coord_sphere_formula: {self.get_parent_index('molecule')} {self.label} {self.coord_sphere_formula}")
         return self.coord_sphere_formula 
 
-    ######
-    def get_connected_groups(self, debug: int=2):
+    ##################
+    ## Connectivity ##
+    ##################
+    def get_connected_groups(self, debug: int=0):
         from Scope.Connectivity import split_group
         # metal.groups will be used for the calculation of the relative metal radius 
-        # and define the coordination geometry of the metal /hapicitiy/ hapttype    
+        # and define the coordination geometry of the metal hapticitiy and hapttype    
         if not self.check_parent("molecule"): return None
         mol = self.get_parent("molecule")
         self.groups = []
         for lig in mol.ligands:
             for group in lig.groups:
-                if debug > 1: print(group.formula)
                 ligand_indices = [ a.get_parent_index("ligand") for a in group.atoms ]
                 tmplabels = []
                 tmpcoord  = []
@@ -417,28 +427,69 @@ class metal(atom):
                 tmpcoord.append(self.coord)
                 tmplabels.extend(group.labels)
                 tmpcoord.extend(group.coord)
-                if debug > 1: print(tmplabels, tmpcoord)
                 isgood, tmpadjmat, tmpadjnum = get_adjmatrix(tmplabels, tmpcoord, metal_only=True)
                 # if isgood and any(tmpadjnum) > 0: self.groups.append(group)
                 if isgood:
-                    if debug > 1: print(group.formula, tmpadjmat, tmpadjnum)
                     if all(tmpadjnum[1:]): 
                         self.groups.append(group)
                     elif any(tmpadjnum[1:]): 
-                        
-                        if debug > 1: print(f"Metal {self.label} is connected to {group.formula} but not all atoms are connected")
+                        if debug > 0: print(f"METAL.GET_CONNECTED_GROUPS: Metal {self.label} is connected to {group.formula} but not all atoms are connected")
                         conn_idx = [ idx for idx, num in enumerate(tmpadjnum[1:]) if num == 1 ]
                         conn_ligand_indices = [ ligand_indices[idx] for idx, num in enumerate(tmpadjnum[1:]) if num == 1 ]
-                        if debug > 1: print(f"get_connected_groups {tmpadjnum[1:]=} {conn_idx=} {conn_ligand_indices=} {ligand_indices=}")
+                        if debug > 0: print(f"METAL.GET_CONNECTED_GROUPS: get_connected_groups {tmpadjnum[1:]=} {conn_idx=} {conn_ligand_indices=} {ligand_indices=}")
                         splitted_groups = split_group(group, conn_idx, conn_ligand_indices, debug=debug)
                         for g in splitted_groups:
                             self.groups.append(g)
-                            if debug > 1: print(f"Metal {self.label} is connected to {g.formula}")
+                            if debug > 0: print(f"METAL.GET_CONNECTED_GROUPS: Metal {self.label} is connected to {g.formula}")
                     else:
-                        if debug > 1: print(f"Metal {self.label} is not connected to {group.formula}")
+                        if debug > 0: print(f"METAL.GET_CONNECTED_GROUPS: Metal {self.label} is not connected to {group.formula}")
         return self.groups
 
     ######
+    def get_connected_metals(self, debug: int=0):
+        self.metals = []
+        mol = self.get_parent("molecule")
+        for met in mol.metals:
+            if met == self : continue
+            tmplabels = []
+            tmpcoord  = []
+            tmplabels.append(self.label)
+            tmpcoord.append(self.coord)
+            tmplabels.append(met.label)
+            tmpcoord.append(met.coord)
+            isgood, tmpadjmat, tmpadjnum = get_adjmatrix(tmplabels, tmpcoord, metal_only=True)
+            if isgood:
+                if all(tmpadjnum[1:]): 
+                    self.metals.append(met)
+                else:
+                    if debug > 0: print(f"METAL.GET_CONNECTED_METALS: Metal {self.label} is not connected to {met.label}")
+        if debug >= 2 : print(f"METAL.GET_CONNECTED_METALS: {self.label} connected to {len(self.metals)} metals {[m.label for m in self.metals]}")
+        return self.metals
+
+    ##########################
+    ## Geometric Parameters ##
+    ##########################
+    def get_cshm(self, ref_shape: str='OC-6', overwrite: bool=False, debug: int=0):
+        import cosymlib as cml
+        from Scope.CShM import get_CShM_ref
+
+        # Prepares coordiantes of the coordination sphere
+        if hasattr(self, "cshm") and not overwrite: return self.cshm
+        coord_sphere_coords = [self.coord]
+        coord_sphere_coords += [at.coord for at in self.get_coord_sphere()]
+        # Gets Coordinates of the reference shape
+        ref_coords = get_CShM_ref(ref_shape)
+
+        class CustomShape(cml.shape.Shape):
+            def get_positions(self):
+                return self._coordinates
+
+        # Wrap in shape objects
+        shape_current = CustomShape(np.array(coord_sphere_coords))
+        shape_reference = CustomShape(np.array(ref_coords))
+        self.cshm = shape_current.measure(shape_reference)
+        return self.cshm
+
     def get_relative_metal_radius(self, debug: int=0):
         if not hasattr(self,"groups"): self.get_connected_groups(debug=debug)
         diff_list = []
@@ -458,34 +509,6 @@ class metal(atom):
             print(f"METAL.Get_relative_metal_radius: {average=}") 
         self.rel_metal_radius = round(average/elemdatabase.CovalentRadius3[self.label], 3)
         return self.rel_metal_radius
-
-    ######
-    def get_connected_metals(self, debug: int=2):
-        self.metals = []
-        mol = self.get_parent("molecule")
-        for met in mol.metals:
-            if met == self : continue
-            tmplabels = []
-            tmpcoord  = []
-            tmplabels.append(self.label)
-            tmpcoord.append(self.coord)
-            tmplabels.append(met.label)
-            tmpcoord.append(met.coord)
-            if debug > 1: print(tmplabels, tmpcoord)
-            isgood, tmpadjmat, tmpadjnum = get_adjmatrix(tmplabels, tmpcoord, metal_only=True)
-            if isgood:
-                if debug > 1: print(met.label, tmpadjmat, tmpadjnum)
-                if all(tmpadjnum[1:]): 
-                    self.metals.append(met)
-                else:
-                    if debug > 1: print(f"Metal {self.label} is not connected to {met.label}")
-        if debug >= 2 : print(f"METAL.Get_connected_metals: {self.label} connected to {len(self.metals)} metals {[m.label for m in self.metals]}")
-        return self.metals
-    
-    ######
-    def reset_charge(self):
-        atom.reset_charge(self)     ## First uses the generic atom class function for itself
-        if hasattr(self,"poscharges"):   delattr(self,"poscharge")
 
 ############
 ### BOND ###
@@ -516,7 +539,7 @@ class bond(object):
         return to_print
 
 ###############
-### IMPORTS ###
+### IMPORTS ###
 ###############
 def import_atom(old_atom: object, parent: object=None, index: int=None, debug: int=0) -> object:
     assert hasattr(old_atom,"label") and (hasattr(old_atom,"coord") or hasattr(old_atom,"pos"))

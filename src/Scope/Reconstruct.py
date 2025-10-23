@@ -227,11 +227,6 @@ def fragments_reconstruct(moleclist: list, fraglist: list, Hlist: list, refmolec
         moleclist.extend(finalmols)
         print(f"FRAG_RECONSTRUCT. {moleclist=}")
         print(f"FRAG_RECONSTRUCT. {remfrag=}")
-        # if len(remfrag) > 0:
-        #     for i, mol in enumerate(moleclist):
-        #         write_xyz(os.getcwd()+f"/moleclist_{i}.xyz", mol.labels, mol.coord)
-        #     for i, rem in enumerate(remfrag):
-        #         write_xyz(os.getcwd()+f"/remfrag_{i}.xyz", rem.labels, rem.coord)
         if len(remfrag) > 0:        Warning = True;  print("FRAG_RECONSTRUCT. Remaining after Hydrogen reconstruction",remfrag)
         elif len(moleclist) == 0:   Warning = True; print("FRAG_RECONSTRUCT. No Molecules after Hydrogen reconstruction", moleclist)
         else:                       Warning = False; print("FRAG_RECONSTRUCT. No remaining Molecules after Hydrogen reconstruction")
@@ -522,8 +517,6 @@ def combine(tobemerged: list, references: list, cellvec: list, threshold_tmat: f
                         reordered_newmolec.get_hapticity(debug=debug)
                         for lig in reordered_newmolec.ligands:
                             lig.get_denticity(debug=debug)
-                        #for met in reordered_newmolec.metals:                         
-                        #    met.get_coordination_geometry(debug=debug)  ## function not imported to scope
                     if debug >= 1: print(f"COMBINE: {reordered_newmolec.formula=}")
                     if debug >= 1: print(f"COMBINE: {reordered_newmolec=}")
 

@@ -112,32 +112,6 @@ class cell(object):
                     met.set_spin(spins[pointer]); pointer += 1
         return self.spin
 
-#    def set_spin_metals(self, spins: list | int, typ: str='metals', debug: int=0):
-#        ## Verbose
-#        if debug > 0: 
-#            print(f"CELL.SET_SPIN_CONFIG: Preparing Spin Configuration for Cell {self.name}")
-#            print(f"CELL.SET_SPIN_CONFIG: Received spins", spins)
-#            print(f"CELL.SET_SPIN_CONFIG: Received typ", typ)
-#        ## Checks
-#        if typ == 'metals':
-#            if isinstance(spins, int): spins = [spins] * self.get_ncomplex()
-#            assert len(spins) == self.get_ncomplex(), f"CELL.SET_SPIN_CONFIG: number of spins provided ({len(spins)}) does not match number of complexes in cell ({self.get_ncomplex()})"
-#        elif typ != 'metals':
-#            assert len(spins) == len(self.moleclist), f"CELL.SET_SPIN_CONFIG: number of spins provided ({len(spins)}) does not match number of molecules in cell ({len(self.moleclist)})"
-#
-#        ## Allocates the list of spins to the molecules in moleclist. Each item in spins corresponds to a molecule in the cell 
-#        pointer = 0
-#        if not hasattr(self,"moleclist"): self.get_moleclist()
-#        for idx, mol in enumerate(self.moleclist):
-#            if typ == 'metals' and mol.iscomplex: 
-#                print(f"CELL.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to the metal of molecule {mol.formula} in index {idx}")
-#                print(f"CELL.SET_SPIN_CONFIG: Formal SPIN is added to the first metal of the molecule: {mol.metals[0].label}")
-#                mol.metals[0].set_spin(spins[pointer]); pointer += 1  
-#            elif typ != 'metals':                 
-#                print(f"CELL.SET_SPIN_CONFIG: Setting spin={spins[pointer]} to molecule {mol.formula} in index {idx}")
-#                print(f"CELL.SET_SPIN_CONFIG: Formal SPIN is added to the first atom of the molecule: {mol.atoms[0].label}")
-#                mol.atoms[0].set_spin(spins[pointer]); pointer += 1
-
     ###########
     ## Other ##
     ###########
@@ -257,7 +231,7 @@ class cell(object):
         return self.moleclist
 
     ##################
-    ## Connectivity ##
+    ## Connectivity ##
     ##################
     def get_adjmatrix(self):
         isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord)
@@ -355,7 +329,7 @@ class cell(object):
             for mol in molecules:
                 self.moleclist.append(mol)
             return self.moleclist     
-        else :
+        else:
             reconstructed_molecules, Warning = fragments_reconstruct(molecules, fragments, hydrogens, self.refmoleclist, self.cell_vector, cov_factor, metal_factor)
             
             if Warning:

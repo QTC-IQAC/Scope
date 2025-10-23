@@ -24,7 +24,7 @@ def labels2formula(labels: list):
     formula = ''.join(formula)[:-1]
     return formula
 
-################################
+######
 def labels2ratio(labels):
     elems = elemdatabase.elementnr.keys()
     ratio=[]
@@ -33,14 +33,14 @@ def labels2ratio(labels):
         if nz > 0: ratio.append(nz)
     return ratio
 
-################################
+######
 def labels2electrons(labels):
     eleccount = 0
     for l in labels:
         eleccount += elemdatabase.elementnr[l]
     return eleccount
 
-################################
+######
 def get_element_count(labels: list, heavy_only: bool=False) -> np.ndarray:
     elems = list(elemdatabase.elementnr.keys())
     count = np.zeros((len(elems)),dtype=int)
@@ -50,7 +50,7 @@ def get_element_count(labels: list, heavy_only: bool=False) -> np.ndarray:
             if (l == 'H' or l == 'D') and heavy_only: count = 0
     return count
 
-################################
+######
 def get_adjacency_types(label: list, conmat: np.ndarray) -> np.ndarray:
     elems = elemdatabase.elementnr.keys()
     natoms = len(label)
@@ -74,7 +74,7 @@ def get_adjacency_types(label: list, conmat: np.ndarray) -> np.ndarray:
                             break
     return adjtypes
 
-################################
+######
 def get_radii(labels: list) -> np.ndarray:
     radii = []
     for l in labels:
@@ -83,7 +83,7 @@ def get_radii(labels: list) -> np.ndarray:
         radii.append(elemdatabase.CovalentRadius2[label])
     return np.array(radii)
 
-####################################
+######
 def get_adjmatrix(labels: list, pos: list, cov_factor: float=1.3, metal_factor: float=1.0, radii="default", metal_only: bool=False, debug: int=0) -> Tuple[int, list, list]:
     isgood = True 
     clash_threshold = 0.3
@@ -135,14 +135,14 @@ def get_adjmatrix(labels: list, pos: list, cov_factor: float=1.3, metal_factor: 
     adjnum = adjnum.astype(int)
     return isgood, adjmat, adjnum
 
-####################################
+######
 def inv(perm: list) -> list:
     inverse = [0] * len(perm)
     for i, p in enumerate(perm):
         inverse[p] = i
     return inverse
 
-####################################
+######
 def get_blocks(matrix: np.ndarray) -> Tuple[list, list]:
     # retrieves the blocks from a diagonal block matrix
     startlist = []  # List including the starting atom for all blocks
@@ -169,7 +169,7 @@ def get_blocks(matrix: np.ndarray) -> Tuple[list, list]:
         endlist.append(0)
     return startlist, endlist
 
-###############################
+######
 def compute_centroid(coord: list) -> list:
     natoms = len(coord)
     x = 0
@@ -179,9 +179,8 @@ def compute_centroid(coord: list) -> list:
         x += coord[idx][0]; y += coord[idx][1]; z += coord[idx][2]
     centroid = [float(x / natoms), float(y / natoms), float(z / natoms)]
     return centroid
-#########################
 
-#########################
+######
 def count_species(labels: list, pos: list, radii: list=None, indices: list=None, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0) -> Tuple[bool, list]:
     # Gets the covalent radii
     if radii is None:    radii = get_radii(labels)
@@ -207,9 +206,8 @@ def count_species(labels: list, pos: list, radii: list=None, indices: list=None,
 
     nblocks = len(startlist)
     return nblocks
-#########################
 
-####################################
+######
 def split_species(labels: list, pos: list, radii: list=None, indices: list=None, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0) -> Tuple[bool, list]:
     ## Function that identifies connected groups of atoms from their atomic coordinates and labels.
 
@@ -254,110 +252,6 @@ def split_species(labels: list, pos: list, radii: list=None, indices: list=None,
                 atlist.append(indices[i])
         blocklist.append(atlist)
     return blocklist
-
-#####################
-def merge_atoms(atoms):
-    labels = [] 
-    coords  = [] 
-    for a in atoms:
-        labels.append(a.label) 
-        coords.append(a.coord) 
-    return labels, coords
-
-#################################
-def compare_atoms(at1, at2, check_coordinates: bool=False, debug: int=0):
-    if debug > 0: 
-        print("Comparing Atoms")
-        print(at1)
-        print(at2)
-    # Compares Species, Coordinates, Charge and Spin
-    if (at1.label != at2.label): return False
-    if check_coordinates:
-        if (at1.coord[0] != at2.coord[0]): return False
-        if (at1.coord[1] != at2.coord[1]): return False
-        if (at1.coord[2] != at2.coord[2]): return False
-    if hasattr(at1,"charge") and hasattr(at2,"charge"):
-        if (at1.charge != at2.charge): return False
-    if hasattr(at1,"spin") and hasattr(at2,"spin"):
-        if (at1.spin != at2.spin): return False
-    return True
-
-#################################
-def compare_metals (at1, at2, check_coordinates: bool=False, debug: int=0):
-    if debug > 0: 
-        print("COMPARE_METALS. Comparing:")
-        print(at1.label)
-        print(at2.label)
-
-    if at1.subtype != "metal" or at2.subtype != "metal": 
-        if debug > 0: print("COMPARE_METALS. Different subtype")
-        if debug > 0: print(at1.subtype)
-        if debug > 0: print(at1.subtype)
-        return False
-
-    if (at1.label != at2.label): 
-        if debug > 0: print("COMPARE_METALS. Different label")
-        return False
-
-    if not hasattr(at1,"coord_sphere_formula"): at1.get_coord_sphere_formula()
-    if not hasattr(at2,"coord_sphere_formula"): at2.get_coord_sphere_formula()
-    if (at1.coord_sphere_formula != at2.coord_sphere_formula):
-        if debug > 0: print("COMPARE_METALS. Different coordination sphere")
-        if debug > 0: print(at1.coord_sphere_formula)
-        if debug > 0: print(at2.coord_sphere_formula)
-        return False
-    
-    if check_coordinates:
-        if (at1.coord[0] != at2.coord[0]): return False
-        if (at1.coord[1] != at2.coord[1]): return False
-        if (at1.coord[2] != at2.coord[2]): return False
-        
-    return True
-
-#################################
-def compare_species(mol1, mol2, debug: int=0):
-    elems = elemdatabase.elementnr.keys()
-
-    if debug > 0: 
-        print("COMPARE_SPECIES. Comparing:")
-        print(mol1.formula)
-        print(mol2.formula)
-    
-    # a pair of species is compared on the basis of:
-    # 1) the total number of atoms
-    if (mol1.natoms != mol2.natoms): 
-        if debug > 0: print("COMPARE_SPECIES. FALSE, different natoms:")
-        return False
-
-    # 2) the total number of electrons (as sum of atomic number)
-    if (mol1.eleccount != mol2.eleccount): 
-        if debug > 0: print("COMPARE_SPECIES. FALSE, different eleccount:")
-        return False
-
-    # 3) the number of atoms of each type
-    if not hasattr(mol1,"element_count"): mol1.set_element_count()
-    if not hasattr(mol2,"element_count"): mol2.set_element_count()
-    for kdx, elem in enumerate(mol1.element_count):
-        if elem != mol2.element_count[kdx]: 
-            if debug > 0: print(f"COMPARE_SPECIES. FALSE, different {elem} count:")
-            return False       
-    
-    # 4) the number of adjacencies between each pair of element types
-    if not hasattr(mol1,"adj_types"):     mol1.set_adj_types()
-    if not hasattr(mol2,"adj_types"):     mol2.set_adj_types()
-    if debug == 2: print(f"{mol1.adj_types=}")
-    if debug == 2: print(f"{mol2.adj_types=}")
-
-    count = 0
-    for kdx, (elem, row1) in enumerate(zip(elems, mol1.adj_types)):
-        for ldx, (elem2, val1) in enumerate(zip(elems, row1)):
-            val2 = mol2.adj_types[kdx, ldx]
-            if val1 != val2: 
-                count += 1
-                if debug > 0: print(f"COMPARE_SPECIES. FALSE, different adjacency count")
-                if debug > 0: print(f"COMPARE_SPECIES. {kdx} {ldx} {elem} - {elem2} : {val1} - {val2}")
-    if count > 0 : return False
-    return True
 
 #################################
 def get_non_transition_metal_idxs(labels: list, debug: int=0):
