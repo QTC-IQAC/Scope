@@ -10,7 +10,7 @@
 
 &job_data
    branch       = 'Isolated'
-   recipe       = ['reference']
+   workflow     = ['reference']
    job_setup    = 'regular'
    suffix       = 'opt'
    keyword      = 'pbe opt'

@@ -10,7 +10,7 @@
 
 &job_data
    branch       = 'Isolated'
-   recipe       = 'all'
+   workflow     = 'all'
    job_setup    = 'regular'
    suffix       = 'scf'
    keyword      = 'pbe scf'
