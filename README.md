@@ -65,7 +65,16 @@ pip install -e .
 
   # Usage
 
-The following tutorials are available at the github repository (https://github.com/QTC-IQAC/Scope.git):
+  ## Tutorials
+
+Tutorials are available at the github repository (https://github.com/QTC-IQAC/Scope.git):
+Alternatively, you can download and install those tutorials together with the main package, by doing:
+
+```bash
+pip install -e .[tutorials]
+```
+
+rather than the bare "pip install -e ." that is suggested above: 
 
 - Configuration of an Environment
 
