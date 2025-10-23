@@ -94,7 +94,7 @@ class cell(object):
             print(f"CELL.SET_SPIN_METALS: there are no Transition Metal Complexes in this cell")
             return None
         ## Checks
-        if isinstance(spins, int): spins = [spins] * len(ncomplex)  ## If spin is an integer, then it assumes it aplies to all metals
+        if isinstance(spins, int): spins = [spins] * ncomplex  ## If spin is an integer, then it assumes it aplies to all metals
         ## Verbose
         if debug > 0: 
             print(f"CELL.SET_SPIN_METALS: Preparing Spin Configuration for Specie {self.formula}")
@@ -103,7 +103,7 @@ class cell(object):
         pointer = 0
         for mol in self.moleclist:
             if mol.iscomplex: 
-                if len(mol.metals) > 0: 
+                if len(mol.metals) > 1: 
                     print(f"CELL.SET_SPIN_METALS: Molecule {mol.formula} has more than one metal atom.") 
                     print(f"Please set the spin for each molecule separately using mol.set_spin()")
                 else: 
