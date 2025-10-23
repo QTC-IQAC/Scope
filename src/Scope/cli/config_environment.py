@@ -1,5 +1,6 @@
 from argparse import ArgumentParser
 from Scope.Classes_Environment import environment
+from Scope.Read_Write import clear_screen
 
 def parse_args():
     parser = ArgumentParser(prog="scope_config", description="Configure a new Scope Environment")
@@ -7,6 +8,8 @@ def parse_args():
     return parser.parse_args()
 
 def main():
+    clear_screen()
+
     ### Environment is initiated
     args = parse_args()
     env = environment(args.name)

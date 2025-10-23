@@ -1,7 +1,7 @@
 import os
 from argparse import ArgumentParser
 from Scope.Classes_Environment import environment
-from Scope.Read_Write import load_binary
+from Scope.Read_Write import load_binary, clear_screen
 from Scope.Utils.Run_Job import run_job
 
 def path_exists(path):
@@ -23,19 +23,20 @@ def parse_args():
     parser.add_argument('-n', '--env_path',   type=env_exists,   help='Path to the Environment. Script will load Source data in env.sources_path')
     parser.add_argument('-s', '--sys_path',   type=path_exists,  help='Path to the System binary file. Typically with .npy extension')
     parser.add_argument('-j', '--job_path',   nargs="+", type=path_exists,  help='Path to the Job File(s). If more than one, you can write them in any order')
-    parser.add_argument('-v', '--verbose',    help='If true, will print debug information', action='store_true')
+    parser.add_argument('-q', '--quiet',      help='If true, will not print the progress on screen', action='store_true')
     parser.add_argument('-e', '--errors',     help='If true, will automatically handle some common errors', action='store_true')
     return parser.parse_args()
 
 def main():
 
+    clear_screen()
     args = parse_args()
     
     ###############################
     # Defines Overwrite and Debug #
     ###############################
-    if args.verbose: debug = 1  
-    else:            debug = 0
+    if args.quiet: debug = 0  
+    else:          debug = 1
     ###############################
 
     ## Convert to absolute paths

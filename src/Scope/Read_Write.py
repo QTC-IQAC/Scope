@@ -16,6 +16,9 @@ class HiddenPrints:
         sys.stdout.close()
         sys.stdout = self._original_stdout
 
+def clear_screen():
+    os.system('cls' if os.name == 'nt' else 'clear')
+
 ###########
 ## Other ##
 ###########

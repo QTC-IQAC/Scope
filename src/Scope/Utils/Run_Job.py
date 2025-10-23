@@ -45,6 +45,14 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
 
     report = ''
 
+    ##############
+    ### HEADER ###
+    ##############
+    print(f"##################")
+    print(f"- Starting SCOPE -")
+    print(f"##################")
+    print(f"")
+
     #############################
     ### STEP 0: Loading Files ###
     #############################
@@ -75,9 +83,9 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
     for job_idx, job_path in enumerate(job_paths):
 
         if debug > 0: print("")
-        if debug > 0: print(f"#############################################")
+        if debug > 0: print(f"#####################")
         if debug > 0: print(f"- Starting JOB {job_idx+1}/{len(job_paths)} -")
-        if debug > 0: print(f"#############################################")
+        if debug > 0: print(f"#####################")
 
         #### 1.1-Reads Input Data
         user_environment = set_environment_data(job_path, section="&environment", debug=0)  ## For completeness, but env data is read in global_env.read_job_specs below 
@@ -151,16 +159,14 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
             ####################
             ## 3-Sets the computation(s), meaning that it will check if they exist, and if not, it creates them
             this_job.set_computations_from_setup(qc_data, debug=debug)
-            if debug > 0: print("RUN_JOB, step 3: computations set. I navigated the whole workflow and I'm in:")
-
             for jdx, comp in enumerate(this_job.computations):
 
-                source = comp._job._workflow.source ## to simplify
+                source = comp.source ## to simplify
 
                 #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
-                if debug > 0: print(f"-----------------------------------------------------------------------")
-                if debug > 0: print(f"    {sys.name} -> {this_branch.name} -> {this_workflow.name} -> {this_job.keyword} -> {comp.step} -> {comp.run_number}")
-                if debug > 0: print(f"-----------------------------------------------------------------------")
+                if debug > 0: print(f"--------------------------------------------------------------------------")
+                if debug > 0: print(f" {sys.name} -> {this_branch.name} -> {this_workflow.name} -> {this_job.keyword} -> Step: {comp.step} -> Run: {comp.run_number}")
+                if debug > 0: print(f"--------------------------------------------------------------------------")
                 if debug > 0: print(f"RUN_JOB, step 3.0: evaluating job, and computation with indices: {this_workflow.jobs.index(this_job)+1}/{len(this_workflow.jobs)}, {jdx+1}/{len(this_job.computations)}")
 
                 ## 3.1-Checks files and updates
@@ -258,28 +264,14 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
                         updated = True
                         if debug > 0: print("")
 
-                    ### 
-                    ### Re-reads eigenvectors of a frequency computation 
-                    ### Not sure I need this
-                    ### 
-                    #if comp.isregistered and "freq" in comp._job.keyword and (hasattr(comp.qc_data,"fstate") or hasattr(comp._job,"fstate")):
-                    #    if hasattr(comp.qc_data,"fstate"): fstate_name = comp.qc_data.fstate
-                    #    else:                              fstate_name = comp._job.fstate
-                    #    exists, state = source.find_state(fstate_name)
-                    #    print("State",fstate_name,"exist=", exists)
-                    #    if exists and hasattr(state,"VNMs"):
-                    #        if not hasattr(state.VNMs,"xs"): 
-                    #            print("RE-REGISTERING:", comp.out_path)
-                    #            worked = comp.register(debug=debug)
-                    #    else:
-                    #        print("State",fstate_name,"does not exist")
-
-            # Updates Job Registry information
+            # Updates Job Registry information. Necessary to update class.isregistered attribute, but not very important
             this_job.register(debug=0)
-        #this_workflow.register(debug=0)
+        this_workflow.register(debug=0)
         this_branch.register(debug=0)
 
-        if updated: print("Saving System"); sys.save()
+        if updated: 
+            if debug > 0: print(f"Saving System {sys.name}")
+            sys.save()
     return report
 
 #######################
@@ -368,12 +360,12 @@ def verify_status(sys_path: str, job_paths: list, debug: int=0) -> bool:
             tidx = [i for i, status in enumerate(all_status) if status == 'terminated']
             for t in tidx:
                 print(f"RUN_JOB.VERIFY_STATUS: Branch {branch_names[t]} is TERMINATED. Job will be skipped.") 
-                print(f"RUN_JOB.VERIFT_STATUS: If you wish to activate it, remove file 'TERMINATED' in {sys_folder}/{branch_names[t]}")
+                print(f"RUN_JOB.VERIFY_STATUS: If you wish to activate it, remove file 'TERMINATED' in {sys_folder}/{branch_names[t]}")
         if any(all_status) == 'finished':
             tidx = [i for i, status in enumerate(all_status) if status == 'finished']
             for t in tidx:
                 print(f"RUN_JOB.VERIFY_STATUS: Branch {branch_names[t]} is FINISHED. Job will be skipped.") 
-                print(f"RUN_JOB.VERIFT_STATUS: If you wish to activate it, remove file '{branch_names[t]}_FINISHED' in {sys_folder}/{branch_names[t]}")
-    print(f"RUN_JOB.VERIFT_STATUS: returning {proceed=}")
+                print(f"RUN_JOB.VERIFY_STATUS: If you wish to activate it, remove file '{branch_names[t]}_FINISHED' in {sys_folder}/{branch_names[t]}")
+    if debug > 0: print(f"RUN_JOB.VERIFY_STATUS: returning {proceed=}")
 
     return proceed

@@ -112,8 +112,8 @@ def reg_energy(comp: object, debug: int=0):
     ### 1-Parses Energy
     energy = comp.output.get_energy_last_complete_block()       ## last_complete_block requires convergence, not necessary energy. Careful
     comp.isgood = comp.output.get_scf_finished()
-    print("REG_ENERGY:", energy, comp.isgood)
-    if debug > 0: print(f"REG_ENERGY: energy is {energy} a.u.") ## Parsing routines already convert energy to a.u.
+    if debug > 0: print(f"REG_ENERGY: {isgood=}")          ## Stores isgood, which determines if the computation converged, essentially
+    if debug > 0: print(f"REG_ENERGY: {energy=} a.u.")          ## Parsing routines already convert energy to a.u.
 
     ## 2-Try to parse Forces if they're available, typically for finite differences
     if hasattr(comp.qc_data,"print_forces"):
