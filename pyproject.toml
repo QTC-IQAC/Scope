@@ -19,8 +19,6 @@ dev       = ["pytest","nbval","pytest-cov","pre-commit"]
 
 # Where your CLI entry point lives
 [project.scripts]
-# Downloads
-scope_download_tutorials = "Scope.cli.download_tutorials:main"
 # General
 scope_config             = "Scope.cli.config_environment:main"
 scope_run_job            = "Scope.cli.run_job:main"
