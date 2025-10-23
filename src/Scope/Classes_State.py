@@ -2,7 +2,6 @@ import numpy as np
 from Scope.Connectivity      import *
 from Scope.Classes_Data      import collection, data
 from Scope.Classes_Specie    import *
-from Scope.Reconstruct       import *
 from Scope.Elementdata       import ElementData
 elemdatabase = ElementData()
 
@@ -101,7 +100,7 @@ class state(object):
         self.formula = labels2formula(self.labels)
         assert len(self.labels) == len(self.coord)
          
-    def set_cell(self, cell_vector: None, cell_param: None):
+    def set_cell(self, cell_vector: list=None, cell_param: list=None):
         if   cell_vector is None and cell_param is None:
             raise ValueError("STATE.SET_CELL: Either cell_vector or cell_param must be provided to set the cell")
         elif cell_vector is None and cell_param is not None:
@@ -229,31 +228,28 @@ class state(object):
 #### Reconstruction ####
 ########################
     def reconstruct(self, debug: int=0):
-        assert hasattr(self,"cell_vector")
-        if not hasattr(self._source,"refmoleclist"): print("CLASS STATE.RECONSTRUCT: _source does not have refmoleclist"); return None
+        from Scope.Reconstruct import classify_fragments, fragments_reconstruct 
+        if not self._source.type == "cell":          raise ValueError(f"STATE_RECONSTRUCT: state's source should by a CELL object") 
+        if not hasattr(self,"cell_vector"):          raise ValueError(f"STATE_RECONSTRUCT: state should have a cell vector") 
+        if not hasattr(self._source,"refmoleclist"): raise ValueError(f"STATE.RECONSTRUCT: state's source does not have a list of reference molecules"); return None
         from Scope.Read_Write import HiddenPrints
-        if debug > 0: print("CLASS_STATE.RECONSTRUCT: reconstructing cell of state", self)
+        if debug > 0: print("STATE.RECONSTRUCT: reconstructing cell of state", self.name)
         with HiddenPrints():
             finished = False
-            if hasattr(self._source,"type") and hasattr(self,"cell_vector"):
-                if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug) 
-                if self._source.type.lower() == "cell":
-                    import itertools
-                    blocklist = self.moleclist.copy()
-                    refmoleclist = self._source.refmoleclist.copy()
-                    cov_factor = refmoleclist[0].cov_factor
-                    metal_factor = refmoleclist[0].metal_factor
-                    moleclist, fraglist, Hlist = classify_fragments(blocklist, refmoleclist, debug=debug) 
-                    if len(fraglist) > 0 or len(Hlist) > 0: 
-                        moleclist, finalmols, Warning = fragments_reconstruct(moleclist,fraglist,Hlist,refmoleclist,self.cell_vector,cov_factor,metal_factor, debug=debug)
-                        moleclist.extend(finalmols)
-                        self.moleclist = moleclist
-                        self.set_geometry_from_moleclist()
-                        finished = True
-     
-                else: print("WARNING: reconstruct state, _source is not a cell. I will not reconstruct"); return None
-            else: print("WARNING: reconstruct state, _source does not have 'type' or 'cell_vector' variables"); return None
-        if debug > 0 and finished: print("CLASS STATE.RECONSTRUCT: state reconstructed to", self)
+            if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug) 
+            import itertools
+            blocklist    = self.moleclist.copy()
+            refmoleclist = self._source.refmoleclist.copy()
+            cov_factor   = refmoleclist[0].cov_factor
+            metal_factor = refmoleclist[0].metal_factor
+            moleclist, fraglist, Hlist = classify_fragments(blocklist, refmoleclist, debug=debug) 
+            if len(fraglist) > 0 or len(Hlist) > 0: 
+                moleclist, finalmols, Warning = fragments_reconstruct(moleclist,fraglist,Hlist,refmoleclist,self.cell_vector,cov_factor,metal_factor, debug=debug)
+                moleclist.extend(finalmols)
+                self.moleclist = moleclist
+                self.set_geometry_from_moleclist()
+                finished = True
+        if debug > 0 and finished: print("STATE.RECONSTRUCT: state reconstructed succesfully")
         return self.moleclist
 
     def check_fragmentation(self, reconstruct: bool = False, debug: int=0):

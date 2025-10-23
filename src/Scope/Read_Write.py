@@ -1,6 +1,6 @@
-import pickle
-import numpy as np
 import os
+import sys
+import pickle
 import shutil
 from ast import literal_eval
 
@@ -12,7 +12,8 @@ class HiddenPrints:
     def __enter__(self):
         self._original_stdout = sys.stdout
         sys.stdout = open(os.devnull, 'w')
-    def __exit__(self, exc_type, exc_val, exc_tb):
+        return self
+    def __exit__(self, *_):
         sys.stdout.close()
         sys.stdout = self._original_stdout
 
@@ -237,6 +238,7 @@ def set_scene(fig, positions, padding=1.0, width: int=500, height: int=500):
 ## I don't know where this is used ##
 #####################################
 def prepare_specie_figure(specie, bond_thr):
+    import numpy as np
     import plotly.graph_objects as go
     from scipy.spatial.distance import cdist
     from Scope.Elementdata import ElementData  

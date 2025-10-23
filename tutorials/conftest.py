@@ -15,6 +15,6 @@ def pytest_sessionstart(session):
     """Hook executed before any tests run"""
     tutorials_dir = os.path.abspath("./tutorials/")  # adjust if needed
     print(tutorials_dir)
-    for nb_file in [file for file in os.listdir(tutorials_dir) if file.endswith(".ipynb")]: #and 'tests' not in file]:
+    for nb_file in [file for file in os.listdir(tutorials_dir) if file.endswith(".ipynb")]: #and 'test' not in file]:
         path = f"{tutorials_dir}/{nb_file}"
         clear_notebook_outputs(path)
