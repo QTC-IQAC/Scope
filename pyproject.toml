@@ -3,19 +3,18 @@ name = "scope"
 version = "0.0.0"
 description = "Temporary test package"
 authors = [{ name = "Sergi Vela", email = "sergi.vela@iqac.csic.es" }]
-requires-python = ">=3.10, <3.12"
+requires-python = ">=3.10"
 dependencies = [
-    "numpy<=1.22.4",
-    "cosymlib==0.11.1",
-    "scipy==1.13.1",
-    "rdkit==2025.3.6",
-    "platformdirs==4.4.0",
+    "numpy",
+    "scipy",
+    "rdkit",
+    "platformdirs",
     "cell2mol @ git+https://github.com/lcmd-epfl/cell2mol.git",
 ]
 
 [project.optional-dependencies]
-jupyter   = ["ipykernel==6.30.1", "plotly==6.3.0", "nbformat==5.10.4"]
-tutorials = ["jupyter","matplotlib >= 3.8.0"]
+jupyter   = ["ipykernel", "plotly", "nbformat"]
+tutorials = ["jupyter","matplotlib"]
 dev       = ["pytest","nbval","pytest-cov","pre-commit"]
 
 # Where your CLI entry point lives
@@ -35,7 +34,7 @@ where = ["src"]
 include-package-data = false
 
 [build-system]
-requires = ["setuptools>=42,<70", "setuptools-scm", "wheel", "numpy<=1.22.4"]
+requires = ["setuptools", "wheel", "numpy"]
 build-backend = "setuptools.build_meta"
 
 [tool.pytest.ini_options]

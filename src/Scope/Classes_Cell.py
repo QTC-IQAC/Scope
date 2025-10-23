@@ -253,8 +253,7 @@ class cell(object):
         for mol in self.moleclist:
             found = False
             for rmol in self.refmoleclist:
-                issame = compare_species(mol, rmol)  
-                if issame: found = True
+                if mol == rmol: found = True
             if not found: self.fragmented = True
 
         # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
@@ -264,8 +263,7 @@ class cell(object):
             for mol in new_moleclist:
                 found = False
                 for rmol in self.refmoleclist:
-                    issame = compare_species(mol, rmol)  
-                    if issame: found = True
+                    if mol == rmol: found = True
                 if not found: self.fragmented = True
             if not self.fragmented: 
                 self.moleclist = new_moleclist
@@ -528,8 +526,7 @@ def import_cell(old_cell: object, debug: int=0) -> object:
         for mol in new_cell.moleclist:
             found = False
             for rmol in new_cell.refmoleclist:
-                issame = compare_species(rmol, mol)
-                if issame: found = True 
+                if mol == rmol: found = True 
             if not found: new_cell.refmoleclist.append(mol)
 
     ## Temporary things that I'd like to remove from the import once sorted 

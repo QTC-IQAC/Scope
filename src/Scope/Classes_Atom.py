@@ -470,7 +470,10 @@ class metal(atom):
     ## Geometric Parameters ##
     ##########################
     def get_cshm(self, ref_shape: str='OC-6', overwrite: bool=False, debug: int=0):
-        import cosymlib as cml
+        try:
+            import cosymlib as cml
+        except ImportError: 
+            raise ImportError("This function requires cosymlib, Cosymlib is currently not installed. Please install it manually if you need this functionality.")
         from Scope.CShM import get_CShM_ref
 
         # Prepares coordiantes of the coordination sphere
@@ -489,26 +492,6 @@ class metal(atom):
         shape_reference = CustomShape(np.array(ref_coords))
         self.cshm = shape_current.measure(shape_reference)
         return self.cshm
-
-    def get_relative_metal_radius(self, debug: int=0):
-        if not hasattr(self,"groups"): self.get_connected_groups(debug=debug)
-        diff_list = []
-        for group in self.groups:
-            if group.is_haptic == False :
-                for atom in group.atoms:
-                    diff = round(get_dist(self.coord, atom.coord) - elemdatabase.CovalentRadius3[atom.label], 3)
-                    diff_list.append(diff)
-            else :
-                haptic_center_label = "C"
-                haptic_center_coord = compute_centroid(np.array([atom.coord for atom in group.atoms]))
-                diff = round(get_dist(self.coord, haptic_center_coord) - elemdatabase.CovalentRadius3[haptic_center_label], 3)
-                diff_list.append(diff)     
-        average = round(np.average(diff_list), 3)   
-        if debug > 1: 
-            print(f"METAL.Get_relative_metal_radius: {diff_list=}")
-            print(f"METAL.Get_relative_metal_radius: {average=}") 
-        self.rel_metal_radius = round(average/elemdatabase.CovalentRadius3[self.label], 3)
-        return self.rel_metal_radius
 
 ############
 ### BOND ###

@@ -47,6 +47,7 @@ pip install -e .
 ```bash
 conda create --name scope python=3.10  ## Cosymlib does not accept higher versions
 conda activate scope
+conda install pip
 git clone --branch dev https://github.com/QTC-IQAC/Scope.git
 cd Scope
 pip install -e .
