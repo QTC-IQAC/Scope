@@ -17,8 +17,8 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
     3. Updates the global environment with user-specific choices.
     4. Adjusts options if no queue management is detected.
     5. Loads the system object from the binary file and updates paths if necessary. Handy if registration and execution of tasks are performed in different computers
-    6. Finds or creates the required branch and recipe in the system.
-    7. Finds or creates the job within the recipe, and checks for input changes.
+    6. Finds or creates the required branch and workflow in the system.
+    7. Finds or creates the job within the workflow, and checks for input changes.
     8. Validates job requisites and continues only if they are fulfilled.
     9. Sets up computations for the job, checks file existence, and handles submission.
     10. Registers computations, handles errors, and manages continuation or repetitive computations as needed.
@@ -102,37 +102,37 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
         if not exists: this_branch = sys.add_branch(job_data.branch, debug=debug); updated = True
         #if debug > 0: print(f"RUN_JOB, step 1.4: in branch {this_branch.name}")
 
-        ##################
-        ### 1.5 RECIPE ###
-        ##################
-        # If job_data.recipe == 'all' as a str or in a list, it converts it to a list of all recipe names in the branch
-        if isinstance(job_data.recipe, str):
-            if job_data.recipe.lower() == 'all': 
+        ####################
+        ### 1.5 WORKFLOW ###
+        ####################
+        # If job_data.workflow == 'all' as a str or in a list, it converts it to a list of all workflow names in the branch
+        if isinstance(job_data.workflow, str):
+            if job_data.workflow.lower() == 'all': 
                 if debug > 0: 
                     for sou in sys.sources:
                         print("RUN_JOB, step 1.5", sou.name)
-                job_data.recipe = [sou.name for sou in sys.sources]
-                print(f"RUN_JOB, step 1.5: job_data.recipe contained 'all'. It was adapted to {job_data.recipe}")
-        elif isinstance(job_data.recipe, list):
-            if len(job_data.recipe) == 1 and 'all' in [x.lower() for x in job.data.recipe]:
+                job_data.workflow = [sou.name for sou in sys.sources]
+                print(f"RUN_JOB, step 1.5: job_data.workflow contained 'all'. It was adapted to {job_data.workflow}")
+        elif isinstance(job_data.workflow, list):
+            if len(job_data.workflow) == 1 and 'all' in [x.lower() for x in job.data.workflow]:
                 if debug > 0: 
                     for sou in sys.sources:
                         print("RUN_JOB, step 1.5", sou.name)
-                job_data.recipe = [sou.name for sou in sys.sources]
-                print(f"RUN_JOB, step 1.5: job_data.recipe contained 'all'. It was adapted to {job_data.recipe}")
+                job_data.workflow = [sou.name for sou in sys.sources]
+                print(f"RUN_JOB, step 1.5: job_data.workflow contained 'all'. It was adapted to {job_data.workflow}")
 
-        for rec in job_data.recipe if isinstance(job_data.recipe, list) else list([job_data.recipe]):   ### Works when job_data.recipe is a str or a list
+        for wrk in job_data.workflow if isinstance(job_data.workflow, list) else list([job_data.workflow]):   ### Works when job_data.workflow is a str or a list
 
-            exists, this_recipe             = this_branch.find_recipe(rec)
-            if not exists: this_recipe      = this_branch.add_recipe(rec); updated = True
-            #if debug > 0: print(f"RUN_JOB, step 1.5: inside recipes loop, recipe: {this_recipe.name}")
+            exists, this_workflow             = this_branch.find_workflow(wrk)
+            if not exists: this_workflow      = this_branch.add_workflow(wrk); updated = True
+            #if debug > 0: print(f"RUN_JOB, step 1.5: inside workflows loop, workflow: {this_workflow.name}")
 
             ###########
             ### JOB ###
             ###########
             ## 2.1 Finds or creates the job.
-            exists, this_job = this_recipe.find_job(job_data=job_data, debug=0)
-            if not exists: this_job = this_recipe.add_job(job_data); updated = True
+            exists, this_job = this_workflow.find_job(job_data=job_data, debug=0)
+            if not exists: this_job = this_workflow.add_job(job_data); updated = True
             #if debug > 0: print(f"RUN_JOB, step 2.1: inside jobs loop, job: {this_job.keyword} loaded")
 
             ## 2.2 If job exists, it checks for input changes (also in qc_data for the computations)
@@ -155,13 +155,13 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
 
             for jdx, comp in enumerate(this_job.computations):
 
-                source = comp._job._recipe.source ## to simplify
+                source = comp._job._workflow.source ## to simplify
 
                 #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
                 if debug > 0: print(f"-----------------------------------------------------------------------")
-                if debug > 0: print(f"    {sys.name} -> {this_branch.name} -> {this_recipe.name} -> {this_job.keyword} -> {comp.step} -> {comp.run_number}")
+                if debug > 0: print(f"    {sys.name} -> {this_branch.name} -> {this_workflow.name} -> {this_job.keyword} -> {comp.step} -> {comp.run_number}")
                 if debug > 0: print(f"-----------------------------------------------------------------------")
-                if debug > 0: print(f"RUN_JOB, step 3.0: evaluating job, and computation with indices: {this_recipe.jobs.index(this_job)+1}/{len(this_recipe.jobs)}, {jdx+1}/{len(this_job.computations)}")
+                if debug > 0: print(f"RUN_JOB, step 3.0: evaluating job, and computation with indices: {this_workflow.jobs.index(this_job)+1}/{len(this_workflow.jobs)}, {jdx+1}/{len(this_job.computations)}")
 
                 ## 3.1-Checks files and updates
                 qc_has_updated = comp.check_qc_data(job_path=job_path, debug=debug)  ## Checks wether the user has updated the qc_data
@@ -276,7 +276,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
 
             # Updates Job Registry information
             this_job.register(debug=0)
-        #this_recipe.register(debug=0)
+        #this_workflow.register(debug=0)
         this_branch.register(debug=0)
 
         if updated: print("Saving System"); sys.save()
@@ -297,7 +297,7 @@ def get_status(sys_folder: str, branch_name: str, debug: int=0):
         print(f"RUN_JOB.GET_STATUS: System path {sys_folder} does not exist")
         return "absent"
 
-    ## Otherwise.. it looks for files with standardized names (see setup functions in Scope.Workflow.Branch)
+    ## Otherwise.. it looks for files with standardized names (see setup functions in Scope.Classes_Workflow)
     if os.path.isfile(f"{sys_folder}TERMINATED"):                return "terminated"
     if os.path.isfile(f"{sys_folder}{branch_name}_FINISHED"):    return "finished"  
     return "active"

@@ -114,7 +114,7 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
     from Scope.Classes_QC import VNM
 
     ## Read the number of atoms from the source
-    source = job._recipe.source
+    source = job._workflow.source
     natoms  = source.natoms
     masses = [elemdatabase.elementweight[l] for l in labels]     # For the mass-weighted hessian
     atnums  = [elemdatabase.elementnr[l] for l in labels]        # For the creation of VNM

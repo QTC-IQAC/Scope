@@ -3,7 +3,7 @@
 #####################################
 import os
 from Scope.Read_Write import save_binary
-from Scope.Workflow.Branch import branch
+from Scope.Classes_Workflow import branch
 
 class system(object):
     def __init__(self, name: str) -> None:
@@ -108,7 +108,7 @@ class system(object):
     def set_paths(self, create_folders: bool=True, debug: int=0) -> None: 
         from Scope.Read_Write import complete_path
         """
-        Modifies the paths associated with the system, as well as the branches, recipes, jobs, and computation files of a system
+        Modifies the paths associated with the system, as well as the branches, workflows, jobs, and computation files of a system
         Args:
             debug (int, optional): Debug level. Defaults to 0.
         Returns: None
@@ -144,7 +144,7 @@ class system(object):
     ######
     def set_paths_from_environment(self, environment: object, create_folders: bool=True, debug: int=0) -> None: 
         """
-        Modifies the paths associated with the system, as well as the branches, recipes, jobs, and computation files of a system
+        Modifies the paths associated with the system, as well as the branches, workflows, jobs, and computation files of a system
         Based on the paths stored in the environment object
         Args:
             environment (object): The environment to which the system paths must be updated
@@ -181,7 +181,7 @@ class system(object):
     ######
     def set_paths_down_hierarchy(self, create_folders: bool=True, debug: int=0) -> None:
         """
-        Modifies the paths associated with all well branches, recipes, jobs, and computation files of a system
+        Modifies the paths associated with all well branches, workflows, jobs, and computation files of a system
         Based on the paths stored in this system-class object
         Args:
             debug (int, optional): Debug level. Defaults to 0.
@@ -191,13 +191,13 @@ class system(object):
             br.path = self.calcs_path+br.keyword+'/'
             if create_folders: os.makedirs(br.path, exist_ok=True)
             if debug > 0: print(f"SET_PATHS_DOWN_HIERARCHY: new branch path: {br.path}")
-            for rec in br.recipes:
-                rec.path = br.path              ## Recipe Path is the same as branch, and is a folder
-                for job in rec.jobs:
-                    job.path = rec.path         ## Job Path is the same as branch, and is a folder. Except for finite differences jobs
+            for wrk in br.workflows:
+                wrk.path = br.path              ## Recipe Path is the same as branch, and is a folder
+                for job in wrk.jobs:
+                    job.path = wrk.path         ## Job Path is the same as branch, and is a folder. Except for finite differences jobs
                     if job.setup == "findiff": 
                         job.path = job.path+"findiff/"
-                        if create_folders: os.makedirs(rec.path, exist_ok=True)
+                        if create_folders: os.makedirs(wrk.path, exist_ok=True)
                     for comp in job.computations:
                         comp.path = job.path                     ## Computation paths is the same as branch folder
                         comp.inp_path = comp.path+comp.inp_name  ## inp_path is a file
@@ -248,15 +248,15 @@ class system(object):
         return False, None
 
     ######
-    def find_computation(self, branch_keyword: str, recipe_keyword: str, job_keyword: str, comp_keyword: str='', comp_step: int=1, comp_run_number: int=1, debug: int=0):
+    def find_computation(self, branch_keyword: str, workflow_keyword: str, job_keyword: str, comp_keyword: str='', comp_step: int=1, comp_run_number: int=1, debug: int=0):
         if len(self.branches) == 0: return False, None
         for br in self.branches:
             if br.keyword.lower() == branch_keyword.lower():
-                if len(br.recipes) == 0: return False, None
-                for rec in br.recipes:
-                    if rec.source.spin.lower() == recipe_keyword.lower():
-                        if len(rec.jobs) == 0: return False, None
-                        for job in rec.jobs:
+                if len(br.workflows) == 0: return False, None
+                for wrk in br.workflows:
+                    if wrk.source.spin.lower() == workflows_keyword.lower():
+                        if len(wrk.jobs) == 0: return False, None
+                        for job in wrk.jobs:
                             if job.keyword.lower() == job_keyword.lower():
                                 if len(job.computations) == 0: return False, None
                                 for idx, comp in enumerate(job.computations):

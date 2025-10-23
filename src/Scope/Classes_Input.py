@@ -150,7 +150,7 @@ def fill_job_data(data: object, debug: int=0):
     ## Adds defaults to job_data
     if not hasattr(data,"branch"):        raise ValueError("WARNING: job_data is missing 'branch' input variable")
     if not hasattr(data,"hierarchy"):     raise ValueError("WARNING: job_data is missing 'hierarchy' input variable")  ## This shouldn't be mandatory, I need to fix it
-    if not hasattr(data,"recipe"):        data._add_attr("recipe",str('all')),    
+    if not hasattr(data,"workflow"):      data._add_attr("workflow",str('all')),    
     if not hasattr(data,"suffix"):        data._add_attr("suffix", str(data.hierarchy))
     if not hasattr(data,"keyword"):       data._add_attr("keyword", str(data.suffix))
     if not hasattr(data,"istate"):        data._add_attr("istate", str("initial"))

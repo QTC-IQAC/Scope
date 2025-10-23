@@ -50,7 +50,8 @@ git clone https://github.com/QTC-IQAC/Scope.git
 cd scope
 pip install -e .
 ```
-## Dependencies
+
+  ## Dependencies
 
 - numpy
 - scikit learn
@@ -61,20 +62,17 @@ pip install -e .
 
 ---
 
-# Usage
+  # Usage
 
 The following tutorials are available at the github repository (https://github.com/QTC-IQAC/Scope.git):
 
 - Configuration of an Environment
 - 
 
-# License
+  # License
 
 MIT
 
-# Acknowledgements
-- Raul Santiago (IQAC-CSIC), for his coding contribution and help at setting the repository
+  # Acknowledgements
+- Manel Serrano and Raul Santiago (IQAC-CSIC), for their coding contribution, and help at setting the repository
 - The Spanish Ministerio de Ciencia, Innovación y Universidades for funding (Project PID2022-138265NA-I00)
-
-
-test
