@@ -16,10 +16,11 @@ The associated manuscript is under preparation. Partial documentation is availab
 
 # Features
 
-- ✅ Configure environments with paths, software, and queues  
-- ✅ Run single or multiple spin-crossover jobs  
-- ✅ CLI tools for common workflows  
-- ✅ Integration with [cell2mol](https://github.com/lcmd-epfl/cell2mol)  
+- Configure computational environments for your projects, storing paths, software, and queues  
+- Run quantum chemistry workflows for one or multiple molecules or periodic structures, using Quantum Espresso or Gaussian16
+- Parse and analyse results of computations, and connect the data with SCOPE's molecule- and cell-class objects
+- CLI tools for common workflows  
+- Integration with [cell2mol](https://github.com/lcmd-epfl/cell2mol)  
 
 ---
 
@@ -67,7 +68,6 @@ pip install -e .
 The following tutorials are available at the github repository (https://github.com/QTC-IQAC/Scope.git):
 
 - Configuration of an Environment
-- 
 
   # License
 
