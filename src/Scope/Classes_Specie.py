@@ -3,17 +3,17 @@
 ####################################################
 
 import numpy as np
-from Scope.Connectivity import * 
-from Scope.Classes_Atom import *
-from Scope.Other        import get_metal_idxs
-from Scope.Geometry     import * 
-from Scope.Elementdata  import ElementData
+from scope.connectivity import * 
+from scope.classes_atom import *
+from scope.other        import get_metal_idxs
+from scope.geometry     import * 
+from scope.elementdata  import ElementData
 elemdatabase = ElementData()
 
 ##############
 ### SPECIE ###
 ##############
-class specie(object):
+class Specie(object):
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
 
        # Sanity Checks
@@ -176,12 +176,12 @@ class specie(object):
     ## Other ##
     ###########
     def rmsd(self, other, reorder=True, center_method='centroid', debug: int=0):
-        from .Other import rmsd
+        from scope.other import rmsd
         value = rmsd(self.labels, self.coord, other.labels, other.coord, reorder=reorder, center_method=center_method, debug=debug)   
         return value
 
     def save(self, filepath):
-        from Scope.Read_Write import save_binary
+        from scope.read_write import save_binary
         save_binary(self, filepath)
 
     def get_centroid(self):
@@ -199,7 +199,7 @@ class specie(object):
 
     ######
     def get_fractional_coord(self, cell_vector=None, debug: int=0) -> None:
-        from .Reconstruct import cart2frac
+        from scope.reconstruct import cart2frac
 
         # If cell_vector is provided, then its easy
         if cell_vector is not None:
@@ -335,12 +335,12 @@ class specie(object):
                        if hasattr(par,"cell_vector"): self.get_fractional_coord(debug=debug)
                 # If it managed, then it established the frac_coord to atoms 
                 if hasattr(self,"frac_coord"):
-                    if ismetal: newatom = metal(l, self.coord[idx], self.frac_coord[idx], radii=self.radii[idx])
-                    else:       newatom =  atom(l, self.coord[idx], self.frac_coord[idx],radii=self.radii[idx])
+                    if ismetal: newatom = Metal(l, self.coord[idx], self.frac_coord[idx], radii=self.radii[idx])
+                    else:       newatom =  Atom(l, self.coord[idx], self.frac_coord[idx],radii=self.radii[idx])
                 # Otherwise, frac_coord is empty
                 else :
-                    if ismetal: newatom = metal(l, self.coord[idx], radii=self.radii[idx])
-                    else:       newatom =  atom(l, self.coord[idx], radii=self.radii[idx])
+                    if ismetal: newatom = Metal(l, self.coord[idx], radii=self.radii[idx])
+                    else:       newatom =  Atom(l, self.coord[idx], radii=self.radii[idx])
                 if debug > 0: print(f"SPECIE.SET_ATOMS: added atom to specie: {self.formula}")
 
                 # Add specie as parent of the atom
@@ -399,7 +399,7 @@ class specie(object):
                             # create new bond object and add it to both atoms
                             if end > start:
                                 if debug >=2: print(f"\tBOND CREATED", idx, start, end, bond_order, self.atoms[start].label, self.atoms[end].label)
-                                new_bond = bond(self.atoms[start], self.atoms[end], bond_order)
+                                new_bond = Bond(self.atoms[start], self.atoms[end], bond_order)
                                 self.atoms[start].add_bond(new_bond)
                                 self.atoms[end].add_bond(new_bond)
                 
@@ -442,7 +442,7 @@ class specie(object):
                             # create new bond object and add it to both atoms
                             if end > start:
                                 if debug >=2: print(f"\tBOND CREATED", idx, start, end, bond_order, self.atoms[start].label, self.atoms[end].label)
-                                new_bond = bond(self.atoms[start], self.atoms[end], bond_order)
+                                new_bond = Bond(self.atoms[start], self.atoms[end], bond_order)
                                 self.atoms[start].add_bond(new_bond)
                                 self.atoms[end].add_bond(new_bond)
                 
@@ -569,7 +569,7 @@ class specie(object):
     ### Functions to Interact with States ###
     #########################################
     def add_state(self, name: str, debug: int=0):
-        from Scope.Classes_State import state
+        from scope.classes_state import State
         if not hasattr(self,"states"): setattr(self,"states",list([]))
         exists, new_state = self.find_state(name)
         if exists:  
@@ -577,13 +577,13 @@ class specie(object):
             return new_state
         else:
             if debug > 0: print("SPECIE.ADD_STATE. Creating new state, returning it")
-            new_state = state(self, name, debug=debug)
+            new_state = State(self, name, debug=debug)
             self.states.append(new_state)
         return new_state
 
     ######
     def find_state(self, search_name: str, debug: int=0):
-        from Scope.Classes_State import state
+        from scope.classes_state import State
         if not hasattr(self,"states"): return False, None
         if debug > 0: print(f"SPECIE.FIND_STATE: Searching {search_name} in SPECIE object with {len(self.states)} states")
         for sta in self.states:
@@ -631,8 +631,8 @@ class specie(object):
     ######
     def view(self, show_indices: bool=False, size: str='default'):
         import plotly.graph_objects as go
-        from Scope.Read_Write import set_scene
-        from Scope.Elementdata import ElementData  
+        from scope.read_write import set_scene
+        from scope.elementdata import ElementData  
         elemdatabase = ElementData()
 
         size_map = {'default': (600, 600, 8, 9), 'small': (400, 400, 6, 7), 
@@ -710,9 +710,9 @@ class specie(object):
 ###############
 ### MOLECULE ##
 ###############
-class molecule(specie):
+class Molecule(Specie):
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
-        specie.__init__(self, labels, coord, frac_coord, radii)
+        Specie.__init__(self, labels, coord, frac_coord, radii)
         self.subtype = "molecule"
 
     def __repr__(self, indirect: bool=False):
@@ -720,7 +720,7 @@ class molecule(specie):
         if not indirect: to_print += '--------------------------------------------------\n'
         if not indirect: to_print += '------------- SCOPE MOLECULE Object --------------\n'
         if not indirect: to_print += '--------------------------------------------------\n'
-        to_print += specie.__repr__(self, indirect=True)
+        to_print += Specie.__repr__(self, indirect=True)
         if hasattr(self,"ligands"):  
             if self.ligands is not None: to_print += f' # Ligands             = {len(self.ligands)}\n'
         if hasattr(self,"metals"):   
@@ -828,8 +828,8 @@ class molecule(specie):
                 
                 if debug > 0: print(f"CREATING LIGAND: {labels2formula(lig_labels)}")
                 # Create Ligand Object
-                if hasattr(self,"frac_coord"): newligand   = ligand(lig_labels, lig_coord, lig_frac_coord, radii=lig_radii)
-                else:                          newligand   = ligand(lig_labels, lig_coord, radii=lig_radii)
+                if hasattr(self,"frac_coord"): newligand   = Ligand(lig_labels, lig_coord, lig_frac_coord, radii=lig_radii)
+                else:                          newligand   = Ligand(lig_labels, lig_coord, radii=lig_radii)
                 # For debugging
                 newligand.origin = "split_complex"
                 # Define the molecule as parent of the ligand. Bottom-Up hierarchy
@@ -928,7 +928,7 @@ class molecule(specie):
                         else:
                             bond_startatom = met
                             bond_endatom   = at
-                        newbond = bond(bond_startatom, bond_endatom, 0.5, subtype="metal-ligand")
+                        newbond = Bond(bond_startatom, bond_endatom, 0.5, subtype="metal-ligand")
 
                         at.add_bond(newbond)
                         met.add_bond(newbond)
@@ -958,7 +958,7 @@ class molecule(specie):
                         else:
                             bond_startatom = met2
                             bond_endatom   = met1
-                        newbond = bond(bond_startatom, bond_endatom, 0, subtype="metal-metal")
+                        newbond = Bond(bond_startatom, bond_endatom, 0, subtype="metal-metal")
                         met1.add_bond(newbond) 
                         met2.add_bond(newbond) 
         return True
@@ -966,12 +966,12 @@ class molecule(specie):
 ###############
 ### LIGAND ####
 ###############
-class ligand(specie):
+class Ligand(Specie):
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
         if frac_coord is not None:        
             assert len(frac_coord) == len(coord)
             self.frac_coord = frac_coord
-        specie.__init__(self, labels, coord, frac_coord, radii)
+        Specie.__init__(self, labels, coord, frac_coord, radii)
         self.subtype  = "ligand"
 
     ######
@@ -980,7 +980,7 @@ class ligand(specie):
         if not indirect: to_print += '------------------------------------------------\n'
         if not indirect: to_print += '------------- SCOPE LIGAND Object --------------\n'
         if not indirect: to_print += '------------------------------------------------\n'
-        to_print += specie.__repr__(self, indirect=True)
+        to_print += Specie.__repr__(self, indirect=True)
         if hasattr(self,"rdkit_obj"):  to_print += f' Has RDKIT Object      = YES\n'
         else:                          to_print += f' Has RDKIT Object      = NO\n'
         if not indirect: to_print += '\n'
@@ -1062,8 +1062,8 @@ class ligand(specie):
             gr_radii        = extract_from_list(b, conn_radii, dimension=1)
             gr_atoms        = extract_from_list(b, connatoms, dimension=1)
             # Create Group Object
-            if hasattr(self,"frac_coord"): newgroup = group(gr_labels, gr_coord, gr_frac_coord, radii=gr_radii)
-            else:                          newgroup = group(gr_labels, gr_coord, radii=gr_radii)
+            if hasattr(self,"frac_coord"): newgroup = Group(gr_labels, gr_coord, gr_frac_coord, radii=gr_radii)
+            else:                          newgroup = Group(gr_labels, gr_coord, radii=gr_radii)
             # For debugging
             newgroup.origin = "split_ligand"
             # Define the ligand as parent of the group. Bottom-Up hierarchy
@@ -1565,12 +1565,12 @@ class ligand(specie):
 ###############
 #### GROUP ####
 ###############
-class group(specie):
+class Group(Specie):
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
         if frac_coord is not None:        
             assert len(frac_coord) == len(coord)
             self.frac_coord = frac_coord
-        specie.__init__(self, labels, coord, frac_coord, radii)
+        Specie.__init__(self, labels, coord, frac_coord, radii)
         self.subtype = "group"
 
     ######
@@ -1579,7 +1579,7 @@ class group(specie):
         if not indirect: to_print += '------------------------------------------------\n'
         if not indirect: to_print += '------------- SCOPE GROUP Object ---------------\n'
         if not indirect: to_print += '------------------------------------------------\n'
-        to_print += specie.__repr__(self, indirect=True)
+        to_print += Specie.__repr__(self, indirect=True)
         if not indirect: to_print += '\n'
         return to_print
 
@@ -1698,7 +1698,7 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
         cov_factor   = 1.3
         metal_factor = 1.0
 
-    new_molec = molecule(labels, coord, radii)
+    new_molec = Molecule(labels, coord, radii)
     new_molec.origin = "import_molecule"
     new_molec.set_factors(cov_factor, metal_factor)
     new_molec.get_adjmatrix()           ## Necessary when importing atoms
@@ -1777,7 +1777,7 @@ def import_ligand(lig: object, parent: object=None, debug: int=0) -> object:
 
     if debug > 0 and parent is None: print("IMPORT LIGAND: parent is NONE")
 
-    new_ligand = ligand(labels, coord, radii)
+    new_ligand = Ligand(labels, coord, radii)
     new_ligand.origin = "import_ligand"
     if debug > 0: print(f"IMPORT LIGAND: importing ligand with {new_ligand.formula}")
 
@@ -1857,7 +1857,7 @@ def import_group(old_group: object, parent: object=None, debug: int=0) -> object
     if   hasattr(old_group,"radii"):       radii  = old_group.radii
     else:                                  radii  = None          
 
-    new_group = group(labels, coord, radii)
+    new_group = Group(labels, coord, radii)
     new_group.origin = "import_group"
     if debug > 0: print(f"IMPORT GROUP: importing group with {new_group.formula}")
 

@@ -3,15 +3,15 @@
 ###########################################################
 
 import numpy as np
-from Scope.Connectivity   import * 
-from Scope.Geometry       import get_dist
-from Scope.Elementdata    import ElementData
+from scope.connectivity   import * 
+from scope.geometry       import get_dist
+from scope.elementdata    import ElementData
 elemdatabase = ElementData()
 
 ############
 ### ATOM ###
 ############
-class atom(object):
+class Atom(object):
     def __init__(self, label: str, coord: list, frac_coord: list=None, radii: float=None) -> None:
         self.type                 = "atom"
         self.subtype              = "atom"
@@ -78,7 +78,7 @@ class atom(object):
     ## Parents ##
     #############
     def add_parent(self, parent: object, index: int, overwrite: bool=True, debug: int=0):
-        ## associates a parent specie to self. The atom indices of self in parent are given in "indices"
+        ## associates a parent specie to self. The Atom indices of self in parent are given in "indices"
         ## if parent of the same subtype already in self.parent then it is overwritten
         ## this is to avoid having a substructure (e.g. a ligand) in more than one superstructure (e.g. a molecule) 
         append = True
@@ -136,7 +136,7 @@ class atom(object):
 
     ######
     def check_connectivity(self, other: object, debug: int=0):
-        ## Checks whether two atoms are connected (through the adjacency)
+        ## Checks whether two Atoms are connected (through the adjacency)
         if not isinstance(other, type(self)): return False
         labels = list([self.label,other.label]) 
         coords = list([self.coord,other.coord]) 
@@ -150,9 +150,9 @@ class atom(object):
         self.madjnum = int(metal_connectivity)
         self.adjacency       = []
         self.metal_adjacency = []
-        for idx, c in enumerate(adjmat):   ## The atom only receives one row of adjmat, so this is not a matrix anymore. Keep in mind that the idx are the indices of parent
+        for idx, c in enumerate(adjmat):   ## The Atom only receives one row of adjmat, so this is not a matrix anymore. Keep in mind that the idx are the indices of parent
             if c > 0: self.adjacency.append(idx)
-        for idx, c in enumerate(madjmat):  ## The atom only receives one row of madjmat, so this is not a matrix anymore
+        for idx, c in enumerate(madjmat):  ## The Atom only receives one row of madjmat, so this is not a matrix anymore
             if c > 0: self.metal_adjacency.append(idx)
 
     ######
@@ -338,9 +338,9 @@ class atom(object):
 ###############
 #### METAL ####
 ###############
-class metal(atom):
+class Metal(Atom):
     def __init__(self, label: str, coord: list, frac_coord: list=None, radii: float=None) -> None:
-        atom.__init__(self, label, coord, frac_coord=frac_coord, radii=radii)
+        Atom.__init__(self, label, coord, frac_coord=frac_coord, radii=radii)
         self.subtype = "metal"
 
     ###########
@@ -366,7 +366,7 @@ class metal(atom):
         to_print =  '-----------------------------------------------\n'
         to_print += '------------- SCOPE METAL Object --------------\n'
         to_print += '-----------------------------------------------\n'
-        to_print += atom.__repr__(self, indirect=True)
+        to_print += Atom.__repr__(self, indirect=True)
         to_print += '\n'
         return to_print
 
@@ -412,7 +412,7 @@ class metal(atom):
     ## Connectivity ##
     ##################
     def get_connected_groups(self, debug: int=0):
-        from Scope.Connectivity import split_group
+        from scope.connectivity import split_group
         # metal.groups will be used for the calculation of the relative metal radius 
         # and define the coordination geometry of the metal hapticitiy and hapttype    
         if not self.check_parent("molecule"): return None
@@ -474,7 +474,7 @@ class metal(atom):
             import cosymlib as cml
         except ImportError: 
             raise ImportError("This function requires cosymlib, Cosymlib is currently not installed. Please install it manually if you need this functionality.")
-        from Scope.CShM import get_CShM_ref
+        from scope.cshm import get_CShM_ref
 
         # Prepares coordiantes of the coordination sphere
         if hasattr(self, "cshm") and not overwrite: return self.cshm
@@ -496,7 +496,7 @@ class metal(atom):
 ############
 ### BOND ###
 ############
-class bond(object):
+class Bond(object):
     def __init__(self, atom1: object, atom2: object, bond_order: int=1, subtype: str="intraspecie"):
         self.type       = "bond"
         self.subtype    = subtype
@@ -545,10 +545,10 @@ def import_atom(old_atom: object, parent: object=None, index: int=None, debug: i
 
     if block == 'd' or block == 'f': 
         if debug > 0: print(f"IMPORT ATOM: importing metal {old_atom.label}")
-        new_atom = metal(label, coord, radii=radii)
+        new_atom = Metal(label, coord, radii=radii)
     else:                            
         if debug > 0: print(f"IMPORT ATOM: importing atom {old_atom.label}")
-        new_atom = atom(label, coord, radii=radii)
+        new_atom = Atom(label, coord, radii=radii)
     new_atom.origin = "import_atom"
     
     ## Parents

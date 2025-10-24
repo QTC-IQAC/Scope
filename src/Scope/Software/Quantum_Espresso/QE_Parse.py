@@ -1,9 +1,9 @@
-from   Scope.Parse_General   import search_string
-from   Scope.Geometry        import cellvec_2_cellparam
-import Scope.Constants
+from   scope.parse_General   import search_string
+from   scope.geometry        import cellvec_2_cellparam
+import scope.constants
 
-bohr2angs = Scope.Constants.bohr2angs
-ry2har    = Scope.Constants.ry2har
+bohr2angs = scope.constants.bohr2angs
+ry2har    = scope.constants.ry2har
 
 ###############
 ### PARSING ###

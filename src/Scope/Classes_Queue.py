@@ -1,11 +1,11 @@
 from datetime import datetime, timedelta
 import subprocess
-from Scope.Parse_General import slurm_time_to_minutes
+from scope.parse_general import slurm_time_to_minutes
 
 #############
 ### QUEUE ###
 #############
-class queue(object):
+class Queue(object):
     def __init__(self, name: str, _environment: object, avail: str='up', time_limit: str=None, state: str='idle'):
         if avail == "up":  self.available  = True
         else:              self.available  = False
@@ -31,20 +31,6 @@ class queue(object):
             self.command_check_queue_state   = "qstat -f | grep "+self.name
             self.command_job_count           = "qstat | grep "+self.name+" | wc -l"
 
-## test function to retrieve mem-per-cpu. Should be done at the node level
-    #def set_max_mem(self):
-    #    if self._environment.management_type == 'slurm':
-    #        try:
-    #            raw = subprocess.check_output(['bash','-c', self.command_get_max_mem])
-    #            dec = raw.decode("utf-8")
-    #            text = dec.rstrip().split("\n")
-    #        except: text = ""
-    #        for idx, line in enumerate(text):
-    #            blocks = line.split()
-    #            if len(blocks) == 5 or len(blocks) == 9:
-    #                tot_mem         = float(blocks[2])
-    #    elif self._environment.management_type == 'sge': return None
-
     ######
     def set_nodes(self):
         self.nodes = []
@@ -65,7 +51,7 @@ class queue(object):
                     queue     = str(blocks[1])
                     total     = int(blocks[5])
                     if total > self.max_cpu_x_node: self.max_cpu_x_node = total
-                    newnode = node(node_name, self) 
+                    newnode = Node(node_name, self) 
                     self.nodes.append(newnode)
                 else:
                     print("SET_NODES: Unexpected length of block list", blocks)
@@ -79,7 +65,7 @@ class queue(object):
                     node_name       = str(blocks[1])
                     total           = int(blocks[5])
                     if total > self.max_cpu_x_node: self.max_cpu_x_node = total
-                    newnode = node(node_name, self) 
+                    newnode = Node(node_name, self) 
                     self.nodes.append(newnode)
                 else:
                     print("SET_NODES: Unexpected length of block list", blocks)
@@ -232,7 +218,7 @@ class queue(object):
 ############
 ### NODE ###
 ############
-class node(object):
+class Node(object):
     def __init__(self, name: str, _queue: object): 
         self.name                = name
         self._queue              = _queue

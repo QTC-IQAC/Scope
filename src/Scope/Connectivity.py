@@ -5,8 +5,8 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import reverse_cuthill_mckee
 
 from typing import Tuple
-from Scope.Other import extract_from_list  
-from Scope.Elementdata import ElementData  
+from scope.other import extract_from_list  
+from scope.elementdata import ElementData  
 elemdatabase = ElementData()
 
 ######################################
@@ -268,9 +268,8 @@ def get_non_transition_metal_idxs(labels: list, debug: int=0):
 
 #################################
 def split_group(original_group, conn_idx, final_ligand_indices, debug: int=0):
-    ## Yuri's function. I don't know why it is not in group class
-    from Scope.Classes_Molecule import group
-    # Split the "group" to obtain the groups connected to a specific metal
+    # Splits the "group" to obtain the groups connected to a specific metal
+    from scope.classes_molecule import Group
     splitted_groups = []
     
     if debug > 1: print(f"GROUP.SPLIT_GROUP: {conn_idx=}")
@@ -299,7 +298,7 @@ def split_group(original_group, conn_idx, final_ligand_indices, debug: int=0):
         gr_radii        = extract_from_list(b, conn_radii, dimension=1)
         gr_atoms        = extract_from_list(b, conn_atoms, dimension=1)
         # Create Group Object
-        newgroup = group(gr_labels, gr_coord, gr_frac_coord, radii=gr_radii)
+        newgroup = Group(gr_labels, gr_coord, gr_frac_coord, radii=gr_radii)
         if debug > 1: print(f"GROUP.SPLIT_GROUP: {newgroup.labels=}")
         # For debugging
         newgroup.origin = "split_group"

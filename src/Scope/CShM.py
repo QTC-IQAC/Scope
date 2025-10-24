@@ -3,7 +3,7 @@ import yaml
 import numpy as np
 
 # Load the ideal structures from YAML and check the structure
-def get_CShM_ref(ref: str='OC-6', yaml_path: str=None, debug: int=0):
+def get_cshm_ref(ref: str='OC-6', yaml_path: str=None, debug: int=0):
     if yaml_path is None:
         yaml_path = os.path.join(os.path.dirname(__file__), 'CShM.yaml')
     if not os.path.exists(yaml_path):

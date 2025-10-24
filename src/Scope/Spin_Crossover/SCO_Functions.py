@@ -1,19 +1,13 @@
 ######################################################
 #### Function that are Specific to Spin Crossover ####
 ######################################################
-#!/usr/bin/env python3
-#import sys
-#import os
-#import pwd
-
-from Scope.Classes_Data import *
-from Scope.Thermal_Corrections import *
-#from Scope import Constants
+from scope.classes_data import *
+from scope.thermal_corrections import *
 
 ######
 def get_SCO_geom(state: object, debug: int=0):
-    from Scope.Spin_Crossover.SCO_Structure import geom_sco_from_xyz
-    from Scope.Classes_State import state
+    from scope.spin_crossover.sco_structure import geom_sco_from_xyz
+    from scope.classes_state import State
     if not hasattr(state,"fragmented"): state.check_fragmentation(reconstruct=True, debug=debug)
     assert not state.fragmented, f"Found Fragmented molecules in the geometry of state: {state.name}"
     if not hasattr(state,"moleclist"): state.get_moleclist(debug=debug)
@@ -47,8 +41,8 @@ def get_T12(branch: object, High_E_state: object, Low_E_state: object, Trange: r
         key = "dHelec" 
         value = High_E_state.results["Helec"].value - Low_E_state.results["Helec"].value 
         units = High_E_state.results["Helec"].units
-        function = "Scope.Spin_Crossover.SCO_functions.get_T12"
-        branch.add_result(data(key,value,units,function), overwrite=overwrite) 
+        function = "scope.spin_crossover.sco_functions.get_T12"
+        branch.add_result(Data(key,value,units,function), overwrite=overwrite) 
 
     ## dSelec
     if overwrite or not "dSelec" in branch.results.keys():
@@ -56,8 +50,8 @@ def get_T12(branch: object, High_E_state: object, Low_E_state: object, Trange: r
         key = "dSelec" 
         value = High_E_state.results["Selec"].value - Low_E_state.results["Selec"].value 
         units = High_E_state.results["Selec"].units
-        function = "Scope.Spin_Crossover.SCO_functions.get_T12"
-        branch.add_result(data(key,value,units,function), overwrite=overwrite) 
+        function = "scope.spin_crossover.sco_functions.get_T12"
+        branch.add_result(Data(key,value,units,function), overwrite=overwrite) 
 
     ## dHvib
     if overwrite or not "dHvib" in branch.results.keys():
@@ -83,8 +77,8 @@ def get_T12(branch: object, High_E_state: object, Low_E_state: object, Trange: r
         key = "T12"
         value = find_t12(Trange, dGdata)
         units = "K"
-        function = "Scope.Spin_Crossover.SCO_functions.get_T12"
-        branch.add_result(data(key, value, units, function), overwrite=overwrite)
+        function = "scope.spin_crossover.sco_functions.get_T12"
+        branch.add_result(Data(key, value, units, function), overwrite=overwrite)
 
     if debug > 0:
         print("Printing RESULTS for branch")

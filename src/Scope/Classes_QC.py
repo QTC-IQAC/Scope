@@ -1,7 +1,7 @@
 import numpy as np
-from Scope import Constants
-from Scope.Parse_General import search_string
-from Scope.Elementdata import ElementData
+from scope import constants
+from scope.parse_general import search_string
+from scope.elementdata import ElementData
 elemdatabase = ElementData()
 
 ######################
@@ -35,7 +35,7 @@ class VNM(object):
     
     def write_dyn(self, initial_coord: list, amplitude: int=10, outfolder: str='./', labels: None=list, name: str=None):
         ## Writes a file with a trajectory representing the displacement of the VNM
-        from .Read_Write import write_xyz
+        from scope.read_write import write_xyz
         if name is None: filename: str="dyn_vnm_"+str(self.index)+".xyz"
         else:            filename: str=name
         if outfolder[-1] != '/': outfolder += '/'
@@ -55,7 +55,7 @@ class VNM(object):
     def overlap(self, other: object) -> float:
         if not isinstance(other, type(self)):       return None
         if not self.has_mode or not other.has_mode: return None
-        from .Operations.Vecs_and_Mats import normalize
+        from scope.operations.vecs_and_mats import normalize
         vnm_a = normalize(self.mode_format2)
         vnm_b = normalize(other.mode_format2)
         ov    = float(np.abs(np.dot(vnm_a, vnm_b)))
@@ -183,10 +183,6 @@ def plot_ir_spectrum(vnms, xmin=None, xmax=None, broadening=10.0, points=2000, k
             spectrum += I * (broadening**2 / ((x - f)**2 + broadening**2))
         else:
             raise ValueError("kind must be 'gaussian' or 'lorentzian'")
-
-    # Normalize Gaussian so height matches IR_int approximately
-    #if kind.lower() == "gaussian":
-    #    spectrum *= 1/(broadening*np.sqrt(2*np.pi))
 
     # Plot
     plt.figure(figsize=(8,4))

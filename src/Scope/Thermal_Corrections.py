@@ -1,7 +1,7 @@
 import numpy as np
-from Scope import Constants
-from Scope.Classes_Data import *
-from Scope.Other import range2list
+from scope import constants
+from scope.classes_data import *
+from scope.other import range2list
 
 ###########
 def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', typ: str='default', FR_cutoff: int=100, FR_alpha: int=4, nmol: int=1):
@@ -68,7 +68,7 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     ## Arranges units 
     if outunits.lower() == 'kj':  total = total*Constants.har2kJmol
     ## Creates data-class object
-    new_data = data("Svib", float(total), outunits, "Scope.Thermal_Corrections.get_Svib()")
+    new_data = Data("Svib", float(total), outunits, "scope.Thermal_Corrections.get_Svib()")
     new_data.add_property("temperature", temp, overwrite=True)
 
     return new_data
@@ -98,7 +98,7 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     if outunits.lower() == 'kj':  total = total*Constants.har2kJmol    # kJ/mol
 
     ## Creates data-class object
-    new_data = data("Hvib", float(total), outunits, "Scope.Thermal_Corrections.get_Hvib()")
+    new_data = Data("Hvib", float(total), outunits, "scope.Thermal_Corrections.get_Hvib()")
     new_data.add_property("temperature", temp, overwrite=True)
 
     return new_data
@@ -106,7 +106,7 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
 def get_Selec(spin_multiplicity, outunits: str='au', nmol: int=1):
     if outunits.lower()     == 'kj': value = float(8.314*np.log(spin_multiplicity)/1000/nmol)
     elif outunits.lower()   == 'au': value = float(8.314*np.log(spin_multiplicity)/Constants.har2kJmol/1000/nmol)
-    return data("Selec", value, outunits,  'Scope.Thermal_Corrections.get_Selec()') 
+    return Data("Selec", value, outunits,  'scope.Thermal_Corrections.get_Selec()') 
 
 def get_Gibbs(Helec: float, Hvib: float, Selec: float, Svib: float, temp: float):
     return Helec + Hvib - temp*(Svib + Selec)

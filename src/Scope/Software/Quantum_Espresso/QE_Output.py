@@ -1,7 +1,7 @@
-from Scope.Parse_General     import read_lines_file
-from Scope.Software.Quantum_Espresso.QE_Parse  import *
+from scope.parse_general     import read_lines_file
+from scope.software.quantum_espresso.qe_parse  import *
 
-class qe_output(object):
+class QE_output(object):
     def __init__(self, lines: list, computation: object=None):
         self._computation   = computation
         self.lines          = lines

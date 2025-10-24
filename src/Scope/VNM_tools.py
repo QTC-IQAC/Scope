@@ -1,5 +1,5 @@
 import numpy as np
-from Scope import Constants
+from scope import constants
 
 ####
 def displace_neg_freqs(ini_coord, VNMs: object, debug: int=0) -> list:
@@ -35,7 +35,7 @@ def map_vnms(vnmsA, vnmsB, debug: int=0):
     freqsB = [v.freq_cm for v in vnmsB] 
 
     # Normalize (mass-weight should not be needed)
-    from Scope.Operations.Vecs_and_Mats import normalize
+    from scope.operations.vecs_and_mats import normalize
     modesA_proc = normalize(modesA)
     modesB_proc = normalize(modesB)
 
@@ -99,8 +99,8 @@ def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], wh
 
 ####
 def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, n_samples: int=10, freq_bottom_limit: float=0, check_adjacencies: bool=True, debug: int=0):
-    from Scope.Connectivity             import get_adjmatrix
-    from Scope.Operations.Vecs_and_Mats import normalize
+    from scope.connectivity             import get_adjmatrix
+    from scope.operations.vecs_and_mats import normalize
     """
     Generate a set of geometries by sampling along vibrational normal modes (VNM) of a molecule.
     This function perturbs the input geometry along its vibrational normal modes, producing a set of 
@@ -299,7 +299,7 @@ def apply_q_displacement(x_ref, q_coords, freqs):
 
 ####
 def project_to_normal_modes(l1, x1, l2, x2, freqs, debug: int=0):
-    from Scope.Other import rmsd
+    from scope.other import rmsd
     """
     Aligns x_geom to x_ref and projects the displacement onto normal modes.
 

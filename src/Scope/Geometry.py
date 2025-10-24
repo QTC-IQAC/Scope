@@ -1,6 +1,6 @@
 import numpy as np
 import math
-from Scope.Operations.Vecs_and_Mats import normalize, determinant
+from scope.operations.vecs_and_mats import normalize, determinant
 
 ######
 def get_dist(coord1: list, coord2: list) -> float:
@@ -154,7 +154,7 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
     adjmat[atom2][atom3] = 0
     adjmat[atom3][atom2] = 0
 
-    ### This below is part of split_species function in Scope
+    ### This below is part of split_species function in scope
     indices = [*range(0,len(labels),1)]
     degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
     lap = adjmat - degree

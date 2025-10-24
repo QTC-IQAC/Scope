@@ -1,4 +1,4 @@
-from Scope import Constants
+from scope import constants
 from copy import deepcopy
 import numpy as np
 
@@ -55,7 +55,7 @@ def mass_weight_hessian(hessian, masses, debug: int=0):
     return mw_hessian
 
 def project_out(hessian, proj_rot: bool=False, proj_tra: bool=True, debug: int=0):
-    from Scope.Other import gram_schmidt
+    from scope.other import gram_schmidt
 
     if not proj_rot and not proj_tra: return hessian
     
@@ -111,7 +111,7 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
     factor_cminv = 5140.487   ## must figure out where does it come from
 
     import numpy as np
-    from Scope.Classes_QC import VNM
+    from scope.classes_qc import VNM
 
     ## Read the number of atoms from the source
     source = job._workflow.source

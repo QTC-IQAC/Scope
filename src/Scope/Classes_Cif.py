@@ -1,12 +1,12 @@
 #################################
 ####  Contains the Cif Class ####
 #################################
-from Scope.Parse_Cif import get_cif_diffraction_data, get_cif_authors, get_cif_journal 
+from scope.parse_cif import get_cif_diffraction_data, get_cif_authors, get_cif_journal 
 
 ###########
 ### CIF ###
 ###########
-class cif(object):
+class Cif(object):
     def __init__(self, name: str, path: str) -> None:
         self.type              = "cif" 
         self.version           = "1.0" 
@@ -36,27 +36,11 @@ class cif(object):
         self.cell      = cell
         return self.cell
 
-    #######
-    #def reset_path(self, new_path) -> None:
-    #    if os.path.isdir(new_path): self.path = new_path
-
     ######
     def save(self, filepath: str=None):
-        from Scope.Read_Write import save_binary
+        from scope.read_write import save_binary
         if filepath is None: filepath = self.path
         save_binary(self, filepath)
-
-    #######
-    #def load_cell(self, cell_path: str) -> None:
-    #    from Scope.Classes_Molecule import import_cell
-    #    if os.path.isfile(cell_path): 
-    #        try:
-    #            self.cell      = import_cell(load_binary(self.cell_path))
-    #            self.cell_path = cell_path
-    #            return self.cell
-    #        except:
-    #            print(f"LOAD_CELL: Could not load cell from {cell_path}")  
-    #            return None
 
     ##############################
     #### Bibliography options ####

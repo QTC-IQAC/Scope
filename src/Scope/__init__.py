@@ -1,8 +1,6 @@
 import os
 
-from Scope.Read_Write import *
-from Scope.Classes_Environment import environment
-from Scope.Classes_System      import system
-
-#__all__ = ["environment", "system"]
+from scope.read_write import *
+from scope.classes_environment import Environment
+from scope.classes_system      import System
 

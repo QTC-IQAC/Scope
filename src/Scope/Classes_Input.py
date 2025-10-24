@@ -5,7 +5,7 @@ from ast import literal_eval
 
 ######################
 def interpret_software(name: str):
-    if name == 'g16' or name == 'gaussian': software = 'g16'
+    if   name == 'g16' or name == 'gaussian': software = 'g16'
     elif name == 'qe' or name == 'quantum_espresso' or name == 'quantum_espresso' or name == 'espresso': software = 'qe'
     else: print("INTERPRET SOFTWARE: software",name," could not be interpreted. EXITING"); sys.exit()
     return software
@@ -13,7 +13,7 @@ def interpret_software(name: str):
 #######################
 ##### INPUT CLASS #####
 #######################
-class input_data(object):
+class Input_data(object):
     def __init__(self, content: str=None, section=None, isfile: bool=True, debug=0):
         
         if isfile: 
@@ -33,7 +33,7 @@ class input_data(object):
 
         ## Reads from file or content string
         if isfile: 
-            from Scope.Parse_General import read_lines_file 
+            from scope.parse_general import read_lines_file 
             lines    = read_lines_file(os.path.abspath(source)) 
         else:
             lines    = source.strip().split('\n')
@@ -220,22 +220,22 @@ def fill_qc_data(data: object, debug: int=0):
 
 #######################
 def set_environment_data(content, section="&environment", isfile: bool=True, debug: int=0):
-    environment = input_data(content=content, section=section, isfile=isfile, debug=debug)
+    environment = Input_data(content=content, section=section, isfile=isfile, debug=debug)
     environment = fill_environment_data(environment)
     return environment
 
 def set_options_data(content, section="&options", isfile: bool=True, debug: int=0):
-    options = input_data(content=content, section=section, isfile=isfile, debug=debug)
+    options = Input_data(content=content, section=section, isfile=isfile, debug=debug)
     options = fill_options_data(options)
     return options
 
 def set_job_data(content, section="&job_data", isfile: bool=True, debug: int=0):
-    job_data = input_data(content=content, section=section, isfile=isfile, debug=debug)
+    job_data = Input_data(content=content, section=section, isfile=isfile, debug=debug)
     job_data = fill_job_data(job_data)
     return job_data
 
 def set_qc_data(content, section="&qc_data", isfile: bool=True, debug: int=0):
-    qc_data = input_data(content=content, section=section, isfile=isfile, debug=debug)
+    qc_data = Input_data(content=content, section=section, isfile=isfile, debug=debug)
     qc_data = fill_qc_data(qc_data)
     return qc_data
 

@@ -1,5 +1,5 @@
-import Scope.Constants 
-from   Scope.Parse_General import search_string, read_lines_file
+import scope.constants 
+from   scope.parse_general import search_string, read_lines_file
 
 ##############
 ### STATUS ###
@@ -51,7 +51,7 @@ def parse_end_scf(lines, debug=0):
     return end_SCF, found
 
 def parse_geometry_from_step(lines, debug: int=0):
-    from Scope.Elementdata import ElementData
+    from scope.Elementdata import ElementData
     elemdatabase = ElementData()
     labels = []
     coords = []
@@ -127,7 +127,7 @@ def parse_energy_from_step(lines, debug: int=0):
 
 def parse_hp_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
     ## New implementation when using freq(hpmodes) in Gaussian16 input line
-    from Scope.Classes_QC import VNM 
+    from scope.Classes_QC import VNM 
     vnms = []
 
     ldx, found1 = search_string("Frequencies ---", lines, typ='all')
@@ -184,7 +184,7 @@ def parse_hp_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
     return vnms
    
 def parse_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
-    from Scope.Classes_QC import VNM 
+    from scope.Classes_QC import VNM 
     vnms = []
 
     ldx, found1 = search_string("Frequencies --", lines, typ='all')

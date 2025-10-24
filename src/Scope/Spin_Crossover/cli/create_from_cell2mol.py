@@ -1,8 +1,8 @@
 import os
 import sys
 from argparse import ArgumentParser
-from Scope.Read_Write import load_binary
-from Scope.Spin_Crossover.SCO_Classes import sco_system
+from scope.read_write import load_binary
+from scope.spin_crossover.sco_classes import SCO_system
   
 def path_exists(path):
     if not os.path.exists(path):
@@ -56,7 +56,7 @@ def main():
         sys.exit()
 
     print(f"\tLoading Source From Path {source_path}: ")
-    new_sys = sco_system(system_name)
+    new_sys = SCO_system(system_name)
     new_sys.set_paths_from_environment(env)
     new_sys.load_multiple_cell2mol_folders(source_path, debug=debug)
     worked1 = new_sys.set_reference_cells(overwrite=overwrite, debug=debug)

@@ -1,1 +1,1 @@
-from Scope.Spin_Crossover import SCO_Classes, SCO_Structure, SCO_Functions
+from scope.spin_crossover import sco_classes, sco_structure, sco_functions

@@ -1,16 +1,16 @@
 import os
 from copy import deepcopy
 from datetime import datetime
-from Scope.Classes_Environment     import * 
-from Scope.Classes_State           import state, find_state
-from Scope.Other                   import where_in_array
-from Scope.Register_Data           import reg_general, reg_optimization, reg_frequencies, reg_energy
-from Scope.Parse_General           import read_lines_file
+from scope.classes_environment     import * 
+from scope.classes_state           import State, find_state
+from scope.other                   import where_in_array
+from scope.register_data           import reg_general, reg_optimization, reg_frequencies, reg_energy
+from scope.parse_general           import read_lines_file
 
 ##########################
 ###### BRANCH CLASS ######
 ##########################
-class branch(object):
+class Branch(object):
     def __init__(self, path: str, name: str, _system: object, debug: int=0) -> None:
         self.type             = "branch"
         self.creation_time    = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
@@ -47,7 +47,7 @@ class branch(object):
         if not exists: 
             exists, source = self._system.find_source(name)
             if exists: 
-                new_workflow = workflow(name, source, _branch=self)
+                new_workflow = Workflow(name, source, _branch=self)
                 self.workflows.append(new_workflow)
                 return new_workflow
             else:
@@ -141,7 +141,7 @@ class branch(object):
 ############################
 ###### WORKFLOW CLASS ######
 ############################
-class workflow(object):
+class Workflow(object):
     def __init__(self, name: str, source: object, _branch: object, debug: int=0) -> None:
         self.type             = "workflow"
         self._branch          = _branch
@@ -165,7 +165,7 @@ class workflow(object):
     ### JOBS ### 
     ############
     def add_job(self, job_data):                               ## As opposed to add_branch or add_workflow, add_job does not need a name, but a job_data input that will include a keyword
-        new_job               = job(job_data, _workflow=self)
+        new_job               = Job(job_data, _workflow=self)
         self.jobs.append(new_job)
         return new_job 
 
@@ -264,7 +264,7 @@ class workflow(object):
 #######################
 ###### JOB CLASS ######
 #######################
-class job(object):
+class Job(object):
     def __init__(self, job_data: object, _workflow: object):        
         self.type             = "job"
         self._workflow          = _workflow
@@ -292,7 +292,7 @@ class job(object):
         if self.keyword == 'findiff' or self.keyword == 'findif': self.job_setup == 'findiff'
         
     def check_job_data(self, job_path: str, debug: int=0):
-        from Scope.Classes_Input import set_job_data
+        from scope.classes_input import set_job_data
         if debug > 0: print(f"CHECK_JOB_DATA: reading job_data from path: {job_path}")
         new_job_data    = set_job_data(job_path, section="&job_data" , debug=0)
         old_job_data    = self.job_data 
@@ -325,7 +325,7 @@ class job(object):
         return max_step
 
     def check_convergence(self, debug: int=0):
-        from Scope.Other import check_convergence
+        from scope.other import check_convergence
         self.isconverged = check_convergence(self.energies, None, self.job_data.energy_thres)
         return self.isconverged
 
@@ -338,7 +338,7 @@ class job(object):
     def add_computation(self, qc_data: object, step: int=1, path: str='', comp_keyword: str='', is_update: bool=False, debug: int=0):
         ## Name of the computation and file paths are not created automatically. Use self.set_name and self.set_paths
         if path == '': path == self.path
-        new_computation       = computation(self, qc_data, step, path, comp_keyword, is_update=is_update, debug=debug)
+        new_computation       = Computation(self, qc_data, step, path, comp_keyword, is_update=is_update, debug=debug)
         self.computations.append(new_computation)
         return new_computation 
     
@@ -471,7 +471,7 @@ class job(object):
                                         print(f"SET COMPUTATIONS FROM SETUP: Worked!")
 
                         ## 1-Displaces Coordinates Following Negative Freqs ###
-                        from Scope.VNM_tools import displace_neg_freqs 
+                        from scope.vnm_tools import displace_neg_freqs 
                         disp_coord = displace_neg_freqs(initial_state.coord, initial_state.VNMs,debug=debug)
                         exists, displ_state = find_state(source, "displaced")          # Checks if state already exists
                         if not exists: displ_state = state(source, "displaced")        # If not, creates it
@@ -500,7 +500,7 @@ class job(object):
             if not found: print(f"SET COMPUTATIONS FROM SETUP: initial state not found")
             else:
                 if hasattr(initial_state,"coord"):
-                    from Scope.Findiff import findiff_displacements
+                    from scope.findiff import findiff_displacements
                     #self.path = self.path+"findiff_test4"
                     if not os.path.isdir(self.path): os.makedirs(self.path); print(f"SET COMPUTATIONS FROM SETUP: findiff folder created")
                     geoms, names = findiff_displacements(initial_state.coord)
@@ -662,7 +662,7 @@ class job(object):
 #            if debug > 1: print("------------------------------------------")
 #            if debug > 1: print("Registering Finite Differences of this job")
 #            if debug > 1: print("------------------------------------------")
-#            from Scope.Register_Data import reg_findiff 
+#            from scope.Register_Data import reg_findiff 
 #            worked = reg_findiff(self)
 #            if not worked: allgood = False
 
@@ -701,7 +701,7 @@ class job(object):
 ###########################
 #### COMPUTATION CLASS ####
 ###########################
-class computation(object):
+class Computation(object):
     def __init__(self, _job: object, qc_data: object, step: int, path: str, keyword: str, is_update: bool=False, debug: int=0):        
         self.type             = "computation"
         self._job             = _job       
@@ -734,7 +734,7 @@ class computation(object):
         return inp, out, sub
  
     def get_mod_filename(self, mod_item_vars: list, mod_item_vals: list, debug: int=0):
-        from Scope.Other import where_in_array, extract_from_list
+        from scope.other import where_in_array, extract_from_list
         if not hasattr(self,"filename"): self.set_filename()
         new_filename = deepcopy(self.filename)
         found = False
@@ -750,17 +750,17 @@ class computation(object):
         ### Here is the convention I'm using to name files. It is better not to change once computations have been submitted
         ### Uses a filename-class object, as defined below, defined as a sum of items
         if not hasattr(self,"run_number"): self.set_run_number() 
-        self.filename = filename()   ## Class defined at the end of this file
-        if use_sys_name:       new_item = filename_item("sys_name",   self.source._sys.name);  self.filename.add_item(new_item)
-        if use_sou_name:       new_item = filename_item("sou_name",   self.source.name);       self.filename.add_item(new_item)
-        if use_suffix:         new_item = filename_item("suffix",     self._job.suffix);       self.filename.add_item(new_item)
+        self.filename = Filename()   ## Class defined at the end of this file
+        if use_sys_name:       new_item = Filename_item("sys_name",   self.source._sys.name);  self.filename.add_item(new_item)
+        if use_sou_name:       new_item = Filename_item("sou_name",   self.source.name);       self.filename.add_item(new_item)
+        if use_suffix:         new_item = Filename_item("suffix",     self._job.suffix);       self.filename.add_item(new_item)
         if use_step:           # Only step=2 and above are printed in name 
             new_item = filename_item("step",       self.step,'s')
             new_item.set_min_value(int(2))
             self.filename.add_item(new_item)
-        if use_run_number:     new_item = filename_item("run_number", self.run_number,'r'); self.filename.add_item(new_item)
+        if use_run_number:     new_item = Filename_item("run_number", self.run_number,'r'); self.filename.add_item(new_item)
         #if use_spin:           new_item = filename_item("spin",       self.spin);           self.filename.add_item(new_item)
-        if self.keyword != '': new_item = filename_item("keyword",    self.keyword);        self.filename.add_item(new_item)
+        if self.keyword != '': new_item = Filename_item("keyword",    self.keyword);        self.filename.add_item(new_item)
         return self.filename
 
     def set_name(self, spacer: str='_', debug: int=0):
@@ -840,7 +840,7 @@ class computation(object):
     #### QC_DATA-related functions ####
     ###################################
     def check_qc_data(self, job_path: str, debug: int=0):
-        from Scope.Classes_Input import set_qc_data
+        from scope.classes_input import set_qc_data
         old_qc_data    = deepcopy(self.qc_data)
         new_qc_data    = set_qc_data(job_path, section="&qc_data" , debug=0)
         if new_qc_data != old_qc_data: 
@@ -874,16 +874,16 @@ class computation(object):
         if not hasattr(self,'output_lines'): self.read_lines()
         ## Gaussian Computations
         if   self.software == 'g16': 
-            from Scope.Software.Gaussian.G16_Output import g16_output
+            from scope.software.gaussian.g16_output import G16_output
             allowed_types = ['specie']
             assert self._job._workflow.source.type in allowed_types
-            self.output = g16_output(self.output_lines, self)
+            self.output = G16_output(self.output_lines, self)
         ## Quantum Espresso Computations
         elif self.software == 'qe':  
-            from Scope.Software.Quantum_Espresso.QE_Output import qe_output
+            from scope.software.quantum_espresso.qe_output import QE_output
             allowed_types = ['specie', 'cell']
             assert self._job._workflow.source.type in allowed_types
-            self.output = qe_output(self.output_lines, self)
+            self.output = QE_output(self.output_lines, self)
         else: print(f"COMPUTATION.CREATE_OUTPUT: Output of {comp.software} computationss is not implemented."); return None
         return self.output 
 
@@ -983,8 +983,8 @@ class computation(object):
  
 ###########################################
     def run(self, environment: object, options: object, debug: int=0) -> None:
-        from Scope.Software.Quantum_Espresso.QE_Input    import gen_QE_input, gen_QE_subfile 
-        from Scope.Software.Gaussian.G16_Input           import gen_G16_input, gen_G16_subfile 
+        from scope.software.quantum_espresso.qe_input    import gen_qe_input, gen_qe_subfile 
+        from scope.software.gaussian.g16_input           import gen_g16_input, gen_g16_subfile 
 
         ## 0-Checks that Resources are available
         if options.want_submit: sent_procs, sent_jobs = environment.get_user_requested(debug=debug)
@@ -1002,11 +1002,11 @@ class computation(object):
             ## 1.2-Creates Files
             self.check_files()
             if not self.input_exists or options.overwrite_inputs:
-                if self.software == 'g16':  gen_G16_input(self, debug=0)
-                elif self.software == 'qe': gen_QE_input(self, debug=0)
+                if self.software == 'g16':  gen_g16_input(self, debug=0)
+                elif self.software == 'qe': gen_qe_input(self, debug=0)
             if not self.subfile_exists or options.overwrite_inputs:
-                if self.software == 'g16':  gen_G16_subfile(self, queue=askqueue, module=environment.g16_module, procs=askprocs, savechk=False)
-                elif self.software == 'qe': gen_QE_subfile(self, queue=askqueue, module=environment.qe_module, procs=askprocs)
+                if self.software == 'g16':  gen_g16_subfile(self, queue=askqueue, module=environment.g16_module, procs=askprocs, savechk=False)
+                elif self.software == 'qe': gen_qe_subfile(self, queue=askqueue, module=environment.qe_module, procs=askprocs)
 
         ## 2-If output exists, prompts for registration
         if self.output_exists and not self.isregistered:
@@ -1114,7 +1114,7 @@ class computation(object):
 ##############################################################
 ### FILENAME Class to facilitate controling the file names ###
 ##############################################################
-class filename(object):
+class Filename(object):
     def __init__(self):
         self.typ      = 'name_global'
         self.items    = []
@@ -1145,7 +1145,7 @@ class filename(object):
         return to_print
 
 #######################
-class filename_item(object):
+class Filename_item(object):
     ## Simple object to create filenames for computation files: input, output and submission
     def __init__(self, variable: str, value, prefix: str=''):
         self.typ      = 'filename_item'

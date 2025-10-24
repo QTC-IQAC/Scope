@@ -1,10 +1,10 @@
 #!/usr/bin/env python3
 import os
-from Scope.Classes_Environment  import *
-from Scope.Classes_Input        import *
-from Scope.Classes_State        import *
-from Scope.Classes_System       import *
-from Scope.Read_Write           import load_binary
+from scope.classes_environment  import *
+from scope.classes_input        import *
+from scope.classes_state        import *
+from scope.classes_system       import *
+from scope.read_write           import load_binary
 
 ######################
 def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_errors: bool=False, debug: int=0):
@@ -226,7 +226,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
 
                         ## 4.3 Cases meant to be repetitive. Next step added to JOB object 
                         if this_job.job_setup == "rep_opt" and comp.isgood:
-                            from Scope.Other import check_convergence
+                            from scope.other import check_convergence
  
                             ## 4.3.1 Collects energies from state in this step
                             if hasattr(comp.qc_data,"fstate"): fstate_name = comp.qc_data.fstate
@@ -289,7 +289,7 @@ def get_status(sys_folder: str, branch_name: str, debug: int=0):
         print(f"RUN_JOB.GET_STATUS: System path {sys_folder} does not exist")
         return "absent"
 
-    ## Otherwise.. it looks for files with standardized names (see setup functions in Scope.Classes_Workflow)
+    ## Otherwise.. it looks for files with standardized names (see setup functions in scope.classes_workflow)
     if os.path.isfile(f"{sys_folder}TERMINATED"):                return "terminated"
     if os.path.isfile(f"{sys_folder}{branch_name}_FINISHED"):    return "finished"  
     return "active"

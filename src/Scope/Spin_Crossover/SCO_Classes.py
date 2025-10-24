@@ -4,21 +4,21 @@
 import os
 from copy import deepcopy
 
-from Scope.Classes_Cell         import *
-from Scope.Classes_Cif          import *
-from Scope.Classes_State        import *
-from Scope.Classes_Specie       import *
-from Scope.Classes_System       import system
-from Scope.Read_Write           import load_binary, print_xyz
+from scope.classes_cell         import *
+from scope.classes_cif          import *
+from scope.classes_state        import *
+from scope.classes_specie       import *
+from scope.classes_system       import System
+from scope.read_write           import load_binary, print_xyz
 
-from Scope.Spin_Crossover.SCO_Structure import *
+from scope.spin_crossover.sco_structure import *
 
 ########################################
 ##### SYSTEM Object Adapted to SCO #####
 ########################################
-class sco_system(system):
+class SCO_system(System):
     def __init__(self, refcode: str) -> None:
-        system.__init__(self, refcode)
+        System.__init__(self, refcode)
         self.subtype              = "sco_system" 
         self.refcode              = refcode
         self.refcode_wo_digits    = ''.join([i for i in refcode if not i.isdigit()])
@@ -28,7 +28,7 @@ class sco_system(system):
         to_print += '-------------------------------------\n'
         to_print += '-- >>> SCOPE SCO-System Object >>> --\n'
         to_print += '-------------------------------------\n'
-        to_print += system.__repr__(self, indirect=True)
+        to_print += System.__repr__(self, indirect=True)
         to_print += '\n'
         return to_print
 
@@ -79,7 +79,7 @@ class sco_system(system):
             elif fil.endswith(".cif"):
                 #try:
                 if debug > 0: print("Trying to load CIF file from", folder+fil)
-                new_cif         = cif(fil, folder+fil)
+                new_cif         = Cif(fil, folder+fil)
                 cif_loaded      = True
                 if debug > 0: print("File loaded successfully")
                 #except Exception as exc: 
@@ -260,9 +260,9 @@ class sco_system(system):
 ######################################
 ##### CELL Object Adapted to SCO #####
 ######################################
-class sco_cell(cell):
+class SCO_cell(Cell):
     def __init__(self, name: str, labels: list, pos: list, cell_vector: list=None, cell_param: list=None) -> None:
-        cell.__init__(self, name, labels, pos, cell_vector, cell_param)
+        Cell.__init__(self, name, labels, pos, cell_vector, cell_param)
         self.subtype              = "sco_cell"
 
     def __repr__(self) -> None:
@@ -270,7 +270,7 @@ class sco_cell(cell):
         to_print += '-----------------------------------\n'
         to_print += '-- >>> SCOPE SCO-CELL Object >>> --\n'
         to_print += '-----------------------------------\n'
-        to_print += cell.__repr__(self, indirect=True)
+        to_print += Cell.__repr__(self, indirect=True)
         if hasattr(self,"phase"):              to_print += f' Phase                 = {self.phase}\n'
         if hasattr(self,"hs_molar_fraction"):  to_print += f' HS Molar Fraction     = {self.hs_molar_fraction}\n'
         to_print += '\n'
@@ -328,13 +328,13 @@ class sco_cell(cell):
 ##### CONVERSION TO SCO-Adapted Classes #####
 #############################################
 def convert_to_sco_cell(generic_cell):
-    if not isinstance(generic_cell, cell):
+    if not isinstance(generic_cell, Cell):
         print(f"CONVERT_TO_SCO_CELL: Input is not a 'cell' object")
         return None
-    if isinstance(generic_cell, sco_cell):
+    if isinstance(generic_cell, SCO_cell):
         if debug > 0: print(f"CONVERT_TO_SCO_CELL: Input is already a 'sco_cell' object")
         return generic_cell
-    new_cell = sco_cell(generic_cell.name, generic_cell.labels, generic_cell.coord, generic_cell.cell_vector, generic_cell.cell_param)
+    new_cell = SCO_cell(generic_cell.name, generic_cell.labels, generic_cell.coord, generic_cell.cell_vector, generic_cell.cell_param)
     for attr in generic_cell.__dict__.keys():
         if not hasattr(new_cell,attr):
             setattr(new_cell, attr, getattr(generic_cell,attr))

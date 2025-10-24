@@ -3,10 +3,10 @@ import os
 import numpy as np
 from copy import deepcopy
 
-from Scope import Constants
-from Scope.Connectivity import *
-from Scope.Classes_Data import *
-from Scope.Classes_State import *
+from scope import constants
+from scope.connectivity import *
+from scope.classes_data import *
+from scope.classes_state import *
 
 ######################################################################
 # 0) HERE WE GATHER THE RULES TO REGISTER THE DIFFERENT TYPES OF JOBS ##
@@ -17,7 +17,6 @@ from Scope.Classes_State import *
 ######################################################################
 
 def reg_general(comp: object, debug: int=0):
-
     if not hasattr(comp,"output"): comp.create_output() 
     comp.isfinished              = comp.output.get_status_finished()
     comp.elapsed_time            = comp.output.get_elapsed_time() 

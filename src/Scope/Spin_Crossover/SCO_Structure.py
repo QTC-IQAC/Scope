@@ -1,5 +1,5 @@
 import numpy as np
-from Scope.Geometry import *
+from scope.geometry import *
 
 ######
 def geom_sco_from_xyz(labels, pos, debug=0):   

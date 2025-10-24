@@ -1,11 +1,11 @@
 import numpy as np
 from ast import literal_eval
-from Scope import Constants
+from scope import constants
 
 ##################
 ### COLLECTION ###
 ##################
-class collection(object):
+class Collection(object):
     def __init__(self, key: str, variable: str):
         self.type           = "collection"
         self.key            = key
@@ -56,7 +56,7 @@ class collection(object):
         assert isinstance(other, type(self))
         assert self.variable.lower() == other.variable.lower() # checks that they have the same variable 
         assert len(self) == len(other)                         # and length
-        new_col = collection(f"sum_{self.key}", self.variable)
+        new_col = Collection(f"sum_{self.key}", self.variable)
         for idx, data1 in enumerate(self.datas):
             for jdx, data2 in enumerate(other.datas):
                 prop1 = getattr(data1,self.variable.lower())
@@ -66,7 +66,7 @@ class collection(object):
                     value = data1.value + data2.value
                     units = data1.units
                     function = "collection.__sub__()"
-                    new_data = data(key, value, units, function)
+                    new_data = Data(key, value, units, function)
                     new_data.add_property(self.variable, prop1, overwrite=True)
                     new_col.add_data(new_data)
         return new_col
@@ -75,7 +75,7 @@ class collection(object):
         assert isinstance(other, type(self))
         assert self.variable.lower() == other.variable.lower() # checks that they have the same variable 
         assert len(self) == len(other)                         # and length
-        new_col = collection(f"delta_{self.key}", self.variable)
+        new_col = Collection(f"delta_{self.key}", self.variable)
         for idx, data1 in enumerate(self.datas):
             for jdx, data2 in enumerate(other.datas):
                 prop1 = getattr(data1,self.variable.lower())
@@ -85,7 +85,7 @@ class collection(object):
                     value = data1.value - data2.value
                     units = data1.units
                     function = "collection.__sub__()"
-                    new_data = data(key, value, units, function)
+                    new_data = Data(key, value, units, function)
                     new_data.add_property(self.variable, prop1, overwrite=True)
                     new_col.add_data(new_data)
         return new_col
@@ -107,7 +107,7 @@ class collection(object):
 ############
 ### DATA ###
 ############
-class data(object):
+class Data(object):
     def __init__(self, key: str, value, units: str, function: str="Unknown", notes=None, debug: str=0):
         self.type          = "data"
         self.key           = key
@@ -183,7 +183,7 @@ class data(object):
 def substract_collections(name: str, col1: object, col2: object, prop=None):
     ## Another substraction function, complementary of the dunder method
     assert col1.variable.lower() == col2.variable.lower()
-    new_col = collection(name, col1.variable)
+    new_col = Collection(name, col1.variable)
     for idx, data1 in enumerate(col1.datas):
         for jdx, data2 in enumerate(col2.datas):
             if prop is not None: 
@@ -194,8 +194,8 @@ def substract_collections(name: str, col1: object, col2: object, prop=None):
                     key = name
                     value = data1.value - data2.value
                     units = data1.units
-                    function = "Scope.Classes_Data.substract_collections()" 
-                    new_data = data(key, value, units, function)
+                    function = "scope.Classes_Data.substract_collections()" 
+                    new_data = Data(key, value, units, function)
                     new_data.add_property(prop, prop1, overwrite=True)
                     new_col.add_data(new_data)
     return new_col                

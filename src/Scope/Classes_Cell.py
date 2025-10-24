@@ -3,15 +3,15 @@
 ##############################
 
 import numpy as np
-from Scope.Connectivity     import *
-from Scope.Geometry         import cellparam_2_cellvec, cellvec_2_cellparam, cart2frac
-from Scope.Elementdata      import ElementData
+from scope.connectivity     import *
+from scope.geometry         import cellparam_2_cellvec, cellvec_2_cellparam, cart2frac
+from scope.elementdata      import ElementData
 elemdatabase = ElementData()
 
 ##############
 #### CELL ####
 ##############
-class cell(object):
+class Cell(object):
     def __init__(self, name: str, labels: list, coord: list, cell_vector: list=None, cell_param: list=None) -> None:
         self.version              = "1.0"
         self.type                 = "cell"
@@ -213,7 +213,7 @@ class cell(object):
             mol_coord       = extract_from_list(b, self.coord, dimension=1)
             mol_frac_coord  = extract_from_list(b, self.frac_coord, dimension=1)
             # Creates Molecule Object
-            newmolec        = molecule(mol_labels, mol_coord, mol_frac_coord)
+            newmolec        = Molecule(mol_labels, mol_coord, mol_frac_coord)
             # For debugging
             newmolec.origin = "cell.get_moleclist"
             # Adds cell as parent of the molecule, with indices b
@@ -296,7 +296,7 @@ class cell(object):
 
     ######
     def reconstruct(self, cov_factor: float=None, metal_factor: float=None, debug: int=0):
-        from .Reconstruct import classify_fragments, fragments_reconstruct
+        from scope.reconstruct import classify_fragments, fragments_reconstruct
 
         if not hasattr(self,"fragmented"): self.check_fragmentation()
         if not self.fragmented:
@@ -343,7 +343,7 @@ class cell(object):
             if debug > 0: print(f"CELL.RECONSTRUCT: Creating and preparing molecules")
             for idx, mol in enumerate(reconstructed_molecules):
                 if debug > 0: print(f"CELL.RECONSTRUCT: Doing molecule {idx} with {mol.formula=}")
-                newmolec = molecule(mol.labels, mol.coord)
+                newmolec = Molecule(mol.labels, mol.coord)
                 newmolec.origin = "cell.reconstruct"
                 newmolec.set_factors(cov_factor, metal_factor)
                 newmolec.set_atoms(create_adjacencies=True, debug=debug)
@@ -358,7 +358,7 @@ class cell(object):
     ### Functions to Interact with States ###
     #########################################
     def add_state(self, name: object, debug: int=0):
-        from Scope.Classes_State import state
+        from scope.classes_state import State
         if not hasattr(self,"states"): setattr(self,"states",list([]))
         exists, new_state = self.find_state(name)
         if exists:  
@@ -366,13 +366,13 @@ class cell(object):
             return new_state
         else:
             if debug > 0: print("CELL.ADD_STATE. Creating new state, returning it")
-            new_state = state(self, name, debug=debug)
+            new_state = State(self, name, debug=debug)
             self.states.append(new_state)
         return new_state
 
     ######
     def find_state(self, search_name: str, debug: int=0):
-        from Scope.Classes_State import state
+        from scope.classes_state import State
         if not hasattr(self,"states"): return False, None
         if debug > 0: print(f"CELL.FIND_STATE: Searching {search_name} in Cell object with {len(self.states)} states")
         for sta in self.states:
@@ -388,7 +388,7 @@ class cell(object):
     ################################
     def view(self, size: str='default'):
         """
-        Visualizes the 3D structure of the cell using Plotly.
+        Visualizes the 3D structure of the Cell using Plotly.
 
         Parameters
         ----------
@@ -411,8 +411,8 @@ class cell(object):
         """
 
         import plotly.graph_objects as go
-        from Scope.Read_Write import set_scene
-        from Scope.Elementdata import ElementData  
+        from scope.read_write import set_scene
+        from scope.elementdata import ElementData  
         elemdatabase = ElementData()
 
         size_map = {'default': (600, 600, 8, 9), 'small': (400, 400, 6, 7), 
@@ -474,7 +474,7 @@ class cell(object):
 ####    IMPORT    ####
 ######################
 def import_cell(old_cell: object, debug: int=0) -> object:
-    from .Classes_Specie  import import_molecule
+    from scope.classes_specie  import import_molecule
     assert hasattr(old_cell,"labels") 
     assert hasattr(old_cell,"coord")   or hasattr(old_cell,"pos")
     assert hasattr(old_cell,"refcode") or hasattr(old_cell,"name")
@@ -499,7 +499,7 @@ def import_cell(old_cell: object, debug: int=0) -> object:
     else:                                 cell_param  = None
 
     # If cell_param and cell_vector are None, the creation of the cell will fail
-    new_cell            = cell(name, labels, coord, cell_vector, cell_param)
+    new_cell            = Cell(name, labels, coord, cell_vector, cell_param)
     new_cell.subtype    = "cell"
     new_cell.origin     = "import_cell"
     if debug > 0: print(f"IMPORT CELL: importing cell {new_cell}")

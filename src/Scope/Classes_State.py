@@ -1,14 +1,14 @@
 import numpy as np
-from Scope.Connectivity      import *
-from Scope.Classes_Data      import collection, data
-from Scope.Classes_Specie    import *
-from Scope.Elementdata       import ElementData
+from scope.connectivity      import *
+from scope.classes_data      import Collection, Data
+from scope.classes_specie    import *
+from scope.elementdata       import ElementData
 elemdatabase = ElementData()
 
 ##############
 ### STATES ###
 ##############
-class state(object):
+class State(object):
     """
     State class for representing a physical or chemical state associated with a source (cell or specie).
     This class provides methods for managing geometries, molecules, computations, vibrational normal modes (VNMs) and thermodynamic data
@@ -60,7 +60,7 @@ class state(object):
     set_Helec()                         Set electronic energy per complex.
     get_thermal_data()                  Compute and store thermodynamic data (Helec, Selec, Hvib, Svib, Gtot).
 
-    - The class is tightly integrated with other classes in Scope (e.g., Classes_Scecie).
+    - The class is tightly integrated with other classes in scope (e.g., Classes_Scecie).
     """
     def __init__(self, _source: object, name: str, debug: int=0):
         self.type         = "state"
@@ -144,7 +144,7 @@ class state(object):
 #### Operations with Molecules ####
 ###################################
     def get_moleclist(self, overwrite: bool=False, debug: int=0):
-        from Scope.Classes_Specie import molecule
+        from scope.classes_specie import Molecule
 
         # Overwrite
         if not overwrite and hasattr(self,"moleclist"): 
@@ -171,7 +171,7 @@ class state(object):
             if hasattr(self,"frac_coord"): mol_frac_coord  = extract_from_list(b, self.frac_coord, dimension=1)
             else:                          mol_frac_coord  = None
             # Creates Molecule Object
-            newmolec    = molecule(mol_labels, mol_coord, mol_frac_coord)
+            newmolec    = Molecule(mol_labels, mol_coord, mol_frac_coord)
             # For debugging
             newmolec.origin = "state.get_moleclist"
             # Adds State as parent of the molecule, with indices b
@@ -228,11 +228,11 @@ class state(object):
 #### Reconstruction ####
 ########################
     def reconstruct(self, debug: int=0):
-        from Scope.Reconstruct import classify_fragments, fragments_reconstruct 
+        from scope.reconstruct import classify_fragments, fragments_reconstruct 
         if not self._source.type == "cell":          raise ValueError(f"STATE_RECONSTRUCT: state's source should by a CELL object") 
         if not hasattr(self,"cell_vector"):          raise ValueError(f"STATE_RECONSTRUCT: state should have a cell vector") 
         if not hasattr(self._source,"refmoleclist"): raise ValueError(f"STATE.RECONSTRUCT: state's source does not have a list of reference molecules"); return None
-        from Scope.Read_Write import HiddenPrints
+        from scope.read_write import HiddenPrints
         if debug > 0: print("STATE.RECONSTRUCT: reconstructing cell of state", self.name)
         with HiddenPrints():
             finished = False
@@ -383,8 +383,8 @@ class state(object):
         - The sampling parameters (temperature, number of rounds, samples per round) depend on the `typ` argument.
         - Requires that the state is a minimum and that VNMs have eigenvectors parsed.
         """
-        from Scope.VNM_tools import geom_sampling_from_vnm, euclidean_q_distance, custom_q_distance, beta_distance
-        from Scope.Other import furthest_point_sampling
+        from scope.vnm_tools import geom_sampling_from_vnm, euclidean_q_distance, custom_q_distance, beta_distance
+        from scope.other import furthest_point_sampling
         #if   typ.lower() == 'light':    temp=100; n_rounds=2; n_samples_round=100
         #elif typ.lower() == 'default':  temp=200; n_rounds=5; n_samples_round=300
         #elif typ.lower() == 'heavy':    temp=300; n_rounds=8; n_samples_round=500
@@ -450,18 +450,18 @@ class state(object):
             self.results[result.key] = result
 
     def set_energy(self, energy, units, overwrite: bool=True):
-        self.add_result(data("energy",energy,units,"state.set_energy()"), overwrite=overwrite)
+        self.add_result(Data("energy",energy,units,"state.set_energy()"), overwrite=overwrite)
 
     def set_Helec(self, overwrite: bool=True, debug: int=0):
         assert "energy" in self.results
         if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
-        self.add_result(data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.set_Helec()"), overwrite=overwrite)
+        self.add_result(Data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.set_Helec()"), overwrite=overwrite)
 
 ################################
 #### Get Thermodynamic Data ####
 ################################
     def get_thermal_data(self, Trange: range=range(10,501,1), Helec=None, Selec=None, Hvib=None, Svib=None, Gtot=None, overwrite: bool=False, debug: int=0):
-        from Scope.Thermal_Corrections import get_Selec, get_Hvib, get_Svib, get_Gibbs
+        from scope.thermal_corrections import get_Selec, get_Hvib, get_Svib, get_Gibbs
 
         if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
         if debug > 0: print(f"STATE.GET_THERMAL_DATA: found {self.ncomplex} complex molecules")
@@ -472,11 +472,11 @@ class state(object):
         ############## Helec ##############
         if Helec is None:   ### One can provide specific values for Helec, Selec, Hvib, Svib and Gtot 
             if overwrite or not "Helec" in self.results.keys():
-                self.add_result(data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.get_thermal_data()"), overwrite=overwrite)
+                self.add_result(Data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.get_thermal_data()"), overwrite=overwrite)
         else: 
             if isinstance(Helec, data):
                 if overwrite or not "Helec" in self.results.keys():
-                    self.add_result(data("Helec",Helec.value,Helec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
+                    self.add_result(Data("Helec",Helec.value,Helec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
             else:
                 print("Get_Thermal_Data: wrong type of data provided when enforcing Helec. It must be a DATA-class object")
         if debug > 0: print(f"Helec is {self.results['Helec']}")
@@ -488,7 +488,7 @@ class state(object):
         else: 
             if isinstance(Selec, data):
                 if overwrite or not "Selec" in self.results.keys():
-                    self.add_result(data("Selec",Selec.value,Selec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
+                    self.add_result(Data("Selec",Selec.value,Selec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
             else:
                 print("Get_Thermal_Data: wrong type of data provided when enforcing Selec. It must be a DATA-class object")
         if debug > 0: print(f"Selec is {self.results['Selec']}")
@@ -496,7 +496,7 @@ class state(object):
         ############## Hvib ##############
         if Hvib is None:
             if overwrite or not "Hvib" in self.results.keys():
-                Hvib = collection("Hvib", "Temperature")
+                Hvib = Collection("Hvib", "Temperature")
                 for temp in Trange:
                     Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.ncomplex))
                 self.add_result(Hvib, overwrite=overwrite)
@@ -511,7 +511,7 @@ class state(object):
         ############## Svib ##############
         if Svib is None:
             if overwrite or not "Svib" in self.results.keys():
-                Svib = collection("Svib", "Temperature")
+                Svib = Collection("Svib", "Temperature")
                 for temp in Trange:
                     Svib.add_data(get_Svib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.ncomplex))
                 self.add_result(Svib, overwrite=overwrite)
@@ -526,7 +526,7 @@ class state(object):
         ############## Gtot ##############
         if Gtot is None:
             if overwrite or not "Gtot" in self.results.keys():
-                Gtot = collection("Gtot", "Temperature")
+                Gtot = Collection("Gtot", "Temperature")
                 for temp in Trange:
                     # Retrieve data (not value)
                     Helec = self.results["Helec"]

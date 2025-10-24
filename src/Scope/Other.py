@@ -393,7 +393,7 @@ def range2list(rang: range):
     return lst
 
 def get_metal_idxs(labels: list, debug: int=0):
-    from Scope.Elementdata import ElementData
+    from scope.elementdata import ElementData
     elemdatabase = ElementData()
     metal_indices = []
     for idx, l in enumerate(labels):
@@ -401,7 +401,7 @@ def get_metal_idxs(labels: list, debug: int=0):
     return metal_indices
 
 def get_metal_species(labels: list):
-    from Scope.Elementdata import ElementData
+    from scope.elementdata import ElementData
     elemdatabase = ElementData()
     metal_species = []
     elems = list(set(labels))
@@ -495,7 +495,7 @@ def gram_schmidt(A,norm=True,row_vect=False):
 
 ####
 def furthest_point_sampling(data, k, dist_func):
-    from Scope.VNM_tools import pairwise_distance_matrix
+    from scope.vnm_tools import pairwise_distance_matrix
     """
     Selects `k` furthest points from `data` using a custom distance function.
 

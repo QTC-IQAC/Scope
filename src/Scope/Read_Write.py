@@ -4,7 +4,6 @@ import pickle
 import shutil
 from ast import literal_eval
 
-
 ############
 ## Hidden ##
 ############
@@ -241,7 +240,7 @@ def prepare_specie_figure(specie, bond_thr):
     import numpy as np
     import plotly.graph_objects as go
     from scipy.spatial.distance import cdist
-    from Scope.Elementdata import ElementData  
+    from scope.elementdata import ElementData  
     elemdatabase = ElementData()
 
     fig             = go.Figure()

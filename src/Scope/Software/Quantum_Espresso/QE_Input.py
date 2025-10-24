@@ -1,14 +1,14 @@
 #!/usr/bin/env python3
 import os
-from Scope.Classes_State       import find_state
-from Scope.Classes_Environment import set_user
-from Scope.Other               import get_metal_idxs, get_metal_species, where_in_array
-from Scope.Elementdata         import ElementData 
-from Scope.Software.Quantum_Espresso.QE_Functions import get_pp, get_QE_data
+from scope.classes_State       import find_state
+from scope.classes_Environment import set_user
+from scope.other               import get_metal_idxs, get_metal_species, where_in_array
+from scope.elementdata         import ElementData 
+from scope.software.quantum_espresso.qe_functions import get_pp, get_qe_data
 elemdatabase = ElementData()
 
 #######################
-def gen_QE_input(comp: object, debug: int=0):
+def gen_qe_input(comp: object, debug: int=0):
 
     ######################
     ### INITIAL CHECKS ###
@@ -28,8 +28,8 @@ def gen_QE_input(comp: object, debug: int=0):
 
     ## 3-Determines the PP_Library path
     if not hasattr(comp.qc_data,"pp_library"): f"PP_Library could not be found. Please set it in the qc_data.section of the Job"
-    import Scope ## Trick to retrieve the relative path
-    PP_path = os.path.abspath(Scope.__file__).replace("__init__.py","Software/Quantum_Espresso/PP_Libraries/")
+    import scope ## Trick to retrieve the relative path
+    PP_path = os.path.abspath(scope.__file__).replace("__init__.py","software/quantum_espresso/PP_Libraries/")
     if   comp.qc_data.pp_library.lower() == "efficiency":  PP_path += "Efficiency/"
     elif comp.qc_data.pp_library.lower() == "precision":   PP_path += "Precision/"
     elif comp.qc_data.pp_library.lower() == "vanderbilt":  PP_path += "Vanderbilt_USPP/"
@@ -212,7 +212,7 @@ def gen_QE_input(comp: object, debug: int=0):
                 if spec[1] != 0: print(f"U {spec[0]}-3d {comp.qc_data.uterm}", file=inp)
 
 ###################################################
-def gen_QE_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", version: float=7.0): 
+def gen_qe_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", version: float=7.0): 
     version = str(version)
     with open(comp.sub_path, 'w+') as sub:
         print(f"#!/bin/bash", file=sub)

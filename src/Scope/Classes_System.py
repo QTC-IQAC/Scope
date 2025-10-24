@@ -2,10 +2,10 @@
 ##### Contains the SYSTEM Class #####
 #####################################
 import os
-from Scope.Read_Write import save_binary
-from Scope.Classes_Workflow import branch
+from scope.read_write import save_binary
+from scope.classes_workflow import Branch
 
-class system(object):
+class System(object):
     def __init__(self, name: str) -> None:
         self.version              = "1.0"
         self.type                 = "system"
@@ -106,7 +106,7 @@ class system(object):
 
     ######
     def set_paths(self, create_folders: bool=True, debug: int=0) -> None: 
-        from Scope.Read_Write import complete_path
+        from scope.read_write import complete_path
         """
         Modifies the paths associated with the system, as well as the branches, workflows, jobs, and computation files of a system
         Args:
@@ -210,7 +210,7 @@ class system(object):
     ### Functions to Interact with Computational Workflow ###
     #########################################################
     def add_branch(self, name: str, debug: int=0):
-        new_branch = branch(self.calcs_path+name, name, self, debug=debug)
+        new_branch = Branch(self.calcs_path+name, name, self, debug=debug)
         if not os.path.isdir(self.calcs_path+name): 
             if debug > 0: print(f"SYSTEM.ADD_BRANCH: creating branch in {self.calcs_path}{name}")
             os.makedirs(self.calcs_path+name, exist_ok=True)
@@ -280,13 +280,13 @@ class system(object):
     ############################################
     def load_single_xyz(self, filepath: str, overwrite: bool=False, debug: int=0):
         ## xyz files can only be of species, not unit cells. Unit Cells require the unit cell vectors or parameters
-        from Scope.Classes_Specie import specie
-        from Scope.Read_Write import read_xyz
+        from scope.classes_specie import Specie
+        from scope.read_write import read_xyz
         dir  = os.path.dirname(filepath)
         file = os.path.basename(filepath)
         name = file.split('.')[0]
         labels, coord = read_xyz(filepath)
-        new_specie = specie(labels, coord)
+        new_specie = Specie(labels, coord)
         ## Creates the Initial State
         ini_state = new_specie.add_state("initial")
         ini_state.set_geometry(new_specie.labels, new_specie.coord)

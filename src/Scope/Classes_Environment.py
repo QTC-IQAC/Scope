@@ -5,8 +5,8 @@ import subprocess
 import numpy as np
 import glob
 import readline
-from Scope.Classes_Queue import queue 
-from Scope.Read_Write    import read_user_input
+from scope.classes_queue import Queue 
+from scope.read_write    import read_user_input
 
 def set_user():
     return pwd.getpwuid( os.getuid() ).pw_name
@@ -18,7 +18,7 @@ def set_group():
 ###############
 ### CLUSTER ###
 ###############
-class environment(object):
+class Environment(object):
     """
     The `environment` class controls the computational environment of SCOPE, for job submission and resource allocation.
     It should be ready to work in SGE and Slurm, although extensive testing encompassing different version has not been done.
@@ -50,7 +50,7 @@ class environment(object):
         -----------------
         set_software():                 Sets software modules for Gaussian16 and Quantum Espresso.
         set_storage_path():             Sets the storage path with tab completion.
-        set_scope_program():            Sets the main Scope program path with tab completion.
+        set_scope_program():            Sets the main scope program path with tab completion.
         set_paths():                    Sets paths for sources, calculations, and systems.
         check_paths():                  Checks if specified paths exist.
         -----------------
@@ -190,7 +190,7 @@ class environment(object):
               except for internal attributes and queue-related keys.
             - Queue selections are handled separately via 'read_user_queue_list'.
         """
-        from .Classes_Input import set_environment_data
+        from scope.classes_input import set_environment_data
         if not hasattr(self,"available_queues"): print("ENV.READ_JOB_SPECS: please run 'user_queue_preferences' first in the environment class"); return None
         local_env = set_environment_data(file_path, debug=debug)
         if debug > 0: print("ENV.READ_JOB_SPECS: reading data:", local_env)
@@ -274,7 +274,7 @@ class environment(object):
         if not found: print(f"ENV.SELECT_QUEUE: queue {queue_name} not found")
 
     def save(self, filepath=None):
-        from .Read_Write import save_binary
+        from scope.read_write import save_binary
         if      filepath is None and hasattr(self,"filepath"):          pass
         elif    filepath is not None and hasattr(self,"filepath"):      self.filepath = filepath
         elif    filepath is not None and not hasattr(self,"filepath"):  self.filepath = filepath
@@ -286,7 +286,7 @@ class environment(object):
 #######################################
     def save_config(self, filepath=None):
         from platformdirs import user_config_dir
-        from Scope.Read_Write import save_json
+        from scope.read_write import save_json
 
         if      filepath is None and hasattr(self,"filepath"):          pass
         elif    filepath is not None and hasattr(self,"filepath"):      self.filepath = filepath
@@ -301,7 +301,7 @@ class environment(object):
         return self.config_path
 
     def load_config(self):
-        from .Read_Write import load_json
+        from scope.read_write import load_json
         config_dict = load_json(self.config_path)
         return config_dict
 
@@ -672,7 +672,7 @@ class environment(object):
 ###  Paths  ###
 ###############
     def set_storage_path(self, debug: int=0):
-        from Scope.Read_Write import complete_path
+        from scope.read_write import complete_path
         # Configure readline to use tab completion
         readline.set_completer_delims(' \t\n;')
         readline.parse_and_bind("tab: complete")
@@ -688,16 +688,16 @@ class environment(object):
     #    return self.storage_path
 
     def set_scope_program(self, debug: int=0):
-        from Scope.Read_Write import complete_path
+        from scope.read_write import complete_path
         readline.set_completer_delims(' \t\n;')
         readline.parse_and_bind("tab: complete")
         readline.set_completer(complete_path)
-        self.scope_program = os.path.abspath(str(input("\tPlease Specify Main Scope Folder (with autocomplete):")))
+        self.scope_program = os.path.abspath(str(input("\tPlease Specify Main scope Folder (with autocomplete):")))
         if self.scope_program[-1] != '/': self.scope_program += '/'
         return self.scope_program
 
     def set_paths(self, create_folders: bool=True, debug: int=0):
-        from Scope.Read_Write import complete_path
+        from scope.read_write import complete_path
         print("\t--------------------------------------------------------------------------------------------------------------")
         print("\tSCOPE connects a list of sources (molecules/cells), with their computations, and analyses")
         print("\tThe data is stored in system files. Please define the GENERAL paths where these 3 elements will be stored.")

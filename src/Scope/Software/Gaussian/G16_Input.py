@@ -5,14 +5,14 @@ import numpy as np
 import pickle
 from collections import Counter
 
-from Scope.Other               import get_metal_idxs
-from Scope.Classes_State       import find_state
-from Scope.Classes_Environment import set_user
-from Scope.Elementdata         import ElementData
+from scope.other               import get_metal_idxs
+from scope.classes_State       import find_state
+from scope.classes_Environment import set_user
+from scope.elementdata         import ElementData
 elemdatabase = ElementData()
 
 #######################
-def gen_G16_input(comp, debug: int=0):
+def gen_g16_input(comp, debug: int=0):
     ## 1-Change some variable names to simplify calls
     source     = comp.source
     jobtype    = comp.qc_data.jobtype
@@ -86,7 +86,7 @@ def gen_G16_input(comp, debug: int=0):
         print("", file=inp) 
 
 ###################################################
-def gen_G16_subfile(comp: object, queue: object, module: str, procs: int=1, savechk: bool=False):
+def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, savechk: bool=False):
    
     if    procs*float(1.5) >= float(8): mem=int(procs*1.5)   ## Estimates the available memory as 1.5 GB per CPU
     else:                               mem=int(4)           ## With a minimum of 4GB

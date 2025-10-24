@@ -1,8 +1,8 @@
-import Scope.Constants 
-from   Scope.Parse_General import search_string, read_lines_file
-from   Scope.Software.Gaussian.G16_Parse import * 
+import scope.constants 
+from   scope.parse_general import search_string, read_lines_file
+from   scope.software.gaussian.g16_parse import * 
 
-class g16_output(object):
+class G16_output(object):
     def __init__(self, lines: list, computation: object=None):
         self._computation     = computation
         self.lines            = lines
