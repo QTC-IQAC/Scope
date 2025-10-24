@@ -122,7 +122,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
                 job_data.workflow = [sou.name for sou in sys.sources]
                 print(f"RUN_JOB, step 1.5: job_data.workflow contained 'all'. It was adapted to {job_data.workflow}")
         elif isinstance(job_data.workflow, list):
-            if len(job_data.workflow) == 1 and 'all' in [x.lower() for x in job.data.workflow]:
+            if len(job_data.workflow) == 1 and 'all' in [x.lower() for x in job_data.workflow]:
                 if debug > 0: 
                     for sou in sys.sources:
                         print("RUN_JOB, step 1.5", sou.name)
