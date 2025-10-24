@@ -317,6 +317,7 @@ def prepare_specie_figure(specie, bond_thr):
 #### Autocompleter ####
 #######################
 def complete_path(text, state):
+    import glob
     """Autocomplete for filesystem paths"""
     matches = glob.glob(text + '*')  # expand matching files/dirs
     if state < len(matches):

@@ -696,7 +696,7 @@ class environment(object):
         if self.scope_program[-1] != '/': self.scope_program += '/'
         return self.scope_program
 
-    def set_paths(self, debug: int=0):
+    def set_paths(self, create_folders: bool=True, debug: int=0):
         from Scope.Read_Write import complete_path
         print("\t--------------------------------------------------------------------------------------------------------------")
         print("\tSCOPE connects a list of sources (molecules/cells), with their computations, and analyses")
@@ -704,7 +704,7 @@ class environment(object):
         print("\t")
         print("\t                          SOURCE <--> COMPUTATION <--> SYSTEM")
         print("\t")
-        print("\tNotice that each system will have its own subfolder inside those paths.")
+        print("\t !! Notice that each SYSTEM will have its own subfolder inside those paths. !!")
         print("\t--------------------------------------------------------------------------------------------------------------")
 
         readline.set_completer_delims(' \t\n;')
@@ -716,6 +716,12 @@ class environment(object):
         if self.sources_path[-1]    != '/': self.sources_path  += '/'
         if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
         if self.sys_path[-1]        != '/': self.sys_path      += '/'
+
+        ## Create Folders if necessary:
+        if create_folders and debug > 0: print("\tFolders will be created if necessary")
+        if not os.path.isdir(self.sources_path) and create_folders: os.makedirs(self.sources_path, exist_ok=True)
+        if not os.path.isdir(self.calcs_path)   and create_folders: os.makedirs(self.calcs_path, exist_ok=True)
+        if not os.path.isdir(self.sys_path)     and create_folders: os.makedirs(self.sys_path, exist_ok=True)
 
         print("\t--------------------------------------------------------------------------------------------------------------")
         print("\tAdditionally, you can specify: (1) a storage (scratch or data) folder --> Run environment.set_storage_path()")
