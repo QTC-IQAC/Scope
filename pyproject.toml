@@ -15,7 +15,7 @@ dependencies = [
 [project.optional-dependencies]
 jupyter   = ["ipykernel", "plotly", "nbformat"]
 tutorials = ["jupyter","matplotlib"]
-dev       = ["pytest","nbval","pytest-cov","pre-commit"]
+dev       = ["jupyter","pytest","nbval","pytest-cov","pre-commit"]
 
 # Where your CLI entry point lives
 [project.scripts]
