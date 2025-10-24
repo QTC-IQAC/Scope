@@ -54,18 +54,18 @@ class atom(object):
         if not isinstance(other, type(self)): return False
         if debug > 0:
             print("Comparing Atoms")
-            print(at1)
-            print(at2)
+            print(self)
+            print(other)
         # Compares Species, Coordinates, Charge and Spin
-        if (at1.label != at2.label): return False
-        if hasattr(at1,"charge") and hasattr(at2,"charge"):
-            if (at1.charge != at2.charge): return False
-        if hasattr(at1,"spin") and hasattr(at2,"spin"):
-            if (at1.spin != at2.spin): return False
+        if (self.label != other.label): return False
+        if hasattr(self,"charge") and hasattr(other,"charge"):
+            if (self.charge != other.charge): return False
+        if hasattr(self,"spin") and hasattr(other,"spin"):
+            if (self.spin != other.spin): return False
         if check_coordinates:
-            if (at1.coord[0] != at2.coord[0]): return False
-            if (at1.coord[1] != at2.coord[1]): return False
-            if (at1.coord[2] != at2.coord[2]): return False
+            if (self.coord[0] != other.coord[0]): return False
+            if (self.coord[1] != other.coord[1]): return False
+            if (self.coord[2] != other.coord[2]): return False
         return True
 
     def get_decorated_label(self, typ: str="spin"):
