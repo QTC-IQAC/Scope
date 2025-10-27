@@ -469,19 +469,19 @@ class Metal(Atom):
     ##########################
     ## Geometric Parameters ##
     ##########################
-    def get_cshm(self, ref_shape: str='OC-6', overwrite: bool=False, debug: int=0):
+    def get_Cshm(self, ref_shape: str='OC-6', overwrite: bool=False, debug: int=0):
         try:
             import cosymlib as cml
         except ImportError: 
-            raise ImportError("This function requires cosymlib, Cosymlib is currently not installed. Please install it manually if you need this functionality.")
-        from scope.cshm import get_CShM_ref
+            raise ImportError("This function requires cosymlib, which is currently not installed. It was removed from the dependencies of scope as it restrained the versions of other software. Please install it manually if you need this functionality.")
+        from scope.cshm import get_cshm_ref
 
         # Prepares coordiantes of the coordination sphere
         if hasattr(self, "cshm") and not overwrite: return self.cshm
         coord_sphere_coords = [self.coord]
         coord_sphere_coords += [at.coord for at in self.get_coord_sphere()]
         # Gets Coordinates of the reference shape
-        ref_coords = get_CShM_ref(ref_shape)
+        ref_coords = get_cshm_ref(ref_shape)
 
         class CustomShape(cml.shape.Shape):
             def get_positions(self):

@@ -6,8 +6,8 @@ import pickle
 from collections import Counter
 
 from scope.other               import get_metal_idxs
-from scope.classes_State       import find_state
-from scope.classes_Environment import set_user
+from scope.classes_state       import find_state
+from scope.classes_environment import set_user
 from scope.elementdata         import ElementData
 elemdatabase = ElementData()
 

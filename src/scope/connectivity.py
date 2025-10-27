@@ -185,10 +185,7 @@ def get_adjmatrix(labels: list, pos: list, cov_factor: float=1.3, metal_factor: 
             continue
         break
     if debug and adjust_factor:
-        if cov_factor >= max_factor:
-            print(f"GET_ADJMATRIX: Reached max_factor={max_factor} but some atoms remain isolated.")
-        else:
-            print(f"GET_ADJMATRIX: Final cov_factor = {cov_factor:.2f}")
+        if cov_factor >= max_factor: print(f"GET_ADJMATRIX: Reached max_factor={max_factor} but some atoms remain isolated.")
     return isgood, adjmat, adjnum.astype(int)
 
 ######

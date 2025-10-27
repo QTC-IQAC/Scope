@@ -1,8 +1,8 @@
 import os
 from argparse import ArgumentParser
-from Scope.Classes_Environment import environment
-from Scope.Read_Write import load_binary, clear_screen
-from Scope.Utils.Run_Job import run_job
+from scope.classes_environment import Environment
+from scope.read_write import load_binary, clear_screen
+from scope.utils.run_job import run_job
 
 def path_exists(path):
     if not os.path.exists(path):

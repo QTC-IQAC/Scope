@@ -5,12 +5,11 @@ import os
 from copy import deepcopy
 
 from scope.classes_cell         import *
-from scope.classes_cif          import *
-from scope.classes_state        import *
+from scope.classes_cif          import Cif
+from scope.classes_state        import State
 from scope.classes_specie       import *
 from scope.classes_system       import System
 from scope.read_write           import load_binary, print_xyz
-
 from scope.spin_crossover.sco_structure import *
 
 ########################################
@@ -63,30 +62,20 @@ class SCO_system(System):
         # A first loop over the list of files, to ensure that all necessary data is there
         for fil in sorted(os.listdir(folder)):
             if fil.endswith(".gmol") and fil.startswith("Cell"):
-                #try: 
-                if debug > 0: print("Trying to load cell2mol CELL file from", folder+fil)
+                if debug > 0: print("IMPORT_cell2mol_FOLDER: Trying to load cell2mol CELL file from", folder+fil)
                 new_cell        = import_cell(load_binary(folder+fil))        ## Imports to the generic Cell class
                 if new_cell is None: continue
                 new_cell        = convert_to_sco_cell(new_cell)               ## Converts to the SCO adapted Cell class
                 if new_cell is None: continue
                 cell_loaded     = True
                 cell_path       = folder+fil
-                if debug > 0: print("File loaded successfully")
-                #except Exception as exc: 
-                    #if debug > 0: print("Cell could not be loaded from", folder+fil)
-                    #if debug > 0: print(exc)
-                    #else: pass
+                if debug > 0: print("IMPORT_cell2mol_FOLDER: File loaded successfully")
             elif fil.endswith(".cif"):
-                #try:
-                if debug > 0: print("Trying to load CIF file from", folder+fil)
+                if debug > 0: print("IMPORT_cell2mol_FOLDER: Trying to load CIF file from", folder+fil)
                 new_cif         = Cif(fil, folder+fil)
                 cif_loaded      = True
-                if debug > 0: print("File loaded successfully")
-                #except Exception as exc: 
-                    #if debug > 0: print("Cif file could not be loaded from", folder+fil)
-                    #if debug > 0: print(exc)
-                    #else: pass
-        if debug > 0: print(f"IMPORT_cell2mol_FOLDER. Path: {folder}, {cell_loaded=} {cif_loaded=}")
+                if debug > 0: print("IMPORT_cell2mol_FOLDER: File loaded successfully")
+        if debug > 0: print(f"IMPORT_cell2mol_FOLDER: Path={folder}, {cell_loaded=} {cif_loaded=}")
 
         ## In SCO projects reading from cell2mol, I set that both the Cell and the cif have to be there.
         ## If the information could be properly retrieved, then it keeps the cell

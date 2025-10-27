@@ -108,7 +108,7 @@ class Input_data(object):
         return to_print
 
     def __eq__(self, other):
-        if not isinstance(other, input_data): return False
+        if not isinstance(other, Input_data): return False
         else: 
             same = True
             for d in dir(self): 

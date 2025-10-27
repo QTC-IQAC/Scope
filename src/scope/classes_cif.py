@@ -1,7 +1,8 @@
 #################################
 ####  Contains the Cif Class ####
 #################################
-from scope.parse_cif import get_cif_diffraction_data, get_cif_authors, get_cif_journal 
+import sys
+from scope.parse_general import search_string, read_lines_file 
 
 ###########
 ### CIF ###
@@ -13,7 +14,6 @@ class Cif(object):
         self.origin            = "created"
         self.name              = name
         self.path              = path
-        self.read_bibliographic_data()
 
     ######
     def __repr__(self) -> None:
@@ -42,33 +42,82 @@ class Cif(object):
         if filepath is None: filepath = self.path
         save_binary(self, filepath)
 
-    ##############################
-    #### Bibliography options ####
-    ##############################
-    def read_bibliographic_data(self) -> None:
-        self.diff_temp           = get_cif_diffraction_data(self.path) 
-        self.authors             = get_cif_authors(self.path)
-        year, name, volume, page = get_cif_journal(self.path)
-        self.journal_year        = year 
-        self.journal_name        = name 
-        self.journal_volume      = volume 
-        self.journal_page        = page 
+#############################
+## Functions to Parse Cifs ##
+#############################
+def get_cif_diffraction_data(cifpath: str):
+    diff_temp = " "
+    lines = read_lines_file(cifpath)
+    diff_temp_line, found       = search_string("_diffrn_ambient_temperature", lines, typ='first')
+    if found: 
+        diff_temp = lines[diff_temp_line].split(" ")[1].rstrip()
+    else: print("Couldn't find diffraction temperature in cif:", fil)
+    return diff_temp
 
-    def get_search(self, verbose: bool=False, download: bool=True, debug: int=0):
-        self.search = get_search(self, verbose=verbose, download=download, debug=debug) 
-        return self.search
+def get_cif_authors(cifpath: str):
+    lines = read_lines_file(cifpath)
+    authors = " "
+    authors_start, found1       = search_string("_publ_author_name", lines, typ='first')
+    authors_end, found2         = search_string("_chemical_name_systematic", lines, typ='first')
+    authors = []
+    if found1 and found2:
+        for i in range(authors_start+1, authors_end):
+            aut = lines[i].rstrip().strip('"')
+            authors.append(aut)
+    else: print("Couldn't find authors in cif:", fil)
+    return authors
+ 
+def get_cif_journal(cifpath: str):
+    lines = read_lines_file(cifpath)
+    journal_year = journal_name = journal_volume = journal_page = " "
+    journal_year_line, found3   = search_string("_journal_year", lines, typ='first')
+    journal_name_line, found4   = search_string("_journal_name_full", lines, typ='first')
+    journal_volume_line, found5 = search_string("_journal_volume", lines, typ='first')
+    journal_page_line, found6   = search_string("_journal_page_first", lines, typ='first')                        
+    if found3: 
+        try:
+            journal_year = lines[journal_year_line].split(" ")[1].rstrip()
+        except Exception as exc: 
+            print("Exception Reading Journal Year:", exc)
+            print("Line is:", lines[journal_year_line])
+    else: journal_year = '-'
+    if found4:
+        try:
+            journal_name = lines[journal_name_line].split("'")[1].rstrip()
+        except Exception as exc: 
+            print("Exception Reading Journal Name:", exc)
+            print("Line is:", lines[journal_name_line])
+    else: journal_name = '-'
+    if found5: 
+        try:
+            journal_volume = lines[journal_volume_line].split()[1].rstrip()
+        except Exception as exc: 
+            print("Exception Reading Journal Volume:", exc)
+            print("Line is:", lines[journal_volume_line])
+    else: journal_volume = '-'
+    if found6: 
+        try:
+            journal_page = lines[journal_page_line].split()[1].rstrip()
+        except Exception as exc: 
+            print("Exception Reading Journal Page:", exc)
+            print("Line is:", lines[journal_page_line])
+    else: journal_page = '-'
+    return journal_year, journal_name, journal_volume, journal_page
 
-    def get_abstract(self, debug: int=0):
-        if not hasattr(self,"search"): self.get_search(debug=debug)
-        self.abstract = get_abstract(self.search, debug=debug)
-        return self.abstract
+def get_name_from_cif(cifpath: str):
+    lines = read_lines_file(cifpath)
+    journal_common, found   = search_string("_chemical_name_common",lines,type='first')
+    if int(journal_common) != 0: iscommon = True
+    else:                        iscommon = False
+    journal_chemname, found = search_string("_chemical_name_systematic",lines,type='first')
+    if iscommon:
+        chemname_start = int(journal_chemname+2)
+        chemname_end   = int(journal_common-2)
+    else:
+        journal_volume, found = search_string("_cell_volume",lines,type='first')
+        chemname_start = int(journal_chemname+2)
+        chemname_end   = int(journal_common-2)
 
-    def get_title(self, debug: int=0):
-        if not hasattr(self,"search"): self.get_search(debug=debug)
-        self.title = get_title(self.search, debug=debug) 
-        return self.title
-
-    def get_doi(self, debug: int=0):
-        if not hasattr(self,"search"): self.get_search(debug=debug)
-        self.doi = get_doi(self.search, debug=debug) 
-        return self.doi
+def get_volume_from_cif(cifpath: str):
+    lines = read_lines_file(cifpath)
+    journal_chemname, found = search_string("_cell_volume",lines,type='first')

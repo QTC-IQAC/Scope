@@ -1,3 +1,5 @@
+## This file gathers the classes of quantum chemistry concepts like vibrational normal modes (VNM)
+
 import numpy as np
 from scope import constants
 from scope.parse_general import search_string
@@ -11,7 +13,7 @@ class VNM(object):
     def __init__(self, index: int, freq: float, red_mass: float=1.0, force_cnt: float=0.0, IR_int: float=0.0, sym: str='A'):
         self.index        = index 
         self.freq_cm      = freq                     ## In cm-1
-        self.freq         = freq*Constants.cm2har    ## In atomic units 
+        self.freq         = freq*constants.cm2har    ## In atomic units 
         self.red_mass     = red_mass                 ## In AMU     as in Gaussian
         self.force_cnt    = force_cnt                ## In mDyne/A as in Gaussian
         self.IR_int       = IR_int                   ## In KM/Mole as in Gaussian
@@ -87,29 +89,6 @@ class VNM(object):
         else:                        to_print += f' Has Mode               = False\n'
         return to_print
 
-######
-class orbital_set(object):
-    def __init__(self, name: str) -> None:
-        self.name = name
-        self.orbitals = []
-    
-    def get_eigenvalues(self, eigen_search_string: str, lines: list):
-        self.eigen_search_string = eigen_search_string
-        self.eigen_search_line_numbers, self.eigen_search_line_found = search_string(eigen_search_string, lines, typ='all')
-        self.eigen_search_lines = []
-        for l in self.eigen_search_line_numbers:
-            self.eigen_search_lines.append(lines[l])        
-        self.eigenvalues = []
-        
-    def add_orbital(self, orb):
-        self.orbitals.append(orb)
-
-class orbital(object):
-    def __init__(self, index: int, occupation: int, energy: float) -> None:
-        self.name = index
-        self.occupation = occupation
-        self.energy = energy
-
 ####################################################
 ##### Import older versions of VNM Class ###########
 ####################################################
@@ -120,6 +99,9 @@ def import_vnm(old_vnm):
             new_vnm.set_mode(old_vnm.atomidxs, old_vnm.atnums, old_vnm.xs, old_vnm.ys, old_vnm.zs)
     return new_vnm
 
+##############
+## Plotting ##
+##############
 def plot_overlap_vnms_diagonal(vnmsA: object, vnmsB: object):
     import matplotlib.pyplot as plt
     min_len = min(len(vnmsA), len(vnmsB))

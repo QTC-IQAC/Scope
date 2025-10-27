@@ -234,7 +234,7 @@ class Environment(object):
                 dec2 = raw2.decode("utf-8")
                 text2 = dec2.rstrip().split("\n")
                 # Add queue
-                new_queue = queue(name, self)
+                new_queue = Queue(name, self)
                 self.add_mqueue(new_queue) 
 
         ## SLURM ##
@@ -245,7 +245,7 @@ class Environment(object):
             for idx, line in enumerate(text):
                 if idx > 0 and len(line.split()) == 6: 
                     name, avail, time_limit, num_nodes, state, name_nodes = line.split()
-                    new_queue = queue(name, self, avail=avail, time_limit=time_limit, state=state)
+                    new_queue = Queue(name, self, avail=avail, time_limit=time_limit, state=state)
                     self.add_mqueue(new_queue) 
            ## It should be possible to get the queue memory or mem-per-cpu doing: "sinfo -o "%15N %10c %10m  %25f %10G""
         return self.mqueues

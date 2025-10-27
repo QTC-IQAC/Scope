@@ -9,11 +9,9 @@ from scope.classes_data import *
 from scope.classes_state import *
 
 ######################################################################
-# 0) HERE WE GATHER THE RULES TO REGISTER THE DIFFERENT TYPES OF JOBS ##
+# 0) HERE WE GATHER THE RULES TO REGISTER THE DIFFERENT TYPES OF JOBS 
 # 1) in computations.register() we manage the connection between registration and the other parts of the code
-# 2) in Execute_Job, we manage the relationship between the registration and the flow of the "Job", "Recipe" and "Branch"
-
-# NOTE: we could consider merging the computations.register with this (0+1).
+# 2) in Execute_Job, we manage the relationship between the registration, and the computational workflow (Branch, Workflow, Job, Computation)
 ######################################################################
 
 def reg_general(comp: object, debug: int=0):
@@ -109,9 +107,9 @@ def reg_energy(comp: object, debug: int=0):
     if not hasattr(comp,"output"): reg_general(comp)
 
     ### 1-Parses Energy
-    energy = comp.output.get_energy_last_complete_block()       ## last_complete_block requires convergence, not necessary energy. Careful
+    energy      = comp.output.get_energy_last_complete_block()       ## last_complete_block requires convergence, not necessary energy. Careful
     comp.isgood = comp.output.get_scf_finished()
-    if debug > 0: print(f"REG_ENERGY: {isgood=}")          ## Stores isgood, which determines if the computation converged, essentially
+    if debug > 0: print(f"REG_ENERGY: {comp.isgood=}")          ## Stores isgood, which determines if the computation converged, essentially
     if debug > 0: print(f"REG_ENERGY: {energy=} a.u.")          ## Parsing routines already convert energy to a.u.
 
     ## 2-Try to parse Forces if they're available, typically for finite differences

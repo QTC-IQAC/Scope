@@ -1120,7 +1120,7 @@ class Filename(object):
         self.items    = []
     
     def add_item(self, item):    
-        if isinstance(item, filename_item): self.items.append(item)
+        if isinstance(item, Filename_item): self.items.append(item)
 
     def get_name(self, spacer: str='_', prefix: str='', suffix: str=''):
         self.name     = ''

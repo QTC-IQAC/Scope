@@ -83,8 +83,8 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         # Verify that data1 and data2 contain the same items
         set1 = set(data1)
         set2 = set(data2)
-        print("Difference Sets", set1 - set2)
-        print("Difference Sets", set2 - set1)
+        if set1 != set2: print("Difference Sets", set1 - set2)
+        if set1 != set2: print("Difference Sets", set2 - set1)
         if set1 != set2: raise ValueError("OVERLAP_MOLECULES: data1 and data2 do not contain the same items. This happens when the two molecules are not chemically the same")
 
         unique1 = [d for d in np.unique(data1) if Counter(data1)[d] == 1]    ## Data's which appear only once, and thus have no possibility of error
@@ -220,8 +220,8 @@ def compute_topological_distances(adj_matrix: np.ndarray, ref_atom: int) -> dict
 #############
 def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, center_method='centroid', atom_idxs: list=None, debug: int=0):
     assert len(labels1) == len(labels2)
-    #coords1 = np.asarray(coords1)
-    #coords2 = np.asarray(coords2)
+    coords1 = np.asarray(coords1)
+    coords2 = np.asarray(coords2)
     if atom_idxs is not None: atom_idxs = np.sort(np.asarray(atom_idxs))
     if reorder: 
         isgood, new_labels1, new_coords1, new_labels2, new_coords2, _ = overlap_molecules(labels1, coords1, labels2, coords2, center_method=center_method, debug=debug)
