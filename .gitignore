@@ -1,7 +1,6 @@
 .DS_Store
 *.pyc
 VNM_Analysis
-tutorials/*
 
 # Editable install / build artifacts
 *.egg-info/

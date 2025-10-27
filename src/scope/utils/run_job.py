@@ -12,17 +12,15 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
     Runs a SCOPE Task (defined in the job_paths file) on a SCOPE system (in the sys_path). 
     The Configuration of the Computer is read from the GLOBAL_ENVIRONMENT, which must be configured before and given as a binary.
     This function performs the following steps:
-    1. Verifies the existence of the system and job files.
-    2. Reads input data from the job file, including environment, options, job data, and QC_data.
-    3. Updates the global environment with user-specific choices.
-    4. Adjusts options if no queue management is detected.
-    5. Loads the system object from the binary file and updates paths if necessary. Handy if registration and execution of tasks are performed in different computers
-    6. Finds or creates the required branch and workflow in the system.
-    7. Finds or creates the job within the workflow, and checks for input changes.
-    8. Validates job requisites and continues only if they are fulfilled.
-    9. Sets up computations for the job, checks file existence, and handles submission.
-    10. Registers computations, handles errors, and manages continuation or repetitive computations as needed.
-    11. Updates registry information and saves the system binary if changes occurred.
+    - Verifies the existence of the system and job files.
+    - Reads input data from the job file, including environment, options, job data, and QC_data.
+    - Loads the system object from the binary file and updates paths if necessary. Handy if registration and execution of tasks are performed in different computers
+    - Finds or creates the required branch and workflow in the system.
+    - Finds or creates the job, and checks for input changes.
+    - Validates job requisites and continues only if they are fulfilled.
+    - Sets up computations for the job, checks file existence, and handles submission.
+    - Registers computations, handles errors, and manages continuation or repetitive computations as needed.
+    - Updates registry information and saves the system binary if changes occurred.
     ----------
     Parameters
     ----------
@@ -161,8 +159,6 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
             this_job.set_computations_from_setup(qc_data, debug=debug)
             for jdx, comp in enumerate(this_job.computations):
 
-                source = comp.source ## to simplify
-
                 #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
                 if debug > 0: print(f"--------------------------------------------------------------------------")
                 if debug > 0: print(f" {sys.name} -> {this_branch.name} -> {this_workflow.name} -> {this_job.keyword} -> Step: {comp.step} -> Run: {comp.run_number}")
@@ -231,7 +227,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
                             ## 4.3.1 Collects energies from state in this step
                             if hasattr(comp.qc_data,"fstate"): fstate_name = comp.qc_data.fstate
                             else:                              fstate_name = comp._job.fstate
-                            exists, fstate = source.find_state(fstate_name, debug=debug)         ## This one MUST exist
+                            exists, fstate = comp.source.find_state(fstate_name, debug=debug)         ## This one MUST exist
                             assert exists
                             if comp.step > len(this_job.energies): 
                                 this_job.energies = np.append(this_job.energies,int(0))
@@ -270,7 +266,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
         this_branch.register(debug=0)
 
         if updated: 
-            if debug > 0: print(f"Saving System {sys.name}")
+            if debug > 0: print(f"Saving System {sys.name} to {self.sys_file}")
             sys.save()
     return report
 

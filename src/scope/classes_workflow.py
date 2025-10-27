@@ -267,7 +267,8 @@ class Workflow(object):
 class Job(object):
     def __init__(self, job_data: object, _workflow: object):        
         self.type             = "job"
-        self._workflow          = _workflow
+        self._workflow        = _workflow
+        self.source           = _workflow.source
         self.path             = _workflow.path
         self.job_data         = job_data    
         self.computations     = []
@@ -421,9 +422,6 @@ class Job(object):
 ###############################
     def set_computations_from_setup(self, qc_data: object, debug: int=0): 
 
-        ## For Simplicity
-        source = self._workflow.source
-
         #####################
         ## 1- Setup for regular computations: "1 job => 1 computation"
         #####################
@@ -441,7 +439,7 @@ class Job(object):
         elif self.job_setup == "displacement" or self.job_setup == "disp":
             
             if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: setting displacement starting from {self.istate}")
-            exists, initial_state = find_state(source, self.istate)
+            exists, initial_state = find_state(self.source, self.istate)
             if not exists: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' was not found")
 
             if hasattr(initial_state,"VNMs") and hasattr(initial_state,"coord"):
@@ -462,7 +460,6 @@ class Job(object):
                                 if "freq" in comp._job.keyword and comp.isgood and not found:
                                     print(f"SET COMPUTATIONS FROM SETUP: I will try to read the eigenvectors from", idx, comp.out_path)
                                     ### 1-Parsing and storage (this block is similar to register_frequencies)
-                                    source = comp._job._workflow.source
                                     if not hasattr(comp,"output"): reg_general(comp)
                                     VNMs = comp.output.get_vnms(witheigen=True)
                                     if VNMs is not None: 
@@ -473,8 +470,8 @@ class Job(object):
                         ## 1-Displaces Coordinates Following Negative Freqs ###
                         from scope.vnm_tools import displace_neg_freqs 
                         disp_coord = displace_neg_freqs(initial_state.coord, initial_state.VNMs,debug=debug)
-                        exists, displ_state = find_state(source, "displaced")          # Checks if state already exists
-                        if not exists: displ_state = state(source, "displaced")        # If not, creates it
+                        exists, displ_state = find_state(self.source, "displaced")          # Checks if state already exists
+                        if not exists: displ_state = state(self.source, "displaced")        # If not, creates it
                         displ_state.set_geometry(initial_state.labels, disp_coord)   # Creates New State with Displaced Coordinates 
                         if hasattr(initial_state,"cellvec"): 
                             displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
@@ -496,7 +493,7 @@ class Job(object):
         #####################
         elif self.job_setup == "findiff": 
             print(f"SET COMPUTATIONS FROM SETUP: findiff selected")
-            found, initial_state = find_state(source, self.istate)
+            found, initial_state = find_state(self.source, self.istate)
             if not found: print(f"SET COMPUTATIONS FROM SETUP: initial state not found")
             else:
                 if hasattr(initial_state,"coord"):
@@ -507,8 +504,8 @@ class Job(object):
 
                     for idx, geo in enumerate(geoms):
                         assert len(geo) == len(initial_state.labels)
-                        exists, displ_state = find_state(source, names[idx])          # Checks if state already exists
-                        if not exists: displ_state = state(source, names[idx])        # If not, creates it and adds it to source
+                        exists, displ_state = find_state(self.source, names[idx])          # Checks if state already exists
+                        if not exists: displ_state = state(self.source, names[idx])        # If not, creates it and adds it to source
                         displ_state.set_geometry(initial_state.labels, geo)         # Creates New State with Displaced Coordinates 
                         if hasattr(initial_state,"cellvec"): displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
     
@@ -675,11 +672,12 @@ class Job(object):
 ### Other ###
 #############
     def __repr__(self):
+        if not hasattr(self,"source"): self.source = self._workflow.source 
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> >>> JOB                                 \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' Source Type           = {self._workflow.source.type}\n'
-        to_print += f' Source Spin           = {self._workflow.source.spin}\n'
+        to_print += f' Source Type           = {self.source.type}\n'
+        to_print += f' Source Name           = {self.source.name}\n'
         to_print += f' Branch Name           = {self._workflow._branch.name}\n'
         to_print += f' Workflow Name         = {self._workflow.name}\n'
         to_print += f'---------------------------------------------------\n'
@@ -718,7 +716,7 @@ class Computation(object):
         self.is_update        = is_update
         self.run_number       = self.set_run_number() 
         self.states           = []
-        self.source           = _job._workflow.source      ## Just to simplify calling this variable 
+        self.source           = _job.source      ## Just to simplify calling this variable 
 
     #####################
     ### Name of Files ###
@@ -876,13 +874,13 @@ class Computation(object):
         if   self.software == 'g16': 
             from scope.software.gaussian.g16_output import G16_output
             allowed_types = ['specie']
-            assert self._job._workflow.source.type in allowed_types
+            assert self.source.type in allowed_types
             self.output = G16_output(self.output_lines, self)
         ## Quantum Espresso Computations
         elif self.software == 'qe':  
             from scope.software.quantum_espresso.qe_output import QE_output
             allowed_types = ['specie', 'cell']
-            assert self._job._workflow.source.type in allowed_types
+            assert self.source.type in allowed_types
             self.output = QE_output(self.output_lines, self)
         else: print(f"COMPUTATION.CREATE_OUTPUT: Output of {comp.software} computationss is not implemented."); return None
         return self.output 
@@ -910,8 +908,7 @@ class Computation(object):
         if not found: self.states.append(state)
 
     def verify_state(self, name, target: str='opt'):
-        source = self._job._workflow.source
-        found, state = source.find_state(name)
+        found, state = self.source.find_state(name)
         if not found: return False
         #if not found: return None
         if target == 'opt':
@@ -1084,9 +1081,8 @@ class Computation(object):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> >>> >>> COMPUTATION                     \n'
         to_print += f'---------------------------------------------------\n'
-        source = self.source
-        to_print += f' Source Type           = {source.type}\n'
-        to_print += f' Source sub-Type       = {source.subtype}\n'
+        to_print += f' Source Type           = {self.source.type}\n'
+        to_print += f' Source sub-Type       = {self.source.subtype}\n'
         to_print += f' Branch Name           = {self._job._workflow._branch.name}\n'
         to_print += f' Workflow Name         = {self._job._workflow.name}\n'
         to_print += f' Job Keyword           = {self._job.keyword}\n'
@@ -1141,7 +1137,7 @@ class Filename(object):
     def __repr__(self) -> None:
         to_print = ''
         for it in self.items:
-            to_print += f'{str(it.variable)}: {str(it.value)}\n'
+            to_print += f'{str(it.variable)}: {str(it.value)}. Format: {it.format()}\n'
         return to_print
 
 #######################
