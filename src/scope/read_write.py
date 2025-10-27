@@ -78,7 +78,7 @@ def load_json(pathfile):
 
 def load_environment(name: str):
     from platformdirs import user_config_dir
-    #from .Classes_Environment import environment 
+    #from scope.classes_environment import Environment 
     config_dir          = user_config_dir("scope")
     config_path         = os.path.join(config_dir, f"config_{name}.json")
     config_file_path    = load_json(config_path)[f"{name}_env_filepath"]

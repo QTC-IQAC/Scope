@@ -156,7 +156,7 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
 
     # Stores the original adjacency matrix
     if check_adjacencies: 
-        isgood, original_adjmat, original_adjnum = get_adjmatrix(labels, coord, cov_factor=1.3, metal_factor=1.0)
+        isgood, original_adjmat, original_adjnum = get_adjmatrix(labels, coord, cov_factor=1.3, metal_factor=1.0, adjust_factor=True, debug=debug)
         if not isgood: print("Warning: Initial adjacency matrix might have an issue")
 
     # Extract and manage data from input

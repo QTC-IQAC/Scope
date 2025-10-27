@@ -233,8 +233,8 @@ class Cell(object):
     ##################
     ## Connectivity ##
     ##################
-    def get_adjmatrix(self):
-        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord)
+    def get_adjmatrix(self, adjust_factor: bool=False, debug: int=0):
+        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord, adjust_factor=adjust_factor, debug=debug)
         if isgood:
             self.adjmat = adjmat
             self.adjnum = adjnum
@@ -419,7 +419,7 @@ class Cell(object):
                     'large': (800, 800, 10, 12), 'ultra': (1000, 1000, 11, 13)}
         width, height, marker_size, text_size = size_map.get(size.lower(), size_map['default'])
 
-        if not hasattr(self, "adjmat"): self.get_adjmatrix()
+        if not hasattr(self, "adjmat"): self.get_adjmatrix(adjust_factor=True)
         fig = go.Figure()
         positions, symbols = np.array(self.coord), self.labels
         unique_bonds = {tuple(i) for i in np.argwhere(self.adjmat > 0)}

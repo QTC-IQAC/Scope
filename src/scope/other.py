@@ -21,22 +21,26 @@ def check_convergence(values: list, current_step: int=None, thres: float=1e-5, d
 
 ####
 def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="centroid", use_ext_info: bool=True, translate_to_ref: bool=True, save_to_folder: str="/Users/sergivela/Documents/SCOPE/Program/tests/Overlap_Molecules/", debug: int=0):
-    from .Connectivity import compute_centroid, get_adjmatrix
-    from .Reconstruct import reorder_hungarian
-    from .Read_Write  import print_xyz, write_xyz
-    from collections import Counter
+    from scope.connectivity import compute_centroid, get_adjmatrix
+    from scope.reconstruct  import reorder_hungarian
+    from scope.read_write   import print_xyz, write_xyz
+    from collections        import Counter
 
     ## Ensure both species have the same number of atoms
     if len(labels1) != len(labels2):
         raise ValueError("The number of atoms in the two lists must be the same.")
 
     ## Stores the original adjacency matrices
-    isgood1, orig_adjmat1, orig_adjnum1 = get_adjmatrix(labels1, coords1)
-    isgood2, orig_adjmat2, orig_adjnum2 = get_adjmatrix(labels2, coords2)
+    isgood1, orig_adjmat1, orig_adjnum1 = get_adjmatrix(labels1, coords1, adjust_factor=True, debug=1)
+    isgood2, orig_adjmat2, orig_adjnum2 = get_adjmatrix(labels2, coords2, adjust_factor=True, debug=1)
 
     if debug > 0: print(f"{isgood1}, {isgood2}")
     if debug > 0: print(f"original adjmat1={orig_adjmat1[0]}")
     if debug > 0: print(f"original adjmat2={orig_adjmat2[0]}")
+    if debug > 0: print(f"original adjnum1={orig_adjnum1}")
+    if debug > 0: print(f"original adjnum2={orig_adjnum2}")
+    if any(orig_adjnum1 == 0): raise ValueError(f"OVERLAP_MOLECULES: First molecule might be fragmented. Stopping")
+    if any(orig_adjnum2 == 0): raise ValueError(f"OVERLAP_MOLECULES: Second molecule might be fragmented. Stopping")
 
     if center_method == "centroid":
         center1 = np.array(compute_centroid(coords1)) 
@@ -75,19 +79,34 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         ## Decorate the labels to facilitate the reorder hungarian
         data1 = get_extended_info(labels1, coords1c, orig_adjmat1, orig_adjnum1, debug=debug)
         data2 = get_extended_info(labels2, coords2a, orig_adjmat2, orig_adjnum2, debug=debug)
+
+        # Verify that data1 and data2 contain the same items
+        set1 = set(data1)
+        set2 = set(data2)
+        print("Difference Sets", set1 - set2)
+        print("Difference Sets", set2 - set1)
+        if set1 != set2: raise ValueError("OVERLAP_MOLECULES: data1 and data2 do not contain the same items. This happens when the two molecules are not chemically the same")
+
         unique1 = [d for d in np.unique(data1) if Counter(data1)[d] == 1]    ## Data's which appear only once, and thus have no possibility of error
         unique2 = [d for d in np.unique(data2) if Counter(data2)[d] == 1]
         ## These are going to be all atoms whose data appears once in both structures
         safe = [index for index in range(len(data1)) if data1[index] in unique1 and data2[index] in unique2]
-        if debug > 0: print(f"{safe=}")
+        if debug > 0: 
+            print(f"Atoms that appear in both structures:") 
+            print(f"{[data1[s] for s in safe]}")
 
+        ## Defines the width of the string label for distance
+        if len(labels1) < 10:    width = 1
+        if len(labels1) >= 10:   width = 2
+        if len(labels1) >= 100:  width = 3
+        if len(labels1) >= 1000: width = 4
         ## For each atom in SAFE, we add the topological distance of all atoms to their data
         for s in safe:
-            if debug > 0: print(f"Taking atom {s=} with {data1[s]=} as reference when computing topological distances")
+            if debug > 0: print(f"Taking atom {s=} as reference when computing topological distances")
             dist1 = compute_topological_distances(orig_adjmat1, s)
             dist2 = compute_topological_distances(orig_adjmat2, s)
-            data1 = np.array([str(f"{d1}{d2}") for d1, d2 in zip(data1, dist1)])
-            data2 = np.array([str(f"{d1}{d2}") for d1, d2 in zip(data2, dist2)])
+            data1 = np.array([str(f"{d1}{d2:0{width}d}") for d1, d2 in zip(data1, dist1)])
+            data2 = np.array([str(f"{d1}{d2:0{width}d}") for d1, d2 in zip(data2, dist2)])
             labels1 = np.array([f"{l}" for l in labels1])
             labels2 = np.array([f"{l}" for l in labels2])
     else:
@@ -98,15 +117,6 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
 
     if debug > 0: print(f"OVERLAP_MOLECULES: {data1=}")
     if debug > 0: print(f"OVERLAP_MOLECULES: {data2=}")
-    # Verify that data1 and data2 contain the same items
-    set1 = set(data1)
-    set2 = set(data2)
-    if set1 != set2 and debug > 0:
-        print("OVERLAP_MOLECULES: WARNING: data1 and data2 do not contain the same items.")
-        print("Items only in data1:", set1 - set2)
-        print("Items only in data2:", set2 - set1)
-    else:
-        if debug > 0: print("data1 and data2 contain the same items.")
 
     ## Now we have the relevant data. We proceed to reorder
     if debug > 0: print("-------------------------")
@@ -162,7 +172,7 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
 
 ####
 def get_extended_info(labels, coords, adjmat, adjnum, debug: int=0):
-    if debug > 0: print(f"GET_EXT_INFO, received {adjmat[0]} for first atom")
+    #if debug > 0: print(f"GET_EXT_INFO, received {adjmat[0]} for first atom")
     ## Function to add decorators to labels
     bonded = []
     for jdx in range(len(labels)):
@@ -226,7 +236,7 @@ def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, center_method=
 
 #############
 def kabsch_align(LP, P, LQ, Q, center_method: str="centroid", debug: int=0):
-    from .Connectivity import compute_centroid
+    from scope.connectivity import compute_centroid
     """
     Perform the Kabsch algorithm to find the optimal rotation and translation
     to align point set P (mobile) to Q (target/reference).

@@ -602,18 +602,19 @@ def reorder_hungarian(z1, z2, coord1, coord2, debug: int=0):
     map12 = np.zeros_like(z1, dtype=int)
     map12 -= 1
     for atom in unique_atoms:
-        if debug > 0: print(f"REORDER: doing {atom} in unique_atoms")
+        if debug > 0: print(f"REORDER_HUNGARIAN: doing {atom} in unique_atoms")
         (aidx1,) = np.where(z1 == atom)
         (aidx2,) = np.where(z2 == atom)
-        if debug > 0: print(f"{aidx1=}")
-        if debug > 0: print(f"{aidx2=}")
+        if debug > 0: print(f"REORDER_HUNGARIAN: {aidx1=}")
+        if debug > 0: print(f"REORDER_HUNGARIAN: {aidx2=}")
         acoord1 = coord1[aidx1]
         acoord2 = coord2[aidx2]
-        if debug > 0: print(f"{acoord1=}")
-        if debug > 0: print(f"{acoord2=}")
+        if debug > 0: print(f"REORDER_HUNGARIAN: {acoord1=}")
+        if debug > 0: print(f"REORDER_HUNGARIAN: {acoord2=}")
         v = hungarian(acoord1, acoord2, debug=debug)
-        if debug > 0: print(f"{v=}")
-        map12[aidx1] = aidx2[v]
+        if debug > 0: print(f"REORDER_HUNGARIAN: {v=}")
+        if len(v) == 0:  raise ValueError(f"REORDER_HUNGARIAN: Atom type {atom} could not be fonud in molecule 2")
+        else:            map12[aidx1] = aidx2[v]
         if debug > 0: 
             print(f"{map12=}")
             for i in range(len(map12)):

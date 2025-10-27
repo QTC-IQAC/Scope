@@ -84,56 +84,112 @@ def get_radii(labels: list) -> np.ndarray:
     return np.array(radii)
 
 ######
-def get_adjmatrix(labels: list, pos: list, cov_factor: float=1.3, metal_factor: float=1.0, radii="default", metal_only: bool=False, debug: int=0) -> Tuple[int, list, list]:
+def get_adjmatrix(labels: list, pos: list, cov_factor: float=1.3, metal_factor: float=1.0, adjust_factor: bool=False, radii="default", metal_only: bool=False, debug: int=0) -> Tuple[bool, np.array, np.array]:
+    import numpy as np
+    import warnings
+    from scipy.spatial.distance import pdist, squareform
+    """
+    Compute the adjacency matrix of a molecule based on atomic labels and coordinates.
+
+    Parameters
+    ----------
+    labels : list of str
+        Atomic symbols (e.g., ['C', 'H', 'H', 'H', 'H']).
+    pos : list of list of float or np.ndarray
+        Atomic coordinates, shape (N, 3).
+    cov_factor : float, optional
+        Scaling factor applied to the sum of covalent radii when defining a bond (default 1.3).
+    metal_factor : float, optional
+        Multiplier for covalent radii of metal atoms (d- or f-block elements). Default is 1.0.
+    radii : str, list, or np.ndarray, optional
+        Covalent radii for atoms. If 'default', values are obtained from `get_radii(labels)`.
+    metal_only : bool, optional
+        If True, only metal–metal or metal–nonmetal bonds are included.
+    adjust_factor : bool, optional
+        If True, adaptively increases cov_factor until all atoms have at least one neighbor.
+    debug : int, optional
+        Print extra diagnostic information if > 0.
+    max_factor : float, optional
+        Upper bound for adaptive cov_factor search (default 2.5).
+    factor_step : float, optional
+        Step size for incrementing cov_factor (default 0.05).
+
+    Returns
+    -------
+    isgood : bool
+        False if atom–atom distance is below the clash threshold (molecule invalid).
+    adjmat : np.ndarray of shape (N, N)
+        Symmetric adjacency matrix (1 = bonded, 0 = not bonded).
+    adjnum : np.ndarray of shape (N,)
+        Number of bonded neighbors for each atom.
+    cov_factor : float
+        Final cov_factor used (may be higher than initial if adjust_factor=True).
+    """
     isgood = True 
     clash_threshold = 0.3
+    factor_step = 0.02
+    max_factor = 1.5
     natoms = len(labels)
     adjmat = np.zeros((natoms, natoms))
     adjnum = np.zeros((natoms))
 
-    # Sometimes argument radii np.ndarry, or list
+    # --- Load or validate covalent radii ---
     with warnings.catch_warnings():
-        warnings.simplefilter(action="ignore", category=FutureWarning)
-        if type(radii) == str:
-            if radii == "default":
-                radii = get_radii(labels)
-
-    # Modifies the radii for metal atoms, if necessary
+        warnings.simplefilter("ignore", category=FutureWarning)
+        if isinstance(radii, str) and radii == "default":
+            radii = get_radii(labels)
+        else:
+            radii = np.array(radii, dtype=float)
+    # --- Adjust radii for metal atoms ---
     if metal_factor != 1.0:
-        for idx, r in enumerate(radii):
-            if (elemdatabase.elementblock[labels[idx]] == "d" or elemdatabase.elementblock[labels[idx]] == "f"):
-                radii[idx] = (r * metal_factor)  # the covalent radii of the metal is modified
+        for i, elem in enumerate(labels):
+            block = elemdatabase.elementblock.get(elem, "")
+            if block in ("d", "f"):  # transition or f-block metals
+                radii[i] *= metal_factor
+    # --- Precompute distance matrix ---
+    distmat = squareform(pdist(pos))
 
-    # Creates Adjacency Matrix
-    for i in range(0, natoms - 1):
-        for j in range(i, natoms):
-            if i != j:
-                a = np.array(pos[i])
-                b = np.array(pos[j])
-                dist = np.linalg.norm(a - b)
-                thres = (radii[i] + radii[j]) * cov_factor
-                if dist <= clash_threshold:
-                    isgood = False # invalid molecule
-                    if debug > 0: print("Adjacency Matrix: Distance", dist, "smaller than clash for atoms", i, j)
-                elif dist <= thres:
-                    if not metal_only:
-                        adjmat[i, j] = 1
-                        adjmat[j, i] = 1
-                    if metal_only:
-                        if (elemdatabase.elementblock[labels[i]] == "d"
-                        or elemdatabase.elementblock[labels[i]] == "f"
-                        or elemdatabase.elementblock[labels[j]] == "d"
-                        or elemdatabase.elementblock[labels[j]] == "f"):
-                            adjmat[i, j] = 1
-                            adjmat[j, i] = 1
+    def compute_adjacency(cov_factor):
+        """Helper to compute adjacency given a specific cov_factor."""
+        # Compute the pairwise bonding distance threshold for each atom pair
+        sum_radii = radii[:, None] + radii[None, :]    # all combinations of radii
+        bond_threshold = cov_factor * sum_radii        # scale by cov_factor
+        # Determine which atom pairs are bonded
+        bonded = (distmat <= bond_threshold) & (distmat > clash_threshold)  ## Matrix of True/False
+        adjmat = bonded.astype(int)                                         ## Converted into Integers
+        # Handle metal-only case
+        if metal_only:
+            metal_mask = np.array([(elemdatabase.elementblock.get(lbl, "") in ("d", "f")) for lbl in labels],dtype=bool)
+            # A bond is valid if either atom is a metal
+            metal_bonds = np.logical_or.outer(metal_mask, metal_mask)
+            adjmat *= metal_bonds
+        # Zero diagonal
+        np.fill_diagonal(adjmat, 0)
+        # Check for clashes
+        clash = np.any((distmat < clash_threshold) & (distmat > 0))
+        return adjmat, clash
 
-    # Sums the adjacencies of each atom to obtain "adjnum" 
-    for i in range(0, natoms):
-        adjnum[i] = np.sum(adjmat[i, :])
+    # --- Adjust cov_factor if needed ---
+    while True:
+        adjmat, clash = compute_adjacency(cov_factor)
+        adjnum = adjmat.sum(axis=1)
+        if not clash:
+            isgood = True
+        else:
+            isgood = False
+            if debug > 0: print(f"GET_ADJMATRIX: Clash detected at {cov_factor=:.2f}")
 
-    adjmat = adjmat.astype(int)
-    adjnum = adjnum.astype(int)
-    return isgood, adjmat, adjnum
+        if adjust_factor and np.any(adjnum == 0) and cov_factor < max_factor:
+            cov_factor += factor_step
+            if debug > 0: print(f"GET_ADJMATRIX: Increasing cov_factor to {cov_factor:.2f} (some atoms have 0 neighbors)")
+            continue
+        break
+    if debug and adjust_factor:
+        if cov_factor >= max_factor:
+            print(f"GET_ADJMATRIX: Reached max_factor={max_factor} but some atoms remain isolated.")
+        else:
+            print(f"GET_ADJMATRIX: Final cov_factor = {cov_factor:.2f}")
+    return isgood, adjmat, adjnum.astype(int)
 
 ######
 def inv(perm: list) -> list:
@@ -163,7 +219,6 @@ def get_blocks(matrix: np.ndarray) -> Tuple[list, list]:
             j = pos - 1
             continue
         j += 1
-
     if (blockcount == 0) and (len(matrix) == 1):  # if a 1x1 matrix is provided, it then finds 1 block
         startlist.append(0)
         endlist.append(0)

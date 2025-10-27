@@ -43,7 +43,7 @@ class Specie(object):
         self.parents              = []
         self.parents_indices      = []
 
-        ## Defaults. Were used in cell2mol version 1, kept for simplicity
+        ## Default factors to compute the adjacency matrix and related stuff. 
         self.cov_factor           = 1.3
         self.metal_factor         = 1.0
         
@@ -489,8 +489,8 @@ class Specie(object):
         self.adjnum  = np.stack(extract_from_list(indices, parent.adjnum, dimension=1), axis=0)
 
     ######
-    def get_adjmatrix(self):
-        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord, self.cov_factor, self.metal_factor, radii=self.radii)
+    def get_adjmatrix(self, adjust_factor: bool=False, debug: int=0):
+        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord, self.cov_factor, self.metal_factor, adjust_factor=adjust_factor, radii=self.radii, debug=debug)
         if isgood:
             self.adjmat = adjmat
             self.adjnum = adjnum
@@ -500,8 +500,8 @@ class Specie(object):
         return self.adjmat, self.adjnum
 
     ######
-    def get_metal_adjmatrix(self):
-        isgood, madjmat, madjnum = get_adjmatrix(self.labels, self.coord, self.cov_factor, self.metal_factor, radii=self.radii, metal_only=True)
+    def get_metal_adjmatrix(self, adjust_factor: bool=False, debug: int=0):
+        isgood, madjmat, madjnum = get_adjmatrix(self.labels, self.coord, self.cov_factor, self.metal_factor, adjust_factor=adjust_factor, radii=self.radii, metal_only=True, debug=debug)
         if isgood:
             self.madjmat = madjmat
             self.madjnum = madjnum
@@ -639,7 +639,7 @@ class Specie(object):
                     'large': (800, 800, 10, 12), 'ultra': (1000, 1000, 11, 13)}
         width, height, marker_size, text_size = size_map.get(size.lower(), size_map['default'])
 
-        if not hasattr(self, "adjmat"): self.get_adjmatrix()
+        if not hasattr(self, "adjmat"): self.get_adjmatrix(adjust_factor=True)
         fig = go.Figure()
         positions, symbols = np.array(self.coord), self.labels
         unique_bonds = {tuple(i) for i in np.argwhere(self.adjmat > 0)}
