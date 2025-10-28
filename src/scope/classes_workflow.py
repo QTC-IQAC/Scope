@@ -97,7 +97,7 @@ class Branch(object):
     ### Registration ###
     ####################
     def register(self, debug: int=0):
-        if debug > 1: print("Registering Branch:", self.name)
+        if debug > 1: print("BRANCH.REGISTER: Registering Branch:", self.name)
         allgood     = True
         allfinished = True
         if len(self.workflows) > 0:
@@ -292,16 +292,16 @@ class Job(object):
         ## Corrects self.job_setup in case the user forgets to change
         if self.keyword == 'findiff' or self.keyword == 'findif': self.job_setup == 'findiff'
         
-    def check_job_data(self, job_path: str, debug: int=0):
+    def check_job_data(self, inp_path: str, debug: int=0):
         from scope.classes_input import set_job_data
-        if debug > 0: print(f"CHECK_JOB_DATA: reading job_data from path: {job_path}")
-        new_job_data    = set_job_data(job_path, section="&job_data" , debug=0)
+        if debug > 0: print(f"CHECK_JOB_DATA: reading job_data from path: {inp_path}")
+        new_job_data    = set_job_data(inp_path, section="&job_data" , debug=0)
         old_job_data    = self.job_data 
         if new_job_data != old_job_data: 
             print(f"CHECK_JOB_DATA: identified changes in job_data for job.keyword={self.keyword}")
             self.update_job_data(old_job_data, new_job_data) 
             for comp in self.computations:
-                comp.check_qc_data(job_path=job_path, debug=debug)
+                comp.check_qc_data(inp_path=inp_path, debug=debug)
             return True
         if debug > 0: print(f"CHECK_JOB_DATA: no changes in job_data")
         return False
@@ -627,7 +627,7 @@ class Job(object):
 ### Registration ###
 ####################
     def register(self, debug: int=0):
-        if debug > 1: print("Registering Job:", self.keyword)
+        if debug > 1: print("JOB.REGISTER: Registering Job:", self.keyword)
 
         ##########################################################################
         #### Irrespectively of the setup, we try to register all computations ####
@@ -837,10 +837,10 @@ class Computation(object):
     ###################################
     #### QC_DATA-related functions ####
     ###################################
-    def check_qc_data(self, job_path: str, debug: int=0):
+    def check_qc_data(self, inp_path: str, debug: int=0):
         from scope.classes_input import set_qc_data
         old_qc_data    = deepcopy(self.qc_data)
-        new_qc_data    = set_qc_data(job_path, section="&qc_data" , debug=0)
+        new_qc_data    = set_qc_data(inp_path, section="&qc_data" , debug=0)
         if new_qc_data != old_qc_data: 
             if debug > 1:
                 print("CHECK_QC_DATA found different qc_data:")
@@ -1049,8 +1049,8 @@ class Computation(object):
         ## 1-Registration of General Attributes 
         reg_general(self, debug=debug)     # Gives self.isfinished, self.elapsed_time and self.status. It always works
      
-        ## Retry with reading lines
         if not self.isfinished or self.status == "aborted":
+            ## Retry with reading lines
             self.delete_output()
             self.read_lines()
             self.create_output(debug=debug)
@@ -1137,22 +1137,22 @@ class Filename(object):
     def __repr__(self) -> None:
         to_print = ''
         for it in self.items:
-            to_print += f'{str(it.variable)}: {str(it.value)}. Format: {it.format()}\n'
+            to_print += f'{str(it.variable)}: {str(it.value)}, Format: {it.format()}\n'
         return to_print
 
 #######################
 class Filename_item(object):
     ## Simple object to create filenames for computation files: input, output and submission
     def __init__(self, variable: str, value, prefix: str=''):
-        self.typ      = 'filename_item'
-        self.variable = variable
-        self.value    = value
+        self.typ              = 'filename_item'
+        self.variable         = variable
+        self.value            = value
         try:    self.value    = literal_eval(value)
         except: self.value    = value
-        self.prefix   = prefix 
+        self.prefix           = prefix 
 
     def set_min_value(self, min_value):
-        self.min_value = min_value
+        self.min_value        = min_value
 
     def mod_value(self, new_value):
         try:    self.value    = literal_eval(new_value)

@@ -132,21 +132,21 @@ class Data(object):
 
     def convert_to_units(self, new_units: str):
         if   self.units == 'au' and (new_units.lower() == 'kj' or new_units.lower() == 'kj/mol'):
-            self.value = self.value * Constants.har2kJmol
+            self.value = self.value * constants.har2kJmol
         elif self.units == 'kj' and new_units.lower() == 'au':
-            self.value = self.value / Constants.har2kJmol
+            self.value = self.value / constants.har2kJmol
         elif self.units == 'ry' and new_units.lower() == 'au':
-            self.value = self.value * Constants.ry2har
+            self.value = self.value * constants.ry2har
         elif self.units == 'au' and new_units.lower() == 'ry':
-            self.value = self.value / Constants.ry2har
+            self.value = self.value / constants.ry2har
         elif self.units == 'au' and new_units.lower() == 'ev':
-            self.value = self.value * Constants.har2eV
+            self.value = self.value * constants.har2eV
         elif self.units == 'ev' and new_units.lower() == 'au':
-            self.value = self.value / Constants.har2eV
+            self.value = self.value / constants.har2eV
         elif self.units == 'au' and new_units.lower() == 'cm':
-            self.value = self.value * Constants.har2cm
+            self.value = self.value * constants.har2cm
         elif self.units == 'cm' and new_units.lower() == 'au':
-            self.value = self.value / Constants.har2cm
+            self.value = self.value / constants.har2cm
         self.units = new_units
         self.format()
         return self
@@ -154,21 +154,21 @@ class Data(object):
     def print_in_units(self, new_units: str):
         if new_units.lower() != self.units:
             if   self.units == 'au' and (new_units.lower() == 'kj' or new_units.lower() == 'kj/mol'):
-                return f"{self.key}: {self.value * Constants.har2kJmol:12.8f} {new_units}"
+                return f"{self.key}: {self.value * constants.har2kJmol:12.8f} {new_units}"
             elif self.units == 'kj' and new_units.lower() == 'au':
-                return f"{self.key}: {self.value / Constants.har2kJmol:12.8f} {new_units}"
+                return f"{self.key}: {self.value / constants.har2kJmol:12.8f} {new_units}"
             elif self.units == 'ry' and new_units.lower() == 'au':
-                return f"{self.key}: {self.value * Constants.r2har:12.8f} {new_units}"
+                return f"{self.key}: {self.value * constants.r2har:12.8f} {new_units}"
             elif self.units == 'au' and new_units.lower() == 'ry':
-                return f"{self.key}: {self.value / Constants.r2har:12.8f} {new_units}"
+                return f"{self.key}: {self.value / constants.r2har:12.8f} {new_units}"
             elif self.units == 'au' and new_units.lower() == 'ev':
-                return f"{self.key}: {self.value * Constants.har2eV:12.8f} {new_units}"
+                return f"{self.key}: {self.value * constants.har2eV:12.8f} {new_units}"
             elif self.units == 'ev' and new_units.lower() == 'au':
-                return f"{self.key}: {self.value / Constants.har2eV:12.8f} {new_units}"
+                return f"{self.key}: {self.value / constants.har2eV:12.8f} {new_units}"
             elif self.units == 'au' and new_units.lower() == 'cm':
-                return f"{self.key}: {self.value * Constants.har2cm:12.8f} {new_units}"
+                return f"{self.key}: {self.value * constants.har2cm:12.8f} {new_units}"
             elif self.units == 'cm' and new_units.lower() == 'au':
-                return f"{self.key}: {self.value / Constants.har2cm:12.8f} {new_units}"
+                return f"{self.key}: {self.value / constants.har2cm:12.8f} {new_units}"
         else:
             return str(self)
          

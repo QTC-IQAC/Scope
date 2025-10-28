@@ -538,7 +538,7 @@ class State(object):
                     value = get_Gibbs(Helec.value, Hvib_i.value, Selec.value, Svib_i.value, temp)
                     units = Helec.units
                     function = "state.get_thermal_data()"
-                    new_data = data(key, value, units, function)
+                    new_data = Data(key, value, units, function)
                     new_data.add_property("temperature", temp, overwrite=overwrite)
                     Gtot.add_data(new_data)
                 self.add_result(Gtot, overwrite=overwrite)

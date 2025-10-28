@@ -19,9 +19,6 @@ class System(object):
         self.branches             = []
         self.states               = []
 
-        ### Paths
-        #self.set_paths_from_environment(environment)
-
     ######
     def __repr__(self, indirect: bool=False):
         to_print  = ''
@@ -32,10 +29,10 @@ class System(object):
         to_print += f' Type                  = {self.type}\n'
         to_print += f' Subtype               = {self.subtype}\n'
         to_print += f' Name                  = {self.name}\n'
-        to_print += f' Source Path           = {self.sources_path}\n'  ## Path where files with molecular or cell structures are stored
-        to_print += f' Calculations Path     = {self.calcs_path}\n'    ## Path where folders with calculations will be stored
-        to_print += f' System File Path      = {self.sys_path}\n'      ## Path where the system object is stored
-        to_print += f' System File Name      = {self.sys_file}\n'      ## Full system path
+        if hasattr(self,"sources_path"): to_print += f' Source Path           = {self.sources_path}\n'  ## Path where files with molecular or cell structures are stored
+        if hasattr(self,"calcs_path"):   to_print += f' Calculations Path     = {self.calcs_path}\n'    ## Path where folders with calculations will be stored
+        if hasattr(self,"sys_path"):     to_print += f' System File Path      = {self.sys_path}\n'      ## Path where the system object is stored
+        if hasattr(self,"sys_file"):     to_print += f' System File Name      = {self.sys_file}\n'      ## Full system path
         if len(self.sources) > 0:
             to_print += '\n'
             to_print += f' # of Sources          = {len(self.sources)}\n'
@@ -98,9 +95,9 @@ class System(object):
         if not os.path.isfile(self.sys_file) or not os.path.isdir(self.sys_path) or not os.path.isdir(self.calcs_path) or not os.path.isdir(self.sources_path):  
             if debug > 0: 
                 if not os.path.isfile(self.sys_file):     print(f"SYSTEM.CHECK_PATHS: WARNING: System FILE does not exist {self.sys_file=}")
-                if not os.path.isfile(self.sys_path):     print(f"SYSTEM.CHECK_PATHS: WARNING: Systems Folder does not exist {self.sys_path=}")
-                if not os.path.isfile(self.calcs_path):   print(f"SYSTEM.CHECK_PATHS: WARNING: Calculations Folder does not exist {self.calcs_path=}")
-                if not os.path.isfile(self.sources_path): print(f"SYSTEM.CHECK_PATHS: WARNING: Sources Folder does not exist {self.sources_path=}")
+                if not os.path.exists(self.sys_path):     print(f"SYSTEM.CHECK_PATHS: WARNING: Systems Folder does not exist {self.sys_path=}")
+                if not os.path.exists(self.calcs_path):   print(f"SYSTEM.CHECK_PATHS: WARNING: Calculations Folder does not exist {self.calcs_path=}")
+                if not os.path.exists(self.sources_path): print(f"SYSTEM.CHECK_PATHS: WARNING: Sources Folder does not exist {self.sources_path=}")
             return False
         return True
 

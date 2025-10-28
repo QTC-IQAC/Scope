@@ -13,7 +13,6 @@ from scope.classes_state import *
 # 1) in computations.register() we manage the connection between registration and the other parts of the code
 # 2) in Execute_Job, we manage the relationship between the registration, and the computational workflow (Branch, Workflow, Job, Computation)
 ######################################################################
-
 def reg_general(comp: object, debug: int=0):
     if not hasattr(comp,"output"): comp.create_output() 
     comp.isfinished              = comp.output.get_status_finished()
@@ -27,9 +26,6 @@ def reg_general(comp: object, debug: int=0):
 
 ###########################################
 def reg_optimization(comp: object, debug: int=0):
-    ### For simplicity...
-    source = comp.source
-
     ### 0-In Case Reg_General hasn't been run:
     if not hasattr(comp,"output"): reg_general(comp)
 
@@ -41,7 +37,7 @@ def reg_optimization(comp: object, debug: int=0):
         assert len(labels) > 0
 
     ### 2-If it is a periodic object, gets the cell vectors as well
-    if source.type == "cell": 
+    if comp.source.type == "cell": 
         cellvec, celldim, cellparam = comp.output.get_cell_vectors_last_complete_block()
         if cellvec is None: cellvec, celldim, cellparam = comp.output.get_last_cell_vectors()
         if cellvec is None: print("Couldn't Extract cell vectors from output", comp.out_path)
@@ -49,10 +45,10 @@ def reg_optimization(comp: object, debug: int=0):
     worked = False
     if new_coord is not None:
         ### 3a-Stores Results in the State Object
-        exists, fstate        = source.find_state(comp.qc_data.fstate, debug=debug)  ## If exists, it will be updated
-        if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created
-        fstate.set_geometry(labels, new_coord)                                       ## New geometry is stored
-        if source.type == "cell": 
+        exists, fstate        = comp.source.find_state(comp.qc_data.fstate, debug=debug)  ## If exists, it will be updated
+        if not exists: fstate = comp.source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created
+        fstate.set_geometry(labels, new_coord)                                            ## New geometry is stored
+        if comp.source.type == "cell": 
             fstate.set_cell(cellvec, cellparam)
             fstate.get_moleclist()
             fstate.check_fragmentation(reconstruct=True, debug=debug)
@@ -64,9 +60,6 @@ def reg_optimization(comp: object, debug: int=0):
 ###########################################
 def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
 
-    ### For simplicity...
-    source = comp.source
-
     ### 0-In Case Reg_General hasn't been run:
     if not hasattr(comp,"output"): reg_general(comp)
     
@@ -76,8 +69,8 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
     forces = comp.output.get_forces_last_complete_block()
 
     ### 2a-Saving Data in fstate ###
-    exists, fstate = source.find_state(comp.qc_data.fstate, debug=debug)         ## If exists, it will be updated
-    if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created 
+    exists, fstate        = comp.source.find_state(comp.qc_data.fstate, debug=debug)         ## If exists, it will be updated
+    if not exists: fstate = comp.source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created 
     ### 2b-Computation is linked to the fstate
     fstate.add_computation(comp)
 
@@ -100,9 +93,6 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
 ###########################################
 def reg_energy(comp: object, debug: int=0):
 
-    ### For simplicity...
-    source = comp.source
-
     ### 0-In Case Reg_General hasn't been run:
     if not hasattr(comp,"output"): reg_general(comp)
 
@@ -116,18 +106,17 @@ def reg_energy(comp: object, debug: int=0):
     if hasattr(comp.qc_data,"print_forces"):
         if comp.qc_data.print_forces: forces = comp.output.get_forces_last_complete_block()
         else:                         forces = None
-    else:                         forces = None
+    else:                             forces = None
 
     ### Storage ###
     worked = False
     if energy is not None or forces is not None:
         # Saves data
-        exists, fstate        = source.find_state(comp.qc_data.fstate, debug=debug)  ## If exists, it will be updated
-        if not exists: fstate = source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created 
+        exists, fstate        = comp.source.find_state(comp.qc_data.fstate, debug=debug)  ## If exists, it will be updated
+        if not exists: fstate = comp.source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created 
         if energy is not None: fstate.set_energy(energy, 'au')
         if forces is not None: fstate.set_forces(forces)
         # Computation is linked to the fstate
         fstate.add_computation(comp)
         worked = True
-
     return worked

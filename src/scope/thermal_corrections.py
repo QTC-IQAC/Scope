@@ -12,9 +12,9 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     bav=1.0000E-44 # Kg*m**2
     
     if typ.lower() == 'free-rotor' or typ.lower() == 'fr':              
-        if freq_units.lower() == 'cm': FR_cutoff=FR_cutoff*Constants.cm2s_1
-        elif freq_units.lower() == 'ev': FR_cutoff=FR_cutoff*Constants.eV2s_1
-        elif freq_units.lower() == 'au' : FR_cutoff=FR_cutoff*Constants.har2s_1
+        if freq_units.lower() == 'cm': FR_cutoff=FR_cutoff*constants.cm2s_1
+        elif freq_units.lower() == 'ev': FR_cutoff=FR_cutoff*constants.eV2s_1
+        elif freq_units.lower() == 'au' : FR_cutoff=FR_cutoff*constants.har2s_1
         elif freq_units.lower() == 's_1': pass
         else: 
             print("Svin: can't understand input units of frequencies")
@@ -23,9 +23,9 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     # Converts Frequencies to s-1
     freqs_adapted = []
     for f in freqs:
-        if freq_units.lower() == 'cm': freqs_adapted.append(f*Constants.cm2s_1)
-        elif freq_units.lower() == 'ev': freqs_adapted.append(f*Constants.eV2s_1)
-        elif freq_units.lower() == 'au' : freqs_adapted.append(f*Constants.har2s_1)
+        if freq_units.lower() == 'cm': freqs_adapted.append(f*constants.cm2s_1)
+        elif freq_units.lower() == 'ev': freqs_adapted.append(f*constants.eV2s_1)
+        elif freq_units.lower() == 'au' : freqs_adapted.append(f*constants.har2s_1)
         elif freq_units.lower() == 's_1': freqs_adapted.append(f)
         else: 
             print("Svib: can't understand input units of frequencies")
@@ -36,12 +36,12 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
         if f > 0.0: 
             ## Free Rotor Term
             if typ.lower() == 'free-rotor' or typ.lower() == 'fr':
-                mu=Constants.planck_Js/(8*(np.pi)**2*f)                                      # Kg·m2
+                mu=constants.planck_Js/(8*(np.pi)**2*f)                                      # Kg·m2
                 mu_prime=(mu*bav)/(mu+bav)                                                   # Kg·m2
-                a=(8*(np.pi)**3)*mu_prime*Constants.boltz_J*temp/(Constants.planck_Js**2)    # Dimensionless
+                a=(8*(np.pi)**3)*mu_prime*constants.boltz_J*temp/(constants.planck_Js**2)    # Dimensionless
                 b=np.sqrt(a)                                                                 # Dimensionless
                 c=np.log(b)                                                                  # Dimensionless
-                Svib_FR=Constants.boltz_au*(c+0.5)                                           # Hartree/molecule*K
+                Svib_FR=constants.boltz_au*(c+0.5)                                           # Hartree/molecule*K
                 #print(f, FR_cutoff, FR_alpha)
                 weight=(1/(1+(FR_cutoff/f)**FR_alpha))                                       # Dimensionless
                 Svib_FR=(1-weight)*Svib_FR/nmol                                              # Hartree/molecule*K
@@ -50,11 +50,11 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
                 weight=0.0
     
             ## Harmonic Oscillator Term
-            f = f/Constants.har2s_1  # Now frequency in har
-            exponential_pos=np.exp(f/(Constants.boltz_au*temp))      # Dimensionless
-            exponential_neg=np.exp(-f/(Constants.boltz_au*temp))     # Dimensionless
+            f = f/constants.har2s_1  # Now frequency in har
+            exponential_pos=np.exp(f/(constants.boltz_au*temp))      # Dimensionless
+            exponential_neg=np.exp(-f/(constants.boltz_au*temp))     # Dimensionless
             fstterm=f/(temp*(exponential_pos-1))                     # Hartree/molecule*K
-            scnterm=-Constants.boltz_au*np.log(1-exponential_neg)    # Hartree/molecule*K
+            scnterm=-constants.boltz_au*np.log(1-exponential_neg)    # Hartree/molecule*K
             
             if typ.lower() == 'free-rotor' or typ.lower() == 'fr':
                 weight=1/(1+(FR_cutoff/f)**FR_alpha)
@@ -66,7 +66,7 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
             total += (Svib_FR + Svib_HO)
         
     ## Arranges units 
-    if outunits.lower() == 'kj':  total = total*Constants.har2kJmol
+    if outunits.lower() == 'kj':  total = total*constants.har2kJmol
     ## Creates data-class object
     new_data = Data("Svib", float(total), outunits, "scope.Thermal_Corrections.get_Svib()")
     new_data.add_property("temperature", temp, overwrite=True)
@@ -80,22 +80,22 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     freqs_adapted = []
     if freq_units.lower() != 'au':
         for f in freqs:
-            if freq_units.lower() == 'cm': freqs_adapted.append(f*Constants.cm2har)
-            elif freq_units.lower() == 'ev': freqs_adapted.append(f*Constants.eV2har)
-            elif freq_units.lower() == 's_1': freqs_adapted.append(f*Constants/har2s_1)
+            if freq_units.lower() == 'cm': freqs_adapted.append(f*constants.cm2har)
+            elif freq_units.lower() == 'ev': freqs_adapted.append(f*constants.eV2har)
+            elif freq_units.lower() == 's_1': freqs_adapted.append(f*constants/har2s_1)
             elif freq_units.lower() == 'au' : freqs_adapted.append(f)
             else: print("Svib: can't understand input units of frequencies")
     
     total=0.0
     for f in freqs_adapted:        
         if f > 0.0:
-            exponential = np.exp(-f/(Constants.boltz_au*temp))       # Dimensionless
+            exponential = np.exp(-f/(constants.boltz_au*temp))       # Dimensionless
             fstterm = f/2.                                           # hartree/molecule
             scnterm = (f*exponential)/(1-exponential)                # hartree/molecule
             total += (fstterm+scnterm)/nmol
 
     ## Arranges units 
-    if outunits.lower() == 'kj':  total = total*Constants.har2kJmol    # kJ/mol
+    if outunits.lower() == 'kj':  total = total*constants.har2kJmol    # kJ/mol
 
     ## Creates data-class object
     new_data = Data("Hvib", float(total), outunits, "scope.Thermal_Corrections.get_Hvib()")
@@ -105,7 +105,7 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
 
 def get_Selec(spin_multiplicity, outunits: str='au', nmol: int=1):
     if outunits.lower()     == 'kj': value = float(8.314*np.log(spin_multiplicity)/1000/nmol)
-    elif outunits.lower()   == 'au': value = float(8.314*np.log(spin_multiplicity)/Constants.har2kJmol/1000/nmol)
+    elif outunits.lower()   == 'au': value = float(8.314*np.log(spin_multiplicity)/constants.har2kJmol/1000/nmol)
     return Data("Selec", value, outunits,  'scope.Thermal_Corrections.get_Selec()') 
 
 def get_Gibbs(Helec: float, Hvib: float, Selec: float, Svib: float, temp: float):

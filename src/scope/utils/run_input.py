@@ -7,13 +7,13 @@ from scope.classes_system       import *
 from scope.read_write           import load_binary
 
 ######################
-def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_errors: bool=False, debug: int=0):
+def run_input(sys_path: str, inp_paths: list, global_env: str | object, handle_errors: bool=False, debug: int=0):
     """
-    Runs a SCOPE Task (defined in the job_paths file) on a SCOPE system (in the sys_path). 
+    Runs a SCOPE Input (defined in the inp_paths file) on a SCOPE system (in the sys_path). 
     The Configuration of the Computer is read from the GLOBAL_ENVIRONMENT, which must be configured before and given as a binary.
     This function performs the following steps:
-    - Verifies the existence of the system and job files.
-    - Reads input data from the job file, including environment, options, job data, and QC_data.
+    - Verifies the existence of the system and input files
+    - Reads input data from the input file, including environment, options, job data, and QC_data.
     - Loads the system object from the binary file and updates paths if necessary. Handy if registration and execution of tasks are performed in different computers
     - Finds or creates the required branch and workflow in the system.
     - Finds or creates the job, and checks for input changes.
@@ -26,7 +26,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
     ----------
     sys_path : str
         Path to the system binary file
-    job_paths : list
+    inp_paths : list
         List of Paths to the job files. 
     global_env : str or object
         Global environment as a path or directly the object.
@@ -55,10 +55,10 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
     ### STEP 0: Loading Files ###
     #############################
     ## 0.1 Verifies that all files exist
-    if not verify_files(sys_path, global_env, job_paths, debug=debug): raise ValueError("RUN_JOB: File verification failed")
+    if not verify_files(sys_path, global_env, inp_paths, debug=debug): raise ValueError("RUN_JOB: File verification failed")
 
     ## 0.2-Checks status of branch in system. This is to avoid loading the system if calculations for that branch are already finished
-    if not verify_status(sys_path, job_paths, debug=debug): 
+    if not verify_status(sys_path, inp_paths, debug=debug): 
         if debug > 0: print("RUN_JOB: All branches are either terminated or finished. No need to load system")
         return report 
 
@@ -78,39 +78,38 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
     ###################
     #### MAIN LOOP ####
     ###################
-    for job_idx, job_path in enumerate(job_paths):
+    for inp_idx, inp_path in enumerate(inp_paths):
 
         if debug > 0: print("")
         if debug > 0: print(f"#####################")
-        if debug > 0: print(f"- Starting JOB {job_idx+1}/{len(job_paths)} -")
+        if debug > 0: print(f"- Starting JOB {inp_idx+1}/{len(inp_paths)} -")
         if debug > 0: print(f"#####################")
 
-        #### 1.1-Reads Input Data
-        user_environment = set_environment_data(job_path, section="&environment", debug=0)  ## For completeness, but env data is read in global_env.read_job_specs below 
-        options          = set_options_data(job_path, section="&options"        , debug=0)
-        job_data         = set_job_data(job_path, section="&job_data"           , debug=0)
-        qc_data          = set_qc_data(job_path, section="&qc_data"             , debug=0)
+        #### Step 1.1-Reads Input Data
+        user_environment = set_environment_data(inp_path, section="&environment", debug=0)  ## For completeness, but env data is read in global_env.read_job_specs below 
+        options          = set_options_data(inp_path, section="&options"        , debug=0)
+        job_data         = set_job_data(inp_path, section="&job_data"           , debug=0)
+        qc_data          = set_qc_data(inp_path, section="&qc_data"             , debug=0)
 
-        #### 1.2-Loads Environment and Enriches with User Choices
-        global_env.read_job_specs(job_path, debug=0)
+        #### Step 1.2-Loads Environment and Enriches with User Choices
+        global_env.read_job_specs(inp_path, debug=0)
 
-        #### 1.3-Forces some options in case the environment is not that of a computation cluster
+        #### Step 1.3-Forces some options in case the environment is not that of a computation cluster
         if global_env.management_type == 'local':
             print("WARNING!!! No Queue Management has been detected in cluster, disabling submission")
             options._mod_attr('want_submit',False)      
             options._mod_attr('overwrite_inputs',False)  
             options._mod_attr('overwrite_logs',False)     
 
-        ##################
-        ### 1.4 BRANCH ###
-        ##################
+        ########################
+        ### STEP 1.4: BRANCH ###
+        ########################
         exists, this_branch        = sys.find_branch(job_data.branch, debug=0)
         if not exists: this_branch = sys.add_branch(job_data.branch, debug=debug); updated = True
-        #if debug > 0: print(f"RUN_JOB, step 1.4: in branch {this_branch.name}")
 
-        ####################
-        ### 1.5 WORKFLOW ###
-        ####################
+        ##########################
+        ### STEP 1.5: WORKFLOW ###
+        ##########################
         # If job_data.workflow == 'all' as a str or in a list, it converts it to a list of all workflow names in the branch
         if isinstance(job_data.workflow, str):
             if job_data.workflow.lower() == 'all': 
@@ -131,18 +130,16 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
 
             exists, this_workflow             = this_branch.find_workflow(wrk)
             if not exists: this_workflow      = this_branch.add_workflow(wrk); updated = True
-            #if debug > 0: print(f"RUN_JOB, step 1.5: inside workflows loop, workflow: {this_workflow.name}")
 
-            ###########
-            ### JOB ###
-            ###########
+            ###################
+            ### STEP 2: JOB ###
+            ###################
             ## 2.1 Finds or creates the job.
             exists, this_job = this_workflow.find_job(job_data=job_data, debug=0)
             if not exists: this_job = this_workflow.add_job(job_data); updated = True
-            #if debug > 0: print(f"RUN_JOB, step 2.1: inside jobs loop, job: {this_job.keyword} loaded")
 
             ## 2.2 If job exists, it checks for input changes (also in qc_data for the computations)
-            if exists: this_job.check_job_data(job_path=job_path, debug=0)
+            if exists: this_job.check_job_data(inp_path=inp_path, debug=0)
 
             ## 2.3-Checks that all requisites and constrains of the job are fulfilled
             cancontinue = this_job.check_requisites(debug=debug)
@@ -152,9 +149,9 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
                     print(this_job)
                 continue        # I know if might seem misleading. Here, "continue" means "skip this one"
 
-            ####################
-            ### COMPUTATIONS ###
-            ####################
+            ############################
+            ### STEP 3: COMPUTATIONS ###
+            ############################
             ## 3-Sets the computation(s), meaning that it will check if they exist, and if not, it creates them
             this_job.set_computations_from_setup(qc_data, debug=debug)
             for jdx, comp in enumerate(this_job.computations):
@@ -165,8 +162,8 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
                 if debug > 0: print(f"--------------------------------------------------------------------------")
                 if debug > 0: print(f"RUN_JOB, step 3.0: evaluating job, and computation with indices: {this_workflow.jobs.index(this_job)+1}/{len(this_workflow.jobs)}, {jdx+1}/{len(this_job.computations)}")
 
-                ## 3.1-Checks files and updates
-                qc_has_updated = comp.check_qc_data(job_path=job_path, debug=debug)  ## Checks wether the user has updated the qc_data
+                ## Step 3.1-Checks files and updates
+                qc_has_updated = comp.check_qc_data(inp_path=inp_path, debug=debug)  ## Checks wether the user has updated the qc_data
                 comp.check_updates()                                                 ## Checks for not-registered update computations 
                 comp.check_files()
 
@@ -178,7 +175,7 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
                 if debug > 0: print("RUN_JOB, step 3.1: qc has been updated", qc_has_updated)
                 #if debug > 1: print("-----------------------------------------------------------------------------------")
 
-                ## 3.2a-Evaluates Submission
+                ## Step 3.2a-Evaluates Submission
                 if not comp.output_exists:
                     if options.want_submit and not comp.has_update:
                         comp.check_submission_status(global_env, debug=debug)
@@ -186,17 +183,19 @@ def run_job(sys_path: str, job_paths: list, global_env: str | object, handle_err
                         if debug > 0: print("RUN_JOB, step 3.2a: ignore_submitted=", options.ignore_submitted)
                         if debug > 0: print("RUN_JOB, step 3.2a: initial state is", comp.qc_data.istate)
                         if not comp.isrunning or options.ignore_submitted:       ## options.ignore_submitted will also be checked in comp.run 
-                            comp.check_qc_data(job_path=job_path, debug=debug)
+                            comp.check_qc_data(inp_path=inp_path, debug=debug)
                             comp.run(global_env, options, debug=debug); updated = True
                     else: 
                         if debug > 0: print("RUN_JOB, step 3.2a: want_submit is False or comp.has_update")
 
-                ## 3.2b-Warns if output exists but not input
+                ## Step 3.2b-Warns if output exists but not input
                 elif comp.output_exists and not comp.input_exists:  
                     report += f"Investigate {comp.out_path} \n"
                     print(f"Investigate {comp.out_path}")
 
-                ## Step 4: registration
+                ############################
+                ### STEP 4: REGISTRATION ###
+                ############################
                 elif comp.output_exists and comp.input_exists:
                     ## 4.1-If output exists, and is not registered, it does it
                     ## This means that the output is read, parsed. The parsed data depends on the type of computation
@@ -291,18 +290,18 @@ def get_status(sys_folder: str, branch_name: str, debug: int=0):
     return "active"
 
 ######
-def verify_files(sys_path: str, global_env: str | object, job_paths: list, debug=0) -> bool:
+def verify_files(sys_path: str, global_env: str | object, inp_paths: list, debug=0) -> bool:
     sys_file  = os.path.isfile(sys_path)
-    job_files = all(os.path.isfile(jf) for jf in job_paths)
+    inp_files = all(os.path.isfile(ip) for ip in inp_paths)
     if isinstance(global_env, str):      env_file = os.path.isfile(global_env)
     elif isinstance(global_env, object): env_file = os.path.isfile(global_env.filepath)
-    if sys_file and job_files and env_file: return True
+    if sys_file and inp_files and env_file: return True
     else:
         if debug > 0: 
             if not sys_file: print(f"RUN_JOB.VERIFY_FILES: System file {sys_path} does not exist")
-            if not job_files: 
-                for jf in job_paths:
-                    if not os.path.isfile(jf): print(f"RUN_JOB.VERIFY_FILES: Job file {jf} does not exist")
+            if not inp_files: 
+                for ip in inp_paths:
+                    if not os.path.isfile(ip): print(f"RUN_JOB.VERIFY_FILES: Job file {ip} does not exist")
             if not env_file:
                 if isinstance(global_env, str):      print(f"RUN_JOB.VERIFY_FILES: Environment file {global_env} does not exist")
                 elif isinstance(global_env, object): print(f"RUN_JOB.VERIFY_FILES: Environment file {global_env.filepath} does not exist")
@@ -327,7 +326,7 @@ def verify_paths(global_env: object, sys: object, debug: int=0) -> bool:
     return True
 
 ######
-def verify_status(sys_path: str, job_paths: list, debug: int=0) -> bool:
+def verify_status(sys_path: str, inp_paths: list, debug: int=0) -> bool:
 
     sys_folder = os.path.dirname(sys_path)
     if debug > 0: print(f"RUN_JOB.VERIFY_STATUS: searching status files in {sys_folder}")
@@ -335,8 +334,8 @@ def verify_status(sys_path: str, job_paths: list, debug: int=0) -> bool:
 
     ## Collects all branches requested in the different job files
     branch_names = []
-    for job_path in job_paths:
-        job_data = set_job_data(job_path, section="&job_data", debug=0)
+    for inp_path in inp_paths:
+        job_data = set_job_data(inp_path, section="&job_data", debug=0)
         branch_names.append(job_data.branch)
     if debug > 0: print(f"RUN_JOB.VERIFY_STATUS: found {branch_names=}")
 

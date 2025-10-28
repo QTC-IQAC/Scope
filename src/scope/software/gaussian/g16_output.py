@@ -21,6 +21,8 @@ class G16_output(object):
         
     def read_lines(self):
         if hasattr(self,"_computation"): self.lines = read_lines_file(self._computation.out_path)
+        else: raise ValueError("G16_OUTPUT: output instance not associated with computation. Can't read lines from output")
+        return self.lines
 
 ##################
 ### REQUISITES ###
