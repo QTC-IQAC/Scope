@@ -1,6 +1,6 @@
 <p align="center">
   <img src="images/mciu_logo.png" alt="Logo" width="400">
-<\p>
+</p>
 
 # About SCOPE
 
