@@ -1,4 +1,4 @@
-<div style="text-align: center">![Project Logo](./mciu_logo.png)</div>
+<img src="mciu_logo.png" alt="Logo" width="200">
 
 # About SCOPE
 
