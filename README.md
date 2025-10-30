@@ -1,4 +1,4 @@
-<img src="mciu_logo.png" alt="Logo" width="200">
+<img src="images/mciu_logo.png" alt="Logo" width="200">
 
 # About SCOPE
 
