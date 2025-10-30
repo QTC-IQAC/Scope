@@ -1,4 +1,4 @@
-![Project Logo](mciu_logo.png)
+![Project Logo](./mciu_logo.png)
 
 # About SCOPE
 
