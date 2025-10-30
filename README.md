@@ -1,3 +1,5 @@
+![Project Logo](mciu_logo.png)
+
 # About SCOPE
 
 This repository contains the SCOPE package developed by Sergi Vela and collaborators, at the IQAC(CSIC)
