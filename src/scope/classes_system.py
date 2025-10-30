@@ -29,10 +29,10 @@ class System(object):
         to_print += f' Type                  = {self.type}\n'
         to_print += f' Subtype               = {self.subtype}\n'
         to_print += f' Name                  = {self.name}\n'
-        if hasattr(self,"sources_path"): to_print += f' Source Path           = {self.sources_path}\n'  ## Path where files with molecular or cell structures are stored
-        if hasattr(self,"calcs_path"):   to_print += f' Calculations Path     = {self.calcs_path}\n'    ## Path where folders with calculations will be stored
-        if hasattr(self,"sys_path"):     to_print += f' System File Path      = {self.sys_path}\n'      ## Path where the system object is stored
-        if hasattr(self,"sys_file"):     to_print += f' System File Name      = {self.sys_file}\n'      ## Full system path
+        if hasattr(self,"sources_path"):      to_print += f' Source Path           = {self.sources_path}\n'  ## Path where files with molecular or cell structures are stored
+        if hasattr(self,"computations_path"): to_print += f' Computations Path     = {self.computations_path}\n'    ## Path where folders with calculations will be stored
+        if hasattr(self,"system_path"):       to_print += f' System File Path      = {self.system_path}\n'      ## Path where the system object is stored
+        if hasattr(self,"system_file"):       to_print += f' System File Name      = {self.system_file}\n'      ## Full system path
         if len(self.sources) > 0:
             to_print += '\n'
             to_print += f' # of Sources          = {len(self.sources)}\n'
@@ -45,7 +45,7 @@ class System(object):
     ######
     def create_folders(self):
         """Create system and calculations folders if they do not exist."""
-        for path in [self.sys_path, self.calcs_path]:
+        for path in [self.system_path, self.computations_path]:
             try:
                 os.makedirs(path, exist_ok=True)
             except Exception as exc:
@@ -54,7 +54,7 @@ class System(object):
 
     ######
     def save(self, filepath: str=None):
-        if filepath is None: filepath = self.sys_file
+        if filepath is None: filepath = self.system_file
         save_binary(self, filepath)
 
     ######
@@ -92,12 +92,12 @@ class System(object):
     ### Paths ###
     #############
     def check_paths(self, debug: int=0) -> bool:
-        if not os.path.isfile(self.sys_file) or not os.path.isdir(self.sys_path) or not os.path.isdir(self.calcs_path) or not os.path.isdir(self.sources_path):  
+        if not os.path.isfile(self.system_file) or not os.path.isdir(self.system_path) or not os.path.isdir(self.computations_path) or not os.path.isdir(self.sources_path):  
             if debug > 0: 
-                if not os.path.isfile(self.sys_file):     print(f"SYSTEM.CHECK_PATHS: WARNING: System FILE does not exist {self.sys_file=}")
-                if not os.path.exists(self.sys_path):     print(f"SYSTEM.CHECK_PATHS: WARNING: Systems Folder does not exist {self.sys_path=}")
-                if not os.path.exists(self.calcs_path):   print(f"SYSTEM.CHECK_PATHS: WARNING: Calculations Folder does not exist {self.calcs_path=}")
-                if not os.path.exists(self.sources_path): print(f"SYSTEM.CHECK_PATHS: WARNING: Sources Folder does not exist {self.sources_path=}")
+                if not os.path.isfile(self.system_file):       print(f"SYSTEM.CHECK_PATHS: WARNING: System FILE does not exist {self.system_file=}")
+                if not os.path.exists(self.system_path):       print(f"SYSTEM.CHECK_PATHS: WARNING: Systems Folder does not exist {self.system_path=}")
+                if not os.path.exists(self.computations_path): print(f"SYSTEM.CHECK_PATHS: WARNING: Computations Folder does not exist {self.computations_path=}")
+                if not os.path.exists(self.sources_path):      print(f"SYSTEM.CHECK_PATHS: WARNING: Sources Folder does not exist {self.sources_path=}")
             return False
         return True
 
@@ -117,24 +117,24 @@ class System(object):
         readline.set_completer(complete_path)
 
         ## Reads User Choice for Paths
-        self.sources_path   = os.path.abspath(str(input("\tPlease Specify Sources Path for System (with autocomplete): ")).strip())
-        self.calcs_path     = os.path.abspath(str(input("\tPlease Specify Calculations Path for System (with autocomplete): ")).strip())
-        self.sys_path       = os.path.abspath(str(input("\tPlease Specify Systems Path for System (with autocomplete): ")).strip())
-        if self.sources_path[-1]    != '/': self.sources_path  += '/'
-        if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
-        if self.sys_path[-1]        != '/': self.sys_path      += '/'
-        ## Sets Default sys_file name
-        self.sys_file       = f"{self.sys_path}{self.name}.npy"
+        self.system_path       = os.path.abspath(str(input("\tPlease Specify Systems Path for System (with autocomplete): ")).strip())
+        self.sources_path      = os.path.abspath(str(input("\tPlease Specify Sources Path for System (with autocomplete): ")).strip())
+        self.computations_path = os.path.abspath(str(input("\tPlease Specify Computations Path for System (with autocomplete): ")).strip())
+        if self.system_path[-1]        != '/': self.system_path      += '/'
+        if self.sources_path[-1]       != '/': self.sources_path  += '/'
+        if self.computations_path[-1]  != '/': self.computations_path    += '/'
+        ## Sets Default system_file name
+        self.system_file       = f"{self.system_path}{self.name}.npy"
         ## Create Folders if necessary:
-        if not os.path.isdir(self.sys_path)     and create_folders: os.makedirs(self.sys_path)
-        if not os.path.isdir(self.calcs_path)   and create_folders: os.makedirs(self.calcs_path)
-        if not os.path.isdir(self.sources_path) and create_folders: os.makedirs(self.sources_path)
+        if not os.path.isdir(self.system_path)        and create_folders: os.makedirs(self.system_path)
+        if not os.path.isdir(self.computations_path)  and create_folders: os.makedirs(self.computations_path)
+        if not os.path.isdir(self.sources_path)       and create_folders: os.makedirs(self.sources_path)
         if debug > 0: 
             print(f"SYSTEM.SET_PATHS: new paths:")
             print(f"Source path: {self.sources_path}")
-            print(f"Calcs path:  {self.calcs_path}")
-            print(f"System path: {self.sys_path}")
-            print(f"System file: {self.sys_file}")
+            print(f"Comps path:  {self.computations_path}")
+            print(f"System path: {self.system_path}")
+            print(f"System file: {self.system_file}")
         ## Chance all paths
         self.set_paths_down_hierarchy(debug=debug)
 
@@ -155,23 +155,23 @@ class System(object):
 
         ## Environment Sends the Global Paths
         self.sources_path         = f"{environment.sources_path}{self.name}/"
-        self.calcs_path           = f"{environment.calcs_path}{self.name}/"
-        self.sys_path             = f"{environment.sys_path}{self.name}/"
-        self.sys_file             = f"{environment.sys_path}{self.name}/{self.name}.npy"
+        self.computations_path    = f"{environment.computations_path}{self.name}/"
+        self.system_path          = f"{environment.system_path}{self.name}/"
+        self.system_file          = f"{environment.system_path}{self.name}/{self.name}.npy"
 
         ## Create Folders if necessary:
-        if not os.path.isdir(self.sys_path)     and create_folders: os.makedirs(self.sys_path)
-        if not os.path.isdir(self.calcs_path)   and create_folders: os.makedirs(self.calcs_path)
-        if not os.path.isdir(self.sources_path) and create_folders: os.makedirs(self.sources_path)
-        if not create_folders and (not os.path.isdir(self.sys_path) or not os.path.isdir(self.calcs_path) or not os.path.isdir(self.sources_path)):
+        if not os.path.isdir(self.system_path)       and create_folders: os.makedirs(self.system_path)
+        if not os.path.isdir(self.computations_path) and create_folders: os.makedirs(self.computations_path)
+        if not os.path.isdir(self.sources_path)      and create_folders: os.makedirs(self.sources_path)
+        if not create_folders and (not os.path.isdir(self.system_path) or not os.path.isdir(self.computations_path) or not os.path.isdir(self.sources_path)):
             print(f"SYSTEM.SET_PATHS_FROM_ENV: New Folders Could not be created. Please Use create_folders=True")
 
         if debug > 0: 
             print(f"SYSTEM.SET_PATHS_FROM_ENV: new paths:")
             print(f"Source path: {self.sources_path}")
-            print(f"Calcs path:  {self.calcs_path}")
-            print(f"System path: {self.sys_path}")
-            print(f"System file: {self.sys_file}")
+            print(f"Comps path:  {self.computations_path}")
+            print(f"System path: {self.system_path}")
+            print(f"System file: {self.system_file}")
         self.set_paths_down_hierarchy(debug=debug)
         return True
 
@@ -185,7 +185,7 @@ class System(object):
         Returns: None
         """
         for br in self.branches:
-            br.path = self.calcs_path+br.keyword+'/'
+            br.path = self.computations_path+br.keyword+'/'
             if create_folders: os.makedirs(br.path, exist_ok=True)
             if debug > 0: print(f"SET_PATHS_DOWN_HIERARCHY: new branch path: {br.path}")
             for wrk in br.workflows:
@@ -207,10 +207,10 @@ class System(object):
     ### Functions to Interact with Computational Workflow ###
     #########################################################
     def add_branch(self, name: str, debug: int=0):
-        new_branch = Branch(self.calcs_path+name, name, self, debug=debug)
-        if not os.path.isdir(self.calcs_path+name): 
-            if debug > 0: print(f"SYSTEM.ADD_BRANCH: creating branch in {self.calcs_path}{name}")
-            os.makedirs(self.calcs_path+name, exist_ok=True)
+        new_branch = Branch(self.computations_path+name, name, self, debug=debug)
+        if not os.path.isdir(self.computations_path+name): 
+            if debug > 0: print(f"SYSTEM.ADD_BRANCH: creating branch in {self.computations_path}{name}")
+            os.makedirs(self.computations_path+name, exist_ok=True)
         self.branches.append(new_branch)
         return new_branch
 

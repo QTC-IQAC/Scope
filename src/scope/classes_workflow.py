@@ -66,14 +66,14 @@ class Branch(object):
     ### Status ###
     ##############
     def set_status(self, status: str):
-        if not hasattr(self._system,"sys_path"):
-            raise ValueError("BRANCH.SET_STATUS: system doesnt have sys_path")
+        if not hasattr(self._system,"system_path"):
+            raise ValueError("BRANCH.SET_STATUS: system doesnt have system_path")
         if status not in ['active','terminated','finished']:
             raise ValueError("BRANCH.SET_STATUS: status should be 'active','terminated' or 'finished'")
         self.status = status
         ## Create file for get_status
         filename = f"{self.name}_FINISHED"
-        filepath = f"{self._system.sys_path}{filename}"
+        filepath = f"{self._system.system_path}{filename}"
         if not os.path.exists(filepath): open(filepath, "a").close() # Should create an empty file
 
         return self.status
@@ -81,15 +81,15 @@ class Branch(object):
     def read_status(self):
         # There is an alternative to this function that does not require loading the system and branch. 
         # It is in Utils/Run_Job.py as get_status()
-        sys_path = self._system.sys_path
-        if   os.path.isfile(f"{sys_path}TERMINATED"):           self.status == "terminated"
-        elif os.path.isfile(f"{sys_path}{self.name}_FINISHED"): self.status == "finished"
+        system_path = self._system.system_path
+        if   os.path.isfile(f"{system_path}TERMINATED"):           self.status == "terminated"
+        elif os.path.isfile(f"{system_path}{self.name}_FINISHED"): self.status == "finished"
         return self.status
 
     def clear_status(self):
-        sys_path = self._system.sys_path
-        terminated_file = f"{sys_path}TERMINATED"
-        finished_file   = f"{sys_path}{self.name}_FINISHED"
+        system_path = self._system.system_path
+        terminated_file = f"{system_path}TERMINATED"
+        finished_file   = f"{system_path}{self.name}_FINISHED"
         if os.path.isfile(terminated_file): os.remove(terminated_file)
         if os.path.isfile(finished_file):   os.remove(finished_file)
     

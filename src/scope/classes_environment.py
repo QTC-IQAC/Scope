@@ -710,18 +710,18 @@ class Environment(object):
         readline.set_completer_delims(' \t\n;')
         readline.parse_and_bind("tab: complete")
         readline.set_completer(complete_path)
-        self.sources_path   = os.path.abspath(str(input("\tPlease Specify Sources Path (with autocomplete): ")).strip())
-        self.calcs_path     = os.path.abspath(str(input("\tPlease Specify Calculations Path (with autocomplete): ")).strip())
-        self.sys_path       = os.path.abspath(str(input("\tPlease Specify Systems Path (with autocomplete): ")).strip())
-        if self.sources_path[-1]    != '/': self.sources_path  += '/'
-        if self.calcs_path[-1]      != '/': self.calcs_path    += '/'
-        if self.sys_path[-1]        != '/': self.sys_path      += '/'
+        self.sources_path       = os.path.abspath(str(input("\tPlease Specify Sources Path (with autocomplete): ")).strip())
+        self.systems_path       = os.path.abspath(str(input("\tPlease Specify Systems Path (with autocomplete): ")).strip())
+        self.computations_path  = os.path.abspath(str(input("\tPlease Specify Computations Path (with autocomplete): ")).strip())
+        if self.sources_path[-1]       != '/': self.sources_path      += '/'
+        if self.systems_path[-1]       != '/': self.systems_path      += '/'
+        if self.computations_path[-1]  != '/': self.computations_path += '/'
 
         ## Create Folders if necessary:
         if create_folders and debug > 0: print("\tFolders will be created if necessary")
-        if not os.path.isdir(self.sources_path) and create_folders: os.makedirs(self.sources_path, exist_ok=True)
-        if not os.path.isdir(self.calcs_path)   and create_folders: os.makedirs(self.calcs_path, exist_ok=True)
-        if not os.path.isdir(self.sys_path)     and create_folders: os.makedirs(self.sys_path, exist_ok=True)
+        if not os.path.isdir(self.sources_path)      and create_folders: os.makedirs(self.sources_path, exist_ok=True)
+        if not os.path.isdir(self.systems_path)      and create_folders: os.makedirs(self.systems_path, exist_ok=True)
+        if not os.path.isdir(self.computations_path) and create_folders: os.makedirs(self.computations_path, exist_ok=True)
 
         print("\t--------------------------------------------------------------------------------------------------------------")
         print("\tAdditionally, you can specify: (1) a storage (scratch or data) folder --> Run environment.set_storage_path()")
@@ -731,14 +731,14 @@ class Environment(object):
 
     def check_paths(self, debug: int=0):
         if not hasattr(self,"sources_path"):  self.set_paths()
-        self.issources_path    = os.path.isdir(self.sources_path)
-        self.iscalcs_path      = os.path.isdir(self.calcs_path)
-        self.issys_path        = os.path.isdir(self.sys_path)
-        if not os.path.isdir(self.sources_path):  print(f"ENVIRONMENT.CHECK_PATHS: {self.sources_path} does not exist")
-        if not os.path.isdir(self.sys_path):      print(f"ENVIRONMENT.CHECK_PATHS: {self.sys_path} does not exist")
-        if not os.path.isdir(self.calcs_path):    print(f"ENVIRONMENT.CHECK_PATHS: {self.calcs_path} does not exist")
-        if self.issys_path and self.iscalcs_path and self.issources_path:  return True
-        else:                                                              return False
+        self.issources_path       = os.path.isdir(self.sources_path)
+        self.issystems_path       = os.path.isdir(self.systems_path)
+        self.iscomputations_path  = os.path.isdir(self.computations_path)
+        if not os.path.isdir(self.sources_path):      print(f"ENVIRONMENT.CHECK_PATHS: {self.sources_path} does not exist")
+        if not os.path.isdir(self.systems_path):      print(f"ENVIRONMENT.CHECK_PATHS: {self.systems_path} does not exist")
+        if not os.path.isdir(self.computations_path): print(f"ENVIRONMENT.CHECK_PATHS: {self.computations_path} does not exist")
+        if self.issystems_path and self.iscomputations_path and self.issources_path:  return True
+        else:                                                                         return False
 
 #################
 ###  Software ###
@@ -771,8 +771,8 @@ class Environment(object):
         if hasattr(self,"sources_path"):  
             to_print += f'\tPaths:\n'
             to_print += f'\t    Sources          = {self.sources_path}\n'
-            to_print += f'\t    Computations     = {self.calcs_path}\n'
-            to_print += f'\t    Systems          = {self.sys_path}\n'
+            to_print += f'\t    Systems          = {self.systems_path}\n'
+            to_print += f'\t    Computations     = {self.computations_path}\n'
         if hasattr(self,"storage_path"):  to_print += f'\t    Storage Path     = {self.storage_path}\n'
         if hasattr(self,"scope_program"): to_print += f'\t    Scope Program    = {self.scope_program}\n'
         to_print += f'\n'
