@@ -25,10 +25,10 @@ class System(object):
         if not indirect: to_print += '---------------------------------\n'
         if not indirect: to_print += '   >>> SCOPE System Object >>>   \n'
         if not indirect: to_print += '---------------------------------\n'
+        to_print += f' Name                  = {self.name}\n'
         to_print += f' Version               = {self.version}\n'
         to_print += f' Type                  = {self.type}\n'
         to_print += f' Subtype               = {self.subtype}\n'
-        to_print += f' Name                  = {self.name}\n'
         if hasattr(self,"sources_path"):      to_print += f' Source Path           = {self.sources_path}\n'  ## Path where files with molecular or cell structures are stored
         if hasattr(self,"computations_path"): to_print += f' Computations Path     = {self.computations_path}\n'    ## Path where folders with calculations will be stored
         if hasattr(self,"system_path"):       to_print += f' System File Path      = {self.system_path}\n'      ## Path where the system object is stored
@@ -36,9 +36,9 @@ class System(object):
         if len(self.sources) > 0:
             to_print += '\n'
             to_print += f' # of Sources          = {len(self.sources)}\n'
-            to_print += f'     idx, type, name, formula               \n'
+            to_print += f'     idx: type, name, formula               \n'
             for idx, spec in enumerate(self.sources):
-                to_print += f'     {idx}: {spec.type} {spec.name} {spec.formula} \n'
+                to_print += f'     {idx}: {spec.type}, {spec.name}, {spec.formula} \n'
         if not indirect: to_print += '\n'
         return to_print
 
