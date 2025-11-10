@@ -1,4 +1,4 @@
-from   scope.parse_General   import search_string
+from   scope.parse_general   import search_string
 from   scope.geometry        import cellvec_2_cellparam
 import scope.constants
 

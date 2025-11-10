@@ -3,7 +3,7 @@
 ################################################
 ## Functions Related to Quantum Espresso Only ##
 ################################################
-def get_QE_data(state: object, debug: int=0):
+def get_qe_data(state: object, debug: int=0):
     assert state.type == "state"
     if not hasattr(state,"moleclist"): state.get_moleclist()
     pairs = []

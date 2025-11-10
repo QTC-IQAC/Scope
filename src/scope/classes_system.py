@@ -154,9 +154,9 @@ class System(object):
 
         ## Environment Sends the Global Paths
         self.sources_path         = f"{environment.sources_path}{self.name}/"
+        self.system_path          = f"{environment.systems_path}{self.name}/"
+        self.system_file          = f"{environment.systems_path}{self.name}/{self.name}.npy"
         self.computations_path    = f"{environment.computations_path}{self.name}/"
-        self.system_path          = f"{environment.system_path}{self.name}/"
-        self.system_file          = f"{environment.system_path}{self.name}/{self.name}.npy"
 
         ## Create Folders if necessary:
         if not os.path.isdir(self.system_path)       and create_folders: os.makedirs(self.system_path)
@@ -167,10 +167,10 @@ class System(object):
 
         if debug > 0: 
             print(f"SYSTEM.SET_PATHS_FROM_ENV: new paths:")
-            print(f"Source path: {self.sources_path}")
-            print(f"Comps path:  {self.computations_path}")
-            print(f"System path: {self.system_path}")
-            print(f"System file: {self.system_file}")
+            print(f"Source path:        {self.sources_path}")
+            print(f"System path:        {self.system_path}")
+            print(f"System file:        {self.system_file}")
+            print(f"Computations path:  {self.computations_path}")
         self.set_paths_down_hierarchy(debug=debug)
         return True
 

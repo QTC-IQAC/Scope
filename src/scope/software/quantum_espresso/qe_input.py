@@ -1,7 +1,7 @@
 #!/usr/bin/env python3
 import os
-from scope.classes_State       import find_state
-from scope.classes_Environment import set_user
+from scope.classes_state       import find_state
+from scope.classes_environment import set_user
 from scope.other               import get_metal_idxs, get_metal_species, where_in_array
 from scope.elementdata         import ElementData 
 from scope.software.quantum_espresso.qe_functions import get_pp, get_qe_data

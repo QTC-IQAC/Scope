@@ -7,7 +7,7 @@ from scope.classes_system       import *
 from scope.read_write           import load_binary
 
 ######################
-def run_input(sys_path: str, inp_paths: list, global_env: str | object, handle_errors: bool=False, debug: int=0):
+def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_errors: bool=False, debug: int=0):
     """
     Runs a SCOPE Input (defined in the inp_paths file) on a SCOPE system (in the sys_path). 
     The Configuration of the Computer is read from the GLOBAL_ENVIRONMENT, which must be configured before and given as a binary.
@@ -265,7 +265,7 @@ def run_input(sys_path: str, inp_paths: list, global_env: str | object, handle_e
         this_branch.register(debug=0)
 
         if updated: 
-            if debug > 0: print(f"Saving System {sys.name} to {self.sys_file}")
+            if debug > 0: print(f"Saving System {sys.name} to {sys.system_file}")
             sys.save()
     return report
 
