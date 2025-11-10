@@ -92,7 +92,7 @@ def run_input(sys_path: str, inp_paths: list, global_env: str | object, handle_e
         qc_data          = set_qc_data(inp_path, section="&qc_data"             , debug=0)
 
         #### Step 1.2-Loads Environment and Enriches with User Choices
-        global_env.read_job_specs(inp_path, debug=0)
+        global_env.read_job_specs(inp_path, debug=debug)
 
         #### Step 1.3-Forces some options in case the environment is not that of a computation cluster
         if global_env.management_type == 'local':

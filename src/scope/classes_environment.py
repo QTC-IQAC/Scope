@@ -36,7 +36,7 @@ class Environment(object):
         set_management_type():          Detects and sets the job management system type.
         set_commands():                 Sets command-line instructions for job management system.
         read_user_queue_list():         Processes user-provided queue names and selects corresponding queues.
-        read_local_environment():       Reads and applies user-specific environment settings from a local file.
+        read_job_specs():               Reads and applies user-specific environment settings from a local file.
         -----------------
         set_queues():                   Interactively sets available queues for the environment.
         get_mqueues():                  Retrieves and initializes queues based on the management system.
@@ -142,7 +142,7 @@ class Environment(object):
             self.command_submit              = None
 
     ######
-    def read_user_queue_list(self, line):
+    def read_user_queue_list(self, line, debug: int=0):
         """
         Processes a comma-separated string of queue names provided by the user, matches them against available queues,
         and selects the corresponding queues. Handles variations in queue name formats and prompts the user to confirm
@@ -159,40 +159,29 @@ class Environment(object):
         """
         ## Function to digest the queue names assuming that the user could use strange formats
         list_of_user_q = line.strip().split(",")
+        if debug > 0: print(f"ENV.READ_USER_QUEUE_LIST: received {list_of_user_q}")
         for user_q in list_of_user_q:
+            if debug > 0: print(f"ENV.READ_USER_QUEUE_LIST: trying to make '{user_q}' available. Searching in list of env.available_queues")
             user_q = user_q.strip()
+            found = False
             for q in self.available_queues:
                 if q.name == user_q or q.alter_name == user_q:
                     q.select_queue()
+                    found = True
                 elif user_q in q.name or q.name in user_q:
                     message = f"Found Similar queue as the one you requested. Is {q.name} your selection: {user_q} Y/N "
                     tmp = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"])
                     if tmp == "Y" or tmp == 'y':
-                        q.select_queue()
+                        q.select_queue(debug=debug)
                         q.alter_name = user_q
+                        found = True
+            if not found: print(f"ENV.READ_USER_QUEUE_LIST: requested queue '{user_q}' was not found")
 
     ######
-    def read_job_specs(self, file_path, debug: int=0):
-        """
-        Reads and applies user-specific environment settings from a local file, 
-        complementing the global environment with user choices.
-
-        Args:
-            file_path (str): Path to the local environment configuration file.
-            debug (int, optional): Debug level for verbose output. Defaults to 0.
-
-        Returns:
-            dict: Dictionary of attributes added to the environment from the local configuration.
-
-        Notes:
-            - Requires 'user_queue_preferences' to be run prior to execution.
-            - Attributes from the local environment are added to the current environment, 
-              except for internal attributes and queue-related keys.
-            - Queue selections are handled separately via 'read_user_queue_list'.
-        """
+    def read_job_specs(self, content: str, isfile: bool=True, debug: int=0):
         from scope.classes_input import set_environment_data
         if not hasattr(self,"available_queues"): print("ENV.READ_JOB_SPECS: please run 'user_queue_preferences' first in the environment class"); return None
-        local_env = set_environment_data(file_path, debug=debug)
+        local_env = set_environment_data(content, isfile=isfile, debug=debug)
         if debug > 0: print("ENV.READ_JOB_SPECS: reading data:", local_env)
         self.added_attr = {}
         for d in dir(local_env):
@@ -205,7 +194,7 @@ class Environment(object):
             ## Queues are selected
             elif d == "queues" or d == "queue":
                 at1 = getattr(local_env,d)
-                self.read_user_queue_list(at1)
+                self.read_user_queue_list(at1, debug=debug)
         return self.added_attr
 
     ######
@@ -248,6 +237,8 @@ class Environment(object):
                     new_queue = Queue(name, self, avail=avail, time_limit=time_limit, state=state)
                     self.add_mqueue(new_queue) 
            ## It should be possible to get the queue memory or mem-per-cpu doing: "sinfo -o "%15N %10c %10m  %25f %10G""
+        else:
+            print("ENV.GET_MQUEUES: SLURM or SGE were not detected. Assuming this is a local computer")
         return self.mqueues
 
     def add_mqueue(self, new_queue: object):
@@ -258,6 +249,7 @@ class Environment(object):
                 if q.name == new_queue.name: q += new_queue
 
     def find_queue(self, queue_name: str):
+        if not hasattr(self,"mqueues"): raise ValueError(f"Queues have not been initialized for this environment. Run self.get_mqueues()") 
         for q in self.mqueues:
             if q.name == queue_name or q.alter_name == queue_name:
                 return True, q
@@ -271,7 +263,7 @@ class Environment(object):
     def select_queue(self, queue_name: str):
         found, q = self.find_queue(queue_name)
         if found and q not in self.selected_queues: self.selected_queues.append(q)
-        if not found: print(f"ENV.SELECT_QUEUE: queue {queue_name} not found")
+        if not found: print(f"ENV.SELECT_QUEUE: queue '{queue_name}' not found")
 
     def save(self, filepath=None):
         from scope.read_write import save_binary
@@ -792,14 +784,15 @@ class Environment(object):
         ## Prints the options added as local environment
         if hasattr(self,"added_attr"):
             if len(self.added_attr) > 0:  
+                to_print += f'\n'
                 to_print += f'\t---------------------------------------------------\n'
                 to_print += f'\t LOCAL ENVIRONMENT OPTIONS ADDED:\n'
                 to_print += f'\t---------------------------------------------------\n'
-                string    = 'self.{:15}| {:20}| {:10}\n'
+                string    = '\t{:15}| {:20}| {:10}\n'
                 to_print += string.format('Key', 'Data Type', 'Value')
                 for key in self.added_attr.keys():
                     val = self.added_attr[key]
-                    to_print += f"\t{string.format(key, str(type(val)), str(val))}"
+                    to_print += f"{string.format(key, str(type(val)), str(val))}"
                 to_print += f'\t---------------------------------------------------\n'
         return to_print
 

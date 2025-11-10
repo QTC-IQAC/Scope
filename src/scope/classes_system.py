@@ -25,7 +25,6 @@ class System(object):
         if not indirect: to_print += '---------------------------------\n'
         if not indirect: to_print += '   >>> SCOPE System Object >>>   \n'
         if not indirect: to_print += '---------------------------------\n'
-        to_print += f' Name                  = {self.name}\n'
         to_print += f' Version               = {self.version}\n'
         to_print += f' Type                  = {self.type}\n'
         to_print += f' Subtype               = {self.subtype}\n'
@@ -60,7 +59,7 @@ class System(object):
     ######
     def find_source(self, name: str, debug: int=0):
         if debug > 0: 
-            print(f"FIND_SOURCE. Searching for source with {name} in system with {len(self.sources)} sources:")
+            print(f"SYSTEM.FIND_SOURCE. Searching for source with {name} in system with {len(self.sources)} sources:")
             for sour in self.sources:
                 print(f"    {sour.name} {sour.type}")
         if len(self.sources) == 0: return False, None
@@ -84,8 +83,8 @@ class System(object):
             self.sources = [s for s in self.sources if s.name.lower() != name.lower()]
             self.sources.append(new_source)
         else: 
-            print(f"ADD_SOURCE: Source with name '{new_source.name}' already exists in system") 
-            print(f"If you would like to Overwrite, specify overwrite=True")
+            print(f"SYSTEM.ADD_SOURCE: Source with name '{new_source.name}' already exists in system '{self.name}'") 
+            print(f"SYSTEM.ADD_SOURCE: If you would like to Overwrite, specify overwrite=True")
         return self.sources
 
     #############
@@ -294,6 +293,7 @@ class System(object):
         if folder[-1] != '/': folder += '/'
         if not os.path.isdir(folder): return None
         for file in sorted(os.listdir(os.path.abspath(folder))):
-            if os.path.isfile(folder+file):
-                self.load_single_xyz(folder+file, overwrite=overwrite, debug=debug)
+            if file.endswith('.xyz'):
+                if os.path.isfile(folder+file):
+                    self.load_single_xyz(folder+file, overwrite=overwrite, debug=debug)
         return self

@@ -3,6 +3,7 @@
    max_jobs         = 80
    max_procs        = 240
    requested_procs  = 8
+   queue            = 'my_preferred_one'
 /
 
 &options
