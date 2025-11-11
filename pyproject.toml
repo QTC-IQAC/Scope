@@ -38,8 +38,9 @@ build-backend = "setuptools.build_meta"
 [tool.pytest.ini_options]
 addopts = "--nbval --current-env --disable-warnings -q"
 testpaths = [
-    "tutorials/0-Navigate_Molecule_Hierarchy.ipynb",
-    "tutorials/1-Navigate_Computation_Hierarchy.ipynb",
-    "tutorials/2-State_Class.ipynb",
-    "tutorials/3-Thermodynamics_and_Data_Class.ipynb",
+    "tutorials/1-Tutorial_1.ipynb",
+    "tutorials/2-Tutorial_2.ipynb",
+    "tutorials/3-Tutorial_3.ipynb",
+    "tutorials/4-Tutorial_4.ipynb",
+    "tutorials/5-Tutorial_5.ipynb",
 ]
