@@ -54,7 +54,7 @@ class Queue(object):
                     newnode = Node(node_name, self) 
                     self.nodes.append(newnode)
                 else:
-                    print("SET_NODES: Unexpected length of block list", blocks)
+                    print("SET_NODES: Unexpected length of block list when retrieving Nodes with SLURM", blocks)
 
         elif self._environment.management_type == 'sge':
             for idx, line in enumerate(text):
@@ -68,7 +68,7 @@ class Queue(object):
                     newnode = Node(node_name, self) 
                     self.nodes.append(newnode)
                 else:
-                    print("SET_NODES: Unexpected length of block list", blocks)
+                    print("SET_NODES: Unexpected length of block list when retrieving Nodes with SLURM", blocks)
             
         self.num_nodes = len(self.nodes)
         self.nodes.sort(key= lambda x: x.name)

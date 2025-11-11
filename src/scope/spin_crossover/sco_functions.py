@@ -5,7 +5,7 @@ from scope.classes_data import *
 from scope.thermal_corrections import *
 
 ######
-def get_SCO_geom(state: object, debug: int=0):
+def get_sco_geom(state: object, debug: int=0):
     from scope.spin_crossover.sco_structure import geom_sco_from_xyz
     from scope.classes_state import State
     if not hasattr(state,"fragmented"): state.check_fragmentation(reconstruct=True, debug=debug)

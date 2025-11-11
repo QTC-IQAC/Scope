@@ -266,6 +266,15 @@ class SCO_cell(Cell):
         return to_print
 
     ######
+    def get_sco_geom(self, debug: int=0):
+        from scope.spin_crossover.sco_structure import geom_sco_from_xyz
+        if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
+        assert not self.fragmented, f"Found Fragmented molecules in the geometry of self: {self.name}"
+        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+        for mol in self.moleclist:
+            if mol.iscomplex: print(geom_sco_from_xyz(self.labels, self.coord, debug=debug))
+
+    ######
     def get_FeN6_molecules(self, overwrite: bool=False, debug: int=0):
         if not hasattr(self,"moleclist"): self.get_moleclist()
 

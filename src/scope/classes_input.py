@@ -104,7 +104,8 @@ class Input_data(object):
         to_print += '---------------------------------------------------\n'
         for key in self.dct.keys():
             val = self.dct[key]
-            to_print += string.format(key, str(type(val)), str(val))
+            if key != 'section' and key != 'type':
+                to_print += string.format(key, str(type(val)), str(val))
         return to_print
 
     def __eq__(self, other):
