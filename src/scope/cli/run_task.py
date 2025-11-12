@@ -20,9 +20,9 @@ def env_exists(path):
 
 def parse_args():
     parser = ArgumentParser(prog="scope_run_task", description="Runs an input for a given system")
-    parser.add_argument('-n', '--env_path',   type=env_exists,   help='Path to the Environment. Script will load Source data in env.sources_path')
-    parser.add_argument('-s', '--sys_path',   type=path_exists,  help='Path to the System binary file. Typically with .npy extension')
-    parser.add_argument('-i', '--inp_path',   nargs="+", type=path_exists,  help='Path to the Scope Input File(s). If more than one, you can write them in any order')
+    parser.add_argument('-n',       '--env_path',   type=env_exists,   help='Path to the Environment. Script will load Source data in env.sources_path')
+    parser.add_argument('-s',       '--sys_path',   type=path_exists,  help='Path to the System binary file. Typically with .npy extension')
+    parser.add_argument('-i', '-t', '--inp_path', nargs="+", type=path_exists,  help='Path to the Scope Input File(s). If more than one, you can write them in any order')
     parser.add_argument('-q', '--quiet',      help='If true, will not print the progress on screen', action='store_true')
     parser.add_argument('-e', '--errors',     help='If true, will automatically handle some common errors', action='store_true')
     return parser.parse_args()

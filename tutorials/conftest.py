@@ -1,4 +1,3 @@
-# conftest.py
 import os
 import nbformat
 

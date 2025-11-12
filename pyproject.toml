@@ -43,4 +43,6 @@ testpaths = [
     "tutorials/3-Tutorial_3.ipynb",
     "tutorials/4-Tutorial_4.ipynb",
     "tutorials/5-Tutorial_5.ipynb",
+    "tutorials/6-Tutorial_6.ipynb",
+    "tutorials/7-Tutorial_7.ipynb",
 ]
