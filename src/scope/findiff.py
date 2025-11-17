@@ -107,6 +107,7 @@ def project_out(hessian, proj_rot: bool=False, proj_tra: bool=True, debug: int=0
     return proj_hessian
 
 def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True, debug: int=0):
+    from scope.operations.vecs_and_mats import symmetrize
 
     factor_cminv = 5140.487   ## must figure out where does it come from
 
@@ -154,7 +155,7 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
     else:
         proj_hessian = hessian.copy()
 
-    sym_hessian = symmetrize_matrix(hessian)
+    sym_hessian = symmetrize(hessian)
     mw_hessian = mass_weight_hessian(sym_hessian, masses)
 
     # Diagonalize the mass-weighted hessian. Eigenval should have mass units in it

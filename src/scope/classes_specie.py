@@ -3,11 +3,12 @@
 ####################################################
 
 import numpy as np
-from scope.connectivity import * 
-from scope.classes_atom import *
-from scope.other        import get_metal_idxs
-from scope.geometry     import * 
-from scope.elementdata  import ElementData
+from scope.connectivity               import * 
+from scope.classes_atom               import *
+from scope.other                      import get_metal_idxs
+from scope.operations.dicts_and_lists import extract_from_list 
+from scope.geometry                   import * 
+from scope.elementdata                import ElementData
 elemdatabase = ElementData()
 
 ##############
@@ -175,6 +176,21 @@ class Specie(object):
     ###########
     ## Other ##
     ###########
+    def get_graph(self, debug: int=0):
+        import networkx as nx
+        from scope.other import get_extended_info
+        if not hasattr(self,"adjmat"): self.get_adjmatrix(debug=debug)
+        data = get_extended_info(self.labels, self.coord, self.adjmat, self.adjnum)
+        self.mol_graph = nx.Graph()
+        N = len(self.labels)
+        for i in range(N):
+            self.mol_graph.add_node(i, label=self.labels[i], connec=data[i])
+        for i in range(N):
+            for j in range(i+1, N):
+                if self.adjmat[i, j] > 0:
+                    self.mol_graph.add_edge(i, j)
+        return self.mol_graph
+
     def rmsd(self, other, reorder=True, center_method='centroid', debug: int=0):
         from scope.other import rmsd
         value = rmsd(self.labels, self.coord, other.labels, other.coord, reorder=reorder, center_method=center_method, debug=debug)   
@@ -675,7 +691,9 @@ class Specie(object):
     def __len__(self):
         return self.natoms
 
-    def __eq__(self, other):
+    def __eq__(self, other, with_graph: bool=False):
+        ## Function to compare two molecules based on their chemical composition and connectivity
+        ## It should be able to discriminate up to isomers. Cannot differentiate conformers
         if not isinstance(other, type(self)): return False
         elems = elemdatabase.elementnr.keys()
         
@@ -697,7 +715,6 @@ class Specie(object):
         # 4) the number of adjacencies between each pair of element types
         if not hasattr(self,"adj_types"):     self.set_adj_types()
         if not hasattr(other,"adj_types"):     other.set_adj_types()
-
         count = 0
         for kdx, (elem, row1) in enumerate(zip(elems, self.adj_types)):
             for ldx, (elem2, val1) in enumerate(zip(elems, row1)):
@@ -705,6 +722,16 @@ class Specie(object):
                 if val1 != val2: 
                     count += 1
         if count > 0 : return False
+
+        if with_graph: 
+            # 5) create the graphs, and compares, to discriminate isomers
+            if not hasattr(self,"mol_graph"):  self.get_graph()
+            if not hasattr(other,"mol_graph"): other.get_graph()
+            from scope.operations.graphs import compare_graphs
+            if not compare_graphs(self.mol_graph, other.mol_graph): return False
+    
+            # Conformers cannot be discriminated 
+
         return True
 
 ###############

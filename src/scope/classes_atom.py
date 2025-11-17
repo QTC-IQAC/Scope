@@ -3,9 +3,10 @@
 ###########################################################
 
 import numpy as np
-from scope.connectivity   import * 
-from scope.geometry       import get_dist
-from scope.elementdata    import ElementData
+from scope.connectivity               import * 
+from scope.geometry                   import get_dist
+from scope.elementdata                import ElementData
+from scope.operations.dicts_and_lists import extract_from_list 
 elemdatabase = ElementData()
 
 ############
@@ -517,7 +518,7 @@ class Bond(object):
         to_print += f' Label Atom1             = {self.atom1.label}\n'
         to_print += f' Label Atom2             = {self.atom2.label}\n'
         to_print += f' Formal Bond Order       = {self.order}\n'
-        to_print += f' Distance                = {round(self.distance,3)}\n'
+        to_print += f' Distance                = {round(self.distance,3)} Angstrom\n'
         to_print += '\n'
         return to_print
 

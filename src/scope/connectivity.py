@@ -5,7 +5,7 @@ from scipy.sparse import csr_matrix
 from scipy.sparse.csgraph import reverse_cuthill_mckee
 
 from typing import Tuple
-from scope.other import extract_from_list  
+from scope.operations.dicts_and_lists import extract_from_list  
 from scope.elementdata import ElementData  
 elemdatabase = ElementData()
 

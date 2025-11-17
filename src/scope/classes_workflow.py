@@ -1,11 +1,11 @@
 import os
 from copy import deepcopy
 from datetime import datetime
-from scope.classes_environment     import * 
-from scope.classes_state           import State, find_state
-from scope.other                   import where_in_array
-from scope.register_data           import reg_general, reg_optimization, reg_frequencies, reg_energy
-from scope.parse_general           import read_lines_file
+from scope.classes_environment        import * 
+from scope.classes_state              import State, find_state
+from scope.operations.dicts_and_lists import where_in_array, extract_from_list
+from scope.register_data              import reg_general, reg_optimization, reg_frequencies, reg_energy
+from scope.parse_general              import read_lines_file
 
 ##########################
 ###### BRANCH CLASS ######
@@ -732,7 +732,6 @@ class Computation(object):
         return inp, out, sub
  
     def get_mod_filename(self, mod_item_vars: list, mod_item_vals: list, debug: int=0):
-        from scope.other import where_in_array, extract_from_list
         if not hasattr(self,"filename"): self.set_filename()
         new_filename = deepcopy(self.filename)
         found = False

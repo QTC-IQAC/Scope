@@ -1,6 +1,7 @@
 import numpy as np
 from scope.connectivity      import *
 from scope.classes_data      import Collection, Data
+from scope.operations.dicts_and_lists import where_in_array, extract_from_list
 from scope.classes_specie    import *
 from scope.elementdata       import ElementData
 elemdatabase = ElementData()

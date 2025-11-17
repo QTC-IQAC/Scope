@@ -12,8 +12,7 @@ from scope.connectivity    import *
 from scope.classes_atom    import *
 from scope.classes_specie  import *
 from scope.geometry        import *
-from scope.operations.vecs_and_mats import determinant
-from scope.other           import add_item
+from scope.operations.vecs_and_mats import determinant, add_item
 from scope.elementdata import ElementData
 elemdatabase = ElementData()
 
