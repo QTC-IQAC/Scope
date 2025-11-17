@@ -691,7 +691,7 @@ class Specie(object):
     def __len__(self):
         return self.natoms
 
-    def __eq__(self, other, with_graph: bool=False):
+    def __eq__(self, other, with_graph: bool=True):
         ## Function to compare two molecules based on their chemical composition and connectivity
         ## It should be able to discriminate up to isomers. Cannot differentiate conformers
         if not isinstance(other, type(self)): return False
