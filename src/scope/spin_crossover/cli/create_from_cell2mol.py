@@ -58,11 +58,11 @@ def main():
     print(f"\tLoading Source From Path {source_path}: ")
     new_sys = SCO_system(system_name)
     new_sys.set_paths_from_environment(env)
-    new_sys.load_multiple_cell2mol_folders(source_path, debug=debug)
+    new_sys.load_multiple_cell2mol_folders(new_sys.sources_path, debug=debug)
     worked1 = new_sys.set_reference_cells(overwrite=overwrite, debug=debug)
     worked2 = new_sys.set_reference_molecs(overwrite=overwrite, debug=debug)
     if worked1 and worked2: 
-        print(f"\tCreation of system {new_sys.name} worked. Saving sys_file here: {new_sys.sys_file}. Folders will be created if necessary")
+        print(f"\tCreation of system {new_sys.name} worked. Saving sys_file here: {new_sys.system_file}. Folders will be created if necessary")
         new_sys.create_folders()
         new_sys.save()
 

@@ -60,9 +60,9 @@ def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], wh
     ### This function applies a displacement from the initial geometry 
     ### Using either 'all' VNMs provided, or only those whose index is in 'which'
 
-    ## Frequencies must have eigenvectors stored
+    ## Frequencies must have eigenvectors (normal modes) stored
     if any(not vnm.has_mode for vnm in VNMs): 
-        if debug > 0: print("One or more VNMs do not have eigenvectors. Stopping")
+        if debug > 0: print("One or more VNMs do not have mode. Stopping")
         return None
 
     ## Store Initial Coord
@@ -76,7 +76,7 @@ def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], wh
 
     ## Applies Displacement
     for vnm in VNMs:
-        assert vnm.haseigenvec and len(vnm.xs) == natoms
+        assert vnm.has_mode and len(vnm.labels) == natoms
         ## The actual amount of displacement depends on the amplitude defined by the user
         ## ... and the freq_factor, which depends on the frequency
         if   vnm.freq < 20:   freq_factor = 0.1
@@ -87,7 +87,7 @@ def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], wh
             
             for idx in range(natoms):
                 ## Evaluate the vector, here it expects to receive a mass-weighted eigenvector, as in Gaussian
-                vector = vnm.eigenvec_format1[idx]
+                vector = vnm.mode[idx]
 
                 ## Apply displacement to coordinates
                 if   which_side.lower() == 'positive': displacement = vector*amplitude*freq_factor
@@ -116,8 +116,8 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
         List of frequency objects, each with attributes:
             - freq_cm: frequency in cm^-1
             - freq: frequency in atomic units
-            - eigenvec_format2: mass-weighted eigenvector (array)
-            - haseigenvec: boolean indicating presence of eigenvector
+            - mode_format2: mass-weighted eigenvector (array)
+            - has_mode: boolean indicating presence of the eigenvector
     qini  : list
         initial Q coordinates associated with the cartesian coordinates provided as coord
     T : float, optional

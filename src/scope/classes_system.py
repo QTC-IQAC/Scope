@@ -29,9 +29,9 @@ class System(object):
         to_print += f' Type                  = {self.type}\n'
         to_print += f' Subtype               = {self.subtype}\n'
         if hasattr(self,"sources_path"):      to_print += f' Source Path           = {self.sources_path}\n'  ## Path where files with molecular or cell structures are stored
-        if hasattr(self,"computations_path"): to_print += f' Computations Path     = {self.computations_path}\n'    ## Path where folders with calculations will be stored
         if hasattr(self,"system_path"):       to_print += f' System File Path      = {self.system_path}\n'      ## Path where the system object is stored
         if hasattr(self,"system_file"):       to_print += f' System File Name      = {self.system_file}\n'      ## Full system path
+        if hasattr(self,"computations_path"): to_print += f' Computations Path     = {self.computations_path}\n'    ## Path where folders with calculations will be stored
         if len(self.sources) > 0:
             to_print += '\n'
             to_print += f' # of Sources          = {len(self.sources)}\n'

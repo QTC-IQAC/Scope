@@ -66,29 +66,32 @@ class Branch(object):
     ### Status ###
     ##############
     def set_status(self, status: str):
+        status = status.lower()
         if not hasattr(self._system,"system_path"):
             raise ValueError("BRANCH.SET_STATUS: system doesnt have system_path")
         if status not in ['active','terminated','finished']:
             raise ValueError("BRANCH.SET_STATUS: status should be 'active','terminated' or 'finished'")
         self.status = status
-        ## Create file for get_status
-        filename = f"{self.name}_FINISHED"
-        filepath = f"{self._system.system_path}{filename}"
-        if not os.path.exists(filepath): open(filepath, "a").close() # Should create an empty file
 
+        ## Creates file when necessary to avoid having to load the system
+        if status in ['terminated','finished']:
+            if   status == 'finished':   filename = f"{self.name}_FINISHED"
+            elif status == 'terminated': filename = f"{self.name}_TERMINATED"
+            filepath = f"{self._system.system_path}{filename}"
+            if not os.path.exists(filepath): open(filepath, "a").close() # Should create an empty file
         return self.status
     
     def read_status(self):
         # There is an alternative to this function that does not require loading the system and branch. 
         # It is in Utils/Run_Job.py as get_status()
         system_path = self._system.system_path
-        if   os.path.isfile(f"{system_path}TERMINATED"):           self.status == "terminated"
-        elif os.path.isfile(f"{system_path}{self.name}_FINISHED"): self.status == "finished"
+        if   os.path.isfile(f"{system_path}{self.name}_TERMINATED"):     self.status == "terminated"
+        elif os.path.isfile(f"{system_path}{self.name}_FINISHED"):       self.status == "finished"
         return self.status
 
     def clear_status(self):
         system_path = self._system.system_path
-        terminated_file = f"{system_path}TERMINATED"
+        terminated_file = f"{system_path}{self.name}_TERMINATED"
         finished_file   = f"{system_path}{self.name}_FINISHED"
         if os.path.isfile(terminated_file): os.remove(terminated_file)
         if os.path.isfile(finished_file):   os.remove(finished_file)
@@ -444,45 +447,45 @@ class Job(object):
 
             if hasattr(initial_state,"VNMs") and hasattr(initial_state,"coord"):
                 #### Only applies to geometries that are not minimum
+                if not hasattr(initial_state,"isminimum"): initial_state.check_minimum()
 
-                if hasattr(initial_state,"isminimum"):
-                    if initial_state.isminimum: 
-                        if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' is already a minimum")
-                        self._workflow.remove_job(keyword=self.keyword)    # not sure if this is possible
-                    else: 
-                        ## 0-Checks that the VNM exists, and that they have eigenvalues. If not, registers those eigenvalues.
-                        if not hasattr(initial_state.VNMs[0],"atomidxs"):  #Actually only checking for the first one, but its ok
-                            print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' does not have VNMs with eigenvectors.") 
-                            print(f"SET COMPUTATIONS FROM SETUP: now searching a job with frequencies in the state class object")
-                            found = False
-                            for idx, comp in enumerate(initial_state.computations):
-                                print(idx, comp._job.keyword, comp.isgood)
-                                if "freq" in comp._job.keyword and comp.isgood and not found:
-                                    print(f"SET COMPUTATIONS FROM SETUP: I will try to read the eigenvectors from", idx, comp.out_path)
-                                    ### 1-Parsing and storage (this block is similar to register_frequencies)
-                                    if not hasattr(comp,"output"): reg_general(comp)
-                                    VNMs = comp.output.get_vnms(witheigen=True)
-                                    if VNMs is not None: 
-                                        initial_state.set_VNMs(VNMs)
-                                        found = True
-                                        print(f"SET COMPUTATIONS FROM SETUP: Worked!")
+                if initial_state.isminimum: 
+                    if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' is already a minimum")
+                    self._workflow.remove_job(keyword=self.keyword)    # not sure if this is possible
+                else: 
+                    ## 0-Checks that the VNM exists, and that they have eigenvalues. If not, registers those eigenvalues.
+                    if not hasattr(initial_state.VNMs[0],"atomidxs"):  #Actually only checking for the first one, but its ok
+                        print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' does not have VNMs with eigenvectors.") 
+                        print(f"SET COMPUTATIONS FROM SETUP: now searching a job with frequencies in the state class object")
+                        found = False
+                        for idx, comp in enumerate(initial_state.computations):
+                            print(idx, comp._job.keyword, comp.isgood)
+                            if "freq" in comp._job.keyword and comp.isgood and not found:
+                                print(f"SET COMPUTATIONS FROM SETUP: I will try to read the eigenvectors from", idx, comp.out_path)
+                                ### 1-Parsing and storage (this block is similar to register_frequencies)
+                                if not hasattr(comp,"output"): reg_general(comp)
+                                VNMs = comp.output.get_vnms(witheigen=True)
+                                if VNMs is not None: 
+                                    initial_state.set_VNMs(VNMs)
+                                    found = True
+                                    print(f"SET COMPUTATIONS FROM SETUP: Worked!")
 
-                        ## 1-Displaces Coordinates Following Negative Freqs ###
-                        from scope.vnm_tools import displace_neg_freqs 
-                        disp_coord = displace_neg_freqs(initial_state.coord, initial_state.VNMs,debug=debug)
-                        exists, displ_state = find_state(self.source, "displaced")          # Checks if state already exists
-                        if not exists: displ_state = state(self.source, "displaced")        # If not, creates it
-                        displ_state.set_geometry(initial_state.labels, disp_coord)   # Creates New State with Displaced Coordinates 
-                        if hasattr(initial_state,"cellvec"): 
-                            displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
+                    ## 1-Displaces Coordinates Following Negative Freqs ###
+                    from scope.vnm_tools import displace_neg_freqs 
+                    disp_coord = displace_neg_freqs(initial_state.coord, initial_state.VNMs,debug=debug)
+                    exists, displ_state = find_state(self.source, "displaced")          # Checks if state already exists
+                    if not exists: displ_state = State(self.source, "displaced")        # If not, creates it
+                    displ_state.set_geometry(initial_state.labels, disp_coord)   # Creates New State with Displaced Coordinates 
+                    if hasattr(initial_state,"cellvec"): 
+                        displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
 
-                        ## 2-Initial State of the Computation must be updated, to account for the displacement of geometries
-                        exists, new_comp = self.find_computation()
-                        if not exists: new_comp = self.add_computation(qc_data, 1, self.path, comp_keyword="", is_update=False, debug=debug)
-                        new_comp.qc_data._add_attr("istate","displaced")  ## Updates the initial state of the computation, so it takes the displaced geometries
-                        new_comp.qc_data._add_attr("fstate",self.fstate)         
-                        new_comp.set_name()
-                        new_comp.set_paths()
+                    ## 2-Initial State of the Computation must be updated, to account for the displacement of geometries
+                    exists, new_comp = self.find_computation()
+                    if not exists: new_comp = self.add_computation(qc_data, 1, self.path, comp_keyword="", is_update=False, debug=debug)
+                    new_comp.qc_data._add_attr("istate","displaced")  ## Updates the initial state of the computation, so it takes the displaced geometries
+                    new_comp.qc_data._add_attr("fstate",self.fstate)         
+                    new_comp.set_name()
+                    new_comp.set_paths()
 
             else:     
                 print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' does not have the properties required to apply the displacement")

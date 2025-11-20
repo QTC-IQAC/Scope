@@ -39,13 +39,13 @@ class Input_data(object):
             lines    = source.strip().split('\n')
 
         ## Reads Section Part
-        if section is not None:      section_lines = read_section(lines, section=section, debug=debug) 
+        if section is not None:      section_lines = read_section(lines, section=section, debug=0) 
         else:                        section_lines = lines
         if len(section_lines) == 0:  
             print(f"INPUT_DATA.READ: Section '{section}' is empty. Only defaults will be taken") 
             self.set({})
             return self
-        elif debug > 0:              print(f"INPUT_DATA.READ: {len(section_lines)} lines found in section {section}") 
+        elif debug > 0: print(f"INPUT_DATA.READ: {len(section_lines)} lines found in section {section}") 
 
         ## Creates Dictionary
         for idx, line in enumerate(section_lines):
@@ -253,7 +253,7 @@ def read_section(lines: list, section: str, debug: int=0):
             canread = False #; continue
             if debug > 0: print("INPUT_DATA.READ_SECTION: end of section", section, "found in line", idx) 
         elif not line.startswith('/') and canread and len(line) > 0:
-            if debug > 0: print(f"INPUT_DATA.READ_SECTION: reading line {line}")
+            if debug > 0: print(f"INPUT_DATA.READ_SECTION: reading line {line.strip()}")
             if line[0] == '#' or line == '\n': continue  ### Ignores lines commented with #
             line = line.strip()
             section_lines.append(line)

@@ -601,9 +601,9 @@ class Specie(object):
     def find_state(self, search_name: str, debug: int=0):
         from scope.classes_state import State
         if not hasattr(self,"states"): return False, None
-        if debug > 0: print(f"SPECIE.FIND_STATE: Searching {search_name} in SPECIE object with {len(self.states)} states")
+        if debug > 0: print(f"SPECIE.FIND_STATE: Searching {search_name} state in SPECIE with {list(st.name for st in self.states)} states")
         for sta in self.states:
-            if debug > 0: print(f"SPECIE.FIND_STATE: Comparing {search_name} with {sta.name}")
+            #if debug > 0: print(f"SPECIE.FIND_STATE: Comparing {search_name} with {sta.name}")
             if sta.name == search_name: 
                 if debug > 0: print(f"SPECIE.FIND_STATE: state {search_name} found")
                 return True, sta

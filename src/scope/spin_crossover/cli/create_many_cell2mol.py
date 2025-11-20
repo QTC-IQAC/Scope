@@ -1,7 +1,7 @@
 import os
 from argparse import ArgumentParser
-from Scope.Read_Write import load_binary
-from Scope.Spin_Crossover.SCO_Classes import sco_system
+from scope.read_write import load_binary
+from scope.spin_crossover.sco_classes import SCO_system
 
 def env_exists(path):
     if not os.path.isfile(path):
@@ -56,12 +56,13 @@ def main():
         ## In sources_path, I expect a folder for each system.
         if os.path.isdir(sys_path):
             ## Inside, each system's folder, I expect a folder for each crystal structure
-            new_sys = sco_system(sys_name, env)
-            new_sys.load_multiple_cell2mol_folders(sys_path, debug=debug)
+            new_sys = SCO_system(sys_name)
+            new_sys.set_paths_from_environment(env, create_folders=True, debug=debug)
+            new_sys.load_multiple_cell2mol_folders(new_sys.sources_path, debug=debug)
             worked1 = new_sys.set_reference_cells(overwrite=overwrite, debug=debug)
             worked2 = new_sys.set_reference_molecs(overwrite=overwrite, debug=debug)
             if worked1 and worked2: 
-                print(f"\tCreation of system {new_sys.name} worked. Saving sys_file here: {new_sys.sys_file}. Folders will be created if necessary")
+                print(f"\tCreation of system {new_sys.name} worked. Saving sys_file here: {new_sys.system_file}. Folders will be created if necessary")
                 new_sys.create_folders()
                 new_sys.save()
 
