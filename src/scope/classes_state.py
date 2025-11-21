@@ -307,7 +307,8 @@ class State(object):
             else:                                     return False
         else:
             if not hasattr(self,"VNMs"): 
-                print(f"STATE.check_minimum: state does not have VNMs")
+                if hasattr(self._source,"name"): print(f"STATE.check_minimum: state {self.name} of {self._source.name} does not have VNMs")
+                else:                            print(f"STATE.check_minimum: state {self.name} of {self._source.formula} does not have VNMs")
                 return False
             else:
                 self.set_VNMs(self.VNMs)

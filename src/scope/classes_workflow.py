@@ -451,7 +451,7 @@ class Job(object):
 
                 if initial_state.isminimum: 
                     if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' is already a minimum")
-                    self._workflow.remove_job(keyword=self.keyword)    # not sure if this is possible
+                    #self._workflow.remove_job(keyword=self.keyword)    # not sure if this is possible
                 else: 
                     ## 0-Checks that the VNM exists, and that they have eigenvalues. If not, registers those eigenvalues.
                     if not hasattr(initial_state.VNMs[0],"atomidxs"):  #Actually only checking for the first one, but its ok
