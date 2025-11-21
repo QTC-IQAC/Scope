@@ -732,9 +732,29 @@ class Environment(object):
         if self.issystems_path and self.iscomputations_path and self.issources_path:  return True
         else:                                                                         return False
 
-#################
-###  Software ###
-#################
+###############
+### Project ###
+###############
+    def get_all_systems(self):
+        from scope.read_write import load_binary
+        systems = []
+        print(f"ENV.GET_ALL_SYSTEMS: loading all systems from {self.systems_path}")
+        for sys_folder in sorted(os.listdir(self.systems_path)):
+            if os.path.isdir(f"{self.systems_path}{sys_folder}") and not sys_folder.startswith("."):
+                for file in sorted(os.listdir(f"{self.systems_path}{sys_folder}")):
+                    if file.endswith(".npy"):
+                        file_path = f"{self.systems_path}{sys_folder}/{file}" 
+                        try:
+                            sys = load_binary(file_path)
+                            systems.append(sys)
+                        except Exception as exc:
+                            print(exc)
+                            #pass
+        return systems
+
+################
+### Software ###
+################
     def set_software(self):
         if self.management_type != "local": 
             print("\t-------------------------------------------------------------------------------------")

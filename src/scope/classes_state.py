@@ -301,14 +301,15 @@ class State(object):
 ##############################
 #### Connection with VNMs ####
 ##############################
-    def check_minimum(self):
+    def check_minimum(self, debug: int=0):
         if hasattr(self,"isminimum"): 
             if self.isminimum or self.almost_minimum: return True
             else:                                     return False
         else:
             if not hasattr(self,"VNMs"): 
-                if hasattr(self._source,"name"): print(f"STATE.check_minimum: state {self.name} of {self._source.name} does not have VNMs")
-                else:                            print(f"STATE.check_minimum: state {self.name} of {self._source.formula} does not have VNMs")
+                if debug > 0: 
+                    if hasattr(self._source,"name"): print(f"STATE.check_minimum: state {self.name} of {self._source.name} does not have VNMs")
+                    else:                            print(f"STATE.check_minimum: state {self.name} of {self._source.formula} does not have VNMs")
                 return False
             else:
                 self.set_VNMs(self.VNMs)
