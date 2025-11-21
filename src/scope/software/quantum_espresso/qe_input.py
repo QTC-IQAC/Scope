@@ -2,7 +2,8 @@
 import os
 from scope.classes_state       import find_state
 from scope.classes_environment import set_user
-from scope.other               import get_metal_idxs, get_metal_species, where_in_array
+from scope.operations.dicts_and_lists import where_in_array
+from scope.other               import get_metal_idxs, get_metal_species
 from scope.elementdata         import ElementData 
 from scope.software.quantum_espresso.qe_functions import get_pp, get_qe_data
 elemdatabase = ElementData()

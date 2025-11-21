@@ -184,14 +184,14 @@ class System(object):
         Returns: None
         """
         for br in self.branches:
-            br.path = self.computations_path+br.keyword+'/'
+            br.path = self.computations_path+br.name+'/'
             if create_folders: os.makedirs(br.path, exist_ok=True)
             if debug > 0: print(f"SET_PATHS_DOWN_HIERARCHY: new branch path: {br.path}")
             for wrk in br.workflows:
                 wrk.path = br.path              ## Recipe Path is the same as branch, and is a folder
                 for job in wrk.jobs:
                     job.path = wrk.path         ## Job Path is the same as branch, and is a folder. Except for finite differences jobs
-                    if job.setup == "findiff": 
+                    if job.job_setup == "findiff": 
                         job.path = job.path+"findiff/"
                         if create_folders: os.makedirs(wrk.path, exist_ok=True)
                     for comp in job.computations:

@@ -298,7 +298,7 @@ class Job(object):
     def check_job_data(self, inp_path: str, debug: int=0):
         from scope.classes_input import set_job_data
         if debug > 0: print(f"CHECK_JOB_DATA: reading job_data from path: {inp_path}")
-        new_job_data    = set_job_data(inp_path, section="&job_data" , debug=0)
+        new_job_data    = set_job_data(inp_path, section="&job_data", debug=0)
         old_job_data    = self.job_data 
         if new_job_data != old_job_data: 
             print(f"CHECK_JOB_DATA: identified changes in job_data for job.keyword={self.keyword}")
@@ -948,6 +948,7 @@ class Computation(object):
 
 ###########################################
     def submit(self, environment: object, want_job_id: bool=False, debug: int=0) -> None:
+        currdir = os.getcwd()
         ## Goes to path. Otherwise subprocess will fail
         os.chdir(self.path)
 
@@ -979,6 +980,7 @@ class Computation(object):
                 else:
                     print(f"COMPUTATION.SUBMIT: job submitted with unknown job_id. Blocks: {blocks}")
                     self.job_id = None
+        os.chdir(currdir)  ## We go back to the original directory
  
 ###########################################
     def run(self, environment: object, options: object, debug: int=0) -> None:

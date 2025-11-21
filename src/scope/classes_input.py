@@ -17,8 +17,10 @@ class Input_data(object):
     def __init__(self, content: str=None, section=None, isfile: bool=True, debug=0):
         
         if isfile: 
-            content = os.path.abspath(content) 
-            if not os.path.isfile(os.path.abspath(content)): raise FileNotFoundError(f"File not found: {content}")
+            if not os.path.isfile(content): 
+                if os.path.isfile(os.path.abspath(content)): 
+                    content = os.path.abspath(content) 
+                else: raise FileNotFoundError(f"INPUT_DATA.INIT: Content File not found in {content} or {os.path.abspath(content)}")
 
         # Correct the section, in case the user forgot the &
         if section is not None:
