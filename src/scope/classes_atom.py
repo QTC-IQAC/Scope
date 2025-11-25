@@ -63,6 +63,10 @@ class Atom(object):
             if (self.charge != other.charge): return False
         if hasattr(self,"spin") and hasattr(other,"spin"):
             if (self.spin != other.spin): return False
+        if hasattr(self,"adjnum") and hasattr(other,"adjnum"):
+            if (self.adjnum != other.adjnum): return False
+        if hasattr(self,"madjnum") and hasattr(other,"madjnum"):
+            if (self.madjnum != other.madjnum): return False
         if check_coordinates:
             if (self.coord[0] != other.coord[0]): return False
             if (self.coord[1] != other.coord[1]): return False
@@ -305,7 +309,11 @@ class Atom(object):
         at2 = newbond.atom2
         found = False
         for b in self.bonds:
-            if (b.atom1 == at1 and b.atom2 == at2) or (b.atom1 == at2 and b.atom2 == at1): 
+            issame1 = b.atom1.__eq__(at1, check_coordinates=True)
+            issame2 = b.atom2.__eq__(at2, check_coordinates=True)
+            issame3 = b.atom1.__eq__(at2, check_coordinates=True)
+            issame4 = b.atom2.__eq__(at1, check_coordinates=True)
+            if (issame1 and issame2) or (issame3 and issame4):
                 if debug > 0: print(f"ATOM.ADD_BOND found the same bond with atoms:") 
                 if debug > 0: print(f"atom1: {b.atom1}") 
                 if debug > 0: print(f"atom2: {b.atom2}") 

@@ -192,7 +192,11 @@ class Specie(object):
         return self.mol_graph
 
     def rmsd(self, other, reorder=True, center_method='centroid', debug: int=0):
+        ## Computes the RMSD between two species. Both species must be chemically the same
         from scope.other import rmsd
+        if self != other: 
+            print(f"SPECIE.RMSD: The two molecules are not equivalent. The Hungarian reorder will likely fail, so stopping")
+            return None 
         value = rmsd(self.labels, self.coord, other.labels, other.coord, reorder=reorder, center_method=center_method, debug=debug)   
         return value
 
@@ -942,6 +946,7 @@ class Molecule(Specie):
         if not self.iscomplex: return False
         if not hasattr(self,"metals") or not hasattr(self,"ligands"): self.split_complex(debug=debug)
         for lig in self.ligands:
+            if debug >= 1: print(f"MOL.SET_METAL_LIGAND_BONDS: working on ligand {lig.formula}")
             for at in lig.atoms:
                 count = 0
                 for met in self.metals: 
@@ -949,6 +954,7 @@ class Molecule(Specie):
                     if isconnected:
                         index_1 = at.get_parent_index("molecule")
                         index_2 = met.get_parent_index("molecule")
+                        if debug >= 1: print(f"MOL.SET_METAL_LIGAND_BONDS: creating bond between atoms {index_1} and {index_2}")
                         if index_1 < index_2 : 
                             bond_startatom = at
                             bond_endatom   = met
@@ -957,13 +963,13 @@ class Molecule(Specie):
                             bond_endatom   = at
                         newbond = Bond(bond_startatom, bond_endatom, 0.5, subtype="metal-ligand")
 
-                        at.add_bond(newbond)
-                        met.add_bond(newbond)
+                        at.add_bond(newbond, debug=debug)
+                        met.add_bond(newbond, debug=debug)
                         count += 1 
                 if hasattr(at, "madjnum"): 
                     if count != at.madjnum: 
-                        if debug >= 1: print(f"MOL.CREATE_BONDS: error creating bonds for atom: \n{at}\n of ligand: \n{lig}\n")
-                        if debug >= 1: print(f"MOL.CREATE_BONDS: count differs from atom.mconnec: {count}, {at.madjnum}")
+                        if debug >= 1: print(f"MOL.SET_METAL_LIGAND_BONDS: error creating bonds for atom: \n{at}\n of ligand: \n{lig}\n")
+                        if debug >= 1: print(f"MOL.SET_METAL_LIGAND_BONDS: count differs from atom.mconnec: {count}, {at.madjnum}")
         return True
 
     ######
