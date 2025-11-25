@@ -116,7 +116,7 @@ class Specie(object):
     ######################
     def add_parent(self, parent: object, indices: list, overwrite: bool=True, debug: int=0):
         ## associates a parent specie to self. The atom indices of self in parent are given in "indices"
-        ## if parent of the same subtype already in self.parent then it is overwritten
+        ## if parent of the same subtype already exists in self.parent, then it is overwritten
         ## this is to avoid having a substructure (e.g. a ligand) in more than one superstructure (e.g. a molecule) 
 
         # 1st-evaluates parent
@@ -180,22 +180,27 @@ class Specie(object):
         import networkx as nx
         from scope.other import get_extended_info
         if not hasattr(self,"adjmat"): self.get_adjmatrix(debug=debug)
-        data = get_extended_info(self.labels, self.coord, self.adjmat, self.adjnum)
+        if not hasattr(self,"bonds"):  self.set_bonds(debug=debug)
+        # Create Empty Graph
         self.mol_graph = nx.Graph()
-        N = len(self.labels)
-        for i in range(N):
-            self.mol_graph.add_node(i, label=self.labels[i], connec=data[i])
-        for i in range(N):
-            for j in range(i+1, N):
-                if self.adjmat[i, j] > 0:
-                    self.mol_graph.add_edge(i, j)
+        # Add nodes
+        for at in self.atoms:
+            idx = at.get_parent_index(self.subtype)
+            self.mol_graph.add_node(idx, label=at.label, connec=at.adjnum, mconnec=at.madjnum)
+        # Add edges
+        for at in self.atoms:
+            idx = at.get_parent_index(self.subtype)
+            for b in at.bonds:
+                idx1 = b.atom1.get_parent_index(self.subtype)
+                idx2 = b.atom2.get_parent_index(self.subtype)
+                if idx2 > idx1: self.mol_graph.add_edge(idx1, idx2, order=b.order, distance=b.distance)
         return self.mol_graph
 
     def rmsd(self, other, reorder=True, center_method='centroid', debug: int=0):
         ## Computes the RMSD between two species. Both species must be chemically the same
         from scope.other import rmsd
         if self != other: 
-            print(f"SPECIE.RMSD: The two molecules are not equivalent. The Hungarian reorder will likely fail, so stopping")
+            print(f"SPECIE.RMSD: The two Species are not equivalent. The Hungarian reorder will likely fail, so stopping")
             return None 
         value = rmsd(self.labels, self.coord, other.labels, other.coord, reorder=reorder, center_method=center_method, debug=debug)   
         return value
