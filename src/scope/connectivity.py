@@ -84,7 +84,7 @@ def get_radii(labels: list) -> np.ndarray:
     return np.array(radii)
 
 ######
-def get_adjmatrix(labels: list, pos: list, cov_factor: float=1.3, metal_factor: float=1.0, adjust_factor: bool=False, radii="default", metal_only: bool=False, debug: int=0) -> Tuple[bool, np.array, np.array]:
+def get_adjmatrix(labels: list, coord: list, cov_factor: float=1.3, metal_factor: float=1.0, adjust_factor: bool=False, radii="default", metal_only: bool=False, debug: int=0) -> Tuple[bool, np.array, np.array]:
     import numpy as np
     import warnings
     from scipy.spatial.distance import pdist, squareform
@@ -95,7 +95,7 @@ def get_adjmatrix(labels: list, pos: list, cov_factor: float=1.3, metal_factor: 
     ----------
     labels : list of str
         Atomic symbols (e.g., ['C', 'H', 'H', 'H', 'H']).
-    pos : list of list of float or np.ndarray
+    coord : list of list of float or np.ndarray
         Atomic coordinates, shape (N, 3).
     cov_factor : float, optional
         Scaling factor applied to the sum of covalent radii when defining a bond (default 1.3).
@@ -146,8 +146,9 @@ def get_adjmatrix(labels: list, pos: list, cov_factor: float=1.3, metal_factor: 
             block = elemdatabase.elementblock.get(elem, "")
             if block in ("d", "f"):  # transition or f-block metals
                 radii[i] *= metal_factor
+
     # --- Precompute distance matrix ---
-    distmat = squareform(pdist(pos))
+    distmat = squareform(pdist(coord))
 
     def compute_adjacency(cov_factor):
         """Helper to compute adjacency given a specific cov_factor."""

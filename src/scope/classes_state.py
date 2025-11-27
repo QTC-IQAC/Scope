@@ -357,7 +357,7 @@ class State(object):
         Parameters
         ----------
         n_selected : int, optional
-            Number of geometries to select per round (default is 10).
+            Number of geometries to select per round (default is 10). This is also the final number of geometries you will receive
         temp : float, optional
             Temperature parameter for sampling (default is 300).
         n_samples_round : int, optional

@@ -156,7 +156,6 @@ class G16_output(object):
         if len(self.opt_blocks) > 0:
             for idx, b in enumerate(self.opt_blocks):
                 step_labels, step_coords       = parse_geometry_from_step(self.lines[b[0]:b[1]])
-                #step_labels, step_coords       = parse_geometry_from_step(self.lines[b[0]+1:b[1]+1])
                 self.all_labels.append(step_labels)
                 self.all_coords.append(step_coords)
                 if (step_labels is None or step_coords is None) and debug > 0: print("GET_ALL_GEOMETRIES: error parsing geometry between lines", b)
@@ -168,14 +167,14 @@ class G16_output(object):
 
     def get_last_geometry(self, debug: int=0):
         if hasattr(self,"all_labels"):
+            if debug > 0: print("GET_LAST_GEOMETRY: Found self.all_labels")
             if len(self.all_labels) > 0 and len(self.all_coords) > 0:
                 for idx in range(len(self.all_labels)-1,-1,-1):
                     if self.all_labels[idx] is not None and self.all_coords is not None:
-                        self.last_labels = self.all_labels[idx]
-                        self.last_coords = self.all_coords[idx]
-                self.last_labels = None
-                self.last_coords = None
-                return self.last_labels, self.last_coords
+                        if len(self.all_labels[idx]) > 0 and len(self.all_coords) > 0:
+                            self.last_labels = self.all_labels[idx]
+                            self.last_coords = self.all_coords[idx]
+                            return self.last_labels, self.last_coords
             else:
                 if debug > 0: print("GET_LAST_GEOMETRY: No geometries in list")
                 self.last_labels = None
@@ -192,7 +191,7 @@ class G16_output(object):
                 init_line = self.opt_blocks[idx][0]#+1
                 last_line = self.opt_blocks[idx][1]#+1
                 tmp1, tmp2 = parse_geometry_from_step(self.lines[init_line:last_line])
-                if tmp1 is not None and tmp2 is not None:
+                if tmp1 is not None and tmp2 is not None and len(tmp1) > 0 and len(tmp2) > 0:
                     self.last_labels = tmp1
                     self.last_coords = tmp2
                     return self.last_labels, self.last_coords

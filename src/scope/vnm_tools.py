@@ -151,8 +151,7 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
 
     ## Frequencies must have eigenvectors stored
     if any(not freq.has_mode for freq in freqs): 
-        if debug > 0: print("One or more VNMs do not have eigenvectors. Stopping")
-        return None
+        raise ValueError("One or more VNMs do not have eigenvectors. Stopping")
 
     # Stores the original adjacency matrix
     if check_adjacencies: 
@@ -187,10 +186,10 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
                 continue  # skip high frequency or imaginary modes
 
             omega = freqs[i].freq                               
-            sigma_q = np.sqrt(Constants.hbar / (2 * omega))     
+            sigma_q = np.sqrt(constants.hbar / (2 * omega))     
 
             if T > 0:
-                coth = 1 / np.tanh(Constants.hbar * omega / (2 * Constants.boltz_au * T))
+                coth = 1 / np.tanh(constants.hbar * omega / (2 * constants.boltz_au * T))
                 sigma_q *= np.sqrt(coth)
             else: coth = 1.0
 
@@ -249,12 +248,12 @@ def expected_vibrational_energy(omega_au, T):
     omega_au = np.array(omega_au)
     if T == 0:
         # Pure zero-point energy
-        return 0.5 * Constants.hbar * np.sum(omega_au)
+        return 0.5 * constants.hbar * np.sum(omega_au)
     else:
         # Finite temperature using coth expression
-        x = (Constants.hbar * omega_au) / (2 * Constants.boltz_au * T)
+        x = (constants.hbar * omega_au) / (2 * constants.boltz_au * T)
         coth_x = (np.exp(x) + np.exp(-x)) / (np.exp(x) - np.exp(-x))  # coth(x) = (e^x + e^(-x)) / (e^x - e^(-x))
-        E_vib = 0.5 * Constants.hbar * np.sum(omega_au * coth_x)
+        E_vib = 0.5 * constants.hbar * np.sum(omega_au * coth_x)
         return E_vib
 ####
 
@@ -337,9 +336,9 @@ def project_to_normal_modes(l1, x1, l2, x2, freqs, debug: int=0):
 #############
 def beta_distance(Q1, Q2, freq_cm, T: float=300, debug: int=0):
     ### This is a similarity function to compare two sets of Q values. Meant to be used with the furthest point sampling function in Other
-    omegas = np.array(freq_cm)*Constants.cm2har
+    omegas = np.array(freq_cm)*constants.cm2har
     dist = 0
-    beta   = 1/(Constants.boltz_au*T)
+    beta   = 1/(constants.boltz_au*T)
     ps     = np.exp(-beta*omegas)
     ps     = ps/np.sum(ps)
     for a, b, f, o in zip(Q1, Q2, ps, omegas):
