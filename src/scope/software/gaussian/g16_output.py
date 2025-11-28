@@ -328,17 +328,6 @@ class G16_output(object):
 #########################
 ### FREQUENCIES & VNM ###
 #########################
-    #def get_frequencies(self, debug: int=0):
-    #    if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
-    #    if len(self.opt_blocks) == 0: return None
-    #    for idx in range(len(self.opt_blocks)-1,-1,-1):
-    #        init_line = self.opt_blocks[idx][0]#+1
-    #        last_line = self.opt_blocks[idx][1]#+1
-    #        tmp = parse_freqs_from_step(self.lines[init_line:last_line])
-    #        if tmp is not None:
-    #            self.frequencies = tmp; return self.frequencies
-    #    self.frequencies = None
-    #    return self.frequencies
 
     def get_vnms(self, witheigen: bool=False, debug: int=0):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
