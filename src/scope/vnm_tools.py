@@ -98,13 +98,13 @@ def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], wh
     return new_coord
 
 ####
-def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, n_samples: int=10, freq_bottom_limit: float=0, check_adjacencies: bool=True, debug: int=0):
+def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, n_samples: int=10, sigma_damp_factor: float=1, freq_bottom_limit: float=80, check_adjacencies: bool=True, debug: int=0):
     from scope.connectivity             import get_adjmatrix
     from scope.operations.vecs_and_mats import normalize
     """
-    Generate a set of geometries by sampling along vibrational normal modes (VNM) of a molecule.
+    Generates a set of geometries by sampling along vibrational normal modes (VNM) of a molecule.
     This function perturbs the input geometry along its vibrational normal modes, producing a set of 
-    geometries that represent possible thermal or quantum fluctuations. Optionally, it checks that 
+    geometries that represent possible thermal fluctuations. Optionally, it checks that 
     the molecular connectivity (adjacency matrix) is preserved in the sampled geometries.
     Parameters
     ----------
@@ -124,6 +124,8 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
         Temperature in Kelvin for thermal sampling. If 0, only zero-point motion is considered.
     n_samples : int, optional
         Number of geometries to generate.
+    sigma_damp_factor: float, optional
+        Reduces large unphysical displacements. Specially important for low-frequency modes
     freq_bottom_limit : float, optional
         Minimum frequency (in cm^-1) to include in sampling. Modes below this are ignored.
     check_adjacencies : bool, optional
@@ -141,8 +143,9 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
     Notes
     -----
     - The function assumes that the input frequencies and eigenvectors are mass-weighted and in atomic units.
-    - Sampling is performed using a normal distribution for each mode, with width determined by quantum and/or thermal fluctuations.
+    - Sampling is performed using a normal distribution for each mode, with width determined by thermal fluctuations.
     - If `check_adjacencies` is True, geometries that change the molecular connectivity are discarded.
+    - Large unphysical displacements are discarded, which breaks the expected energy distribution of the resulting geometries. (np.mean(energies) should approach ZPE/2) 
     - The function may return fewer than `n_samples` geometries if the adjacency check fails frequently.
     """
     def taper_weight(freq_cm, f0=50.0, width=10.0):
@@ -165,9 +168,9 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
     N_modes = len(freqs)
     if qini is None: qini = np.zeros((N_modes))
     else:            qini = np.asarray(qini)
-    if debug > 0: print("Number of modes:", len(modes))
-    if debug > 0: print("First mode:", modes[0])
-    if debug > 0: print("First mode norm:", normalize(modes[0]))
+    if debug > 1: print("Number of modes:", len(modes))
+    if debug > 1: print("First mode:", modes[0])
+    if debug > 1: print("First mode norm:", normalize(modes[0]))
 
     # Initializes and Runs Main While loop
     geometries = []
@@ -175,15 +178,14 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
     energies   = []
     maxcount   = n_samples * 100
     count      = 0
-    while len(geometries) < n_samples or count >= maxcount: # for _ in range(n_samples):
+    while len(geometries) < n_samples or count >= maxcount:
         displacement = np.zeros(3 * N_atoms)
 
         q_tot = qini.copy()
         q_vec = []
         e_harm = 0.0
         for i in range(N_modes):
-            if freqs[i].freq_cm <= freq_bottom_limit:
-                continue  # skip high frequency or imaginary modes
+            if freqs[i].freq_cm <= 0: continue  # skip imaginary modes
 
             omega = freqs[i].freq                               
             sigma_q = np.sqrt(constants.hbar / (2 * omega))     
@@ -194,43 +196,47 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
             else: coth = 1.0
 
             # Apply smooth tapering based on frequency in cm^-1
-            weight = taper_weight(freqs[i].freq_cm, f0=freq_bottom_limit)
+            if freq_bottom_limit > 0: weight = taper_weight(freqs[i].freq_cm, f0=freq_bottom_limit)
+            else:                     weight = 1.0
+
+            # Applies weight and limitations
             sigma_q *= np.sqrt(weight)
+            sigma_q  = sigma_q/(freqs[i].freq_cm**sigma_damp_factor) ## a factor tunes down the displacement in the ith-VNM depending on its frequency
+            sigma_q  = np.min((np.abs(sigma_q), 10))                 ## displacement is also limited to Q=10 
 
             # Sample a displacement
-            sigma_q = sigma_q/(freqs[i].freq_cm**1.8)
-            sigma_q = np.min((np.abs(sigma_q), 10))
-            q_i = np.random.normal(loc=0.0, scale=sigma_q)      ## Coordinates of Q for this VNM
-            q_vec.append(q_i)                                   ## Collection of Q for all VNM to be applied to this sample
-            q_tot[i] += q_i                                     ## Collection of Accumulated Q (including the initial ones) 
+            q_i = np.random.normal(loc=0.0, scale=sigma_q)          ## Coordinates of Q for this VNM
+            q_vec.append(q_i)                                       ## Collection of Q for all VNM to be applied to this sample
+            q_tot[i] += q_i                                         ## Collection of Accumulated Q (including the initial ones) 
             e_harm += 0.5 * q_tot[i]**2 * omega**2
             displacement += q_i * modes[i]                 
 
-            if debug > 0 and i < 10: print(f"  Mode {i}: freq_cm = {freqs[i].freq_cm}, q_i= {q_i:.3f}, sigma_q = {sigma_q:.3f}")
+            if debug > 0 and i < 10: print(f"  Mode {i}: freq_cm = {freqs[i].freq_cm}, weight = {weight:.3f}, q_i= {q_i:.3f}, sigma_q = {sigma_q:.3f}")
             if debug > 1: print(f"  max eigenvector component (mass-weighted)    = {np.max(np.abs(modes[i])):.3e}")
             if debug > 1: print(f"  max displacement contribution from this mode = {np.max(np.abs(q_i * modes[i])):.3e}")
-            if debug > 1: print(f"  {i=} displacement[0]: {np.round(displacement[0],3)}")
+            if debug > 1: print(f"  {i=} displacement: {np.round(displacement[i],3)}")
 
         if debug > 1: print(f"Coord:      {np.round(coord[0],3)}")
         if debug > 1: print(f"modes[i]    {np.round(modes[0][0:3],5)}")
 
         # Convert to Cartesian displacement
-        if debug > 0: print(f"Cart_Disp:  {np.round(displacement[0:3],3)}")
+        if debug > 1: print(f"Cart_Disp:  {np.round(displacement[0:3],3)}")
         displaced_coord   = coord.flatten() + displacement
-        if debug > 0: print(f"Disp_Coord1 [bohr]: {np.round(displaced_coord[0:3],3)}")
+        if debug > 1: print(f"Disp_Coord1 [bohr]: {np.round(displaced_coord[0:3],3)}")
         displaced_coord   = displaced_coord.reshape((N_atoms, 3))
 
         if check_adjacencies: 
             isgood, new_adjmat, new_adjnum = get_adjmatrix(labels, displaced_coord, cov_factor=1.3, metal_factor=1.0)
             if isgood and np.array_equal(original_adjmat, new_adjmat):
+                if debug > 0: print(f"Geometry {count} ACCEPTED")
                 geometries.append(displaced_coord)
                 q_coords.append(q_tot)
                 energies.append(e_harm)
             else:
-                if debug > 0: print("Discarded geometry due to adjacency mismatch")
-                if debug > 0: print(f"{new_adjnum=}")
-                if debug > 0: print(f"{original_adjnum=}")
-                if debug > 0: print(f"{new_adjnum-original_adjnum}")
+                if debug > 0: print(f"Geometry {count} DISCARDED due to adjacency mismatch")
+                if debug > 1: print(f"{new_adjnum=}")
+                if debug > 1: print(f"{original_adjnum=}")
+                if debug > 1: print(f"{new_adjnum-original_adjnum}")
         else:
             geometries.append(displaced_coord)
             q_coords.append(q_tot)
@@ -239,7 +245,9 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
         if count >= maxcount: 
             print(f"Warning: Reached maximum count of {maxcount} with only {len(geometries)}/{n_samples} samples created.")
             break
-    if debug > 0: print(f"Produced {len(geometries)} structures in {count} attempts")
+    if debug > 0: print(f"------------------------------------------------------------------")
+    if debug > 0: print(f"Sampling Produced {len(geometries)} structures in {count} attempts")
+    if debug > 0: print(f"------------------------------------------------------------------")
     return np.array(geometries), np.array(q_coords), np.array(energies)
 
 ####

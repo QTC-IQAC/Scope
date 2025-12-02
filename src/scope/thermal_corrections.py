@@ -4,7 +4,7 @@ from scope.classes_data               import *
 from scope.operations.dicts_and_lists import range2list
 
 ###########
-def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', typ: str='default', FR_cutoff: int=100, FR_alpha: int=4, nmol: int=1):
+def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', typ: str='default', FR_cutoff: int=100, FR_alpha: int=4, nmol: int=1, debug: int=0):
     
     ## Temperature must be provided in K
     ## Function works with freqs in au, except the free-rotor part, which works in s-1 units
@@ -12,8 +12,8 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     bav=1.0000E-44 # Kg*m**2
     
     if typ.lower() == 'free-rotor' or typ.lower() == 'fr':              
-        if freq_units.lower() == 'cm': FR_cutoff=FR_cutoff*constants.cm2s_1
-        elif freq_units.lower() == 'ev': FR_cutoff=FR_cutoff*constants.eV2s_1
+        if   freq_units.lower() == 'cm':  FR_cutoff=FR_cutoff*constants.cm2s_1
+        elif freq_units.lower() == 'ev':  FR_cutoff=FR_cutoff*constants.eV2s_1
         elif freq_units.lower() == 'au' : FR_cutoff=FR_cutoff*constants.har2s_1
         elif freq_units.lower() == 's_1': pass
         else: 
@@ -21,18 +21,14 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
             sys.exit()
         
     # Converts Frequencies to s-1
-    freqs_adapted = []
-    for f in freqs:
-        if freq_units.lower() == 'cm': freqs_adapted.append(f*constants.cm2s_1)
-        elif freq_units.lower() == 'ev': freqs_adapted.append(f*constants.eV2s_1)
-        elif freq_units.lower() == 'au' : freqs_adapted.append(f*constants.har2s_1)
-        elif freq_units.lower() == 's_1': freqs_adapted.append(f)
-        else: 
-            print("Svib: can't understand input units of frequencies")
-            sys.exit()
+    if   freq_units.lower() == 'au':  freqs = np.array(freqs)
+    elif freq_units.lower() == 'cm':  freqs = np.array(freqs) * constants.cm2har
+    elif freq_units.lower() == 'ev':  freqs = np.array(freqs) * constants.eV2har
+    elif freq_units.lower() == 's_1': freqs = np.array(freqs) * constants/har2s_1
+    else: raise ValueError("GET_Svib: can't understand input units of frequencies")
         
     total=0.0
-    for idx, f in enumerate(freqs_adapted):   # Freqs in s-1
+    for idx, f in enumerate(freqs):   # Freqs in s-1
         if f > 0.0: 
             ## Free Rotor Term
             if typ.lower() == 'free-rotor' or typ.lower() == 'fr':
@@ -64,6 +60,8 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     
             ## Sums both Contributions
             total += (Svib_FR + Svib_HO)
+
+    if debug > 0: print(f"GET_Svib: Left main loop with {total=} au")
         
     ## Arranges units 
     if outunits.lower() == 'kj':  total = total*constants.har2kJmol
@@ -74,25 +72,29 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     return new_data
 
 ###########
-def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', nmol: int=1):
+def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', nmol: int=1, debug: int=0):
     # temperature in K
-    # function works with freqs in au
-    freqs_adapted = []
-    if freq_units.lower() != 'au':
-        for f in freqs:
-            if freq_units.lower() == 'cm': freqs_adapted.append(f*constants.cm2har)
-            elif freq_units.lower() == 'ev': freqs_adapted.append(f*constants.eV2har)
-            elif freq_units.lower() == 's_1': freqs_adapted.append(f*constants/har2s_1)
-            elif freq_units.lower() == 'au' : freqs_adapted.append(f)
-            else: print("Svib: can't understand input units of frequencies")
+    # function works with freqs in au, so we adapt if needed
+
+    if   freq_units.lower() == 'au':  freqs = np.array(freqs)
+    elif freq_units.lower() == 'cm':  freqs = np.array(freqs) * constants.cm2har
+    elif freq_units.lower() == 'ev':  freqs = np.array(freqs) * constants.eV2har
+    elif freq_units.lower() == 's_1': freqs = np.array(freqs) * constants/har2s_1
+    else: raise ValueError("GET_Hvib: can't understand input units of frequencies")
     
     total=0.0
-    for f in freqs_adapted:        
+    if debug > 0: print(f"GET_Hvib: Computing Hvib with {len(freqs)} frequencies, and first: {freqs[0]} au")
+    for idx, f in enumerate(freqs):
         if f > 0.0:
-            exponential = np.exp(-f/(constants.boltz_au*temp))       # Dimensionless
+            if temp > 0: exponential = np.exp(-f/(constants.boltz_au*temp))       # Dimensionless
+            else:        exponential = float(0.0)                                 # Dimensionless
             fstterm = f/2.                                           # hartree/molecule
             scnterm = (f*exponential)/(1-exponential)                # hartree/molecule
             total += (fstterm+scnterm)/nmol
+            if debug > 0: print(f"GET_Hvib: {idx} {total} {f} {fstterm} {scnterm}")
+        else:
+            if debug > 0: print(f"GET_Hvib: {idx} {total} {f}")
+    if debug > 0: print(f"GET_Hvib: Left loop with {total=} au")
 
     ## Arranges units 
     if outunits.lower() == 'kj':  total = total*constants.har2kJmol    # kJ/mol
@@ -100,7 +102,6 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     ## Creates data-class object
     new_data = Data("Hvib", float(total), outunits, "scope.Thermal_Corrections.get_Hvib()")
     new_data.add_property("temperature", temp, overwrite=True)
-
     return new_data
 
 def get_Selec(spin_multiplicity, outunits: str='au', nmol: int=1):
@@ -113,7 +114,6 @@ def get_Gibbs(Helec: float, Hvib: float, Selec: float, Svib: float, temp: float)
 
 def find_t12(templist, dGlist: list):
     if type(templist) == range: templist = range2list(templist) 
-    #assert len(templist) == len(dGlist)
     if dGlist[0] < 0.0: return None 
     else:
         for idx, g in enumerate(dGlist):
