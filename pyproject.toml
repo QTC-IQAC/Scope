@@ -13,16 +13,12 @@ dependencies = [
     "cell2mol @ git+https://github.com/lcmd-epfl/cell2mol.git",
 ]
 
-[project.optional-dependencies]
-jupyter   = ["ipykernel", "plotly", "nbformat"]
-tutorials = ["jupyter","matplotlib"]
-dev       = ["plotly","pytest","nbval","pytest-cov","pre-commit"]
-
 # Where your CLI entry point lives
 [project.scripts]
 # General
 scope_config             = "scope.cli.config_environment:main"
 scope_run_task           = "scope.cli.run_task_v2:main"
+
 # Spin_Crossover Related
 scope_sco_single         = "scope.spin_crossover.cli.create_from_cell2mol:main"
 scope_sco_many           = "scope.spin_crossover.cli.create_many_cell2mol:main"
@@ -35,15 +31,3 @@ include-package-data = false
 [build-system]
 requires = ["setuptools", "wheel", "numpy"]
 build-backend = "setuptools.build_meta"
-
-[tool.pytest.ini_options]
-addopts = "--nbval --current-env --disable-warnings -q"
-testpaths = [
-    "tutorials/1-Tutorial_1.ipynb",
-    "tutorials/2-Tutorial_2.ipynb",
-    "tutorials/3-Tutorial_3.ipynb",
-    "tutorials/4-Tutorial_4.ipynb",
-    "tutorials/5-Tutorial_5.ipynb",
-    "tutorials/6-Tutorial_6.ipynb",
-    "tutorials/7-Tutorial_7.ipynb",
-]

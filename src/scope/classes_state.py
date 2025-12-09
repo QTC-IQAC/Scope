@@ -349,7 +349,7 @@ class State(object):
 #############################
 #### Sampling Geometries ####
 #############################
-    def sample_geometries(self, ngeoms: int, n_aux_geoms=100, temp: float=300, n_fps_rounds=0, debug: int=0):
+    def sample_geometries(self, ngeoms: int, n_aux_geoms=100, n_fps_rounds=0, temp: float=300, sigma_damp_factor: float=1, freq_bottom_limit: float=50, debug: int=0):
         """
         - The sampling parameters (temperature, number of rounds, samples per round) can be adjusted.
         Samples geometries around the current state geometry. It uses vibrational normal modes (VNMs), and explores the geometries in Q space. 
@@ -428,7 +428,7 @@ class State(object):
                 else:       geoms_this_round = n_aux_geoms
 
                 if debug > 0: print(f"STATE.SAMPLE_GEOMETRIES: Running sampling of initial geometry, with: {geoms_this_round=} and {debug=}") 
-                geoms, q_disp, energies = geom_sampling_from_vnm(self.labels, c, self.VNMs, qini=q, T=temp, n_samples=geoms_this_round, check_adjacencies=True, debug=0)
+                geoms, q_disp, energies = geom_sampling_from_vnm(self.labels, c, self.VNMs, qini=q, T=temp, n_samples=geoms_this_round, sigma_damp_factor=sigma_damp_factor, freq_bottom_limit=freq_bottom_limit, check_adjacencies=True, debug=debug)
                 if debug > 0: 
                     if nr == 0: 
                         print(f"STATE.SAMPLE_GEOMETRIES: Initial structure {count}/{len(current_geoms)} sampled {len(q_disp)} geometries")
