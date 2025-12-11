@@ -14,59 +14,58 @@ SCOPE has three main modules.
 
 # Documentation
 
-The associated manuscript is under preparation. Partial documentation is available at: ???
+- The associated manuscript is under preparation. Partial documentation is available at: ???
+- Tutorials are available [here](https://github.com/QTC-IQAC/Scope_Tutorials)
 
 ---
 
 # Features
 
 - Configure computational environments for your projects, storing paths, software, and queues  
-- Run quantum chemistry workflows for one or multiple molecules or periodic structures, using Quantum Espresso or Gaussian16
+- Run quantum chemistry workflows for molecules or periodic structures, using Quantum Espresso or Gaussian16
 - Parse and analyse results of computations, and connect the data with SCOPE's molecule- and cell-class objects
-- CLI tools for common workflows  
 - Integration with [cell2mol](https://github.com/lcmd-epfl/cell2mol)  
+- CLI tools
 
 ---
 
 # Installation
 
 ```bash
+
+# create and activate conda environment and install pip
 conda create --name scope 
 conda activate scope
 conda install pip
-git clone --branch dev https://github.com/QTC-IQAC/Scope.git
+
+# clone repository and enter
+git clone https://github.com/QTC-IQAC/Scope.git
 cd Scope
+
+# install with pip 
 pip install -e .
-# pip install -e .[tutorials]  ## Optional, in some shells you might need to do: "pip install -e '.[tutorials]' instead"
-# pip install -e .[dev]        ## Optional, in some shells you might need to do: "pip install -e '.[dev]'       instead"
 ```
 
   ## Dependencies
 
 - numpy
-- scikit learn
+- networkx
 - rdkit
 - platformdirs
-- cell2mol
-- ipykernel ?
+- cell2mol [here](https://github.com/lcmd-epfl/cell2mol.git)
 
 ---
 
   # Usage
 
-Tutorials are available at the github repository (https://github.com/QTC-IQAC/Scope.git):
-Alternatively, you can download and install those tutorials together with the main package, by doing:
-
-```bash
-pip install -e .[tutorials]
-```
-
-rather than the bare "pip install -e ." that is suggested above: 
+Comprehensive Tutorials are available in their own github repository [here](https://github.com/QTC-IQAC/Scope_Tutorials.git):
 
   # License
 
 MIT
 
   # Acknowledgements
-- Manel Serrano and Raul Santiago (IQAC-CSIC), for their coding contribution, and help at setting the repository
+- Manel Serrano and Raul Santiago (IQAC-CSIC) for their coding contribution, and help at setting the repository
 - The Spanish Ministerio de Ciencia, Innovación y Universidades for funding (Project PID2022-138265NA-I00)
+- The EuroHPC Development Access Call (Project: EHPC-DEV-2024D11-031)
+- The Centre de Supercomputació de Catalunya (CSUC) for Computational Resources. 
