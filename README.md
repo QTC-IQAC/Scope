@@ -2,8 +2,7 @@
 
 # SCOPE
 
-  This repository contains the source code of SCOPE, a Python package designed to handle computational chemistry workflows.  
-  It prepares, submits, and analyses Gaussian and Quantum Espresso computations of individual molecules or unit cells.  
+  This repository contains the source code of SCOPE, a Python package designed to handle computational chemistry workflows. SCOPE prepares, submits, and analyses Gaussian and Quantum Espresso computations of individual molecules or unit cells.  
   
   SCOPE has three main modules.
   1) Chemical Species:        Enables the creation of chemistry-related classes (e.g. Molecules, Ligands, Atoms, Bonds, Cells) that can be navigated and interacted with.
