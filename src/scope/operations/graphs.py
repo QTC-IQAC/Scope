@@ -2,15 +2,20 @@ import networkx as nx
 import numpy as np
 
 ####
-def build_graph(adj_matrix, labels):
+def build_graph(adj_matrix, labels, debug: int=0):
     G = nx.Graph()
     N = len(labels)
     for i in range(N):
         G.add_node(i, label=labels[i])#, feature=features[i] if features else None)
+        if debug > 0: print(f"BUILD_GRAPH: node created for {i}:{labels[i]}") 
     for i in range(N):
         for j in range(i+1, N):
             if adj_matrix[i, j] > 0:
                 G.add_edge(i, j)
+                if debug > 0: print(f"BUILD_GRAPH: edge created between {i}:{labels[i]} and {j}:{labels[j]}")
+    if debug > 0:
+        print(f"BUILD_GRAPH: {G.number_of_nodes()} nodes created")
+        print(f"BUILD_GRAPH: {G.number_of_edges()} edges created")
     return G
 
 ####
@@ -36,7 +41,7 @@ def resistance_matrix(G):
     return R
 
 ####
-def compare_graphs(G1, G2):
+def compare_graphs(G1, G2, debug: int=0):
 
     # Compares whether two graphs are identical using resistances
     # 1) compares number of nodes and edges
@@ -118,6 +123,7 @@ def get_signatures(G, convergence_layers: int=2):
     # While is closed, get the results
     return n, n_neigh_x_layer, signatures
 
+####
 def compare_signatures(sign1: dict, sign2: dict):
     from collections import Counter
     """
@@ -129,3 +135,8 @@ def compare_signatures(sign1: dict, sign2: dict):
     for layer in list(sign1.keys()):
         if not Counter(sign1[layer].values()) == Counter(sign2[layer].values()): return False
     return True
+
+####
+def print_graph_info(G):
+    print(f"Nodes: {G.number_of_nodes()}")
+    print(f"Edges: {G.number_of_edges()}")

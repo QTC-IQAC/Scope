@@ -111,6 +111,9 @@ class Specie(object):
         self.atoms[0].set_charge(total_charge)
         return self.charge
 
+    def check_spin_charge_compatibility(self):
+        return ((self.spin_multiplicity - 1) % 2) == ((self.eleccount + self.charge)% 2)
+
     ######################
     ## Parent Functions ##
     ######################
@@ -187,13 +190,19 @@ class Specie(object):
         for at in self.atoms:
             idx = at.get_parent_index(self.subtype)
             self.mol_graph.add_node(idx, label=at.label, connec=at.adjnum, mconnec=at.madjnum)
+            if debug > 0: print(f"SPECIE.GET_GRAPH: node created for {idx}:{at.label}") 
         # Add edges
         for at in self.atoms:
             idx = at.get_parent_index(self.subtype)
             for b in at.bonds:
                 idx1 = b.atom1.get_parent_index(self.subtype)
                 idx2 = b.atom2.get_parent_index(self.subtype)
-                if idx2 > idx1: self.mol_graph.add_edge(idx1, idx2, order=b.order, distance=b.distance)
+                if idx2 > idx1: 
+                    self.mol_graph.add_edge(idx1, idx2, order=b.order, distance=b.distance)
+                    if debug > 0: print(f"SPECIE.GET_GRAPH: edge created between atoms {idx1}:{b.atom1.label} and {idx2}:{b.atom2.label}")
+        if debug > 0:
+            print(f"SPECIE.GET_GRAPH: {self.mol_graph.number_of_nodes()} nodes created")
+            print(f"SPECIE.GET_GRAPH: {self.mol_graph.number_of_edges()} edges created")
         return self.mol_graph
 
     def rmsd(self, other, reorder=True, center_method='centroid', debug: int=0):

@@ -1,8 +1,8 @@
 import numpy as np
 from scope.connectivity      import *
 from scope.classes_data      import Collection, Data
-from scope.operations.dicts_and_lists import where_in_array, extract_from_list
 from scope.classes_specie    import *
+from scope.operations.dicts_and_lists import where_in_array, extract_from_list
 from scope.elementdata       import ElementData
 elemdatabase = ElementData()
 
@@ -272,8 +272,7 @@ class State(object):
             for mol in self.moleclist:
                 found = False
                 for rmol in self._source.refmoleclist:
-                    issame = compare_species(mol, rmol)  
-                    if issame: found = True
+                    if mol.__eq__(rmol,with_graph=False): found = True # Graph cannot be used for rmol, since it doesn't have rdkit object
                 if not found: self.fragmented = True
             # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
             if self.fragmented and reconstruct:
@@ -282,20 +281,12 @@ class State(object):
                 for mol in new_moleclist:
                     found = False
                     for rmol in self._source.refmoleclist:
-                        issame = compare_species(mol, rmol)  
-                        if issame: found = True
+                        if mol.__eq__(rmol,with_graph=False): found = True # Graph cannot be used for rmol, since it doesn't have rdkit object
                     if not found: self.fragmented = True
                 if not self.fragmented: 
                     self.moleclist = new_moleclist
                     self.set_geometry_from_moleclist(debug=debug)
-        elif self._source.type == "perxyz": 
-            if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
-            if len(self.moleclist) > 1:       self.fragmented = True
-            else:                             self.fragmented = False
-            if debug > 0: print(f"STATE.CHECK_FRAGMENTATION: source type={self._source.type}. {self.fragmented=}")
-            return self.fragmented
-        else:
-            print(f"STATE.CHECK_FRAGMENTATION: Unknown source Type {self._source.type}")
+        else: print(f"STATE.CHECK_FRAGMENTATION: Unknown source Type {self._source.type}")
         return self.fragmented
 
 ##############################

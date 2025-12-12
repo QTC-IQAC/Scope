@@ -245,7 +245,6 @@ class Cell(object):
 
     ######
     def check_fragmentation(self, reconstruct: bool = False, debug: int=0):
-
         if not hasattr(self,"moleclist"): self.get_moleclist()
         self.fragmented = False
 
@@ -253,7 +252,9 @@ class Cell(object):
         for mol in self.moleclist:
             found = False
             for rmol in self.refmoleclist:
-                if mol == rmol: found = True
+                # Comparison using graphs cannot be used for rmol, since it doesn't have rdkit object
+                # Which means that not all bonds will be created, and hence not all edges
+                if mol.__eq__(rmol, with_graph=False): found = True 
             if not found: self.fragmented = True
 
         # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
@@ -263,7 +264,9 @@ class Cell(object):
             for mol in new_moleclist:
                 found = False
                 for rmol in self.refmoleclist:
-                    if mol == rmol: found = True
+                    # Comparison using graphs cannot be used for rmol, since it doesn't have rdkit object
+                    # Which means that not all bonds will be created, and hence not all edges
+                    if mol.__eq__(rmol, with_graph=False): found = True
                 if not found: self.fragmented = True
             if not self.fragmented: 
                 self.moleclist = new_moleclist

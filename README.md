@@ -1,3 +1,5 @@
+[![DOI](https://img.shields.io/badge/DOI-10.1234%2Fabcd1234-blue)]() ![SLURM Compatible](https://img.shields.io/badge/HPC%20scheduler-SLURM-green)
+
 <p align="center">
   <img src="mciu_logo.png" alt="Logo" width="400">
 </p>
