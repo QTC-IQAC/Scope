@@ -2,8 +2,9 @@ import os
 import sys
 import pickle
 import shutil
+import readline
 from ast    import literal_eval
-from typing import Any, List, Optional, Type
+from typing import Any, Callable, List, Optional, Type
 
 ############
 ## Hidden ##
@@ -33,33 +34,83 @@ def save_list_as_text(inplist: list, pathfile: str=os.getcwd()+"outfile.txt"):
         for l in inplist:
             print(l, file=fil)
 
-def read_user_input(message: str, rtext: bool=False, rtext_options: list=[], rtype: bool=False, rtype_options: list=[], limit_attempts: bool=True, attempts: int=3, debug: int=0):
+def read_user_input(message: str, rtext_options: Optional[List[str]] = None, rtype_options: Optional[List[Type]] = None, validator: Optional[Callable[[Any], bool]] = None, default: Any = None, case_insensitive: bool = True, limit_attempts: bool = True, attempts: int = 3, debug: int = 0) -> Any:
+    """
+    Read user input with flexible validation options.
+    
+    Parameters:
+        message: str - prompt to show the user
+        rtext_options: Optional[List[str]] - list of allowed string options
+        rtype_options: Optional[List[Type]] - list of allowed types (int, float, str, etc.)
+        validator: Optional[Callable[[Any], bool]] - custom function to validate input
+        default: Any - value returned if user presses Enter without typing
+        case_insensitive: bool - apply lowercasing to rtext_options comparison
+        limit_attempts: bool - stop after `attempts` attempts
+        attempts: int - maximum attempts
+        debug: int - verbosity level
+    Returns:
+        The validated input (may be string or evaluated type)
+    Raises:
+        UserInputError if limit_attempts reached and input invalid
+    """
+    rtext_options = rtext_options or []
+    rtype_options = rtype_options or []
     att = 0
-    correct = False
-    if limit_attempts:
-        while att < attempts and not correct:
-            opt = input(message).strip()
-            if debug > 0: print(f"Read opt={opt}, of type={type(opt)}, rtype={rtype}, rtext={rtext}")
-            if rtext and not rtype:
-                if opt in rtext_options:                                correct = True
-                else:                                                   correct = False; att += 1
-            elif rtype and not rtext:
-                try:        opt = literal_eval(opt); isstr = False
-                except:     isstr = True
-                if debug > 0: print(f"isstr={isstr}, opt={opt}, type={type(opt)}")
 
-                if type(opt) in rtype_options:                          correct = True
-                else:                                                   correct = False; att += 1
+    while True:
+        raw_input_value = input(message).strip()
+        if debug > 0: print(f"READ_USER_INPUT: Raw input: {raw_input_value!r}")
 
-            elif rtype and rtext:
-                if type(opt) in rtype_options and opt in rtext_options: correct = True
-                else:                                                   correct = False; att += 1
-            else: correct = True
-            if debug > 0: print(f"correct={correct}, #attempt={att}")
+        # Return default if user presses Enter
+        if raw_input_value == "" and default is not None:
+            if debug > 0: print(f"READ_USER_INPUT: Returning default value: {default!r}")
+            return default
 
-            if not correct: print(f"Please, try again. Options are: {rtext_options}")
-        if correct: return opt
-        else:       return None
+        opt = raw_input_value
+        valid = True
+
+        # --- Type evaluation ---
+        if rtype_options:
+            try:
+                val = literal_eval(opt)
+                opt_type = type(val)
+                opt = val
+            except Exception:
+                opt_type = str  # treat as string if eval fails
+            if opt_type not in rtype_options:
+                valid = False
+            if debug > 0: print(f"READ_USER_INPUT: Type check: {opt_type}, valid={valid}")
+
+        # --- Text options check ---
+        if rtext_options:
+            comp = str(opt)
+            if case_insensitive:
+                comp = comp.lower()
+                allowed = [x.lower() for x in rtext_options]
+            else:
+                allowed = rtext_options
+            if comp not in allowed:
+                valid = False
+            if debug > 0: print(f"READ_USER_INPUT: Text check: {comp}, allowed={allowed}, valid={valid}")
+
+        # --- Custom validator ---
+        if validator is not None:
+            try:
+                if not validator(opt):
+                    valid = False
+            except Exception:
+                valid = False
+            if debug > 0: print(f"READ_USER_INPUT: Validator check, valid={valid}")
+
+        # --- Success ---
+        if valid:
+            return opt
+
+        # --- Failed attempt ---
+        att += 1
+        print(f"Invalid input. Please try again. Options: {rtext_options}")
+        if limit_attempts and att >= attempts:
+            raise UserInputError(f"Maximum attempts exceeded.", attempts_used=att, max_attempts=attempts)
 
 ##########
 ## JSON ##
@@ -69,9 +120,9 @@ def save_json(dict, pathfile):
     dir_name = os.path.dirname(pathfile)
     os.makedirs(dir_name, exist_ok=True)
     with open(pathfile, "w") as f:
-        json.dump(dict, f) 
+        json.dump(dict, f, indent=4) 
 
-def load_json(pathfile):
+def load_json(pathfile, debug: int=0):
     import json
     with open(pathfile, "r") as f:
         dict = json.load(f) 
@@ -79,11 +130,10 @@ def load_json(pathfile):
 
 def load_environment(name: str):
     from platformdirs import user_config_dir
-    #from scope.classes_environment import Environment 
     config_dir          = user_config_dir("scope")
     config_path         = os.path.join(config_dir, f"config_{name}.json")
-    config_file_path    = load_json(config_path)[f"{name}_env_filepath"]
-    env                 = load_binary(config_file_path)
+    env_path            = load_json(config_path)[f"filepath"]
+    env                 = load_binary(env_path)
     return env
 
 ##########
@@ -227,16 +277,13 @@ def set_scene(fig, positions, padding=1.0, width: int=500, height: int=500):
     zmin, zmax = positions[:,2].min() - padding, positions[:,2].max() + padding
 
     fig.update_layout(scene=dict(
-        xaxis  = dict(title='X (Å)', range=[xmin, xmax]),
-        yaxis  = dict(title='Y (Å)', range=[ymin, ymax]),
-        zaxis  = dict(title='Z (Å)', range=[zmin, zmax]),
+        xaxis  = dict(title='X ()', range=[xmin, xmax]),
+        yaxis  = dict(title='Y ()', range=[ymin, ymax]),
+        zaxis  = dict(title='Z ()', range=[zmin, zmax]),
     ))
 
     fig.update_layout(width=width,height=height)
 
-#####################################
-## I don't know where this is used ##
-#####################################
 def prepare_specie_figure(specie, bond_thr):
     import numpy as np
     import plotly.graph_objects as go
@@ -313,14 +360,61 @@ def prepare_specie_figure(specie, bond_thr):
     # Return figure, midpoints, and bond pairs (for bond-related data plotting)
     return fig, midpoints, bond_pairs
 
-#######################
-#### Autocompleter ####
-#######################
+###################
+## Autocompleter ##
+###################
 def complete_path(text, state):
-    import glob
-    """Autocomplete for filesystem paths"""
-    matches = glob.glob(text + '*')  # expand matching files/dirs
+    import glob, readline
+    buffer = readline.get_line_buffer()
+
+    # If buffer already has content and text is empty, do NOT override it
+    if not text and buffer: return None
+
+    text = os.path.expanduser(text)
+    matches = glob.glob(text + '*')
+
+    # Add trailing slash for directories
+    matches = [m + '/' if os.path.isdir(m) else m for m in matches]
     if state < len(matches):
         return matches[state]
-    else:
-        return None
+    return None
+
+######
+#def input_with_default(prompt: str, default: str = "") -> str:
+#    if default:
+#        prompt = f"{prompt}[{default}] "
+#    value = input(prompt).strip()
+#    return value or default
+
+def input_with_default(prompt: str, default: str | None = None) -> str:
+    """
+    Show a prompt with a default value. User can accept it by pressing Enter.
+    If should work on Linux/macOS with readline.
+    """
+    default = "" if default is None else str(default)
+    inserted = False
+
+    def pre_input_hook():
+        nonlocal inserted
+        if not inserted and default:
+            readline.insert_text(default)
+            readline.redisplay()
+            inserted = True
+
+    readline.set_pre_input_hook(pre_input_hook)
+    try:
+        value = input(prompt)
+        return value.strip() or default
+    finally:
+        readline.set_pre_input_hook(None)
+
+################
+## Exceptions ##
+################
+
+class UserInputError(Exception):
+    """Raised when user fails to provide valid input after allowed attempts."""
+    def __init__(self, message, attempts_used=None, max_attempts=None):
+        super().__init__(message)
+        self.attempts_used = attempts_used
+        self.max_attempts  = max_attempts

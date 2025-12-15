@@ -6,7 +6,7 @@ import numpy as np
 import glob
 import readline
 from scope.classes_queue import Queue 
-from scope.read_write    import read_user_input
+from scope.read_write    import read_user_input, input_with_default
 from dataclasses         import dataclass
 
 def set_user():
@@ -46,8 +46,9 @@ class Environment(object):
         make_queue_available():         Makes a queue available for selection.
         select_queue():                 Selects a queue for job submission.
         -----------------
-        save(filepath):                 Saves the environment object to a file.
-        save_config(filepath):          Saves a JSON config file in the user's config dir.
+        save():                         Saves the environment object to a file.
+        save_to_config():               Saves a JSON config file in the user's config dir.
+        load_config():                  Loads a JSON config file as a dictionary.
         -----------------
         set_software():                 Sets software modules for Gaussian16 and Quantum Espresso.
         set_storage_path():             Sets the storage path with tab completion.
@@ -78,6 +79,7 @@ class Environment(object):
         self.selected_queues        = [] 
         self.method                 = 'weighted'
 
+        self.set_config_path()
         self.set_scheduler() 
         self.set_commands()
 
@@ -197,7 +199,7 @@ class Environment(object):
                     found = True
                 elif user_q in q.name or q.name in user_q:
                     message = f"Found Similar queue as the one you requested. Is {q.name} your selection: {user_q} Y/N "
-                    tmp = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"])
+                    tmp = read_user_input(message=message, rtext_options=["Y", "N", "y", "n"])
                     if tmp == "Y" or tmp == 'y':
                         q.select_queue(debug=debug)
                         q.alter_name = user_q
@@ -295,31 +297,50 @@ class Environment(object):
         elif    filepath is not None and hasattr(self,"filepath"):      self.filepath = filepath
         elif    filepath is not None and not hasattr(self,"filepath"):  self.filepath = filepath
         else:   self.filepath = os.path.abspath(str(f"./scope_env_{self.name}.npy"))
+        # Saves path in config file 
+        self.save_to_config({"filepath": self.filepath})
+        # Saves as binary
         save_binary(self, self.filepath)
 
-#######################################
-###  In case a JSON should be saved ###
-#######################################
-    def save_config(self, filepath=None):
+#################
+## JSON Config ##
+#################
+    def set_config_path(self):
+        """
+        Sets path and directory for config file with relevant environment data
+        """
         from platformdirs import user_config_dir
-        from scope.read_write import save_json
-
-        if      filepath is None and hasattr(self,"filepath"):          pass
-        elif    filepath is not None and hasattr(self,"filepath"):      self.filepath = filepath
-        elif    filepath is not None and not hasattr(self,"filepath"):  self.filepath = filepath
-        else:   self.filepath = os.path.abspath(str(f"./scope_env_{self.name}.npy"))
-        
         config_dir = user_config_dir("scope")
+        os.makedirs(config_dir, exist_ok=True)
         self.config_path = os.path.join(config_dir, f"config_{self.name}.json")
-        #os.makedirs(config_dir, exist_ok=True)
-        config_dict = {f"scope_env_{self.name}_filepath": self.filepath}
-        save_json(config_dict, self.config_path)
+        if not os.path.isfile(self.config_path): self.save_to_config(dict())     ## Saves an empty version, just to have the file
         return self.config_path
-
-    def load_config(self):
-        from scope.read_write import load_json
-        config_dict = load_json(self.config_path)
+    
+    def save_to_config(self, data : dict):
+        from scope.read_write import save_json
+    
+        # Load existing data if config exists
+        config_dict = self.load_config()
+    
+        # Updates data
+        config_dict.update(data)
+        config_dict.update({"config_path" : self.config_path})
+    
+        # Saves
+        save_json(config_dict, self.config_path)
         return config_dict
+
+    def load_config(self, debug: int=0):
+        from scope.read_write import load_json
+        if hasattr(self, "config_path"): 
+            if debug > 0: print(f"ENV.LOAD_CONFIG: trying to load config file from {self.config_path=}")
+            if os.path.isfile(self.config_path): return load_json(self.config_path)
+            else:                                
+                print(f"ENV.LOAD_CONFIG: self.config_path does not exist")
+                return dict()
+        else:                                           
+            print(f"ENV.LOAD_CONFIG: attribute config_path is not defined for self")
+            return dict()
 
 #####################################
 ###  Connection with Execute_Job  ###
@@ -583,7 +604,7 @@ class Environment(object):
             print(f"\t-------------------------------------------------")
             message = "\tDo you want to keep ALL suggested Queues? Y/N "
             print(" ")
-            keep = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"]) 
+            keep = read_user_input(message=message, rtext_options=["Y", "N", "y", "n"]) 
 
             if keep == "Y" or keep == 'y':        
                 user_q = list(q.name for q in self.mqueues) 
@@ -595,7 +616,7 @@ class Environment(object):
                 message = "\tWrite the Queues/Partitions that will be available to SCOPE. Write them one by one: Enter to Stop  "
                 finished = False
                 while not finished: 
-                    tmp = read_user_input(message=message, rtype=True, rtype_options=[str]) 
+                    tmp = read_user_input(message=message, rtype_options=[str]) 
                     if tmp != '':    
                         interpreted_q = tmp.strip().replace(",","").split(" ")
                         for iq in interpreted_q:
@@ -609,7 +630,7 @@ class Environment(object):
             message = "\tWrite the Queues/Partitions that will be available to SCOPE. Write them one by one: Enter to Stop  "
             finished = False
             while not finished: 
-                tmp = read_user_input(message=message, rtype=True, rtype_options=[str]) 
+                tmp = read_user_input(message=message, rtype_options=[str]) 
                 if tmp != '':    
                     interpreted_q = tmp.strip().replace(",","").split(" ")
                     for iq in interpreted_q:
@@ -623,7 +644,7 @@ class Environment(object):
                 print(f"\t{q}")
             
             message = f"\tIs that correct? Y/N "
-            tmp = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"]) 
+            tmp = read_user_input(message=message, rtext_options=["Y", "N", "y", "n"]) 
 
             if tmp == "Y" or tmp == 'y':      correct = True
             elif tmp == "N" or tmp == 'n':    correct = False
@@ -641,7 +662,7 @@ class Environment(object):
 
                     elif uq in mq.name or mq.name in uq and not found:
                         message = f"\tI found a similar queue as the one you requested. Is {mq.name} your selection: {uq}? Y/N "
-                        tmp = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"])
+                        tmp = read_user_input(message=message, rtext_options=["Y", "N", "y", "n"])
                         if tmp == "Y" or tmp == 'y':
                             found = True
                             if mq.name not in list(aq.name for aq in self.available_queues):   ## maybe .alter_name should also be checked 
@@ -667,13 +688,13 @@ class Environment(object):
             print(" ")
 
             message = "\tY/N "
-            prio = read_user_input(message=message, rtext=True, rtext_options=["Y", "N", "y", "n"]) 
+            prio = read_user_input(message=message, rtext_options=["Y", "N", "y", "n"]) 
 
             if prio == "Y" or prio == "y":
                 print("\tSetting Priorities. Please type integer or float")
                 for q in self.available_queues:
                     message = f"\tSet priority for queue={q.name}: "
-                    q_prio = read_user_input(message=message, rtype=True, rtype_options=[int, float], debug=0) 
+                    q_prio = read_user_input(message=message, rtype_options=[int, float], debug=0) 
                     q.set_priority(prio=q_prio)
             elif prio == "N" or prio == "n":
                 for q in self.available_queues:
@@ -719,15 +740,36 @@ class Environment(object):
         print("\t !! Notice that each SYSTEM will have its own subfolder inside those paths. !!")
         print("\t--------------------------------------------------------------------------------------------------------------")
 
+        ## Loads Defaults:
+        config_dict = self.load_config()
+        default_sources_path      = str(config_dict.get("sources_path",""))
+        default_systems_path      = str(config_dict.get("systems_path",""))
+        default_computations_path = str(config_dict.get("computations_path",""))
+        if debug > 0: 
+            print("ENV.SET_PATHS: default read for sources:", default_sources_path)
+            print("ENV.SET_PATHS: default read for systems:", default_systems_path)
+            print("ENV.SET_PATHS: default read for computations:", default_computations_path)
+
+        ## Reads user choices with autocomplete and defaults
         readline.set_completer_delims(' \t\n;')
         readline.parse_and_bind("tab: complete")
         readline.set_completer(complete_path)
-        self.sources_path       = os.path.abspath(str(input("\tPlease Specify Sources Path (with autocomplete): ")).strip())
-        self.systems_path       = os.path.abspath(str(input("\tPlease Specify Systems Path (with autocomplete): ")).strip())
-        self.computations_path  = os.path.abspath(str(input("\tPlease Specify Computations Path (with autocomplete): ")).strip())
+        message1 = "\tPlease Specify SOURCES Path (with autocomplete): "
+        message2 = "\tPlease Specify SYSTEMS Path (with autocomplete): "
+        message3 = "\tPlease Specify COMPUTATIONS Path (with autocomplete): "
+        self.sources_path       = os.path.abspath(input_with_default(message1, default_sources_path))
+        self.systems_path       = os.path.abspath(input_with_default(message2, default_systems_path))
+        self.computations_path  = os.path.abspath(input_with_default(message3, default_computations_path))
         if self.sources_path[-1]       != '/': self.sources_path      += '/'
         if self.systems_path[-1]       != '/': self.systems_path      += '/'
         if self.computations_path[-1]  != '/': self.computations_path += '/'
+
+        ## Defines which data must be stored and saves it
+        data = {
+            "sources_path": self.sources_path,
+            "systems_path": self.systems_path,
+            "computations_path": self.computations_path}
+        self.save_to_config(data)
 
         ## Create Folders if necessary:
         if create_folders and debug > 0: print("\tFolders will be created if necessary")
@@ -776,18 +818,31 @@ class Environment(object):
 ### Software ###
 ################
     def set_software(self):
-        if self.scheduler != "local": 
-            print("\t-------------------------------------------------------------------------------------")
-            print("\tSCOPE expects computations to be run with either Gaussian16 or Quantum Espresso")
-            print("\tPlease introduce the modules that should be called for these two codes")
-            print("\tAlternatively, modify the functions gen_QE_subfile and gen_G16_subfile to your liking")
-            print("\t-------------------------------------------------------------------------------------")
-            message = "\tPlease, introduce the module to run GAUSSIAN16 in this cluster (Skip if G16 is not available): "
-            self.g16_module = read_user_input(message=message, rtext=False)
-            message = "\tNow introduce the module to run QUANTUM ESPRESSO in this cluster (Skip if QE is not available): "
-            self.qe_module = read_user_input(message=message, rtext=False)
-            print("\t-------------------------------------------------------------------------------------")
-            print("")
+        if not hasattr(self,"scheduler"): self.set_scheduler(debug=debug) 
+        if self.scheduler == "local": return None
+
+        ## Loads Defaults:
+        config_dict = self.load_config()
+        default_g16 = str(config_dict.get("g16_module",""))
+        default_qe  = str(config_dict.get("qe_module",""))
+
+        print("\t-------------------------------------------------------------------------------------")
+        print("\tSCOPE expects computations to be run with either Gaussian16 or Quantum Espresso")
+        print("\tPlease introduce the modules that should be called for these two codes")
+        print("\tAlternatively, modify the functions gen_QE_subfile and gen_G16_subfile to your liking")
+        print("\t-------------------------------------------------------------------------------------")
+        message = "\tPlease, introduce the module to run GAUSSIAN16 in this cluster (Skip if G16 is not available): "
+        self.g16_module = str(input_with_default(message, default_g16))
+        message = "\tNow introduce the module to run QUANTUM ESPRESSO in this cluster (Skip if QE is not available): "
+        self.qe_module = str(input_with_default(message, default_qe))
+        print("\t-------------------------------------------------------------------------------------")
+        print("")
+
+        ## Stores modules data in config_file, for future defaults
+        data = {
+            "g16_module": self.g16_module,
+            "qe_module": self.qe_module} 
+        self.save_to_config(data)
 
 ########################
 ###  Dunder Methods  ###
@@ -797,29 +852,30 @@ class Environment(object):
         to_print += f'\t-------------------------------------------------------\n'
         to_print += f'\t                  SCOPE Environment \n'
         to_print += f'\t-------------------------------------------------------\n'
-        to_print += f'\t User                  = {self.user}\n'
-        to_print += f'\t Group                 = {self.group}\n'
+        to_print += f'\tUser                  = {self.user}\n'
+        to_print += f'\tGroup                 = {self.group}\n'
         to_print += f'\n'
         if hasattr(self,"sources_path"):  
             to_print += f'\tPaths:\n'
-            to_print += f'\t    Sources          = {self.sources_path}\n'
-            to_print += f'\t    Systems          = {self.systems_path}\n'
-            to_print += f'\t    Computations     = {self.computations_path}\n'
-        if hasattr(self,"storage_path"):  to_print += f'\t    Storage Path     = {self.storage_path}\n'
-        if hasattr(self,"scope_program"): to_print += f'\t    Scope Program    = {self.scope_program}\n'
+            to_print += f'\t\tSources             = {self.sources_path}\n'
+            to_print += f'\t\tSystems             = {self.systems_path}\n'
+            to_print += f'\t\tComputations        = {self.computations_path}\n'
+        if hasattr(self,"filepath"):   to_print += f'\t\tPath of save file   = {self.filepath}\n'
+        if hasattr(self,"storage_path"):  to_print += f'\t\tStorage Path     = {self.storage_path}\n'
+        if hasattr(self,"scope_program"): to_print += f'\t\tScope Program    = {self.scope_program}\n'
         to_print += f'\n'
         if hasattr(self,"qe_module") or hasattr(self,"g16_module"): 
             to_print += f'\tAvailable Software:\n'
-        if hasattr(self,"g16_module"): to_print += f'\t Module of G16         = {self.g16_module}\n'
-        if hasattr(self,"qe_module"):  to_print += f'\t Module of QE          = {self.qe_module}\n'
+        if hasattr(self,"g16_module"): to_print += f'\t\tModule of G16   = {self.g16_module}\n'
+        if hasattr(self,"qe_module"):  to_print += f'\t\tModule of QE    = {self.qe_module}\n'
         to_print += f'\n'
-        to_print += f'\tScheduler             = {self.scheduler}\n'
-        if hasattr(self,"method"):     to_print += f'\t Method of Queue Sel   = {self.method}\n'
-        if hasattr(self,"filepath"):   to_print += f'\t Path of saved file    = {self.filepath}\n'
         if hasattr(self,"available_queues"): 
-            to_print += f'\t Number of available queues = {len(self.available_queues)}:\n'
+            to_print += f'\tAvailable queues:\n'
             for idx, aq in enumerate(self.available_queues):
-                to_print += f'\t  {idx+1}: Name: {aq.name} Time_limit: {aq.time_limit} minutes #Nodes: {len(aq.nodes)} Max_CPU_per_node: {aq.max_cpu_x_node}\n'
+                to_print += f'\t\t{idx+1}: Name: {aq.name}, Time_limit: {aq.time_limit} minutes, #Nodes: {len(aq.nodes)}, Max_CPU_per_node: {aq.max_cpu_x_node}\n'
+            to_print += f'\n'
+        to_print += f'\tScheduler                = {self.scheduler}\n'
+        if hasattr(self,"method"):     to_print += f'\tQueue Selection Method   = {self.method}\n'
 
         ## Prints the options added as local environment
         if hasattr(self,"added_attr"):
@@ -852,8 +908,6 @@ class Environment(object):
 ##############
 ## Commands ##
 ##############
-
-####
 @dataclass
 class CommandResult: 
     command: str
