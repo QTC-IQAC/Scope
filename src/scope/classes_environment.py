@@ -87,13 +87,11 @@ class Environment(object):
         self.set_commands()
 
     ######
-    def set_scheduler(self, debug: int=0):
+    def set_scheduler(self):
         """
         Determines the type of job scheduler available on the host machine.
         The method checks for the presence of Sun Grid Engine (SGE) and Slurm by attempting to
         execute their respective queue listing commands. 
-        Args:
-            debug (int, optional): Debug level (currently unused). Defaults to 0.
         Returns:
             str: The detected scheduler ("sge", "slurm", or "local" if none is detected).
         """
@@ -152,8 +150,8 @@ class Environment(object):
     ##########################
     ## Test the Environment ##
     ##########################
-    def test_scheduler(self, debug: int=0):
-        if not hasattr(self,"scheduler"): self.set_scheduler(debug=debug) 
+    def test_scheduler(self):
+        if not hasattr(self,"scheduler"): self.set_scheduler()
         if not hasattr(self,"commands"):  self.set_commands()
         if   self.scheduler == 'slurm': 
             checks = {"squeue": 'squeue --version', "sbatch": 'sbatch --help', "squeue_format": 'squeue -o "%.10i %.9P %.50j"'}
@@ -161,19 +159,23 @@ class Environment(object):
             checks = {"qstat_version": "qstat -help","qhost": "qhost","qstat_basic": "qstat"}
         else: return None
 
+        print(f"------------------------------------------")
+        print(f"Testing Scheduler Commands") 
+        print(f"------------------------------------------")
+
         ## Tests generic commands
         for name, cmd in checks.items():
             res = run_command(cmd)
-            if not res.ok: print(f"ENV.TEST_SCHEDULER: Check ({name}): FAILED")
-            else:          print(f"ENV.TEST_SCHEDULER: Check ({name}): OK")
+            if not res.ok: print(f"Check ({name}): FAILED")
+            else:          print(f"Check ({name}): OK")
 
         ## Tests actual commands
         for name, cmd in self.commands.items():
             if name == 'submit': continue
             if name == 'get_user_waiting': continue
             res = run_command(cmd)
-            if not res.ok: print(f"ENV.TEST_SCHEDULER: Check ({name}): FAILED")
-            else:          print(f"ENV.TEST_SCHEDULER: Check ({name}): OK")
+            if not res.ok: print(f"Check ({name}): FAILED")
+            else:          print(f"Check ({name}): OK")
 
         ## Tests submission options
         script = self._write_test_job()
@@ -182,8 +184,8 @@ class Environment(object):
             elif self.scheduler == 'sge':   
                 res = run_command(f"qsub -dryrun {script}")                # First Option 
                 if not res.ok: res = run_command(f"qsub -verify {script}") # Second Option
-            if res.ok: print("ENV.TEST_SCHEDULER: Check directives: OK")
-            else:      print("ENV.TEST_SCHEDULER: Check directives: FAILED")
+            if res.ok: print("Check directives: OK")
+            else:      print("Check directives: FAILED")
         finally:
             script.unlink(missing_ok=True)
 
