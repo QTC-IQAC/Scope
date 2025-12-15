@@ -1,6 +1,6 @@
 [![DOI](https://img.shields.io/badge/DOI-10.1234%2Fabcd1234-blue)]() ![SLURM Compatible](https://img.shields.io/badge/HPC%20scheduler-SLURM-green)
 
-# SCOPE: A Chemically-Aware Workflow Automation Software for Molecules and Molecular Crystals
+# SCOPE: A Chemically-Aware Workflow-Automation Software for Molecules and Molecular Crystals
 
   This repository contains the source code of SCOPE, a Python package designed to handle computational chemistry workflows. SCOPE prepares, submits, and analyses Gaussian and Quantum Espresso computations of individual molecules or unit cells.  
   
@@ -48,7 +48,7 @@
   ## Dependencies
 
   - numpy
-  - networkx
+  - networkx < 3.3
   - rdkit
   - platformdirs
   - [cell2mol](https://github.com/lcmd-epfl/cell2mol.git)
