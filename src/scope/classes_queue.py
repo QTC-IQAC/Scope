@@ -1,6 +1,7 @@
-from datetime import datetime, timedelta
 import subprocess
-from scope.parse_general import slurm_time_to_minutes
+from datetime                  import datetime, timedelta
+from scope.parse_general       import slurm_time_to_minutes
+#from scope.classes_environment import run_command, CommandResult 
 
 #############
 ### QUEUE ###
@@ -21,29 +22,31 @@ class Queue(object):
 
     ######
     def set_commands(self):
-        if self._environment.management_type == "slurm":
-            self.command_get_user_usage      = 'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep '+self.name  ## The rest shouldnt be necessary
-            self.command_check_queue_state   = 'sinfo -o "%n %P %C" | grep '+self.name 
-            self.command_job_count           = 'squeue | grep '+self.name+' | wc -l'
-            self.command_get_max_mem         = 'sinfo -o "%15N %10c %10m  %25f %10G" | grep '+self.name
-        elif self._environment.management_type == "sge":
-            self.command_get_user_usage      = "qstat | grep "+self.name
-            self.command_check_queue_state   = "qstat -f | grep "+self.name
-            self.command_job_count           = "qstat | grep "+self.name+" | wc -l"
+        if self._environment.scheduler == "slurm":
+            self.commands = {
+                    "get_user_usage"     : f'squeue -o "%.9P %.50j %.12u %.2t %.12M %.5C %.3D %R" | grep {self.name}', 
+                    "check_queue_state"  : f'sinfo -o "%n %P %C" | grep {self.name}', 
+                    "job_count"          : f'squeue | grep {self.name} | wc -l',
+                    "get_max_mem"        : f'sinfo -o "%15N %10c %10m  %25f %10G" | grep {self.name}',}
+        elif self._environment.scheduler == "sge":
+            self.commands = {
+                    "get_user_usage"     : f'qstat | grep {self.name}',
+                    "check_queue_state"  : f'qstat -f | grep {self.name}',
+                    "job_count"          : f'qstat | grep {self.name} | wc -l',}
 
     ######
     def set_nodes(self):
         self.nodes = []
         self.max_cpu_x_node = 0 
 
-        if not hasattr(self,"self.command_check_queue_state"): self.set_commands()
+        if not hasattr(self,"self.commands"): self.set_commands()
         try:
-            raw = subprocess.run(['bash', '-c', self.command_check_queue_state], capture_output=True).stdout
+            raw = subprocess.run(['bash', '-c', self.commands["check_queue_state"]], capture_output=True).stdout
             dec = raw.decode("utf-8")
-            text = dec.rstrip().split("\n")
+            text = dec.rstrip().splitlines()
         except: text = ""
 
-        if self._environment.management_type == 'slurm':
+        if self._environment.scheduler == 'slurm':
             for line in text:
                 blocks = line.replace('/',' ').split()
                 if len(blocks) == 6:
@@ -56,7 +59,7 @@ class Queue(object):
                 else:
                     print("SET_NODES: Unexpected length of block list when retrieving Nodes with SLURM", blocks)
 
-        elif self._environment.management_type == 'sge':
+        elif self._environment.scheduler == 'sge':
             for idx, line in enumerate(text):
                 blocks = line.replace("@"," ").replace("/"," ").split()
                 if len(blocks) == 8 or len(blocks) == 9:
@@ -114,16 +117,13 @@ class Queue(object):
 
         self.user_running_cpus = 0
         self.user_running_jobs = 0
-        try: 
-            #raw = subprocess.check_output(['bash','-c', self.command_get_user_usage]) ## raises error when node is not active
-            raw = subprocess.run(['bash', '-c', self.command_get_user_usage], capture_output=True).stdout
-            dec = raw.decode("utf-8")
-            text = dec.rstrip().split("\n")
-        except Exception as exc:
-            text = []
+
+        res = run_command(self.commands["get_user_usage"])
+        if res.ok: text = res.stdout.rstrip().splitlines()
+        else:      text = []
 
         ## SGE clusters
-        if self._environment.management_type == "sge":
+        if self._environment.scheduler == "sge":
             try:
                 for line in text:
                     if self.name in line or self.alter_name in line:
@@ -136,7 +136,7 @@ class Queue(object):
                 print("QUEUE.CHECK_USER_USAGE: exception:", exc)
 
         ## SLURM clusters
-        elif self._environment.management_type == "slurm":
+        elif self._environment.scheduler == "slurm":
             try:
                 for line in text:
                     if self.name in line or self.alter_name in line:
@@ -231,42 +231,41 @@ class Node(object):
         self.other               = total - allocated - free
 
     def set_commands(self):
-        if self._queue._environment.management_type == "slurm":
-            self.command_check_state = 'sinfo -o "%n %P %C" | grep '+self._queue.name+' | grep '+self.name 
-        elif self._queue._environment.management_type == "sge":
-            self.command_check_state = 'qstat -f | grep '+self._queue.name+' | grep '+self.name 
+        if self._queue._environment.scheduler == "slurm":
+            self.commands = {"check_state" : f'sinfo -o "%n %P %C" | grep {self._queue.name} | grep {self.name}'} 
+        elif self._queue._environment.scheduler == "sge":
+            self.commands = {"check_state" : f'qstat -f | grep {self._queue.name} | grep {self.name}'}
 
     def get_overall_usage(self): # , user: str='all'):
-        if not hasattr(self,"command_check_state"): self.set_commands()
-        #raw = subprocess.check_output(['bash','-c', self.command_check_state]) ## raises error when node is not active
-        raw = subprocess.run(['bash', '-c', self.command_check_state], capture_output=True).stdout
-        dec = raw.decode("utf-8")
-        text = dec.rstrip().split("\n")
+        if not hasattr(self,"commands"): self.set_commands()
+        res  = run_command(self.commands["check_state"])
+        if not res.ok: raise RuntimeError(f"NODE.GET_OVERALL_USAGE: Failed to check node state:\n{res.stderr}")
 
-        if dec == '':  ## It means the node is not active
-            self.set_occupation(0, 0, 0)
-        else: 
-            if self._queue._environment.management_type == 'slurm':
-                for line in text:
-                    blocks = line.replace('/',' ').split()
-                    if len(blocks) == 6:
-                        total      = int(blocks[5])
-                        allocated  = int(blocks[2])
-                        free       = total - allocated
-                        self.set_occupation(total, allocated, free)
-                    else:
-                        print("NODE.CHECK_USAGE: Unexpected length of block list", blocks)
+        text = res.stdout.rstrip().splitlines()
 
-            elif self._queue._environment.management_type == 'sge':
-                for line in text:
-                    blocks = line.replace("@"," ").replace("/"," ").split()
-                    if len(blocks) == 8 or len(blocks) == 9:
-                        free       = int(blocks[4])
-                        total      = int(blocks[5])
-                        allocated  = total - free
-                        self.set_occupation(total, allocated, free)
-                    else:
-                        print("NODE.CHECK_USAGE: Unexpected length of block list", blocks)
+        if not text: 
+            self.set_occupation(0, 0, 0) ## It means the node is not active
+            return None
+
+        if self._queue._environment.scheduler == 'slurm':
+            for line in text:
+                blocks = line.replace('/',' ').split()
+                if len(blocks) == 6:
+                    total      = int(blocks[5])
+                    allocated  = int(blocks[2])
+                    free       = total - allocated
+                    self.set_occupation(total, allocated, free)
+                else: print("NODE.GET_OVERALL_USAGE: Unexpected length of block list", blocks)
+
+        elif self._queue._environment.scheduler == 'sge':
+            for line in text:
+                blocks = line.replace("@"," ").replace("/"," ").split()
+                if len(blocks) == 8 or len(blocks) == 9:
+                    free       = int(blocks[4])
+                    total      = int(blocks[5])
+                    allocated  = total - free
+                    self.set_occupation(total, allocated, free)
+                else: print("NODE.GET_OVERALL_USAGE: Unexpected length of block list", blocks)
 
     def __repr__(self) -> None:
         to_print  = f'------------------------------------------------------\n'

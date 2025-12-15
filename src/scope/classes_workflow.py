@@ -954,14 +954,14 @@ class Computation(object):
 
         ## If job_id is selected. Tries to get it and store it. Else, it just runs
         if not want_job_id: 
-            subprocess.run(['bash','-c', environment.command_submit+' '+self.sub_name])
+            subprocess.run(['bash','-c', f"{environment.commands['submit']} {self.sub_name}"])
             self.job_id = None
         else: 
 
             ### ALL below should go to environment
-            raw = subprocess.check_output(['bash','-c', environment.command_submit+' '+self.sub_name])
-            dec = raw.decode("utf-8")
-            text = dec.rstrip().split("\n")[0]
+            res  = run_command(f"{environment.commands['submit']} {self.sub_name}")
+            if not res.ok: raise RuntimeError(f"COMPUTATION.SUBMIT: Submission Failed: \n{res.command}\n{res.stderr}")
+            text = res.stdout.rstrip().splitlines()[0]
                 
             if environment.management_type == "sge":
                 blocks = text.split()

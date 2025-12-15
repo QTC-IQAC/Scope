@@ -7,6 +7,7 @@ import glob
 import readline
 from scope.classes_queue import Queue 
 from scope.read_write    import read_user_input
+from dataclasses         import dataclass
 
 def set_user():
     return pwd.getpwuid( os.getuid() ).pw_name
@@ -33,13 +34,13 @@ class Environment(object):
         method (str):                   Method for queue selection (default: 'weighted').
     Methods:
         __init__(name):                 Initializes the environment object.
-        set_management_type():          Detects and sets the job management system type.
-        set_commands():                 Sets command-line instructions for job management system.
+        set_scheduler():                Detects and sets the job scheduler.
+        set_commands():                 Sets command-line instructions for scheduler.
         read_user_queue_list():         Processes user-provided queue names and selects corresponding queues.
         read_job_specs():               Reads and applies user-specific environment settings from a local file.
         -----------------
         set_queues():                   Interactively sets available queues for the environment.
-        get_mqueues():                  Retrieves and initializes queues based on the management system.
+        get_mqueues():                  Retrieves and initializes queues based on scheduler.
         add_mqueue():                   Adds a new queue to the environment.
         find_queue():                   Finds a queue by name or alternate name.
         make_queue_available():         Makes a queue available for selection.
@@ -77,69 +78,95 @@ class Environment(object):
         self.selected_queues        = [] 
         self.method                 = 'weighted'
 
-        self.set_management_type() 
+        self.set_scheduler() 
         self.set_commands()
 
     ######
-    def set_management_type(self, debug: int=0):
+    def set_scheduler(self, debug: int=0):
         """
-        Determines the type of job management system available on the host machine.
+        Determines the type of job scheduler available on the host machine.
         The method checks for the presence of Sun Grid Engine (SGE) and Slurm by attempting to
         execute their respective queue listing commands. 
         Args:
             debug (int, optional): Debug level (currently unused). Defaults to 0.
         Returns:
-            str: The detected management type ("sge", "slurm", or "local" if none is detected).
+            str: The detected scheduler ("sge", "slurm", or "local" if none is detected).
         """
         ### Sun Grid Engine, SGE ###
         worked_sge = False
-        try: 
-            sge_queues = subprocess.check_output(['bash','-c', "qconf -sql"], stderr=subprocess.DEVNULL)
-            worked_sge = True
-        except: pass
-  
-        ### Slurm Manager ###
-        worked_slurm = False
-        try: 
-            slurm_queues = subprocess.check_output(['bash','-c', "sinfo"], stderr=subprocess.DEVNULL)
-            worked_slurm = True
-        except: pass
+        res = run_command("qconf -sql")
+        if not res.ok: worked_sge = False 
+        else:          worked_sge = True
 
-        ### Decicsion ###
-        if worked_sge and not worked_slurm:   self.management_type = "sge"
-        elif not worked_sge and worked_slurm: self.management_type = "slurm"
-        elif worked_sge and worked_slurm:     
-            raise ValueError("ENVIRONMENT.SET_MANAGEMENT_TYPE: Confict with the recognition of the Queue System")
+        ### Slurm ###
+        worked_slurm = False
+        res = run_command("sinfo")
+        if not res.ok: worked_slurm = False 
+        else:          worked_slurm = True
+
+        ### Decision ###
+        if worked_sge and not worked_slurm:   self.scheduler = "sge"
+        elif not worked_sge and worked_slurm: self.scheduler = "slurm"
+        elif worked_sge and worked_slurm:     raise ValueError("ENV.SET_SCHEDULER: Confict with the recognition of the Queue System")
         else: 
-            print("ENVIRONMENT.SET_MANAGEMENT_TYPE: Could not recognise the Queue Management System")
-            print("ENVIRONMENT.SET_MANAGEMENT_TYPE: Assuming this is a local computer")
-            print("ENVIRONMENT.SET_MANAGEMENT_TYPE: If this is a computation cluster with SLURM or SGE, please report bug")
-            self.management_type = "local"
-        return self.management_type
+            print("ENVIRONMENT.SET_SCHEDULER: Could not recognise the Scheduler")
+            print("ENVIRONMENT.SET_SCHEDULER: Assuming this is a local computer")
+            print("ENVIRONMENT.SET_SCHEDULER: If this is a computation cluster with SLURM or SGE, please report bug")
+            self.scheduler = "local"
+        return self.scheduler
 
     ######
     def set_commands(self):
         """
-        Sets the command-line instructions for interacting with the job management system
-        based on the specified management type ('slurm' or 'sge').
-        The commands are assigned to instance attributes for later use.
+        Sets the command-line instructions for interacting with the scheduler
         """
-        if self.management_type == "slurm":
+        if self.scheduler == "slurm":
             string_squeue = str('"%.10i %.9P %.50j %.12u %.2t %.12M %.5C %.3D %R"')
-            self.command_get_user_usage      = f"squeue -o {string_squeue}"
-            self.command_get_user_waiting    = f"squeue -o {string_squeue} | grep {self.user} | grep ' PD '"
-            self.command_check_job           = 'squeue -o "%.60j %.12u"'
-            self.command_submit              = 'sbatch'
-        elif self.management_type == "sge":
-            self.command_get_user_usage      = "qstat"
-            self.command_get_user_waiting    = "qstat -f | grep ' qw '"
-            self.command_check_job           = "qstat -xml | grep JB_name"
-            self.command_submit              = "qsub"
+            self.commands = {
+                "get_user_usage"   : f'squeue -o {string_squeue}',
+                "get_user_waiting" : f'squeue -o {string_squeue} | grep {self.user} | grep " PD "',
+                "check_job"        : 'squeue -o "%.60j %.12u"',
+                "submit"           : 'sbatch',
+                "get_queues"       : 'sinfo',}
+        elif self.scheduler == "sge":
+            self.commands = {
+                "get_user_usage"     : 'qstat',
+                "get_user_waiting"   : 'qstat -f | grep " qw "',
+                "check_job"          : 'qstat -xml | grep JB_name',
+                "submit"             : 'qsub',
+                "get_queues"         : 'qconf -sql',}
+                #"get_queues"        : 'qstat -g c',} ## this could also be interesting for the future
         else:
-            self.command_get_user_usage      = None 
-            self.command_get_user_waiting    = None
-            self.command_check_job           = None
-            self.command_submit              = None
+            self.commands = {
+                "get_user_usage"     : None,
+                "get_user_waiting"   : None,
+                "check_job"          : None,
+                "submit"             : None,
+                "get_queues"         : None,}
+
+    ######
+    def test_scheduler(self, debug: int=0):
+        if not hasattr(self,"scheduler"): self.set_scheduler(debug=debug) 
+        if not hasattr(self,"commands"):  self.set_commands()
+        if   self.scheduler == 'slurm': 
+            checks = {"squeue": 'squeue --version', "sbatch": 'sbatch --help', "squeue_format": 'squeue -o "%.10i %.9P %.50j"'}
+        elif self.scheduler == 'sge': 
+            checks = {"qstat_version": "qstat -help","qhost": "qhost","qstat_basic": "qstat"}
+        else: return None
+
+        ## Tests generic commands
+        for name, cmd in checks.items():
+            res = run_command(cmd)
+            if not res.ok: print(f"ENV.TEST_SCHEDULER: Check ({name}): FAILED")
+            else:          print(f"ENV.TEST_SCHEDULER: Check ({name}): OK")
+
+        ## Tests actual commands
+        for name, cmd in self.commands.items():
+            if name == 'submit': continue
+            if name == 'get_user_waiting': continue
+            res = run_command(cmd)
+            if not res.ok: print(f"ENV.TEST_SCHEDULER: Check ({name}): FAILED")
+            else:          print(f"ENV.TEST_SCHEDULER: Check ({name}): OK")
 
     ######
     def read_user_queue_list(self, line, debug: int=0):
@@ -200,7 +227,7 @@ class Environment(object):
     ######
     def get_mqueues(self, debug: int=0):
         """
-        Retrieves and initializes queues based on the detected cluster management system (SGE or SLURM).
+        Retrieves and initializes queues based on the detected cluster scheduler (SGE or SLURM).
 
         Args:
             debug (int, optional): Debug level (currently unused). Defaults to 0.
@@ -210,35 +237,32 @@ class Environment(object):
         """
         self.mqueues = []
 
-        ##  SGE  ##
-        if not hasattr(self,"management_type"): self.set_management_type()
-        if self.management_type == "sge": 
-            raw = subprocess.check_output(['bash','-c', "qconf -sql"]) 
-            #raw = subprocess.check_output(['bash','-c', "qstat -g c"]) ## this could also be interesting 
-            dec = raw.decode("utf-8")
-            text = dec.rstrip().split("\n")
+        ## Execute Command
+        res = run_command(self.commands["get_queues"])
+        if not res.ok: raise RuntimeError(f"ENV.GET_MQUEUES: {res.command} failed:\n{res.stderr}")
+        text = res.stdout.splitlines()
+
+        ## Parse for SGE ##
+        if not hasattr(self,"scheduler"): self.set_scheduler()
+        if self.scheduler == "sge": 
             for idx, line in enumerate(text):
                 name = line.split()[0] 
-                raw2 = subprocess.check_output(['bash','-c', f"qstat -f | grep '{name}'"])
-                dec2 = raw2.decode("utf-8")
-                text2 = dec2.rstrip().split("\n")
+                res2 = run_command("qstat -f | grep '{name}'")
+                if not res2.ok: raise RuntimeError(f"ENV.GET_MQUEUES: {res2.command} failed:\n{res2.stderr}")
+                text2 = res2.stdout.rstrip().splitlines()
                 # Add queue
                 new_queue = Queue(name, self)
                 self.add_mqueue(new_queue) 
 
-        ## SLURM ##
-        elif self.management_type == "slurm": 
-            raw = subprocess.check_output(['bash','-c', "sinfo"]) 
-            dec = raw.decode("utf-8")
-            text = dec.rstrip().split("\n")
+        ## Parse for SLURM ##
+        elif self.scheduler == "slurm": 
             for idx, line in enumerate(text):
                 if idx > 0 and len(line.split()) == 6: 
                     name, avail, time_limit, num_nodes, state, name_nodes = line.split()
                     new_queue = Queue(name, self, avail=avail, time_limit=time_limit, state=state)
                     self.add_mqueue(new_queue) 
-           ## It should be possible to get the queue memory or mem-per-cpu doing: "sinfo -o "%15N %10c %10m  %25f %10G""
-        else:
-            print("ENV.GET_MQUEUES: SLURM or SGE were not detected. Assuming this is a local computer")
+                    ## Note: It should be possible to get the queue memory or mem-per-cpu doing: "sinfo -o "%15N %10c %10m  %25f %10G""
+        else: print("ENV.GET_MQUEUES: SLURM or SGE were not detected. Assuming this is a local computer")
         return self.mqueues
 
     def add_mqueue(self, new_queue: object):
@@ -308,28 +332,24 @@ class Environment(object):
         return self.user_requested_cpus, self.user_requested_jobs
 
     def get_user_waiting(self, debug: int=0):
-        if not hasattr(self,"command_get_user_waiting"): self.set_commands()
+        if not hasattr(self,"commands"): self.set_commands()
         self.user_waiting_cpus = int(0)
         self.user_waiting_jobs = int(0)
-        try: 
-            raw = subprocess.check_output(['bash','-c', self.command_get_user_waiting])
-            dec = raw.decode("utf-8")
-            text = dec.rstrip().split("\n")
-        except Exception as exc:
-            self.user_waiting_cpus = int(0)
-            self.user_waiting_jobs = int(0)
-            return self.user_waiting_cpus, self.user_waiting_jobs
+
+        res = run_command(self.commands["get_user_waiting"])
+        if res.ok: text = res.stdout.rstrip().splitlines()
+        else:      return self.user_waiting_cpus, self.user_waiting_jobs
 
         ## SGE clusters
         try:
-            if self.management_type == "sge":
+            if self.scheduler == "sge":
                 for line in text:
                     blocks = line.split()
                     if len(blocks) == 8:
                         if blocks[4] == 'qw':
                             self.user_waiting_cpus  += int(blocks[7])
                             self.user_waiting_jobs  += 1
-            elif self.management_type == "slurm":
+            elif self.scheduler == "slurm":
                 for line in text:
                     blocks = line.split()
                     if len(blocks) == 9:
@@ -344,83 +364,81 @@ class Environment(object):
 
     ######
     def assign_waiting_jobs(self, debug: int=0):
-        if not hasattr(self,"command_get_user_waiting"): self.set_commands()
+        if not hasattr(self,"commands"): self.set_commands()
         self.jobs_assigned = []
         self.jobs_pending  = []
         ### Retrieve all waiting jobs
-        try:
-            raw = subprocess.check_output(['bash','-c', self.command_get_user_waiting], stderr=subprocess.DEVNULL)
-            dec = raw.decode("utf-8")
-            text = dec.rstrip().split("\n")
-        except Exception as exc:
-            print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: exception retrieving waiting jobs")
-            print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: likely due to no jobs in queue")
+        res = run_command(self.command["get_user_waiting"])
+        if not res.ok: 
+            print(f"ENV.ASSIGN_WAITING_JOBS: failure retrieving waiting jobs")
+            print(f"ENV.ASSIGN_WAITING_JOBS: likely due to no jobs in queue")
             text = []
+        else: text = res.stdout
 
         ### Save all their job_ids
         all_job_id = []   # This will store all job_ids that are going to be parsed now
 
         ## SGE clusters
-        if self.management_type == "sge":
+        if self.scheduler == "sge":
             for line in text:
                 blocks = line.split()
                 if len(blocks) == 8:
                     if blocks[4] == 'qw':
                         job_id = int(blocks[0])
-                        if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: job {job_id} might go to pending")
+                        if debug > 0: print(f"ENV.ASSIGN_WAITING_JOBS: job {job_id} might go to pending")
                         all_job_id.append(job_id)
                         if job_id not in self.jobs_assigned and job_id not in self.jobs_pending: 
                             self.jobs_pending.append(job_id)
-                            if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: pending job: {job_id}")
+                            if debug > 0: print(f"ENV.ASSIGN_WAITING_JOBS: pending job: {job_id}")
 
         ## SLURM clusters
-        elif self.management_type == "slurm":
+        elif self.scheduler == "slurm":
             for line in text:
                 blocks = line.split()
                 if len(blocks) == 9:
                     if blocks[3] == self.user and blocks[4] == 'PD':
                         job_id = int(blocks[0])
-                        if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: job {job_id} might go to pending")
+                        if debug > 0: print(f"ENV.ASSIGN_WAITING_JOBS: job {job_id} might go to pending")
                         all_job_id.append(job_id)
                         if job_id not in self.jobs_assigned and job_id not in self.jobs_pending: 
                             self.jobs_pending.append(job_id)
-                            if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: pending job: {job_id}")
+                            if debug > 0: print(f"ENV.ASSIGN_WAITING_JOBS: pending job: {job_id}")
 
         ### Assign pending jobs
         for jp in self.jobs_pending[:]: 
-            if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: evaluating pending job: {jp}")
+            if debug > 0: print(f"ENV.ASSIGN_WAITING_JOBS: evaluating pending job: {jp}")
 
-            if self.management_type == "sge":
+            if self.scheduler == "sge":
                 # Find Queue
-                raw2   = subprocess.check_output(['bash','-c', f"qstat -j {jp} | grep 'hard_queue_list'"])
-                dec2   = raw2.decode("utf-8")
-                text2  = dec2.rstrip().split("\n")[0]
+                res2   = run_command(f"qstat -j {jp} | grep 'hard_queue_list'")
+                if not res2.ok: raise RuntimeError(f"ENV.ASSIGN_WAITING_JOBS: {res2.command} failed:\n{res2.stderr}")
+                text2  = res2.stdout.rstrip().splitlines()[0]
                 blocks = text2.split()
                 if len(blocks) == 2:
                     q_name = text2.split()[1]
                     for aq in self.available_queues: 
                         if q_name == aq.name or q_name == aq.alter_name:
-                            if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: pending job: {jp}. queue found: {aq.name}")
+                            if debug > 0: print(f"ENV.ASSIGN_WAITING_JOBS: pending job: {jp}. queue found: {aq.name}")
                             if not hasattr(aq,"waiting_cpus"): aq.waiting_cpus = 0
                             if not hasattr(aq,"waiting_jobs"): aq.waiting_jobs = []
                             queue_to_assign = aq
-                else: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: parsing of hard_queue_list failed. Blocks:{blocks}")
+                else: print(f"ENV.ASSIGN_WAITING_JOBS: parsing of hard_queue_list failed. Blocks:{blocks}")
 
                 # Find number of requested processors
-                raw3   = subprocess.check_output(['bash','-c', f"qstat -j {jp} | grep 'parallel environment'"])
-                dec3   = raw3.decode("utf-8")
-                text3  = dec3.rstrip().split("\n")[0]
+                res3   = run_command(f"qstat -j {jp} | grep 'parallel environment'")
+                if not res3.ok: raise RuntimeError(f"ENV.ASSIGN_WAITING_JOBS: {res3.command} failed:\n{res3.stderr}")
+                text3  = dec3.stdout.rstrip().splitlines()[0]
                 blocks = text3.split()
                 if len(blocks) == 5 and blocks[4].isdigit():
                     queue_to_assign.waiting_cpus += int(blocks[4])
                     queue_to_assign.waiting_jobs.append(jp)
                     self.jobs_assigned.append(jp) 
                     self.jobs_pending.remove(jp) 
-                    if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: job: {jp} assigned to {aq.name}")
-                    if debug > 0: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: queue has now {queue_to_assign.waiting_cpus} cpus waiting")
-                else: print(f"ENVIRONMENT.ASSIGN_WAITING_JOBS: parsing of requested processors failed. Blocks:{blocks}")
+                    if debug > 0: print(f"ENV.ASSIGN_WAITING_JOBS: job: {jp} assigned to {aq.name}")
+                    if debug > 0: print(f"ENV.ASSIGN_WAITING_JOBS: queue has now {queue_to_assign.waiting_cpus} cpus waiting")
+                else: print(f"ENV.ASSIGN_WAITING_JOBS: parsing of requested processors failed. Blocks:{blocks}")
 
-            elif self.management_type == "slurm": 
+            elif self.scheduler == "slurm": 
                 pass
 
             ### Flushes out old assigned job ids, so that one of the checks above, doesnt get too costly
@@ -431,7 +449,7 @@ class Environment(object):
 
     ######
     def get_user_running(self, method: str='direct', debug: int=0):
-        if not hasattr(self,"command_get_user_waiting"): self.set_commands()
+        if not hasattr(self,"commands"): self.set_commands()
         self.user_running_cpus = 0
         self.user_running_jobs = 0
         if len(self.available_queues) == 0: 
@@ -451,11 +469,12 @@ class Environment(object):
 
         ## Method 2 - Directly
         elif method == 'direct':
-            raw = subprocess.check_output(['bash','-c', self.command_get_user_usage])
-            dec = raw.decode("utf-8")
-            text = dec.rstrip().split("\n")
+            res = run_command(self.commands["get_user_usage"])
+            if not res.ok: raise RuntimeError(f"ENV.CHECK_USER_RUNNING: {res.command} failed:\n{res.stderr}")
+            text = res.stdout.rstrip().splitlines()
+
             ## SGE clusters
-            if self.management_type == "sge":
+            if self.scheduler == "sge":
                 try:
                     for line in text:           
                         blocks = line.split()
@@ -466,10 +485,10 @@ class Environment(object):
                 except Exception as exc:
                     self.user_running_cpus += int(0)
                     self.user_running_jobs += int(0)
-                    print("ENVIRONMENT.CHECK_USER_RUNNING: exception:", exc)
+                    print("ENV.CHECK_USER_RUNNING: exception:", exc)
         
             ## SLURM clusters
-            elif self.management_type == "slurm":
+            elif self.scheduler == "slurm":
                 try:
                     for line in text:
                         blocks = line.split()
@@ -480,7 +499,7 @@ class Environment(object):
                 except Exception as exc:
                     self.user_running_cpus = int(0)
                     self.user_running_jobs = int(0)
-                    print("ENVIRONMENT.CHECK_USER_RUNNING: exception:", exc)
+                    print("ENV.CHECK_USER_RUNNING: exception:", exc)
         return self.user_running_cpus, self.user_running_jobs
          
     def get_best_queue(self, autoselect: bool=False, debug: int=0):
@@ -528,14 +547,15 @@ class Environment(object):
         return target_queues[best_idx]
 
     def check_submitted(self, job_name: str, debug: int=0):
-        if not hasattr(self,"command_check_job"): self.set_commands()
-        if not hasattr(self,"management_type"):   self.set_management_type()
-        if self.management_type == "local": return False 
+        if not hasattr(self,"commands"):   self.set_commands()
+        if not hasattr(self,"scheduler"):  self.set_scheduler()
+        if self.scheduler == "local": return False 
 
-        raw  = subprocess.check_output(['bash','-c', self.command_check_job])
-        dec  = raw.decode("utf-8")
-        flat = dec.replace("\n", "")
-        if self.management_type == "sge": flat = flat.replace("<","").replace(">","").replace("/","").replace("JB_name","").split()
+        res = run_command(self.commands["check_job"])
+        if not res.ok: raise RuntimeError(f"ENV.CHECK_SUBMITTED: {res.command} failed:\n{res.stderr}")
+
+        flat = res.stdout.replace("\n", "")
+        if self.scheduler == "sge": flat = flat.replace("<","").replace(">","").replace("/","").replace("JB_name","").split()
         if str(job_name) in flat: found = True
         else:                     found = False
         return found
@@ -545,7 +565,7 @@ class Environment(object):
 #########################
     def set_queues(self, debug: int=0):
         ## If it is not a computation cluster, returns an empty list
-        if self.management_type == "local": 
+        if self.scheduler == "local": 
             print("ENV.SET_QUEUES. Identified local computer, returning empty list of available queues")
             return self.available_queues
 
@@ -756,7 +776,7 @@ class Environment(object):
 ### Software ###
 ################
     def set_software(self):
-        if self.management_type != "local": 
+        if self.scheduler != "local": 
             print("\t-------------------------------------------------------------------------------------")
             print("\tSCOPE expects computations to be run with either Gaussian16 or Quantum Espresso")
             print("\tPlease introduce the modules that should be called for these two codes")
@@ -793,7 +813,7 @@ class Environment(object):
         if hasattr(self,"g16_module"): to_print += f'\t Module of G16         = {self.g16_module}\n'
         if hasattr(self,"qe_module"):  to_print += f'\t Module of QE          = {self.qe_module}\n'
         to_print += f'\n'
-        to_print += f'\tQueue Management Type = {self.management_type}\n'
+        to_print += f'\tScheduler             = {self.scheduler}\n'
         if hasattr(self,"method"):     to_print += f'\t Method of Queue Sel   = {self.method}\n'
         if hasattr(self,"filepath"):   to_print += f'\t Path of saved file    = {self.filepath}\n'
         if hasattr(self,"available_queues"): 
@@ -827,3 +847,32 @@ class Environment(object):
         except:   attr = value
         if hasattr(self,"dct"): self.dct[key] = attr
         setattr(self, key, attr)
+
+
+##############
+## Commands ##
+##############
+
+####
+@dataclass
+class CommandResult: 
+    command: str
+    returncode: int
+    stdout: str
+    stderr: str
+
+    @property
+    def ok(self) -> bool:
+        return self.returncode == 0
+
+####
+def run_command(cmd: str, timeout: int = 10) -> CommandResult:
+    try:
+        completed = subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=timeout)
+        return CommandResult(command=cmd,returncode=completed.returncode,stdout=completed.stdout.strip(),stderr=completed.stderr.strip())
+    except subprocess.TimeoutExpired:
+        return CommandResult(cmd, -2, "", "Command timed out")
+    except FileNotFoundError as e:
+        return CommandResult(cmd, -1, "", str(e))
+
+  
