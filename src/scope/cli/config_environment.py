@@ -36,13 +36,12 @@ def main():
 
     print("")
     print(f" --> Environment Saved in {env.filepath} as binary")
-    print(f" --> A JSON Config File was also saved in {env.config_path}")
     print("")
     print(f" --> You can overwrite your selections by loading the binary and:")
     print(f"     1) To change Paths:                         env.set_paths():")
-    print(f"     2) To change Storage Path:                  env.set_storage_path():")
-    print(f"     3) To change Software Modules:              env.set_software():")
-    print(f"     4) To change Available Queues/Partitions:   env.set_queues():")
+    print(f"     2) To change Software Modules:              env.set_software():")
+    print(f"     3) To change Available Queues/Partitions:   env.set_queues():")
+    #print(f"     4) To change Storage Path:                  env.set_storage_path():")
     print("")
     if env.scheduler != 'local': 
         print(f" --> Proceeding to test the scheduler commands:")

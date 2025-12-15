@@ -3,8 +3,10 @@ import sys
 import pickle
 import shutil
 import readline
-from ast    import literal_eval
-from typing import Any, Callable, List, Optional, Type
+import json
+from ast          import literal_eval
+from typing       import Any, Callable, List, Optional, Type
+from platformdirs import user_config_dir
 
 ############
 ## Hidden ##
@@ -112,27 +114,57 @@ def read_user_input(message: str, rtext_options: Optional[List[str]] = None, rty
         if limit_attempts and att >= attempts:
             raise UserInputError(f"Maximum attempts exceeded.", attempts_used=att, max_attempts=attempts)
 
+#################
+## JSON Config ##
+#################
+def get_config_path(debug: int=0):
+    """
+    Sets path and directory for a SCOPE config file with relevant data
+    """
+    config_dir = user_config_dir("scope")
+    os.makedirs(config_dir, exist_ok=True)
+    config_path = os.path.join(config_dir, "scope_config.json")
+    if not os.path.isfile(config_path): 
+        if debug > 0: print(f"GET_CONFIG_PATH: creating config file at {config_path}")
+        save_json(dict(), config_path) 
+    return config_path
+
+def save_to_config(data : dict=dict()):
+    from scope.read_write import save_json
+
+    # Load existing data if config exists
+    config_path = get_config_path()
+    config_dict = load_config()
+
+    # Updates data
+    config_dict.update(data)
+
+    # Saves
+    save_json(config_dict, config_path)
+    return config_dict
+
+def load_config(debug: int=0):
+    config_path = get_config_path()
+    if debug > 0: print(f"LOAD_CONFIG: trying to load config file from {config_path=}")
+    return load_json(config_path)
+
 ##########
 ## JSON ##
 ##########
 def save_json(dict, pathfile):
-    import json
     dir_name = os.path.dirname(pathfile)
     os.makedirs(dir_name, exist_ok=True)
     with open(pathfile, "w") as f:
         json.dump(dict, f, indent=4) 
 
 def load_json(pathfile, debug: int=0):
-    import json
     with open(pathfile, "r") as f:
         dict = json.load(f) 
     return dict
 
 def load_environment(name: str):
-    from platformdirs import user_config_dir
-    config_dir          = user_config_dir("scope")
-    config_path         = os.path.join(config_dir, f"config_{name}.json")
-    env_path            = load_json(config_path)[f"filepath"]
+    config_path         = get_config_path()
+    env_path            = load_json(config_path)[f"env_{name}_filepath"]
     env                 = load_binary(env_path)
     return env
 
@@ -380,33 +412,38 @@ def complete_path(text, state):
     return None
 
 ######
-#def input_with_default(prompt: str, default: str = "") -> str:
+def input_with_default(prompt: str, default: str | None = None) -> str:
+    default = "" if default is None else str(default)
+    if default:
+        prompt = f"{prompt}[{default}] "
+    value = input(prompt)
+    return value.strip() or default
+
+#def input_with_default(prompt: str, default: str | None = None) -> str:
+#    """
+#    Show a prompt with a default value. User can accept it by pressing Enter.
+#    If should work on Linux/macOS with readline.
+#    """
+#    default = "" if default is None else str(default)
+#    inserted = False
+#
+#    # Show default in prompt
 #    if default:
 #        prompt = f"{prompt}[{default}] "
-#    value = input(prompt).strip()
-#    return value or default
-
-def input_with_default(prompt: str, default: str | None = None) -> str:
-    """
-    Show a prompt with a default value. User can accept it by pressing Enter.
-    If should work on Linux/macOS with readline.
-    """
-    default = "" if default is None else str(default)
-    inserted = False
-
-    def pre_input_hook():
-        nonlocal inserted
-        if not inserted and default:
-            readline.insert_text(default)
-            readline.redisplay()
-            inserted = True
-
-    readline.set_pre_input_hook(pre_input_hook)
-    try:
-        value = input(prompt)
-        return value.strip() or default
-    finally:
-        readline.set_pre_input_hook(None)
+#
+#    def pre_input_hook():
+#        nonlocal inserted
+#        if not inserted and default:
+#            readline.insert_text(default)
+#            readline.redisplay()
+#            inserted = True
+#
+#    readline.set_pre_input_hook(pre_input_hook)
+#    try:
+#        value = input(prompt)
+#        return value.strip() or default
+#    finally:
+#        readline.set_pre_input_hook(None)
 
 ################
 ## Exceptions ##

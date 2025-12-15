@@ -5,9 +5,13 @@ import subprocess
 import numpy as np
 import glob
 import readline
+import tempfile
+from dataclasses         import dataclass
+from pathlib             import Path
 from scope.classes_queue import Queue 
 from scope.read_write    import read_user_input, input_with_default
-from dataclasses         import dataclass
+from scope.read_write    import get_config_path, save_to_config, load_config 
+from scope.read_write    import save_json, load_json
 
 def set_user():
     return pwd.getpwuid( os.getuid() ).pw_name
@@ -79,7 +83,6 @@ class Environment(object):
         self.selected_queues        = [] 
         self.method                 = 'weighted'
 
-        self.set_config_path()
         self.set_scheduler() 
         self.set_commands()
 
@@ -146,7 +149,9 @@ class Environment(object):
                 "submit"             : None,
                 "get_queues"         : None,}
 
-    ######
+    ##########################
+    ## Test the Environment ##
+    ##########################
     def test_scheduler(self, debug: int=0):
         if not hasattr(self,"scheduler"): self.set_scheduler(debug=debug) 
         if not hasattr(self,"commands"):  self.set_commands()
@@ -169,6 +174,41 @@ class Environment(object):
             res = run_command(cmd)
             if not res.ok: print(f"ENV.TEST_SCHEDULER: Check ({name}): FAILED")
             else:          print(f"ENV.TEST_SCHEDULER: Check ({name}): OK")
+
+        ## Tests submission options
+        script = self._write_test_job()
+        try:
+            if   self.scheduler == 'slurm': res = run_command(f"sbatch --test-only {script}")
+            elif self.scheduler == 'sge':   
+                res = run_command(f"qsub -dryrun {script}")                # First Option 
+                if not res.ok: res = run_command(f"qsub -verify {script}") # Second Option
+            if res.ok: print("ENV.TEST_SCHEDULER: Check directives: OK")
+            else:      print("ENV.TEST_SCHEDULER: Check directives: FAILED")
+        finally:
+            script.unlink(missing_ok=True)
+
+    ######
+    def _write_test_job(self):
+        with tempfile.NamedTemporaryFile("w", delete=False, suffix=".sub") as f:
+            if self.scheduler == "slurm":
+                print("#!/bin/bash", file=f)
+                print("#SBATCH -J test_job", file=f)
+                print("#SBATCH -o test.out", file=f)
+                print("#SBATCH -e test.err", file=f)
+                print("#SBATCH --nodes=1", file=f)
+                print("#SBATCH --ntasks=1", file=f)
+                print("#SBATCH --time=00:01:00", file=f)
+                print("echo test", file=f)
+            elif self.scheduler == "sge":
+                print("#!/bin/bash", file=f)
+                print("#$ -N test_job", file=f)
+                print("#$ -o test.out", file=f)
+                print("#$ -e test.err", file=f)
+                print("#$ -pe smp 1", file=f)
+                print("#$ -l h_rt=00:01:00", file=f)
+                print("echo test", file=f)
+            return Path(f.name)
+
 
     ######
     def read_user_queue_list(self, line, debug: int=0):
@@ -230,10 +270,8 @@ class Environment(object):
     def get_mqueues(self, debug: int=0):
         """
         Retrieves and initializes queues based on the detected cluster scheduler (SGE or SLURM).
-
         Args:
             debug (int, optional): Debug level (currently unused). Defaults to 0.
-
         Returns:
             self.mqueues(list): A list of initialized queue objects corresponding to the available queues.
         """
@@ -298,49 +336,9 @@ class Environment(object):
         elif    filepath is not None and not hasattr(self,"filepath"):  self.filepath = filepath
         else:   self.filepath = os.path.abspath(str(f"./scope_env_{self.name}.npy"))
         # Saves path in config file 
-        self.save_to_config({"filepath": self.filepath})
+        save_to_config({f"env_{self.name}_filepath": self.filepath})
         # Saves as binary
         save_binary(self, self.filepath)
-
-#################
-## JSON Config ##
-#################
-    def set_config_path(self):
-        """
-        Sets path and directory for config file with relevant environment data
-        """
-        from platformdirs import user_config_dir
-        config_dir = user_config_dir("scope")
-        os.makedirs(config_dir, exist_ok=True)
-        self.config_path = os.path.join(config_dir, f"config_{self.name}.json")
-        if not os.path.isfile(self.config_path): self.save_to_config(dict())     ## Saves an empty version, just to have the file
-        return self.config_path
-    
-    def save_to_config(self, data : dict):
-        from scope.read_write import save_json
-    
-        # Load existing data if config exists
-        config_dict = self.load_config()
-    
-        # Updates data
-        config_dict.update(data)
-        config_dict.update({"config_path" : self.config_path})
-    
-        # Saves
-        save_json(config_dict, self.config_path)
-        return config_dict
-
-    def load_config(self, debug: int=0):
-        from scope.read_write import load_json
-        if hasattr(self, "config_path"): 
-            if debug > 0: print(f"ENV.LOAD_CONFIG: trying to load config file from {self.config_path=}")
-            if os.path.isfile(self.config_path): return load_json(self.config_path)
-            else:                                
-                print(f"ENV.LOAD_CONFIG: self.config_path does not exist")
-                return dict()
-        else:                                           
-            print(f"ENV.LOAD_CONFIG: attribute config_path is not defined for self")
-            return dict()
 
 #####################################
 ###  Connection with Execute_Job  ###
@@ -593,15 +591,14 @@ class Environment(object):
         if not hasattr(self,"mqueues"):   self.get_mqueues()
 
         suggested_names = list(q.name for q in self.mqueues if q.available)
+        print("\t-------------------------------------------------------------------------------------")
         print(f"\tSetting Queues For Environment")
+        print("\t-------------------------------------------------------------------------------------")
 
         if len(suggested_names) > 0: 
-            print(f"\t-------------------------------------------------")
-            print(f"\t         The following Queues were found:        ")
-            print(f"\t-------------------------------------------------")
+            print(f"\tThe following Queues were found:")
             for n in suggested_names:
                 print(f"\t{n}")
-            print(f"\t-------------------------------------------------")
             message = "\tDo you want to keep ALL suggested Queues? Y/N "
             print(" ")
             keep = read_user_input(message=message, rtext_options=["Y", "N", "y", "n"]) 
@@ -680,11 +677,12 @@ class Environment(object):
         if correct and len(self.available_queues) > 0:
             print("")
             print(f"\t---------------------------------------------------------------------------------------- ")
+            print(f"\tSetting Queue Priorities")
+            print(f"\t---------------------------------------------------------------------------------------- ")
             print(f"\tDo you want to set manual priorities for the queues?                                      ")
             print(f"\tYES: the value you introduce will weight the ratio of free-CPU/total-CPU among queues")
             print(f"\t     so Occupancy will still determine the best queue")
             print(f"\tNO:  all queues will be valued equally, and will be chosen based on the above ratio ")
-            print(f"\t---------------------------------------------------------------------------------------- ")
             print(" ")
 
             message = "\tY/N "
@@ -732,19 +730,22 @@ class Environment(object):
     def set_paths(self, create_folders: bool=True, debug: int=0):
         from scope.read_write import complete_path
         print("\t--------------------------------------------------------------------------------------------------------------")
-        print("\tSCOPE connects a list of sources (molecules/cells), with their computations, and analyses")
+        print("\t Setting Paths")
+        print("\t--------------------------------------------------------------------------------------------------------------")
+        print("\tSCOPE connects a list of sources (molecules/cells), with their computations, and data")
         print("\tThe data is stored in system files. Please define the GENERAL paths where these 3 elements will be stored.")
         print("\t")
         print("\t                          SOURCE <--> COMPUTATION <--> SYSTEM")
         print("\t")
-        print("\t !! Notice that each SYSTEM will have its own subfolder inside those paths. !!")
+        print("\tNotice that each SYSTEM will have its own subfolder inside those paths.")
+        print("\tAlong the process, you can use autocomplete, and a default is shown in brackets if available [default].")
         print("\t--------------------------------------------------------------------------------------------------------------")
 
         ## Loads Defaults:
-        config_dict = self.load_config()
-        default_sources_path      = str(config_dict.get("sources_path",""))
-        default_systems_path      = str(config_dict.get("systems_path",""))
-        default_computations_path = str(config_dict.get("computations_path",""))
+        config_dict = load_config()
+        default_sources_path      = str(config_dict.get("last_sources_path",""))
+        default_systems_path      = str(config_dict.get("last_systems_path",""))
+        default_computations_path = str(config_dict.get("last_computations_path",""))
         if debug > 0: 
             print("ENV.SET_PATHS: default read for sources:", default_sources_path)
             print("ENV.SET_PATHS: default read for systems:", default_systems_path)
@@ -766,10 +767,10 @@ class Environment(object):
 
         ## Defines which data must be stored and saves it
         data = {
-            "sources_path": self.sources_path,
-            "systems_path": self.systems_path,
-            "computations_path": self.computations_path}
-        self.save_to_config(data)
+            "last_sources_path": self.sources_path,
+            "last_systems_path": self.systems_path,
+            "last_computations_path": self.computations_path}
+        save_to_config(data)
 
         ## Create Folders if necessary:
         if create_folders and debug > 0: print("\tFolders will be created if necessary")
@@ -777,10 +778,11 @@ class Environment(object):
         if not os.path.isdir(self.systems_path)      and create_folders: os.makedirs(self.systems_path, exist_ok=True)
         if not os.path.isdir(self.computations_path) and create_folders: os.makedirs(self.computations_path, exist_ok=True)
 
-        print("\t--------------------------------------------------------------------------------------------------------------")
-        print("\tAdditionally, you can specify: (1) a storage (scratch or data) folder --> Run environment.set_storage_path()")
-        print("\t                               (2) the folder where the program is    --> Run environment.set_scope_program()")
-        print("\t--------------------------------------------------------------------------------------------------------------")
+        ## Not implemented yet
+        #print("\t--------------------------------------------------------------------------------------------------------------")
+        #print("\tAdditionally, you can specify: (1) a storage (scratch or data) folder --> Run environment.set_storage_path()")
+        #print("\t                               (2) the folder where the program is    --> Run environment.set_scope_program()")
+        #print("\t--------------------------------------------------------------------------------------------------------------")
         print("")
 
     def check_paths(self, debug: int=0):
@@ -822,27 +824,28 @@ class Environment(object):
         if self.scheduler == "local": return None
 
         ## Loads Defaults:
-        config_dict = self.load_config()
-        default_g16 = str(config_dict.get("g16_module",""))
-        default_qe  = str(config_dict.get("qe_module",""))
+        config_dict = load_config()
+        default_g16 = str(config_dict.get("last_g16_module",""))
+        default_qe  = str(config_dict.get("last_qe_module",""))
 
+        print("\t-------------------------------------------------------------------------------------")
+        print("\tSetting Software")
         print("\t-------------------------------------------------------------------------------------")
         print("\tSCOPE expects computations to be run with either Gaussian16 or Quantum Espresso")
         print("\tPlease introduce the modules that should be called for these two codes")
         print("\tAlternatively, modify the functions gen_QE_subfile and gen_G16_subfile to your liking")
-        print("\t-------------------------------------------------------------------------------------")
+        print("")
         message = "\tPlease, introduce the module to run GAUSSIAN16 in this cluster (Skip if G16 is not available): "
         self.g16_module = str(input_with_default(message, default_g16))
         message = "\tNow introduce the module to run QUANTUM ESPRESSO in this cluster (Skip if QE is not available): "
         self.qe_module = str(input_with_default(message, default_qe))
-        print("\t-------------------------------------------------------------------------------------")
         print("")
 
         ## Stores modules data in config_file, for future defaults
         data = {
-            "g16_module": self.g16_module,
-            "qe_module": self.qe_module} 
-        self.save_to_config(data)
+            "last_g16_module": self.g16_module,
+            "last_qe_module": self.qe_module} 
+        save_to_config(data)
 
 ########################
 ###  Dunder Methods  ###
