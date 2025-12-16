@@ -84,7 +84,7 @@ class Environment(object):
         save_to_config():               Saves a JSON config file in the user's config dir.
         load_config():                  Loads a JSON config file as a dictionary.
         -----------------
-        set_software():                 Sets software modules for Gaussian16 and Quantum Espresso.
+        set_software():                 Sets software modules for Gaussian16 and Quantum Espresso 7.0.
         set_storage_path():             Sets the storage path with tab completion.
         set_scope_program():            Sets the main scope program path with tab completion.
         set_paths():                    Sets paths for sources, calculations, and systems.
@@ -839,13 +839,19 @@ class Environment(object):
         print("\t-------------------------------------------------------------------------------------")
         print("\tSetting Software")
         print("\t-------------------------------------------------------------------------------------")
-        print("\tSCOPE expects computations to be run with either Gaussian16 or Quantum Espresso")
-        print("\tPlease introduce the modules that should be called for these two codes")
-        print("\tAlternatively, modify the functions gen_QE_subfile and gen_G16_subfile to your liking")
+        print("\tSCOPE supports Gaussian16 and Quantum Espresso 7.0")
+        print("\tIt also expects to use preinstalled modules in the system")
+        print("\t------")
+        print("\tYou will be now asked to introduce the modules that should be called for these two codes")
+        print("\tAlternatively, modify the functions below to your liking")
+        print("\t - G16: gen_G16_subfile in scope/software/gaussian.g16_input ")
+        print("\t - QE:  gen_QE_subfile  in scope/software/quantum_espresso.qe_input ")
+        print("\tIndeed, it is recommended to check and adapt those functions, if needed")
+        print("\t------")
         print("")
         message = "\tPlease, introduce the module to run GAUSSIAN16 in this cluster (Skip if G16 is not available): "
         self.g16_module = str(input_with_default(message, default_g16))
-        message = "\tNow introduce the module to run QUANTUM ESPRESSO in this cluster (Skip if QE is not available): "
+        message = "\tNow introduce the module to run QUANTUM ESPRESSO 7.0 in this cluster (Skip if QE is not available): "
         self.qe_module = str(input_with_default(message, default_qe))
         print("")
 
