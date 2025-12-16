@@ -216,34 +216,52 @@ def gen_qe_input(comp: object, debug: int=0):
 def gen_qe_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", version: float=7.0): 
     version = str(version)
     with open(comp.sub_path, 'w+') as sub:
-        print(f"#!/bin/bash", file=sub)
-        print(f"#SBATCH -J {comp.name}", file=sub)
-        print(f"#SBATCH -e {comp.name}.stderr", file=sub)
-        print(f"#SBATCH -o {comp.name}.stdout", file=sub)
-        print(f"#SBATCH -p {queue.name}", file=sub)
-        print(f"#SBATCH --nodes=1", file=sub)
-        print(f"#SBATCH --ntasks={procs}", file=sub)
-        print(f"#SBATCH --mem-per-cpu=1900MB", file=sub)
-        print(f"#SBATCH --time={queue.time_limit}", file=sub)
-        print(f"", file=sub)
-        print(f"module load {module}", file=sub)
-        print(f"", file=sub)
-        print(f"set OMP_NUM_THREADS=1", file=sub)
-        print(f"ulimit -l unlimited", file=sub)
-        print(f"", file=sub)
-        print(f"WORKDIR=$PWD", file=sub)
-        print(f"cd $TMPDIR", file=sub)
-        print(f"cp $WORKDIR/{comp.inp_name} .", file=sub)
-        if procs >= 128: print(f"srun pw.x < {comp.inp_name} > {comp.out_name} -pd .true.", file=sub)
-        else:            print(f"srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
-        print(f"cp -pr {comp.out_name} $WORKDIR", file=sub)
+        if queue._environment.scheduler == 'slurm':
+            print(f"#!/bin/bash", file=sub)
+            print(f"#SBATCH -J {comp.name}", file=sub)
+            print(f"#SBATCH -e {comp.name}.stderr", file=sub)
+            print(f"#SBATCH -o {comp.name}.stdout", file=sub)
+            print(f"#SBATCH -p {queue.name}", file=sub)
+            print(f"#SBATCH --nodes=1", file=sub)
+            print(f"#SBATCH --ntasks={procs}", file=sub)
+            print(f"#SBATCH --mem-per-cpu=1900MB", file=sub)
+            print(f"#SBATCH --time={queue.time_limit}", file=sub)
+            print(f"", file=sub)
+            print(f"module load {module}", file=sub)
+            print(f"", file=sub)
+            print(f"set OMP_NUM_THREADS=1", file=sub)
+            print(f"ulimit -l unlimited", file=sub)
+            print(f"", file=sub)
+            print(f"JOBDIR=$PWD", file=sub)
+            print(f"cd $TMPDIR", file=sub)
+            print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
+            if procs >= 128: print(f"srun pw.x < {comp.inp_name} > {comp.out_name} -pd .true.", file=sub)
+            else:            print(f"srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
+            print(f"cp -pr {comp.out_name} $JOBDIR", file=sub)
+
+        elif queue._environment.scheduler == 'sge':
+            print(f"#!/bin/bash", file=sub)
+            print(f"#$ -N {comp.name}", file=sub)
+            print(f"#$ -o {comp.name}.stdout", file=sub)
+            print(f"#$ -e {comp.name}.stderr", file=sub)
+            print(f"#$ -q {queue.name}" , file=sub)
+            print(f"#$ -pe smp {procs}", file=sub)
+            print(f"#$ -cwd", file=sub)
+            print(f"", file=sub)
+            #print(f"source /etc/profile.d/modules.csh", file=sub)
+            #print(f"source $HOME/.bashrc", file=sub)
+            #print(f". /etc/profile", file=sub)
+            print(f"module load {module}", file=sub)
+            print(f"", file=sub)
+            print(f"set OMP_NUM_THREADS=1", file=sub)
+            print(f"ulimit -l unlimited", file=sub)
+            print(f"", file=sub)
+            print(f"JOBDIR=$PWD", file=sub)
+            print(f"cd $TMPDIR", file=sub)
+            print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
+            print(f"mpirun -np {procs} pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
+            print(f"cp -pr {comp.out_name} $JOBDIR", file=sub)
+
         os.chmod(comp.sub_path, 0o777)
-        
+
 ###################################################
-
-
-
-
-
-
-
