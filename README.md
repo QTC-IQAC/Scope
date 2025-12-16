@@ -78,7 +78,21 @@
 
   # Usage
 
-Comprehensive Tutorials are available in their own github repository [here](https://github.com/QTC-IQAC/Scope_Tutorials.git):
+  Ideally, CLI commands are used to configure and run SCOPE. The results are stored in binary files containing System-class objects
+  These objects are conceived to be inspected interactively in notebooks.   
+
+  ## Command Line Interface: 
+  SCOPE provides a single top-level command, "scope", with multiple subcommands.
+   - config    Configure the SCOPE environment
+   - run       Run a computation
+
+  All subcommands have a dedicated --help with the intended use. For instance:
+  ```bash
+  scope config -h 
+  ```
+
+  ## Interactive
+  Comprehensive Tutorials are available in their own github repository [here](https://github.com/QTC-IQAC/Scope_Tutorials.git):
 
 ---
 
