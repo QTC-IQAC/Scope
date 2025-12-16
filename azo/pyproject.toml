@@ -1,5 +1,5 @@
 [project]
-name = "scope"
+name = "scope-azo"
 version = "0.0.0"
 description = "Temporary test package"
 authors = [{ name = "Sergi Vela", email = "sergi.vela@iqac.csic.es" }]
@@ -15,9 +15,8 @@ dependencies = [
 
 # Where your CLI entry point lives
 [project.scripts]
-# General
-scope_config             = "scope.cli.config_environment:main"
-scope_run_task           = "scope.cli.run_task_v2:main"
+
+## scope_azo = "scope_azo.cli.blabla:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

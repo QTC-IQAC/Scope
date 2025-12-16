@@ -41,8 +41,29 @@
   git clone https://github.com/QTC-IQAC/Scope.git
   cd Scope
   
-  # install with pip 
-  pip install -e .
+  # install core with pip 
+  pip install -e core
+
+  # install add-ons with pip if you want them
+  pip install -e azo
+  pip install -e sco
+  ```
+
+  Installation when deployed to pip
+
+  ```bash
+
+  # create and activate conda environment and install pip
+  conda create --name scope
+  conda activate scope
+  conda install pip
+
+  # install core with pip
+  pip install scope
+
+  # install add-ons with pip if you want them
+  pip install scope-azo
+  pip install scope-sco
   ```
 
   ## Dependencies
