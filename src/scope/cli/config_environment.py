@@ -15,13 +15,12 @@ def main():
     env = Environment(args.name)
 
     print("")
-    print(f"Environment scope_env_{env.name}.npy Created. We will now ...")
-    print("")
+    print(f" Creating Environment scope_env_{env.name}.npy. We will now:")
     print(f" 1) Set the Paths for the SOURCE, CALCULATIONS and SYSTEMS folders associated with this environment") 
-    print("")
-    print(f"If the Computer has Computation Partitions recognised by SLURM or SGE, we will also:")
+    print(f" Then, if the Computer has SLURM or SGE scheduler, we will:")
     print(f" 2) Set Software Modules for Quantum Espresso and Gaussian 16")
     print(f" 3) Set Available Queues/Partitions")
+    print("")
 
     env.set_paths()
     env.set_software()

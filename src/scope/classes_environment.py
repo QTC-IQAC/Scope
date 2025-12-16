@@ -13,12 +13,42 @@ from scope.read_write    import read_user_input, input_with_default
 from scope.read_write    import get_config_path, save_to_config, load_config 
 from scope.read_write    import save_json, load_json
 
+#############
+### OTHER ###
+#############
 def set_user():
     return pwd.getpwuid( os.getuid() ).pw_name
 
 def set_group():
     group_id = pwd.getpwnam(set_user()).pw_gid
     return grp.getgrgid(group_id).gr_name
+
+def is_slurm_active():
+    return run_command("scontrol show config").ok
+
+def is_sge_active():
+    return (run_command("qconf -sconf").ok and (run_command("qsub -dryrun /dev/null").ok or run_command("qsub -verify /dev/null").ok))
+
+def write_test_job(scheduler: str):
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".sub") as f:
+        if scheduler == "slurm":
+            print("#!/bin/bash", file=f)
+            print("#SBATCH -J test_job", file=f)
+            print("#SBATCH -o test.out", file=f)
+            print("#SBATCH -e test.err", file=f)
+            print("#SBATCH --nodes=1", file=f)
+            print("#SBATCH --ntasks=1", file=f)
+            print("#SBATCH --time=00:01:00", file=f)
+            print("echo test", file=f)
+        elif scheduler == "sge":
+            print("#!/bin/bash", file=f)
+            print("#$ -N test_job", file=f)
+            print("#$ -o test.out", file=f)
+            print("#$ -e test.err", file=f)
+            print("#$ -pe smp 1", file=f)
+            print("#$ -l h_rt=00:01:00", file=f)
+            print("echo test", file=f)
+        return Path(f.name)
 
 ###############
 ### CLUSTER ###
@@ -83,9 +113,6 @@ class Environment(object):
         self.selected_queues        = [] 
         self.method                 = 'weighted'
 
-        self.set_scheduler() 
-        self.set_commands()
-
     ######
     def set_scheduler(self):
         """
@@ -95,27 +122,24 @@ class Environment(object):
         Returns:
             str: The detected scheduler ("sge", "slurm", or "local" if none is detected).
         """
-        ### Sun Grid Engine, SGE ###
-        worked_sge = False
-        res = run_command("qconf -sql")
-        if not res.ok: worked_sge = False 
-        else:          worked_sge = True
-
-        ### Slurm ###
-        worked_slurm = False
-        res = run_command("sinfo")
-        if not res.ok: worked_slurm = False 
-        else:          worked_slurm = True
-
+        print("\t------------------------------------------------------------")
+        print("\t Setting Scheduler:")
+        print("\t------------------------------------------------------------")
         ### Decision ###
-        if worked_sge and not worked_slurm:   self.scheduler = "sge"
-        elif not worked_sge and worked_slurm: self.scheduler = "slurm"
-        elif worked_sge and worked_slurm:     raise ValueError("ENV.SET_SCHEDULER: Confict with the recognition of the Queue System")
+        if is_sge_active() and not is_slurm_active():   self.scheduler = "sge"
+        elif not is_sge_active() and is_slurm_active(): self.scheduler = "slurm"
+        elif is_sge_active() and is_slurm_active():     
+            print("\tENV.SET_SCHEDULER: Both SGE and SLURM schedulers were detected.")
+            message = f"\tENV.SET_SCHEDULER: Please, introduce the primary one: [sge/slurm] "
+            self.scheduler = read_user_input(message=message, rtext_options=["sge", "slurm", "SGE", "SLURM"])
         else: 
-            print("ENVIRONMENT.SET_SCHEDULER: Could not recognise the Scheduler")
-            print("ENVIRONMENT.SET_SCHEDULER: Assuming this is a local computer")
-            print("ENVIRONMENT.SET_SCHEDULER: If this is a computation cluster with SLURM or SGE, please report bug")
+            print("\tENV.SET_SCHEDULER: Could not recognise the Scheduler")
+            print("\tENV.SET_SCHEDULER: Assuming this is a local computer")
+            print("\tENV.SET_SCHEDULER: If this is a computation cluster with SLURM or SGE, please report bug")
             self.scheduler = "local"
+            return self.scheduler
+        print(f"\tScheduler set to {self.scheduler}")
+        print("")
         return self.scheduler
 
     ######
@@ -123,6 +147,7 @@ class Environment(object):
         """
         Sets the command-line instructions for interacting with the scheduler
         """
+        if not hasattr(self,"scheduler"): self.set_scheduler()
         if self.scheduler == "slurm":
             string_squeue = str('"%.10i %.9P %.50j %.12u %.2t %.12M %.5C %.3D %R"')
             self.commands = {
@@ -171,14 +196,15 @@ class Environment(object):
 
         ## Tests actual commands
         for name, cmd in self.commands.items():
-            if name == 'submit': continue
+            if name == 'submit':           continue ## Some commands imply a grep, for which res.ok being false might be fine
             if name == 'get_user_waiting': continue
+            if name == 'check_job':        continue
             res = run_command(cmd)
             if not res.ok: print(f"Check ({name}): FAILED")
             else:          print(f"Check ({name}): OK")
 
         ## Tests submission options
-        script = self._write_test_job()
+        script = write_test_job(self.scheduler)
         try:
             if   self.scheduler == 'slurm': res = run_command(f"sbatch --test-only {script}")
             elif self.scheduler == 'sge':   
@@ -188,29 +214,6 @@ class Environment(object):
             else:      print("Check directives: FAILED")
         finally:
             script.unlink(missing_ok=True)
-
-    ######
-    def _write_test_job(self):
-        with tempfile.NamedTemporaryFile("w", delete=False, suffix=".sub") as f:
-            if self.scheduler == "slurm":
-                print("#!/bin/bash", file=f)
-                print("#SBATCH -J test_job", file=f)
-                print("#SBATCH -o test.out", file=f)
-                print("#SBATCH -e test.err", file=f)
-                print("#SBATCH --nodes=1", file=f)
-                print("#SBATCH --ntasks=1", file=f)
-                print("#SBATCH --time=00:01:00", file=f)
-                print("echo test", file=f)
-            elif self.scheduler == "sge":
-                print("#!/bin/bash", file=f)
-                print("#$ -N test_job", file=f)
-                print("#$ -o test.out", file=f)
-                print("#$ -e test.err", file=f)
-                print("#$ -pe smp 1", file=f)
-                print("#$ -l h_rt=00:01:00", file=f)
-                print("echo test", file=f)
-            return Path(f.name)
-
 
     ######
     def read_user_queue_list(self, line, debug: int=0):
@@ -277,6 +280,7 @@ class Environment(object):
         Returns:
             self.mqueues(list): A list of initialized queue objects corresponding to the available queues.
         """
+        if not hasattr(self,"commands"): self.set_commands()
         self.mqueues = []
 
         ## Execute Command
@@ -289,12 +293,13 @@ class Environment(object):
         if self.scheduler == "sge": 
             for idx, line in enumerate(text):
                 name = line.split()[0] 
-                res2 = run_command("qstat -f | grep '{name}'")
-                if not res2.ok: raise RuntimeError(f"ENV.GET_MQUEUES: {res2.command} failed:\n{res2.stderr}")
-                text2 = res2.stdout.rstrip().splitlines()
-                # Add queue
-                new_queue = Queue(name, self)
-                self.add_mqueue(new_queue) 
+                res2 = run_command(f"qstat -f | grep {name}")
+                exists = name in res2.stdout
+                if exists: 
+                    # Add queue
+                    text2 = res2.stdout.rstrip().splitlines()
+                    new_queue = Queue(name, self)
+                    self.add_mqueue(new_queue) 
 
         ## Parse for SLURM ##
         elif self.scheduler == "slurm": 
@@ -569,11 +574,10 @@ class Environment(object):
 
     def check_submitted(self, job_name: str, debug: int=0):
         if not hasattr(self,"commands"):   self.set_commands()
-        if not hasattr(self,"scheduler"):  self.set_scheduler()
         if self.scheduler == "local": return False 
 
         res = run_command(self.commands["check_job"])
-        if not res.ok: raise RuntimeError(f"ENV.CHECK_SUBMITTED: {res.command} failed:\n{res.stderr}")
+        #if not res.ok: raise RuntimeError(f"ENV.CHECK_SUBMITTED: {res.command} failed:\n{res.stderr}")
 
         flat = res.stdout.replace("\n", "")
         if self.scheduler == "sge": flat = flat.replace("<","").replace(">","").replace("/","").replace("JB_name","").split()
@@ -585,6 +589,8 @@ class Environment(object):
 ###  User Interaction ###
 #########################
     def set_queues(self, debug: int=0):
+        if not hasattr(self,"scheduler"):  self.set_scheduler()
+
         ## If it is not a computation cluster, returns an empty list
         if self.scheduler == "local": 
             print("ENV.SET_QUEUES. Identified local computer, returning empty list of available queues")
@@ -679,7 +685,7 @@ class Environment(object):
         if correct and len(self.available_queues) > 0:
             print("")
             print(f"\t---------------------------------------------------------------------------------------- ")
-            print(f"\tSetting Queue Priorities")
+            print(f"\t Setting Queue Priorities")
             print(f"\t---------------------------------------------------------------------------------------- ")
             print(f"\tDo you want to set manual priorities for the queues?                                      ")
             print(f"\tYES: the value you introduce will weight the ratio of free-CPU/total-CPU among queues")
@@ -822,7 +828,7 @@ class Environment(object):
 ### Software ###
 ################
     def set_software(self):
-        if not hasattr(self,"scheduler"): self.set_scheduler(debug=debug) 
+        if not hasattr(self,"scheduler"): self.set_scheduler() 
         if self.scheduler == "local": return None
 
         ## Loads Defaults:
@@ -909,7 +915,6 @@ class Environment(object):
         if hasattr(self,"dct"): self.dct[key] = attr
         setattr(self, key, attr)
 
-
 ##############
 ## Commands ##
 ##############
@@ -935,3 +940,4 @@ def run_command(cmd: str, timeout: int = 10) -> CommandResult:
         return CommandResult(cmd, -1, "", str(e))
 
   
+
