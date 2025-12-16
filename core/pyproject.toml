@@ -16,8 +16,7 @@ dependencies = [
 # Where your CLI entry point lives
 [project.scripts]
 # General
-scope_config             = "scope.cli.config_environment:main"
-scope_run_task           = "scope.cli.run_task_v2:main"
+scope                    = "scope.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
