@@ -183,3 +183,25 @@ def plot_ir_spectrum(vnms, xmin=None, xmax=None, broadening=10.0, points=2000, k
     plt.show()
 
     return x, spectrum
+
+##############################
+## Electronic Excited State ##
+##############################
+class ExcitedState(object):
+    def __init__(self, subject: object, index: int, energy: float, wavelength: float, fosc: float, s2: float, debug: int=0) -> None:
+        self.type          = "excited_state"
+        self.subject       = subject
+        self.index         = index
+        self.energy        = energy
+        self.wavelength    = wavelength
+        self.fosc          = fosc
+        self.s2            = s2
+
+    def __repr__(self):
+        to_print = ""
+        to_print += f'{self.index}'
+        to_print += f'  {self.energy:6.2f} eV'
+        to_print += f'  {self.wavelength:6f} nm'
+        to_print += f'  {self.fosc:6f}'
+        to_print += f'  {self.get_character()}'
+        return to_print
