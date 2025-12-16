@@ -5,12 +5,7 @@ description = "Temporary test package"
 authors = [{ name = "Sergi Vela", email = "sergi.vela@iqac.csic.es" }]
 requires-python = ">=3.10"
 dependencies = [
-    "numpy",
-    "networkx<3.3",
-    "scipy",
-    "rdkit",
-    "platformdirs",
-    "cell2mol @ git+https://github.com/lcmd-epfl/cell2mol.git",
+    "scope",
 ]
 
 # Where your CLI entry point lives
