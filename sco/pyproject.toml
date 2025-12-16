@@ -1,0 +1,33 @@
+[project]
+name = "scope"
+version = "0.0.0"
+description = "Temporary test package"
+authors = [{ name = "Sergi Vela", email = "sergi.vela@iqac.csic.es" }]
+requires-python = ">=3.10"
+dependencies = [
+    "numpy",
+    "networkx<3.3",
+    "scipy",
+    "rdkit",
+    "platformdirs",
+    "cell2mol @ git+https://github.com/lcmd-epfl/cell2mol.git",
+]
+
+# Where your CLI entry point lives
+[project.scripts]
+# General
+scope_config             = "scope.cli.config_environment:main"
+scope_run_task           = "scope.cli.run_task_v2:main"
+
+# Spin_Crossover Related
+scope_sco_single         = "scope.spin_crossover.cli.create_from_cell2mol:main"
+scope_sco_many           = "scope.spin_crossover.cli.create_many_cell2mol:main"
+
+[tool.setuptools.packages.find]
+where = ["src"]
+[tool.setuptools]
+include-package-data = false
+
+[build-system]
+requires = ["setuptools", "wheel", "numpy"]
+build-backend = "setuptools.build_meta"

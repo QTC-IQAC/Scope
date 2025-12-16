@@ -10,12 +10,12 @@ from scope.classes_state        import State
 from scope.classes_specie       import *
 from scope.classes_system       import System
 from scope.read_write           import load_binary, print_xyz
-from scope.spin_crossover.sco_structure import *
+from scope_sco.sco_structure    import *
 
 ########################################
 ##### SYSTEM Object Adapted to SCO #####
 ########################################
-class SCO_system(System):
+class System_sco(System):
     def __init__(self, refcode: str) -> None:
         System.__init__(self, refcode)
         self.subtype              = "sco_system" 
@@ -25,7 +25,7 @@ class SCO_system(System):
     def __repr__(self):
         to_print  = ''
         to_print += '-------------------------------------\n'
-        to_print += '-- >>> SCOPE SCO-System Object >>> --\n'
+        to_print += '-- >>> SCOPE System_sco Object >>> --\n'
         to_print += '-------------------------------------\n'
         to_print += System.__repr__(self, indirect=True)
         to_print += '\n'
@@ -249,7 +249,7 @@ class SCO_system(System):
 ######################################
 ##### CELL Object Adapted to SCO #####
 ######################################
-class SCO_cell(Cell):
+class Cell_sco(Cell):
     def __init__(self, name: str, labels: list, pos: list, cell_vector: list=None, cell_param: list=None) -> None:
         Cell.__init__(self, name, labels, pos, cell_vector, cell_param)
         self.subtype              = "sco_cell"
@@ -257,7 +257,7 @@ class SCO_cell(Cell):
     def __repr__(self) -> None:
         to_print  = ''
         to_print += '-----------------------------------\n'
-        to_print += '-- >>> SCOPE SCO-CELL Object >>> --\n'
+        to_print += '-- >>> SCOPE Cell_sco Object >>> --\n'
         to_print += '-----------------------------------\n'
         to_print += Cell.__repr__(self, indirect=True)
         if hasattr(self,"phase"):              to_print += f' Phase                 = {self.phase}\n'
@@ -267,7 +267,7 @@ class SCO_cell(Cell):
 
     ######
     def get_sco_geom(self, debug: int=0):
-        from scope.spin_crossover.sco_structure import geom_sco_from_xyz
+        from scope_sco.sco_structure import geom_sco_from_xyz
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"Found Fragmented molecules in the geometry of self: {self.name}"
         if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
@@ -332,7 +332,7 @@ def convert_to_sco_cell(generic_cell):
     if isinstance(generic_cell, SCO_cell):
         if debug > 0: print(f"CONVERT_TO_SCO_CELL: Input is already a 'sco_cell' object")
         return generic_cell
-    new_cell = SCO_cell(generic_cell.name, generic_cell.labels, generic_cell.coord, generic_cell.cell_vector, generic_cell.cell_param)
+    new_cell = Cell_sco(generic_cell.name, generic_cell.labels, generic_cell.coord, generic_cell.cell_vector, generic_cell.cell_param)
     for attr in generic_cell.__dict__.keys():
         if not hasattr(new_cell,attr):
             setattr(new_cell, attr, getattr(generic_cell,attr))

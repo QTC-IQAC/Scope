@@ -6,7 +6,7 @@ from scope.thermal_corrections import *
 
 ######
 def get_sco_geom(state: object, debug: int=0):
-    from scope.spin_crossover.sco_structure import geom_sco_from_xyz
+    from scope_sco.sco_structure import geom_sco_from_xyz
     from scope.classes_state import State
     if not hasattr(state,"fragmented"): state.check_fragmentation(reconstruct=True, debug=debug)
     assert not state.fragmented, f"Found Fragmented molecules in the geometry of state: {state.name}"
@@ -41,7 +41,7 @@ def get_T12(branch: object, High_E_state: object, Low_E_state: object, Trange: r
         key = "dHelec" 
         value = High_E_state.results["Helec"].value - Low_E_state.results["Helec"].value 
         units = High_E_state.results["Helec"].units
-        function = "scope.spin_crossover.sco_functions.get_T12"
+        function = "scope_sco.sco_functions.get_T12"
         branch.add_result(Data(key,value,units,function), overwrite=overwrite) 
 
     ## dSelec
@@ -50,7 +50,7 @@ def get_T12(branch: object, High_E_state: object, Low_E_state: object, Trange: r
         key = "dSelec" 
         value = High_E_state.results["Selec"].value - Low_E_state.results["Selec"].value 
         units = High_E_state.results["Selec"].units
-        function = "scope.spin_crossover.sco_functions.get_T12"
+        function = "scope_sco.sco_functions.get_T12"
         branch.add_result(Data(key,value,units,function), overwrite=overwrite) 
 
     ## dHvib
@@ -77,7 +77,7 @@ def get_T12(branch: object, High_E_state: object, Low_E_state: object, Trange: r
         key = "T12"
         value = find_t12(Trange, dGdata)
         units = "K"
-        function = "scope.spin_crossover.sco_functions.get_T12"
+        function = "scope_sco.sco_functions.get_T12"
         branch.add_result(Data(key, value, units, function), overwrite=overwrite)
 
     if debug > 0:
