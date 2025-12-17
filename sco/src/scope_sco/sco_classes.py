@@ -329,7 +329,7 @@ def convert_to_sco_cell(generic_cell):
     if not isinstance(generic_cell, Cell):
         print(f"CONVERT_TO_SCO_CELL: Input is not a 'cell' object")
         return None
-    if isinstance(generic_cell, SCO_cell):
+    if isinstance(generic_cell, Cell_sco):
         if debug > 0: print(f"CONVERT_TO_SCO_CELL: Input is already a 'sco_cell' object")
         return generic_cell
     new_cell = Cell_sco(generic_cell.name, generic_cell.labels, generic_cell.coord, generic_cell.cell_vector, generic_cell.cell_param)
