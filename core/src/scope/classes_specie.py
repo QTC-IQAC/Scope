@@ -640,6 +640,7 @@ class Specie(object):
         to_print += f' Version               = {self.version}\n'
         to_print += f' Type                  = {self.type}\n'
         to_print += f' Sub-Type              = {self.subtype}\n'
+        if hasattr(self,"name"):         to_print += f' Name                  = {self.name}\n'
         to_print += f' Number of Atoms       = {self.natoms}\n'
         to_print += f' Formula               = {self.formula}\n'
         to_print += f' Charge                = {self.charge}\n'

@@ -325,6 +325,14 @@ class G16_output(object):
             self.last_energy = None
         return self.last_energy
 
+###################
+### FREE ENERGY ###
+###################
+    def get_free_energy(self, debug: int=0):
+        self.free_energy = parse_free_energy(self.lines, debug=debug)
+        if self.free_energy is None and debug > 0: print("GET_FREE_ENERGY: free energy is None")
+        return self.free_energy
+
 #########################
 ### FREQUENCIES & VNM ###
 #########################

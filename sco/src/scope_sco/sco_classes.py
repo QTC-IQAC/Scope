@@ -45,7 +45,7 @@ class System_sco(System):
             debug (int, optional): Debug level for verbose output. Defaults to 0.
 
         Returns:
-            self: The updated SCO system instance with the loaded cell and associated CIF data.
+            self: The updated System_SCO instance with the loaded cell and associated CIF data.
 
         Notes:
             - The method searches for files in the specified folder that match both the Cell ".gmol" and ".cif" formats.
@@ -89,7 +89,7 @@ class System_sco(System):
             new_cif.associate_cell(new_cell)
             ## Stores Path
             new_cell.set_path(cell_path)                               
-            ## Create SCO System, and incorporate the cell
+            ## Create System_SCO, and incorporate the cell
             if hasattr(new_cell,"name"): source_name = new_cell.name
             else:                        source_name = folder.split('/')[-2]
             self.add_source(source_name, new_cell, overwrite=overwrite, debug=debug)

@@ -13,46 +13,9 @@ from scope.read_write    import read_user_input, input_with_default
 from scope.read_write    import get_config_path, save_to_config, load_config 
 from scope.read_write    import save_json, load_json
 
-#############
-### OTHER ###
-#############
-def set_user():
-    return pwd.getpwuid( os.getuid() ).pw_name
-
-def set_group():
-    group_id = pwd.getpwnam(set_user()).pw_gid
-    return grp.getgrgid(group_id).gr_name
-
-def is_slurm_active():
-    return run_command("scontrol show config").ok
-
-def is_sge_active():
-    return (run_command("qconf -sconf").ok and (run_command("qsub -dryrun /dev/null").ok or run_command("qsub -verify /dev/null").ok))
-
-def write_test_job(scheduler: str):
-    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".sub") as f:
-        if scheduler == "slurm":
-            print("#!/bin/bash", file=f)
-            print("#SBATCH -J test_job", file=f)
-            print("#SBATCH -o test.out", file=f)
-            print("#SBATCH -e test.err", file=f)
-            print("#SBATCH --nodes=1", file=f)
-            print("#SBATCH --ntasks=1", file=f)
-            print("#SBATCH --time=00:01:00", file=f)
-            print("echo test", file=f)
-        elif scheduler == "sge":
-            print("#!/bin/bash", file=f)
-            print("#$ -N test_job", file=f)
-            print("#$ -o test.out", file=f)
-            print("#$ -e test.err", file=f)
-            print("#$ -pe smp 1", file=f)
-            print("#$ -l h_rt=00:01:00", file=f)
-            print("echo test", file=f)
-        return Path(f.name)
-
-###############
-### CLUSTER ###
-###############
+###################
+### ENVIRONMENT ###
+###################
 class Environment(object):
     """
     The `environment` class controls the computational environment of SCOPE, for job submission and resource allocation.
@@ -139,6 +102,10 @@ class Environment(object):
             self.scheduler = "local"
             return self.scheduler
         print(f"\tScheduler set to {self.scheduler}")
+        if self.scheduler == 'sge': 
+            print(f"\t SCOPE has partial compatibility with the SGE Scheduler.")
+            print(f"\t SGE is rare, so it is difficult to test.")
+            print(f"\t Please report any issues you encounter. Thanks")
         print("")
         return self.scheduler
 
@@ -172,10 +139,9 @@ class Environment(object):
                 "submit"             : None,
                 "get_queues"         : None,}
 
-    ##########################
-    ## Test the Environment ##
-    ##########################
+    ######
     def test_scheduler(self):
+        ## This is a function to test the commands of the environment
         if not hasattr(self,"scheduler"): self.set_scheduler()
         if not hasattr(self,"commands"):  self.set_commands()
         if   self.scheduler == 'slurm': 
@@ -347,9 +313,9 @@ class Environment(object):
         # Saves as binary
         save_binary(self, self.filepath)
 
-#####################################
-###  Connection with Execute_Job  ###
-#####################################
+##################
+## Running Jobs ##
+##################
     def get_user_requested(self, debug: int=0):
         self.get_user_waiting(debug=debug)
         self.get_user_running(debug=debug)
@@ -488,10 +454,6 @@ class Environment(object):
                 cpus, jobs     = q.get_user_running(debug=debug)
                 self.user_running_cpus += cpus
                 self.user_running_jobs += jobs
-            ## Finally, we add the waiting jobs
-            #wcpus, wjobs = self.get_user_waiting(debug=debug)
-            #self.user_running_cpus += wcpus
-            #self.user_running_jobs += wjobs
 
         ## Method 2 - Directly
         elif method == 'direct':
@@ -528,6 +490,7 @@ class Environment(object):
                     print("ENV.CHECK_USER_RUNNING: exception:", exc)
         return self.user_running_cpus, self.user_running_jobs
          
+    ######
     def get_best_queue(self, autoselect: bool=False, debug: int=0):
         """
         Determines and returns the best queue for submitting a computation based on queue availability and pending jobs.
@@ -572,6 +535,7 @@ class Environment(object):
         if debug > 0: print(f"GET_BEST_QUEUE: returning {target_queues[best_idx].name}")
         return target_queues[best_idx]
 
+    ######
     def check_submitted(self, job_name: str, debug: int=0):
         if not hasattr(self,"commands"):   self.set_commands()
         if self.scheduler == "local": return False 
@@ -946,4 +910,40 @@ def run_command(cmd: str, timeout: int = 10) -> CommandResult:
         return CommandResult(cmd, -1, "", str(e))
 
   
+#############
+### OTHER ###
+#############
+def set_user():
+    return pwd.getpwuid( os.getuid() ).pw_name
+
+def set_group():
+    group_id = pwd.getpwnam(set_user()).pw_gid
+    return grp.getgrgid(group_id).gr_name
+
+def is_slurm_active():
+    return run_command("scontrol show config").ok
+
+def is_sge_active():
+    return (run_command("qconf -sconf").ok and (run_command("qsub -dryrun /dev/null").ok or run_command("qsub -verify /dev/null").ok))
+
+def write_test_job(scheduler: str):
+    with tempfile.NamedTemporaryFile("w", delete=False, suffix=".sub") as f:
+        if scheduler == "slurm":
+            print("#!/bin/bash", file=f)
+            print("#SBATCH -J test_job", file=f)
+            print("#SBATCH -o test.out", file=f)
+            print("#SBATCH -e test.err", file=f)
+            print("#SBATCH --nodes=1", file=f)
+            print("#SBATCH --ntasks=1", file=f)
+            print("#SBATCH --time=00:01:00", file=f)
+            print("echo test", file=f)
+        elif scheduler == "sge":
+            print("#!/bin/bash", file=f)
+            print("#$ -N test_job", file=f)
+            print("#$ -o test.out", file=f)
+            print("#$ -e test.err", file=f)
+            print("#$ -pe smp 1", file=f)
+            print("#$ -l h_rt=00:01:00", file=f)
+            print("echo test", file=f)
+        return Path(f.name)
 

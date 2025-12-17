@@ -124,7 +124,16 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
     elemdatabase = ElementData()
 
     d0 = get_dihedral(coord[atom1], coord[atom2], coord[atom3], coord[atom4])
-    if debug > 0: print(f"initial dihedral {np.degrees(d0)=}")
+    if debug > 0: print(f"SET_DIHEDRAL: initial dihedral {np.degrees(d0)=}")
+
+    ### Evaluates which atoms must be moved later, when applying dihedral. 
+    # First, it commputes the adjacency matrix
+    isgood, adjmat, adjnum = get_adjmatrix(labels, coord)
+    # Second, it removes connection between atoms2 and 3
+    adjnum[atom2] = adjnum[atom2]-1
+    adjnum[atom3] = adjnum[atom3]-1
+    adjmat[atom2][atom3] = 0
+    adjmat[atom3][atom2] = 0
 
     # centers coordinate to atom2
     c1 = centercoords(coord, atom2)
@@ -134,26 +143,19 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
     v1 = np.array(list([c1[atom3][0],c1[atom3][1],0])) 
     v2 = np.array([1,0,0])
     a1 = get_angle(v1,v2) ## angle between xy projection of atom 3 and the x axis
-    if debug > 0: print(f"{np.degrees(a1)=}")
+    if debug > 0: print(f"SET_DIHEDRAL: {np.degrees(a1)=}")
     c2 = rot_in_z(a1, c1)
     if np.abs(c2[atom3][1]) > 0.0001: c2 = rot_in_z(-a1, c1)
-    if debug > 0: print(f"{c2=}")
+    if debug > 0: print(f"SET_DIHEDRAL: {c2=}")
     # now we get rid of the Z coord of atom3
     v3 = np.array(list([c2[atom3][0],0,c2[atom3][2]]))
     v4 = np.array([1,0,0])
     a2 = get_angle(v3,v4) ## angle between xz projection of atom 3 and the x axis
-    if debug > 0: print(f"{a2=}")
+    if debug > 0: print(f"SET_DIHEDRAL: {a2=}")
     c3 = rot_in_y(a2, c2)
     if np.abs(c3[atom3][2]) > 0.0001: c3 = rot_in_y(-a2, c2)
-    if debug > 0: print(f"{c3=}")
+    if debug > 0: print(f"SET_DIHEDRAL: {c3=}")
     
-    ### Evaluates which atoms must be moved when applying dihedral. First, it removes connection between atoms2 and 3
-    isgood, adjmat, adjnum = get_adjmatrix(labels, c3)
-    adjnum[atom2] = adjnum[atom2]-1
-    adjnum[atom3] = adjnum[atom3]-1
-    adjmat[atom2][atom3] = 0
-    adjmat[atom3][atom2] = 0
-
     ### This below is part of split_species function in scope
     indices = [*range(0,len(labels),1)]
     degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
@@ -189,18 +191,18 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
                 atlist.append(indices[i])
         blocklist.append(atlist)
     for b in blocklist:
-        if debug > 0: print("found block:", b, len(b))
+        if debug > 0: print("SET_DIHEDRAL: found block:", b, len(b))
         if atom3 in b and atom4 in b: atoms_to_move = deepcopy(b)
     
-    if debug > 0: print("Atoms to move", atoms_to_move)
+    if debug > 0: print("SET_DIHEDRAL: Atoms to move", atoms_to_move)
     
     d1 = get_dihedral(c3[atom1], c3[atom2], c3[atom3], c3[atom4])
-    if debug > 0: print(f"current dihedral {np.degrees(d1)=}")
+    if debug > 0: print(f"SET_DIHEDRAL: current dihedral {np.degrees(d1)=}")
     d2 = np.radians(dih) ## desired dihedral    
-    if debug > 0: print(f"desired dihedral {np.degrees(d2)=}")
+    if debug > 0: print(f"SET_DIHEDRAL: desired dihedral {np.degrees(d2)=}")
 
     d3 = d2 - d1 ## dihedral to be applied
-    if debug > 0: print(f"rotation to apply {np.degrees(d3)=}")
+    if debug > 0: print(f"SET_DIHEDRAL: rotation to apply {np.degrees(d3)=}")
 
     c4 = rot_in_x(d3, c3)  # dihedral is applied as a rotation along the x axis
     c5 = []
@@ -208,10 +210,10 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
         if idx in atoms_to_move: c5.append(list(c4[idx]))          # takes rotated coordinates
         else:                    c5.append(list(c3[idx]))
     d4 = get_dihedral(c5[atom1], c5[atom2], c5[atom3], c5[atom4])
-    if debug > 0: print(f"current dihedral {np.degrees(d4)=}")
+    if debug > 0: print(f"SET_DIHEDRAL: current dihedral {np.degrees(d4)=}")
 
     if np.degrees(np.abs(d4 - d2)) > 5:
-        if debug > 0: print(f"inverting rotation")
+        if debug > 0: print(f"SET_DIHEDRAL: inverting rotation")
         c4 = rot_in_x(-d3, c3)  # invert rotation sign, as it means is counterclockwise
 
         c5 = []
@@ -219,7 +221,7 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
             if idx in atoms_to_move: c5.append(list(c4[idx]))
             else:                    c5.append(list(c3[idx]))
         d4 = get_dihedral(c5[atom1], c5[atom2], c5[atom3], c5[atom4])
-    if debug > 0: print(f"final dihedral {np.degrees(d4)=}")
+    if debug > 0: print(f"SET_DIHEDRAL: final dihedral {np.degrees(d4)=}")
 
     c6 = displace_coords(c5, atom2, coord[atom2])
     return c6
