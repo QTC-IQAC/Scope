@@ -771,8 +771,9 @@ class Computation(object):
         self.name = self.filename.get_name(spacer=spacer)
         return self.name
 
-    def set_paths(self):
+    def set_paths(self, new_path: str=None):
         if not hasattr(self,"filename"): self.set_name()
+        if new_path is not None: self.path = new_path 
         if self.path[-1] != '/': self.path += '/'
         inp, out, sub = self.set_file_extension()
         # Filenames
