@@ -1,7 +1,6 @@
 import subprocess
 from datetime                  import datetime, timedelta
 from scope.parse_general       import slurm_time_to_minutes
-#from scope.classes_environment import run_command, CommandResult 
 
 #############
 ### QUEUE ###
@@ -237,6 +236,7 @@ class Node(object):
             self.commands = {"check_state" : f'qstat -f | grep {self._queue.name} | grep {self.name}'}
 
     def get_overall_usage(self): # , user: str='all'):
+        from scope.classes_environment import run_command, CommandResult 
         if not hasattr(self,"commands"): self.set_commands()
         res  = run_command(self.commands["check_state"])
         if not res.ok: raise RuntimeError(f"NODE.GET_OVERALL_USAGE: Failed to check node state:\n{res.stderr}")

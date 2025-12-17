@@ -360,7 +360,7 @@ class Environment(object):
         self.jobs_assigned = []
         self.jobs_pending  = []
         ### Retrieve all waiting jobs
-        res = run_command(self.command["get_user_waiting"])
+        res = run_command(self.commands["get_user_waiting"])
         if not res.ok: 
             print(f"ENV.ASSIGN_WAITING_JOBS: failure retrieving waiting jobs")
             print(f"ENV.ASSIGN_WAITING_JOBS: likely due to no jobs in queue")
