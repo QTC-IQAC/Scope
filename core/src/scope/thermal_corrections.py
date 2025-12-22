@@ -47,10 +47,10 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     
             ## Harmonic Oscillator Term
             f = f/constants.har2s_1  # Now frequency in har
-            exponential_pos=np.exp(f/(constants.boltz_au*temp))      # Dimensionless
-            exponential_neg=np.exp(-f/(constants.boltz_au*temp))     # Dimensionless
-            fstterm=f/(temp*(exponential_pos-1))                     # Hartree/molecule*K
-            scnterm=-constants.boltz_au*np.log(1-exponential_neg)    # Hartree/molecule*K
+            exponential_pos=np.exp(f/(constants.boltz_au*temp))                              # Dimensionless
+            exponential_neg=np.exp(-f/(constants.boltz_au*temp))                             # Dimensionless
+            fstterm=f/(temp*(exponential_pos-1))                                             # Hartree/molecule*K
+            scnterm=-constants.boltz_au*np.log(1-exponential_neg)                            # Hartree/molecule*K
             
             if typ.lower() == 'free-rotor' or typ.lower() == 'fr':
                 weight=1/(1+(FR_cutoff/f)**FR_alpha)
@@ -66,7 +66,7 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     ## Arranges units 
     if outunits.lower() == 'kj':  total = total*constants.har2kJmol
     ## Creates data-class object
-    new_data = Data("Svib", float(total), outunits, "scope.Thermal_Corrections.get_Svib()")
+    new_data = Data("Svib", float(total), outunits, "scope.thermal_corrections.get_Svib()")
     new_data.add_property("temperature", temp, overwrite=True)
 
     return new_data
@@ -100,14 +100,14 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     if outunits.lower() == 'kj':  total = total*constants.har2kJmol    # kJ/mol
 
     ## Creates data-class object
-    new_data = Data("Hvib", float(total), outunits, "scope.Thermal_Corrections.get_Hvib()")
+    new_data = Data("Hvib", float(total), outunits, "scope.thermal_corrections.get_Hvib()")
     new_data.add_property("temperature", temp, overwrite=True)
     return new_data
 
 def get_Selec(spin_multiplicity, outunits: str='au', nmol: int=1):
     if outunits.lower()     == 'kj': value = float(8.314*np.log(spin_multiplicity)/1000/nmol)
     elif outunits.lower()   == 'au': value = float(8.314*np.log(spin_multiplicity)/constants.har2kJmol/1000/nmol)
-    return Data("Selec", value, outunits,  'scope.Thermal_Corrections.get_Selec()') 
+    return Data("Selec", value, outunits,  'scope.thermal_corrections.get_Selec()') 
 
 def get_Gibbs(Helec: float, Hvib: float, Selec: float, Svib: float, temp: float):
     return Helec + Hvib - temp*(Svib + Selec)

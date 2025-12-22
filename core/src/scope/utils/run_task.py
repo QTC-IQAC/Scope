@@ -97,7 +97,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
         global_env.read_job_specs(inp_path, debug=0)
 
         #### Step 1.3-Forces some options in case the environment is not that of a computation cluster
-        if global_env.management_type == 'local':
+        if global_env.scheduler == 'local':
             print("WARNING!!! No Queue Management has been detected in cluster, disabling submission")
             options._mod_attr('want_submit',False)      
             options._mod_attr('overwrite_inputs',False)  

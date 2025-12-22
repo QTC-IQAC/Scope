@@ -10,9 +10,7 @@ dependencies = [
 
 # Where your CLI entry point lives
 [project.scripts]
-
-scope_sco_single         = "scope_sco.cli.create_from_cell2mol:main"
-scope_sco_many           = "scope_sco.cli.create_many_cell2mol:main"
+scope_sco                = "scope_sco.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
