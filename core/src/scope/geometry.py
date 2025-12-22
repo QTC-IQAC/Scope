@@ -113,7 +113,7 @@ def displace_coords(coords, origin_atom, new_atom_coords):
     return coords + displacement_vector
 
 #########
-def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, atom3: int, atom4: int, debug: int=0):
+def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, atom3: int, atom4: int, adjmat=None, adjnum=None,  debug: int=0):
     from copy import deepcopy
     from scipy import sparse
     from scipy.sparse import csr_matrix
@@ -128,7 +128,11 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
 
     ### Evaluates which atoms must be moved later, when applying dihedral. 
     # First, it commputes the adjacency matrix
-    isgood, adjmat, adjnum = get_adjmatrix(labels, coord)
+    if adjmat is None or adjnum is None:
+        isgood, adjmat, adjnum = get_adjmatrix(labels, coord)
+    else:
+        adjmat = adjmat.copy()
+        adjnum = adjnum.copy()
     # Second, it removes connection between atoms2 and 3
     adjnum[atom2] = adjnum[atom2]-1
     adjnum[atom3] = adjnum[atom3]-1
@@ -155,7 +159,7 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
     c3 = rot_in_y(a2, c2)
     if np.abs(c3[atom3][2]) > 0.0001: c3 = rot_in_y(-a2, c2)
     if debug > 0: print(f"SET_DIHEDRAL: {c3=}")
-    
+
     ### This below is part of split_species function in scope
     indices = [*range(0,len(labels),1)]
     degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
