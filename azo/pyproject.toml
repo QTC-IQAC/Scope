@@ -6,6 +6,8 @@ authors = [{ name = "Sergi Vela", email = "sergi.vela@iqac.csic.es" }]
 requires-python = ">=3.10"
 dependencies = [
     "scope",
+    "matplotlib",
+    "plotly"
 ]
 
 # Where your CLI entry point lives
