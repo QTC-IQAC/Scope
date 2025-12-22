@@ -246,7 +246,8 @@ class Specie(object):
                 self.frac_coord = cart2frac(self.coord, par.cell_vector)
                 assert len(self.frac_coord) == len(self.coord)
             else:  print("SPECIE.GET_FRACTIONAL_COORD. Parent cell is missing the cell vector"); return None
-        else:  print("SPECIE.GET_FRACTIONAL_COORD. Please provide the cell_vector"); return None
+        else:  
+            if debug > 0: print("SPECIE.GET_FRACTIONAL_COORD. Fractional Coordinates could not be found"); return None
         return self.frac_coord
 
     ######
@@ -1721,11 +1722,17 @@ class Group(Specie):
 ### IMPORTS ###
 ###############
 def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
+
+    if mol.__class__.__module__.startswith("rdkit.Chem"):
+        if debug > 0: print(f"IMPORT_MOLEC: Detected RDKit molecule, importing first via import_rdkit_molecule")
+        if debug > 0: print(f"IMPORT_MOLEC: Importing Labels, coordinates, rdkit_object and smiles. The rest will be evaluated normally")
+        mol = import_rdkit_molecule(mol, debug=debug)
+
     assert hasattr(mol,"labels") 
     assert hasattr(mol,"coord") or hasattr(mol,"pos")
 
+    ## 1) Imports basic info, if available
     labels     = mol.labels
-
     if   hasattr(mol,"coord"):             coord      = mol.coord
     elif hasattr(mol,"pos"):               coord      = mol.pos
 
@@ -1736,6 +1743,7 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
     if   hasattr(mol,"radii"):             radii      = mol.radii
     else:                                  radii      = None          
 
+    ## 2) Imports Covalent and Metal factors for the construcion of the adjacency matrix
     if hasattr(mol,"factor") and hasattr(mol,"metal_factor"): 
         cov_factor   = mol.factor
         metal_factor = mol.metal_factor
@@ -1746,6 +1754,7 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
         cov_factor   = 1.3
         metal_factor = 1.0
 
+    ## 3) Creates basic molecule, and starts adding information
     new_molec = Molecule(labels, coord, radii)
     new_molec.origin = "import_molecule"
     new_molec.set_factors(cov_factor, metal_factor)
@@ -1753,7 +1762,7 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
     new_molec.get_metal_adjmatrix()     ## Necessary when importing atoms
     if debug > 0: print(f"IMPORT MOLEC: importing molecule {new_molec.formula}")
 
-    ## Parents
+    ## 4) Imports Parents if available
     if parent is not None:
         new_molec.add_parent(parent, indices, overwrite=False, debug=debug) 
         if debug > 0: print(f"IMPORT MOLEC: parent {parent.subtype=} added with {indices=}")
@@ -1807,6 +1816,11 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
     elif hasattr(mol,"frac"):         new_molec.set_fractional_coord(mol.frac, debug=debug)
     else:                             new_molec.get_fractional_coord(debug=debug)
 
+    ## Rdkit object
+    if hasattr(mol,"rdkit_obj"): 
+        new_molec.rdkit_obj = mol.rdkit_obj
+        if debug > 0: print(f"IMPORT MOLEC: imported rdkit object")
+
     return new_molec
 
 ######
@@ -1848,8 +1862,8 @@ def import_ligand(lig: object, parent: object=None, debug: int=0) -> object:
         if debug > 0: print(f"IMPORT LIGAND: SMILES could not be imported")
 
     ## Rdkit Object
-    if hasattr(lig,"object"): 
-        new_ligand.rdkit_obj = lig.object
+    if hasattr(lig,"object"):      new_ligand.rdkit_obj = lig.object
+    elif hasattr(lig,"rdkit_obj"): new_ligand.rdkit_obj = lig.rdkit_obj
     else:
         if debug > 0: print(f"IMPORT LIGAND: RDKIT OBJECT could not be imported")
     
@@ -1937,3 +1951,43 @@ def import_group(old_group: object, parent: object=None, debug: int=0) -> object
         if debug > 0: print(new_group.atoms)
             
     return new_group
+
+####################
+### MORE IMPORTS ###
+####################
+def import_rdkit_molecule(mol: rdkit.Chem.rdchem.Mol, debug: int=0) -> object:
+    """Imports an RDKit molecule into a Scope molecule object.
+    Args:
+        mol (rdkit.Chem.rdchem.Mol): RDKit molecule object to be imported.
+    Returns:
+        object: Scope molecule object with the imported data.
+    """
+    from rdkit import Chem
+    from rdkit.Chem import AllChem
+
+    # Check if molecule already has 3D coordinates
+    has_3d = mol.GetNumConformers() > 0 and mol.GetConformer().Is3D()
+
+    # Initial preparation of the molecule if it lacks 3D coordinates
+    if not has_3d:
+        mol = Chem.AddHs(mol)
+        Chem.SanitizeMol(mol)
+        AllChem.EmbedMolecule(mol, AllChem.ETKDG())
+        AllChem.UFFOptimizeMolecule(mol)
+
+    # Gets 3D coordinates
+    conf = mol.GetConformer()
+
+    # Extract atom labels and coordinates
+    coord  = []
+    labels = []
+    for atom in mol.GetAtoms():
+        pos = conf.GetAtomPosition(atom.GetIdx())
+        coord.append((pos.x, pos.y, pos.z))
+        labels.append(atom.GetSymbol())
+
+    # Create a new Scope molecule object
+    scope_mol = Molecule(labels, coord)       # Create Scope molecule with labels and coordinates
+    scope_mol.rdkit_obj = mol                 # Store the original RDKit molecule for reference
+    scope_mol.smiles = Chem.MolToSmiles(mol)  # Store the SMILES representation
+    return scope_mol
