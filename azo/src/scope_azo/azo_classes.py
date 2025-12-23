@@ -5,28 +5,26 @@ from scope.classes_specie import *
 from scope.software.gaussian.g16_parse import *
 from scope.geometry import *
 from scope.connectivity import *
-# from scope_azo.azo_functions import *
+from scope_azo.azo_functions import *
 
 ############################################
 #### SYSTEM Object adapted to System_azo ###
 ############################################
 
 class System_azo(System):
-    def __init__(self, name: str, debug: int=0):    # name és un string de 3 caràcters, on el primer és el substituent esquerre, el segon el dret i el tercer el substituent del N=N
+    def __init__(self, name: str, debug: int=0):
         System.__init__(self, name)
         self.subtype      = "system_azo"        
         self.name         = name
-        self.left_idx     = name[0]
-        self.right_idx    = name[1]
-        self.subs_idx     = name[2]
-        self.fragments    = []
-        # self.dihedral_indices = []
         self.smiles       = None
+        self.fragments    = []
 
-    def set_smiles(self, smiles):
+    ######
+    def set_smiles(self, smiles):  ## En principi, el System_azo no hauria de tenir smiles associat, nomes els isomers
         self.smiles = smiles
         return self.smiles
 
+    ######
     def get_fragments(self):
         '''Extracts the indices of the atoms of each fragment of the azo compound from the SMILES string.'''
         chars = ElementData().elementname.keys() # List of characters that define an atom. Update if needed  
@@ -67,11 +65,7 @@ class System_azo(System):
         self.fragments.append(block)
         return self.fragments
 
-    def write_atom_list(self):
-        if not hasattr(self,"fragments"): self.get_fragments()
-        self.frag_idx_text = str(f"at_lists={self.fragments}") 
-        return self.frag_idx_text
-
+    ######
     def get_dihedral_indices(self):
         '''
         Extracts the relevant indices to build molecules of azo species. It works for any azo SMILES that follows
@@ -98,21 +92,20 @@ class System_azo(System):
           2 === 1                     13 === 12
 
         where:
-        - at0 = 0: is the atom with index 0 of the left ring 
-        - at1 = 1: is the atom with index 1 of the left ring 
-        - at2 = 6: is the Nitrogen atom with index 6 of the Azo fragment
-        - at3 = 7: is the Nitrogen atom with index 7 of the Azo fragment
-        - at4 = 8: is the atom with index 8 of the right ring 
-        - at5 = 9: is the atom with index 9 of the right ring
+        - at0 = 0: is the atom with index 0, found in the left ring 
+        - at1 = 1: is the atom with index 1, found in the left ring 
+        - at2 = 6: is the Nitrogen atom with index 6, found in the Azo fragment
+        - at3 = 7: is the Nitrogen atom with index 7, found in the Azo fragment
+        - at4 = 8: is the atom with index 8, found in the right ring 
+        - at5 = 9: is the atom with index 9, found in of the right ring
 
         The variables at1, at2, at3 and at4 are used to define the dihedral angle of the azo fragment.
 
         The variables at0 and at5 are used to define the dihedral angle of the rings with
         respect to the azo fragment.
         '''
-        if not hasattr(self, "fragments"):
-            self.set_fragments()
         if not hasattr(self, "dihedral_indices"):
+            if not hasattr(self, "fragments"):         self.get_fragments()
             fragments = self.fragments
             at0 = fragments[0][1] -1 
             at1 = fragments[0][0] -1 
@@ -123,6 +116,7 @@ class System_azo(System):
             self.dihedral_indices = (at0, at1, at2, at3, at4, at5)
         return self.dihedral_indices
 
+    ######
     def get_thermal_stability(self, target_state: str="initial", debug: int=0):
         found_cis,   cis_iso   = self.find_conformer("cis")
         found_trans, trans_iso = self.find_conformer("trans")
@@ -135,11 +129,11 @@ class System_azo(System):
             if found_state_trans:
                 if hasattr(state_trans,"gs_energy"): trans_E = state_trans.gs_energy
         if found_cis and found_trans:
-            self.dE = np.round((trans_E - cis_E) * Constants.har2kJmol*0.24,4)
+            self.dE = np.round((trans_E - cis_E) * Constants.har2kJmol/Constants.kcal2kJmol,4)
             print(self.name, self.dE, "kJ/mol. Negative means trans is more stable")
 
-
-    def create_trans(self, debug: int = 0):
+    ######
+    def create_trans(self, smiles: str, debug: int = 0):
         '''
         Creates the trans structure of the azo compound from a SMILES string. 3D geometry creation is done using openbabel. 
         It sets up the trans isomer (including the creation of Specie_azo and its 'initial' State objects) and stores it as
@@ -180,37 +174,30 @@ class System_azo(System):
                 Specie_azo object containing the trans isomer.
         '''
 
-        try:   
-            if debug != 0: print(f"AZO.CREATE_TRANS: Creating trans isomer for {self.name}")
-            if not hasattr(self, 'smiles'):
-                raise Exception(f"AZO.CREATE_TRANS: [ERROR] SMILES string not found for {self.name}")
-            smiles = self.smiles
-            if '/N=N\\' in smiles:
-                if debug != 0: print(f"AZO.CREATE_TRANS: Replacing '\\' with '/' in SMILES for {self.name}")
-                smiles = smiles.replace('/N=N\\', '/N=N/')
+        if debug > 0: print(f"AZO.CREATE_TRANS: Creating trans isomer for {self.name}")
 
-            labels,coord = get_3D(smiles)
-            coord = centercoords(coord, 0)
-            trans = Specie_azo(labels, coord, name="trans")
-            if trans.check_fragmentation():
-                print(f"AZO.CREATE_TRANS: Trans isomer for {self.name} is FRAGMENTED.")
-                return None
-            trans.set_total_charge(0)
-            trans.set_total_spin(0)            
-            trans_state = trans.add_state("initial")
-            trans_state.set_geometry(labels, coord)
-            self.add_source(name="trans", new_source = trans)
-            found_iso, iso = self.find_source("trans")
+        if '/N=N\\' in smiles:
+            if debug > 0: print(f"AZO.CREATE_TRANS: Received SMILES of CIS isomer, replacing '\\' with '/' for {self.name}")
+            smiles = smiles.replace('/N=N\\', '/N=N/')
 
-            if not found_iso:
-                raise Exception(f"AZO.CREATE_TRANS: Trans Molecule not found for {self.name}, although it was added")
-        
-            return iso
-
-        except Exception as e:
-            print(f"AZO.CREATE_TRANS: ERROR creating trans isomer for {self.name}: {e}")
+        labels,coord = get_3D_openbabel(smiles)
+        coord        = centercoords(coord, 0)
+        trans        = Specie_azo(labels, coord)
+        trans.smiles = smiles
+        if trans.check_fragmentation():
+            print(f"AZO.CREATE_TRANS: Trans isomer for {self.name} is FRAGMENTED.")
             return None
 
+        ## Aixo s'ha de revisar. La carrega s'ha de treure de l'smiles
+        trans.set_total_charge(0)
+        trans.set_total_spin(0)            
+
+        trans_state = trans.add_state("initial")
+        trans_state.set_geometry(labels, coord)
+        self.add_source(name="trans", new_source = trans)
+        return trans
+
+    ######
     def create_cis(self, target_deg: float=40.0, max_iter: int=2000, debug: int=0) -> "Specie_azo":
         '''
         Creates the cis structure of the azo compound from a SMILES string. To avoid troubles in 3D geometry creation using openbabel, 
@@ -230,10 +217,8 @@ class System_azo(System):
 
         Parameters
         ----------
-            smiles: str
-                SMILES string of the azo compound. It MUST follow the template: c1(...1)/N=N/ring2.
-            target_deg: float
-                Target angle of the azo dihedral in degrees. 
+        target_deg: float
+            Target angle of the azo dihedral in degrees. 
         max_iter: int
             Maximum number of iterations to solve steric hindrance.
         debug: int
@@ -248,103 +233,88 @@ class System_azo(System):
         iso: Specie_azo
             Specie_azo object containing the cis isomer.
         '''
-        if debug != 0: print(f"AZO.CREATE_CIS: Creating cis isomer for {self.name}")
-        try:
-            if not hasattr(self, 'smiles'):
-                raise Exception(f"AZO.CREATE_CIS: [ERROR] SMILES string not found for {self.name}")
 
-            smiles = self.smiles
-
-            if '/N=N/' in smiles:
-                if debug != 0: print(f"AZO.CREATE_CIS: SMILES is in the trans form. Replacing '/' with '\\' in SMILES for {self.name}")
-                smiles = smiles.replace('/N=N/', '/N=N\\')
-
-            # 1st-searching for trans isomer
-            trans_found, trans = self.find_source('trans')
-
-            if not trans_found:
-                if debug != 0 : print(f"AZO.CREATE_CIS: [WARNING] Trans isomer not found for {self.name}. Creating from SMILES.")
-                _, _, trans = self.create_trans(debug=debug)
-                if trans is None:
-                    raise Exception(f"AZO.CREATE_CIS: [ERROR] Failed to create trans reference isomer for {self.name}")
-            
-            # Get trans isomer geometry as reference
-            labels = trans.labels
-            coord = trans.coord
-
-            # Get indices for the azo group (at1 - at2 = at3 - at4) and neighbours (at0, at5)
-            at0, at1, at2, at3, at4, at5 = self.dihedral_indices
-            if debug != 0: print(f"AZO.CREATE_CIS: Indices: {at0}, {at1}, {at2}, {at3}, {at4}, {at5}")
-            adjmat_ref, adjnum_ref = trans.get_adjmatrix()
-
-            current_rad = get_dihedral(coord[at1],coord[at2],coord[at3],coord[at4]) # Initial dihedral angle
-            current_deg = np.degrees(current_rad)
-            if debug != 0: print(f"AZO.CREATE_CIS: Initial dihedral angle: {current_deg} degrees")
-
-            # Pre-Rotation. Getting dihedral close to target
-            if abs(current_deg) >= (target_deg + 5):
-                if debug != 0: print(f"AZO.CREATE_CIS: current dihedral {abs(current_deg)} is further than {target_deg+5} degrees from target. Adjusting...")
-                jump_target = target_deg+1 if current_deg > 0 else -target_deg-1 
-                if debug != 0: print(f"AZO.CREATE_CIS: Jumping to {jump_target} degrees")
-                if debug != 0: print(f"AZO.CREATE_CIS: Selected atoms: {at1}, {at2}, {at3}, {at4}")
-                coord_next = set_dihedral(labels, coord, jump_target, at1,at2,at3,at4,adjmat=adjmat_ref, adjnum=adjnum_ref)
-                angle_next = np.degrees(get_dihedral(coord_next[at1],coord_next[at2],coord_next[at3],coord_next[at4]))
-                if debug != 0:  print(f"AZO.CREATE_CIS: Changed dihedral in {self.name} from {current_deg} to {angle_next}, it should be near +-{target_deg}")
-                _, adjmat_cis, adjnum_cis = get_adjmatrix(labels,coord_next)
-            else:
-                _, adjmat_cis, adjnum_cis = get_adjmatrix(labels,coord)
-
-            found_geometry = False 
-
-            matrices_match = np.array_equal(adjmat_cis, adjmat_ref) and np.array_equal(adjnum_cis, adjnum_ref)
- 
-            if debug != 0: print(f"AZO.CREATE_CIS: Matrices match: {matrices_match}")
-            if matrices_match:
-                coord = coord_next
-                current_deg = angle_next
-                if debug != 0: print(f"AZO.CREATE_CIS: Angle {current_deg:.2f} (OK)")
-                if abs(current_deg) <= (target_deg + 5):
-                    found_geometry = True
-            else:
-                fixed_collision, coord = solve_dihedral(labels, coord_next, at0, at1, at2, at3, at4, at5, adjmat_ref=adjmat_ref, adjnum_ref=adjnum_ref,debug=debug)
-                current_deg = np.degrees(get_dihedral(coord[at1],coord[at2],coord[at3],coord[at4]))
-                if debug != 0: print(f"AZO.CREATE_CIS: Fixed collision: {fixed_collision}")
-                if abs(current_deg) <= (target_deg + 5) and fixed_collision:
-                    if debug != 0: print(f"AZO.CREATE_CIS: Angle {current_deg:.2f} (OK)")
-                    found_geometry = True
-                    if debug != 0: print(f'AZO.CREATE_CIS: Found good geometry for {self.name} by rotating adjacent dihedrals')
-                else: 
-                    if debug != 0: print(f'AZO.CREATE_CIS: Failed to find good geometry for {self.name} by rotating adjacent dihedrals')
-            
-            if found_geometry: 
-                coord = centercoords(coord, at1)
-                cis = Specie_azo(labels, coord, name="cis")
-                cis.set_total_charge(0)
-                cis.set_total_spin(0)
-                self.add_source(name="cis", new_source = cis)
-                
-                found_iso, iso = self.find_source("cis")
-
-                if not found_iso:
-                    raise Exception(f"AZO.CREATE_CIS: Cis Specie_Azo not found for {self.name},although it was added")
-                
-                if iso.check_fragmentation():
-                    print(f"AZO.CREATE_CIS: Cis isomer for {self.name} is FRAGMENTED.")
-                    return None, None, None
-                
-                iso_state = iso.add_state("initial")
-                iso_state.set_geometry(labels, coord)
-                return iso
-            else:
-                raise Exception(f'AZO.CREATE_CIS: Target dihedral for {self.name} could not be reached. Reached max. iterations: {max_iter}.')
+        # 1st-searching for trans isomer
+        trans_found, trans = self.find_source('trans')
+        if not trans_found: raise Exception(f"AZO.CREATE_CIS: [ERROR] Trans isomer not found. Create it first with self.create_trans()")
         
-        except Exception as e: 
-            print(f"AZO.CREATE_CIS: [ERROR] Failed to create cis for {self.name}: {e}")
-            return None, None, None
+        # Get trans isomer geometry as reference
+        labels = trans.labels
+        coord  = trans.coord
 
+        # Get indices for the azo group (at1 - at2 = at3 - at4) and neighbours (at0, at5)
+        at0, at1, at2, at3, at4, at5 = self.get_dihedral_indices()
+        if debug > 0: print(f"AZO.CREATE_CIS: dihedral indices: {at0}, {at1}, {at2}, {at3}, {at4}, {at5}")
+
+        # Get the adjacency matrix for reference when rotating the dihedral angle of the azo group
+        adjmat_ref, adjnum_ref = trans.get_adjmatrix()
+
+        # Initial dihedral angle, for info 
+        current_rad = get_dihedral(coord[at1],coord[at2],coord[at3],coord[at4]) # Initial dihedral angle
+        current_deg = np.degrees(current_rad)
+        if debug > 0: print(f"AZO.CREATE_CIS: Initial dihedral angle: {current_deg} degrees")
+
+        # Pre-Rotation. Getting dihedral close to target
+        if abs(current_deg - target_deg) >= 5:
+            if debug > 0: print(f"AZO.CREATE_CIS: current dihedral {abs(current_deg)} is further than {target_deg+5} degrees from target. Adjusting...")
+            jump_target = target_deg+1 if current_deg > 0 else -target_deg-1 
+            if debug > 0: print(f"AZO.CREATE_CIS: Jumping to {jump_target} degrees")
+            if debug > 0: print(f"AZO.CREATE_CIS: Selected atoms: {at1}, {at2}, {at3}, {at4}")
+            coord_next = set_dihedral(labels, coord, jump_target, at1,at2,at3,at4,adjmat=adjmat_ref, adjnum=adjnum_ref)
+            angle_next = np.degrees(get_dihedral(coord_next[at1],coord_next[at2],coord_next[at3],coord_next[at4]))
+            if debug > 0:  print(f"AZO.CREATE_CIS: Changed dihedral in {self.name} from {current_deg} to {angle_next}, it should be near +-{target_deg}")
+            _, adjmat_cis, adjnum_cis = get_adjmatrix(labels,coord_next)
+        else:
+            _, adjmat_cis, adjnum_cis = get_adjmatrix(labels,coord)
+
+
+        found_geometry = False 
+
+        matrices_match = np.array_equal(adjmat_cis, adjmat_ref) and np.array_equal(adjnum_cis, adjnum_ref)
+ 
+        if debug > 0: print(f"AZO.CREATE_CIS: Matrices match: {matrices_match}")
+        if matrices_match:
+            coord = coord_next
+            current_deg = angle_next
+            if debug > 0: print(f"AZO.CREATE_CIS: Angle {current_deg:.2f} (OK)")
+            if abs(current_deg) <= (target_deg + 5):
+                found_geometry = True
+        else:
+            fixed_collision, coord = solve_dihedral(labels, coord_next, at0, at1, at2, at3, at4, at5, adjmat_ref=adjmat_ref, adjnum_ref=adjnum_ref,debug=debug)
+            current_deg = np.degrees(get_dihedral(coord[at1],coord[at2],coord[at3],coord[at4]))
+            if debug > 0: print(f"AZO.CREATE_CIS: Fixed collision: {fixed_collision}")
+            if abs(current_deg) <= (target_deg + 5) and fixed_collision:
+                if debug > 0: print(f"AZO.CREATE_CIS: Angle {current_deg:.2f} (OK)")
+                found_geometry = True
+                if debug > 0: print(f'AZO.CREATE_CIS: Found good geometry for {self.name} by rotating adjacent dihedrals')
+            else: 
+                if debug > 0: print(f'AZO.CREATE_CIS: Failed to find good geometry for {self.name} by rotating adjacent dihedrals')
+        
+        if found_geometry: 
+            coord      = centercoords(coord, at1)
+            cis        = Specie_azo(labels, coord) 
+            cis.smiles = trans.smiles.replace('/N=N/','/N=N\\')
+
+            # Aixo s'ha de revisar
+            cis.set_total_charge(0)
+            cis.set_total_spin(0)
+
+            self.add_source(name="cis", new_source = cis)
+
+            if cis.check_fragmentation():
+                print(f"AZO.CREATE_CIS: Cis isomer for {self.name} is FRAGMENTED.")
+                return None, None, None
+            
+            ini_state = cis.add_state("initial")
+            ini_state.set_geometry(labels, coord)
+            return cis
+        else:
+            raise Exception(f'AZO.CREATE_CIS: Target dihedral for {self.name} could not be reached. Reached max. iterations: {max_iter}.')
+
+    ######
     def create_ts(self, ts_list:list = ['TSrot', 'TSinv_l', 'TSinv_r', 'triplet'], debug: int=0):
         """
-        Creates a set of TS for a given azosystem. Users can select which TS to create from a list of options, 
+        Creates a set of TS for a given System_azo. Users can select which TS to create from a list of options, 
         it must be in ts_list (['TSrot', 'TSinv', 'triplet']). By default, TSrot_A, TSrot_B, TSinv_L, TSinv_R are created, 
         including triplet states TSrot_A_T, TSrot_B_T. 
         
@@ -383,143 +353,142 @@ class System_azo(System):
         
         """
 
-        try:
+        # 1st-searching for trans isomer
+        trans_found, trans = self.find_source('trans')
+        if not trans_found: raise Exception(f"AZO.CREATE_TS: [ERROR] Trans isomer not found. Create it first with self.create_trans()")
+
+        # Get trans isomer geometry as reference
+        labels = trans.labels
+        coord = trans.coord
+
+        # Get indices for the azo group (at1 - at2 = at3 - at4) and neighbours (at0, at5)
+        at0, at1, at2, at3, at4, at5 = self.get_dihedral_indices()
+        if debug > 0: print(f"AZO.CREATE_CIS: dihedral indices: {at0}, {at1}, {at2}, {at3}, {at4}, {at5}")
+
+        # Get the adjacency matrix for reference when rotating the dihedral angle of the azo group
+        adjmat_ref, adjnum_ref = trans.get_adjmatrix()
+
+        if 'TSrot' in ts_list:
+            ## TSrot_A ##
+            coord = set_dihedral(labels, trans.coord, 90, at1,at2,at3,at4, adjmat=adjmat_ref, adjnum=adjnum_ref)
+            coord = set_dihedral(labels, coord, 0, at2,at3,at4,at5, adjmat=adjmat_ref, adjnum=adjnum_ref)
+            _, adjmat, adjnum = get_adjmatrix(labels,coord)
+            is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
+            if is_equal:
+                found = True
+                coord = centercoords(coord, at0)
+            else:
+                found, coord = solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref=adjmat_ref, adjnum_ref=adjnum_ref, debug=debug)
             
-            # Getting trans Specie_Azo as reference  
-            trans_found, trans = self.find_source('trans')
+            if found:
+                ts = Specie_azo(labels, coord)
+                isFragmented = ts.check_fragmentation()  # Check if the TSrot is fragmented
+                if not isFragmented:
+                    state = ts.add_state("initial")
+                    state.set_geometry(labels, coord)
+                    # Aixo s'ha de revisar
+                    ts.set_total_charge(0)
+                    ts.set_total_spin(0)
+                    self.add_source('TSrot_A_S', ts)
 
-            if not trans_found:
-                if debug != 0 : print(f"AZOS.CREATE_TS: [WARNING] Trans isomer not found for {self.name}. Creating from SMILES.")
-                _, _, trans = self.create_trans( debug=debug)
-                if trans is None:
-                    raise Exception(f"AZOS.CREATE_TS: ERROR creating trans reference isomer for {self.name}")
-            
-            # Get trans isomer geometry as reference
-            labels = trans.labels
-            coord = trans.coord
-            # Get indices for the azo group (at1 - at2 = at3 - at4) and neighbours (at0, at5)
-            at0, at1, at2, at3, at4, at5 = self.dihedral_indices
-            if debug != 0: print(f"AZOS.CREATE_TS: Indices: {at0}, {at1}, {at2}, {at3}, {at4}, {at5}")
-            if debug != 0: print(f"AZOS.CREATE_TS: Trans isomer geometry for {self.name}:\nLabels: {labels}\nCoordinates:\n{coord}")
-
-            # Get connectivity of reference trans isomer
-            adjmat_ref, adjnum_ref = trans.get_adjmatrix()
-
-            if 'TSrot' in ts_list:
-                ## TSrot_A ##
-                coord = set_dihedral(labels, trans.coord, 90, at1,at2,at3,at4, adjmat=adjmat_ref, adjnum=adjnum_ref)
-                coord = set_dihedral(labels, coord, 0, at2,at3,at4,at5, adjmat=adjmat_ref, adjnum=adjnum_ref)
-                _, adjmat, adjnum = get_adjmatrix(labels,coord)
-                is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
-                if is_equal:
-                    found = True
-                    coord = centercoords(coord, at0)
+                    if 'triplet' in ts_list:
+                        ts_triplet = Specie_azo(labels, coord)
+                        # Aixo s'ha de revisar
+                        ts_triplet.set_total_charge(0)
+                        ts_triplet.set_total_spin(2)
+                        triplet_state = ts_triplet.add_state("initial")
+                        triplet_state.set_geometry(labels, coord)
+                        self.add_source('TSrot_A_T', ts_triplet)
+                        if debug > 0: print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_T Specie_Azo successfully created for {self.name}')
+                    if debug > 0: print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_S Specie_Azo successfully created for {self.name}')
                 else:
-                    found, coord = solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref=adjmat_ref, adjnum_ref=adjnum_ref, debug=debug)
-                
-                if found:
-                    ts = Specie_azo(labels, coord, name="TSrot_A_S")
-                    isFragmented = ts.check_fragmentation()  # Check if the TSrot is fragmented
-                    if not isFragmented:
-                        state = ts.add_state("initial")
-                        state.set_geometry(labels, coord)
-                        ts.set_total_spin(0)
-                        self.add_source('TSrot_A_S', ts)
+                    raise Exception(f'AZOS.CREATE_TS.TSROT_A: [ERROR] TSrot_A fragmented for {self.name}')
 
-                        if 'triplet' in ts_list:
-                            ts_triplet = Specie_azo(labels, coord, name="TSrot_A_T")
-                            ts_triplet.set_total_spin(2)
-                            triplet_state = ts_triplet.add_state("initial")
-                            triplet_state.set_geometry(labels, coord)
-                            self.add_source('TSrot_A_T', ts_triplet)
-                            if debug != 0: print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_T Specie_Azo successfully created for {self.name}')
-                        if debug != 0: print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_S Specie_Azo successfully created for {self.name}')
-                    else:
-                        raise Exception(f'AZOS.CREATE_TS.TSROT_A: [ERROR] TSrot_A fragmented for {self.name}')
-
-                ## TSrot_B ##                
-                if debug != 0:
-                    dg_deg = np.degrees(get_dihedral(trans.coord[at1], trans.coord[at2], trans.coord[at3], trans.coord[at4]))
-                    print(f'AZOS.CREATE_TS.TSROT_B: Dihedral angle for reference geometry: {dg_deg} degrees')
-                coord = set_dihedral(labels, trans.coord, -90, at1,at2,at3,at4, adjmat=adjmat_ref, adjnum=adjnum_ref)            # Coords de tsrot
-                _, adjmat, adjnum = get_adjmatrix(labels,coord)
-                is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
-                if is_equal:
-                    found = True
-                else:
-                    found, coord = solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref=adjmat_ref, adjnum_ref=adjnum_ref, debug=debug)
+            ## TSrot_B ##                
+            if debug > 0:
+                dg_deg = np.degrees(get_dihedral(trans.coord[at1], trans.coord[at2], trans.coord[at3], trans.coord[at4]))
+                print(f'AZOS.CREATE_TS.TSROT_B: Dihedral angle for reference geometry: {dg_deg} degrees')
+            coord = set_dihedral(labels, trans.coord, -90, at1,at2,at3,at4, adjmat=adjmat_ref, adjnum=adjnum_ref)            # Coords de tsrot
+            _, adjmat, adjnum = get_adjmatrix(labels,coord)
+            is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
+            if is_equal: found = True
+            else:        found, coord = solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref=adjmat_ref, adjnum_ref=adjnum_ref, debug=debug)
     
-                if found:
-                    coord = centercoords(coord, at0)
-                    ts = Specie_azo(labels, coord, name="TSrot_B_S")
-                    isFragmented = ts.check_fragmentation()  # Check if the TSrot is fragmented
-                    if not isFragmented:
+            if found:
+                coord = centercoords(coord, at0)
+                ts = Specie_azo(labels, coord)
+                isFragmented = ts.check_fragmentation()  # Check if the TSrot is fragmented
+                if not isFragmented:
+                    # Aixo s'ha de revisar
+                    ts.set_total_charge(0)
+                    ts.set_total_spin(0)
+                    state = ts.add_state("initial")
+                    state.set_geometry(labels, coord)
+                    self.add_source('TSrot_B_S', ts) # tsrot created from E-isomer 
+                    if 'triplet' in ts_list:
+                        ts_triplet = Specie_azo(labels, coord, name="TSrot_B_T")
+                        # Aixo s'ha de revisar
+                        ts_triplet.set_total_charge(0)
+                        ts_triplet.set_total_spin(2)
+                        triplet_state = ts_triplet.add_state("initial")
+                        triplet_state.set_geometry(labels, coord)
+                        self.add_source('TSrot_B_T', ts_triplet)
+                        if debug > 0: print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_T Specie_Azo successfully created for {self.name}')
+                    if debug > 0: print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_S Specie_Azo successfully created for {self.name}')
+                else:
+                    raise Exception(f'WARNING: TSrot_B fragmented for {self.name}')
+        
+        ## TSinv Left ##
+        if 'TSinv_l' in ts_list:
+            coord = set_angle(labels, trans.coord, 179.9, at1,at2,at3)
+            if debug > 0: 
+                angle_deg = np.degrees(get_angle(coord[at1]-coord[at2], coord[at3]-coord[at2]))
+                print(f'AZOS.CREATE_TS.TSINV_L: Angle between {at1}, {at2} and {at3} set to {angle_deg} degrees.')
+            angles = np.concatenate(([0],[val for i in range(1, 12) for val in (15 * i, -15 * i)]))
+            for a0 in angles:
+                coord = set_dihedral(labels, coord, a0, at3,at2,at1,at0, adjmat=adjmat_ref, adjnum=adjnum_ref)
+                _, adjmat, adjnum = get_adjmatrix(labels,coord)
+                is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
+                if is_equal:
+                    ts = Specie_azo(labels, coord)
+                    ts_isFragmented = ts.check_fragmentation()  # Check if the TSinv_l is fragmented
+                    if not ts_isFragmented:
+                        # Aixo s'ha de revisar
+                        ts.set_total_charge(0)
                         ts.set_total_spin(0)
-                        state = ts.add_state("initial")
-                        state.set_geometry(labels, coord)
-                        self.add_source('TSrot_B_S', ts) # tsrot created from E-isomer 
-                        if 'triplet' in ts_list:
-                            ts_triplet = Specie_azo(labels, coord, name="TSrot_B_T")
-                            ts_triplet.set_total_spin(2)
-                            triplet_state = ts_triplet.add_state("initial")
-                            triplet_state.set_geometry(labels, coord)
-                            self.add_source('TSrot_B_T', ts_triplet)
-                            if debug != 0: print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_T Specie_Azo successfully created for {self.name}')
-                        if debug != 0: print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_S Specie_Azo successfully created for {self.name}')
+                        ts_state = ts.add_state("initial")
+                        ts_state.set_geometry(labels, coord)
+                        self.add_source('TSinv_l', ts)
+                        if debug > 0: print(f'AZOS.CREATE_TS.TSINV_L: TSinv_l Specie_Azo successfully created for {self.name}')
+                        break
                     else:
-                        raise Exception(f'WARNING: TSrot_B fragmented for {self.name}')
-            
-            ## TSinv Left ##
-            if 'TSinv_l' in ts_list:
-                coord = set_angle(labels, trans.coord, 179.9, at1,at2,at3)
-                if debug != 0: 
-                    angle_deg = np.degrees(get_angle(coord[at1]-coord[at2], coord[at3]-coord[at2]))
-                    print(f'AZOS.CREATE_TS.TSINV_L: Angle between {at1}, {at2} and {at3} set to {angle_deg} degrees.')
-                angles = np.concatenate(([0],[val for i in range(1, 12) for val in (15 * i, -15 * i)]))
-                for a0 in angles:
-                    coord = set_dihedral(labels, coord, a0, at3,at2,at1,at0, adjmat=adjmat_ref, adjnum=adjnum_ref)
-                    _, adjmat, adjnum = get_adjmatrix(labels,coord)
-                    is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
-                    if is_equal:
-                        ts = Specie_azo(labels, coord, name="TSinv_l")
-                        ts_isFragmented = ts.check_fragmentation()  # Check if the TSinv_l is fragmented
-                        if not ts_isFragmented:
-                            ts.set_total_spin(0)
-                            ts_state = ts.add_state("initial")
-                            ts_state.set_geometry(labels, coord)
-                            self.add_source('TSinv_l', ts)
-                            if debug != 0: print(f'AZOS.CREATE_TS.TSINV_L: TSinv_l Specie_Azo successfully created for {self.name}')
-                            break
-                        else:
-                            raise Exception(f'AZOS.CREATE_TS.TSINV_L: [ERROR] TSinv_l fragmented for {self.name}')
-            
-            ## TSinv Right ##
-            if 'TSinv_r' in ts_list:
-                coord = set_angle(labels, coord, 179.9, at2,at3,at4) ## Angle value of 179.9 instead of 180 to avoid numerical issues
-                if debug != 0: 
-                    angle_deg = np.degrees(get_angle(coord[at3]-coord[at2], coord[at4]-coord[at2]))
-                    print(f'AZOS.CREATE_TS.TSINV_R: Angle between {at2}, {at3} and {at4} set to {angle_deg} degrees.')
-                angles = np.concatenate(([0],[val for i in range(1, 12) for val in (15 * i, -15 * i)]))
-                for a0 in angles:
-                    coord = set_dihedral(labels, coord, a0, at2,at3,at4,at5, adjmat=adjmat_ref, adjnum=adjnum_ref)
-                    _, adjmat, adjnum = get_adjmatrix(labels,coord)
-                    is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
-                    if is_equal:
-                        ts = Specie_azo(labels, coord, name="TSinv_r")
-                        ts_isFragmented = ts.check_fragmentation()  # Check if the TSinv_l is fragmented
-                        if not ts_isFragmented:
-                            ts.set_total_spin(0)
-                            ts_state = ts.add_state("initial")
-                            ts_state.set_geometry(labels, coord)
-                            self.add_source('TSinv_r', ts)
-                            if debug != 0: print(f'AZOS.CREATE_TS.TSINV_R: TSinv_r Specie_Azo successfully created for {self.name}')
-                            break
-                        else:
-                            raise Exception(f'AZOS.CREATE_TS.TSINV_R: [ERROR] TSinv_r fragmented for {self.name}')
-            
-        except Exception as e:
-            print(f"AZOS.CREATE_TS: [ERROR] Failed to create TS for {self.name}: {e}")
-            return None
+                        raise Exception(f'AZOS.CREATE_TS.TSINV_L: [ERROR] TSinv_l fragmented for {self.name}')
+        
+        ## TSinv Right ##
+        if 'TSinv_r' in ts_list:
+            coord = set_angle(labels, coord, 179.9, at2,at3,at4) ## Angle value of 179.9 instead of 180 to avoid numerical issues
+            if debug > 0: 
+                angle_deg = np.degrees(get_angle(coord[at3]-coord[at2], coord[at4]-coord[at2]))
+                print(f'AZOS.CREATE_TS.TSINV_R: Angle between {at2}, {at3} and {at4} set to {angle_deg} degrees.')
+            angles = np.concatenate(([0],[val for i in range(1, 12) for val in (15 * i, -15 * i)]))
+            for a0 in angles:
+                coord = set_dihedral(labels, coord, a0, at2,at3,at4,at5, adjmat=adjmat_ref, adjnum=adjnum_ref)
+                _, adjmat, adjnum = get_adjmatrix(labels,coord)
+                is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
+                if is_equal:
+                    ts = Specie_azo(labels, coord)
+                    ts_isFragmented = ts.check_fragmentation()  # Check if the TSinv_l is fragmented
+                    if not ts_isFragmented:
+                        # Aixo s'ha de revisar
+                        ts.set_total_charge(0)
+                        ts.set_total_spin(0)
+                        ts_state = ts.add_state("initial")
+                        ts_state.set_geometry(labels, coord)
+                        self.add_source('TSinv_r', ts)
+                        if debug > 0: print(f'AZOS.CREATE_TS.TSINV_R: TSinv_r Specie_Azo successfully created for {self.name}')
+                        break
+                    else:
+                        raise Exception(f'AZOS.CREATE_TS.TSINV_R: [ERROR] TSinv_r fragmented for {self.name}')
         return 
 
     def get_PSS(self, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
@@ -597,10 +566,10 @@ class System_azo(System):
 
     def __repr__(self):
         to_print = ""
-        to_print += f'------------- Custom Azo System --------------\n'
+        to_print += f'------------- SCOPE Azo System --------------\n'
         to_print += f' Name:              {self.name}\n'
         if hasattr(self,"dE"):      to_print += f' Thermal Stability = {self.dE} kJ/mol (- means trans is more stable)'
-        to_print += '----------------------------------------------\n'
+        to_print += '---------------------------------------------\n'
         to_print += '                                              \n'
         return to_print
 
@@ -610,40 +579,14 @@ class System_azo(System):
 
 class Specie_azo(Specie):
 
-    PREFIX_MAP = {
-        "cis": "Z",
-        "trans": "E",
-        "tsrot_a_s": "TSrot_A_S",
-        "tsrot_b_s": "TSrot_B_S",
-        "tsrot_a_t": "TSrot_A_T",
-        "tsrot_b_t": "TSrot_B_T",
-        "tsinv_l":   "TSinv_l",
-        "tsinv_r":   "TSinv_r",
-        "tsinv_l_a": "TSinv_l_A",
-        "tsinv_l_b": "TSinv_l_B",
-        "tsinv_r_a": "TSinv_r_A",
-        "tsinv_r_b": "TSinv_r_B",
-        "triplet_a": "T_a",
-        "triplet_b": "T_b"
-    }
-
     def __init__(self, labels, coord, name: str):
         Specie.__init__(self, labels, coord)
         self.subtype  = "specie_azo"
-        self.name     = name
-        self.set_prefix()
-        self.set_total_charge(0) # Default charge
-
-    def set_prefix(self):
-        self.prefix = self.PREFIX_MAP.get(self.name.lower(), "")
-        if self.prefix == "":
-            print(f'AZO.SPECIE_AZO: Specie_azo {self.name} name not recognized.')
-            print(f'AZO.SPECIE_AZO: No prefix assigned to Specie_azo {self.name}')
 
     def correct_tripletG(self, triplet_specie, T:float=298.15, overwrite = False, p_sh:float = 0.0002, debug: int=0):
         '''
-        Corrects the Gtot of a triplet Specie_azo object using the Gtot of the parent specie. Correction is done considering the 
-        increase of energy due to surface hopping between the singlet and triplet PESs. 
+        Corrects the Gtot of a triplet Specie_azo object using the Gtot of the parent specie. 
+        Correction is done considering the increase of energy due to surface hopping between the singlet and triplet PESs. 
 
         Parameters
         ----------
@@ -660,7 +603,7 @@ class Specie_azo(Specie):
         '''
         k_b = Constants.boltz_J # J/K
         h = Constants.planck_Js # J·s
-        R = Cons.R             # 8.31 J/(K·mol)
+        R = Constants.R_J       # 8.31 J/(K·mol)
 
         found_iso_opt, iso_opt = self.find_state("opt")
         found_triplet_opt, triplet_opt = triplet_specie.find_state("opt")
@@ -677,24 +620,24 @@ class Specie_azo(Specie):
             return
         
         if not exist or overwrite:
-            if debug != 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Found Gtot for {self.name} and {triplet_specie.name}. Correcting Gtot of {parent.name} triplet state.')
+            if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Found Gtot for {self.name} and {triplet_specie.name}. Correcting Gtot of {parent.name} triplet state.')
             G_triplet = triplet_opt.results['Gtot'].value
             G_iso = iso_opt.results['Gtot'].value
 
-            if debug != 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: {parent.name} triplet G: {G_triplet} hartree, iso G: {G_iso} hartree')
+            if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: {parent.name} triplet G: {G_triplet} hartree, iso G: {G_iso} hartree')
 
             dG = (G_triplet - G_iso) * Constants.har2kJmol * 1000  # in J/mol
             t, k = compute_t(G_triplet, G_iso, T)
             k_sh = k * p_sh *p_sh 
             deltax = - (dG + R * T * np.log((h*k_sh)/(k_b*T))) # in J/mol
 
-            if debug != 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Adding deltax in kcal/mol: {deltax*0.24/1000}')
+            if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Adding deltax in kcal/mol: {deltax*0.24/1000}')
             newG = (G_triplet + deltax / (1000*Constants.har2kJmol))
             newG = float(newG)
             newdata = Data("Gtot_corr", newG, "au", "correct_triplet_G")
             
             triplet_opt.add_result(newdata)
-            if debug != 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Corrected Gtot of {parent.name} triplet state by {deltax*0.24/1000:.2f} Kcal/mol.')
+            if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Corrected Gtot of {parent.name} triplet state by {deltax*0.24/1000:.2f} Kcal/mol.')
             return newG
 
     def set_iso_halftime(self, skip_triplets : bool = True, overwrite = False):
@@ -761,8 +704,8 @@ class Specie_azo(Specie):
             ts_values.append(energy)
         
         if not hasattr(self, 'halflife') or overwrite:
-            if debug != 0: print(rf'AZO.SPECIE_AZO.SET_HALFTIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')
-            if debug != 0: print(f'AZO.SPECIE_AZO.SET_HALFTIME:Doing halftime for {parent.name} {self.name}')
+            if debug > 0: print(rf'AZO.SPECIE_AZO.SET_HALFTIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')
+            if debug > 0: print(f'AZO.SPECIE_AZO.SET_HALFTIME:Doing halftime for {parent.name} {self.name}')
             # Choosing Minimum Energy TS (mets)
             min_idx = int(np.argmin(ts_values))
             mets = ts_names[min_idx]                        
@@ -770,13 +713,13 @@ class Specie_azo(Specie):
             dG_cross = (float(g_cross)- float(g_iso)) * Constants.har2kJmol * 0.24 # in Kcal/mol
             # Compute and store halftime
             t,k = compute_t(float(g_cross), float(g_iso))           
-            if debug != 0: print(t, ' s for isomer ', self.name)
+            if debug > 0: print(t, ' s for isomer ', self.name)
             new_time = Data('halflife', float(t), 's', 'compute_t')
             self.halflife = float(t)
             self.mets = mets
             self.add_result(new_time, overwrite)
             
-            if debug != 0: print(dG_cross, 'for isomer ', self.name)
+            if debug > 0: print(dG_cross, 'for isomer ', self.name)
             self.dG_cross = dG_cross
             newdata = Data('dG_cross', float(dG_cross), 'kcal/mol', 'set_iso_halftime')
             self.add_result(newdata, overwrite)
@@ -874,7 +817,6 @@ class Specie_azo(Specie):
 #######################################
 #####     General Lamp Class      #####
 #######################################
-
 class Lamp:
     def __init__(self, name : str, wavelength : float, fwhm_nm : float = None, power : float = None, shift_nm : float = 0):
         '''
@@ -955,6 +897,3 @@ class Lamp:
         print('---------------------------------------')
         print('NOTE: If no shift is applied, both wavelengths are equal.')
         return ''
-
-
-from scope_azo.azo_functions import *

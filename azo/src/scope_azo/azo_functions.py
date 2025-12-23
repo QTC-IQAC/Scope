@@ -89,7 +89,7 @@ def build_sigma(transitions, E_grid, sigma=0.2, normalize=False, units=True):
     spec = np.zeros_like(E_grid)
     for E0, f in transitions:
         spec += gaussian(E_grid, E0, f,sigma=sigma, normalize=normalize)
-    K = (np.pi * Cons.h *Cons.e) / (Cons.epsilon_0 * Constants.speed_light * Cons.electron_mass)
+    K = (np.pi * Cons.h * Cons.e) / (Cons.epsilon_0 * Constants.speed_light * Cons.electron_mass)
     if units:
         return spec[::-1] * K  # in m^2 / molecule
     else: 
@@ -129,18 +129,11 @@ def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug
         I_lambda = Itot * 1e-3 / 1e-6 * profile  # mW/mm2 to W/m2/nm
     # I_lambda = Itot * profile  # W/m2/nm
     lam_m = np.ones_like(lam_grid)* lam_grid * 1e-9  # in m
-    photon_E = Cons.h * Cons.c / lam_m  # in J
+    photon_E = Cons.h * Constants.speed_light / lam_m  # in J
     phi = I_lambda / photon_E           # photons m-2 s-1 nm-1        
     return phi
 
-def combine_smiles(
-    lefts: list[str], 
-    rights: list[str], 
-    subs: list[str], 
-    systems: list['System_azo'] = None, 
-    debug: int = 0
-) -> list['System_azo']:
-
+def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems: list['System_azo'] = None, debug: int = 0) -> list['System_azo']:
     """
     Combines left, right and substituent SMILES strings to create azo compounds. Geometries are named following the 
     order of the input lists. 
@@ -158,12 +151,12 @@ def combine_smiles(
       2 === 1                     13 === 12
 
     where:
-    - at0 = 0: is the atom with index 0 of the left ring 
-    - at1 = 1: is the atom with index 1 of the left ring 
-    - at2 = 6: is the Nitrogen atom with index 6 of the Azo fragment
-    - at3 = 7: is the Nitrogen atom with index 7 of the Azo fragment
-    - at4 = 8: is the atom with index 8 of the right ring 
-    - at5 = 9: is the atom with index 9 of the right ring
+    - at0 = 0: is the atom with index 0, found in the left ring
+    - at1 = 1: is the atom with index 1, found in the left ring
+    - at2 = 6: is the Nitrogen atom with index 6, found in the Azo fragment
+    - at3 = 7: is the Nitrogen atom with index 7, found in the Azo fragment
+    - at4 = 8: is the atom with index 8, found in the right ring
+    - at5 = 9: is the atom with index 9, found in of the right ring
 
     The variables at1, at2, at3 and at4 are used to define the dihedral angle of the azo fragment.
 
@@ -443,7 +436,7 @@ def compute_t(g_ts:float, g_iso:float, T:float=298.15):
     '''
     k_b = Constants.boltz_J # J/K
     h = Constants.planck_Js # J·s
-    R = Cons.R              # 8.31 J/(K·mol)
+    R = Constants.R_J       # 8.31 J/(K·mol)
 
     dG = (g_ts - g_iso)* Constants.har2kJmol * 1000  # in J/mol
     k = ((k_b*T )/ h)* np.exp(-dG / (R * T))  
