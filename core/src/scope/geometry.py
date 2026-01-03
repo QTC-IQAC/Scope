@@ -76,10 +76,22 @@ def get_dihedral(P1, P2, P3, P4, eps: float=1e-8) -> float:
     return angle
 
 #########
-def get_planar_distortion(theta) -> float:
-    '''
-    Returns the angle between the given angle and plane angle (0 or 180)
-    '''
+def get_planar_distortion(theta: float) -> float:
+    """
+    Calculates the minimum angular distance in radians between the given angle 
+    and the horizontal axis (0 or pi).
+
+    Parameters
+    ----------
+    theta : float or array-like
+        Input angle(s) in radians.
+
+    Returns
+    -------
+    float or ndarray
+        The absolute smallest difference between the input angle and 
+        the nearest horizontal orientation.
+    """
     mod_theta = np.mod(theta, np.pi)
     return np.minimum(mod_theta, np.pi - mod_theta)
 
