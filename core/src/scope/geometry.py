@@ -76,6 +76,14 @@ def get_dihedral(P1, P2, P3, P4, eps: float=1e-8) -> float:
     return angle
 
 #########
+def get_planar_distortion(theta) -> float:
+    '''
+    Returns the angle between the given angle and plane angle (0 or 180)
+    '''
+    mod_theta = np.mod(theta, np.pi)
+    return np.minimum(mod_theta, np.pi - mod_theta)
+
+#########
 # Rotation Matrices
 #########
 # 3D rotation matrix along x-axis
