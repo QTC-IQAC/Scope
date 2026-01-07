@@ -5,7 +5,7 @@ from scope.operations.vecs_and_mats import normalize, determinant
 ######
 def get_dist(coord1: list, coord2: list) -> float:
     dist = np.linalg.norm(np.array(coord1) - np.array(coord2))
-    return dist
+    return float(dist)
 
 #########
 def get_angle(v1, v2, eps: float=1e-8) -> float:
@@ -26,7 +26,7 @@ def get_angle(v1, v2, eps: float=1e-8) -> float:
     v2 = normalize(v2)
     ## To avoid numerical instabilities after normalization
     if np.linalg.norm(v1) < eps or np.linalg.norm(v2) < eps: return 0.0 
-    return np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0))
+    return float(np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0)))
 
 #########
 def get_dihedral(P1, P2, P3, P4, eps: float=1e-8) -> float:
@@ -72,7 +72,7 @@ def get_dihedral(P1, P2, P3, P4, eps: float=1e-8) -> float:
     # Compute angle using atan2 to get the sign
     x = np.dot(n1, n2)
     y = np.dot(m1, n2)
-    angle = np.arctan2(y, x)
+    angle = float(np.arctan2(y, x))
     return angle
 
 #########
@@ -93,7 +93,7 @@ def get_planar_distortion(theta: float) -> float:
         the nearest horizontal orientation.
     """
     mod_theta = np.mod(theta, np.pi)
-    return np.minimum(mod_theta, np.pi - mod_theta)
+    return float(np.minimum(mod_theta, np.pi - mod_theta))
 
 #########
 # Rotation Matrices

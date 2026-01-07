@@ -9,6 +9,11 @@ dependencies = [
     "networkx<3.3",
     "scipy",
     "rdkit",
+    "ipykernel",
+    "plotly",
+    "nbformat",
+    "jupyter", 
+    "matplotlib",
     "platformdirs",
     "cell2mol @ git+https://github.com/lcmd-epfl/cell2mol.git",
 ]

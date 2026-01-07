@@ -12,33 +12,65 @@ from scope_azo.azo_functions import *
 ############################################
 
 class System_azo(System):
-    def __init__(self, name: str, debug: int=0):
+    def __init__(self, name: str, smiles: str, debug: int=0):
         System.__init__(self, name)
-        self.subtype      = "system_azo"        
-        self.name         = name
-        self.smiles       = None
-        self.fragments    = []
+        self.subtype          = "system_azo"        
+        self.name             = name
+        self.smiles           = smiles
+        self.dihedral_indices = self.get_dihedral_indices()
 
     ######
-    def set_smiles(self, smiles):  ## En principi, el System_azo no hauria de tenir smiles associat, nomes els isomers
-        self.smiles = smiles
-        return self.smiles
+    def get_dihedral_indices(self):
+        '''
+        Extracts the indices of the atoms involved in the dihedral angle describing the isomerization in azo species. 
+        It works for any azo SMILES with the following structure: ring1/N=N/ring2. 
+        It is based on the assumption that when the 3D geometry is created from the smiles, the H atoms are added at the end.
 
-    ######
-    def get_fragments(self):
-        '''Extracts the indices of the atoms of each fragment of the azo compound from the SMILES string.'''
-        chars = ElementData().elementname.keys() # List of characters that define an atom. Update if needed  
+        Parameters
+        ----------
+        None
+
+        Returns
+        -------
+        tuple
+            A tuple containing the indices of the atoms that define the dihedral angle.
+                (at0, at1, at2, at3, at4, at5)
+
+        Guide
+        -----
+        Indices are given in the following order (example for azobenzene):
+
+          4 --- 5                     9 --- 10
+         //      \\\\                  //      \\\\
+        3          0 --- 6 === 7 --- 8        11
+         \\        /      N     N     \\       /
+          2 === 1                     13 === 12
+
+        where:
+        - at0 would be the atom with index 0, found in the left ring 
+        - at1 would be the atom with index 1, found in the left ring 
+        - at2 would be the Nitrogen atom with index 6, found in the Azo fragment
+        - at3 would be the Nitrogen atom with index 7, found in the Azo fragment
+        - at4 would be the atom with index 8, found in the right ring 
+        - at5 would be the atom with index 9, found in of the right ring
+
+        Atoms at1, at2, at3 and at4 can be used to define the dihedral angle of the azo fragment.
+        Atoms at0 and at5 can be used to define the dihedral angle of the adjacent rings with respect to the azo fragment.
+        '''
+
+        # 1) First, we identify the two rings from the smiles string
+        chars           = ElementData().elementname.keys() # List of characters that define an atom. Update if needed  
         chars_lowercase = [char.lower() for char in chars]
-        at_count = 1
-        self.fragments = []
-        block = []
+        at_count        = 1
+        fragments       = []
+        block           = []
         
         # New flag to track if we are inside a bracketed atom like [NH3+]
         inside_bracket = False 
 
         for char in self.smiles:
             if char == '/' or char == '\\': 
-                self.fragments.append(block)
+                fragments.append(block)
                 block = []
             
             # CASE 1: Start of a bracketed atom (e.g. [NH3+])
@@ -62,59 +94,16 @@ class System_azo(System):
                 at_count += 1
             else:
                 pass
-        self.fragments.append(block)
-        return self.fragments
+        fragments.append(block)
 
-    ######
-    def get_dihedral_indices(self):
-        '''
-        Extracts the relevant indices to build molecules of azo species. It works for any azo SMILES that follows
-        the following structure: c1(ccccc1)/N=N/ring2. This allows a well-defined indices to create structures.
-
-        Parameters
-        ----------
-        None
-
-        Returns
-        -------
-        tuple
-            A tuple containing the indices of the atoms that define the dihedral angle.
-                (at0, at1, at2, at3, at4, at5)
-
-        Guide
-        -----
-        Indices are given in the following order (example for azobenzene):
-
-          4 --- 5                     9 --- 10
-         //      \\\\                  //      \\\\
-        3          0 --- 6 === 7 --- 8        11
-         \\        /      N     N     \\       /
-          2 === 1                     13 === 12
-
-        where:
-        - at0 = 0: is the atom with index 0, found in the left ring 
-        - at1 = 1: is the atom with index 1, found in the left ring 
-        - at2 = 6: is the Nitrogen atom with index 6, found in the Azo fragment
-        - at3 = 7: is the Nitrogen atom with index 7, found in the Azo fragment
-        - at4 = 8: is the atom with index 8, found in the right ring 
-        - at5 = 9: is the atom with index 9, found in of the right ring
-
-        The variables at1, at2, at3 and at4 are used to define the dihedral angle of the azo fragment.
-
-        The variables at0 and at5 are used to define the dihedral angle of the rings with
-        respect to the azo fragment.
-        '''
-        if not hasattr(self, "dihedral_indices"):
-            if not hasattr(self, "fragments"):         self.get_fragments()
-            fragments = self.fragments
-            at0 = fragments[0][1] -1 
-            at1 = fragments[0][0] -1 
-            at2 = fragments[1][0] -1 
-            at3 = fragments[1][1] -1 
-            at4 = fragments[2][0] -1 
-            at5 = fragments[2][1] -1 
-            self.dihedral_indices = (at0, at1, at2, at3, at4, at5)
-        return self.dihedral_indices
+        #2) Second, we get the actual atom indices
+        at0 = fragments[0][1] -1 
+        at1 = fragments[0][0] -1 
+        at2 = fragments[1][0] -1 
+        at3 = fragments[1][1] -1 
+        at4 = fragments[2][0] -1 
+        at5 = fragments[2][1] -1 
+        return list([at0, at1, at2, at3, at4, at5])
 
     ######
     def get_thermal_stability(self, target_state: str="initial", debug: int=0):
@@ -133,7 +122,7 @@ class System_azo(System):
             print(self.name, self.dE, "kJ/mol. Negative means trans is more stable")
 
     ######
-    def create_trans(self, smiles: str, debug: int = 0):
+    def create_trans(self, overwrite: bool=False, debug: int = 0):
         '''
         Creates the trans structure of the azo compound from a SMILES string. 3D geometry creation is done using openbabel. 
         It sets up the trans isomer (including the creation of Specie_azo and its 'initial' State objects) and stores it as
@@ -159,31 +148,29 @@ class System_azo(System):
         ----------
             self: System_azo object
                 System_azo object where the trans isomer will be stored.
-            smiles: str
-                SMILES string of the azo compound. It should follow the template: c1(...1)/N=N/ring2.
+            overwrite: bool
+                In case the source already has a "trans" isomer, whether it should overwrite it. 
             debug: int
                 Debug level. 0: no debug, 1: verbose debug
 
         Returns
         -------
-            labels: list
-                List of atom labels.
-            coord: list
-                List of atomic coordinates.
-            iso: Specie_azo
+            trans: Specie_azo
                 Specie_azo object containing the trans isomer.
         '''
 
         if debug > 0: print(f"AZO.CREATE_TRANS: Creating trans isomer for {self.name}")
+        smiles = self.smiles
 
         if '/N=N\\' in smiles:
             if debug > 0: print(f"AZO.CREATE_TRANS: Received SMILES of CIS isomer, replacing '\\' with '/' for {self.name}")
             smiles = smiles.replace('/N=N\\', '/N=N/')
 
-        labels,coord = get_3D_openbabel(smiles)
-        coord        = centercoords(coord, 0)
-        trans        = Specie_azo(labels, coord)
-        trans.smiles = smiles
+        labels, coord          = get_3D(smiles)
+        coord                  = centercoords(coord, 0)
+        trans                  = Specie_azo(labels, coord)
+        trans.smiles           = smiles
+        trans.dihedral_indices = self.dihedral_indices
         if trans.check_fragmentation():
             print(f"AZO.CREATE_TRANS: Trans isomer for {self.name} is FRAGMENTED.")
             return None
@@ -194,11 +181,11 @@ class System_azo(System):
 
         trans_state = trans.add_state("initial")
         trans_state.set_geometry(labels, coord)
-        self.add_source(name="trans", new_source = trans)
+        self.add_source(name="trans", new_source = trans, overwrite=overwrite)
         return trans
 
     ######
-    def create_cis(self, target_deg: float=40.0, max_iter: int=2000, debug: int=0) -> "Specie_azo":
+    def create_cis(self, target_deg: float=40.0, max_iter: int=2000, overwrite: bool=False, debug: int=0) -> "Specie_azo":
         '''
         Creates the cis structure of the azo compound from a SMILES string. To avoid troubles in 3D geometry creation using openbabel, 
         the trans isomer is created using create_trans() function. It sets up the cis isomer (including the creation of Specie_azo and 
@@ -221,15 +208,13 @@ class System_azo(System):
             Target angle of the azo dihedral in degrees. 
         max_iter: int
             Maximum number of iterations to solve steric hindrance.
+        overwrite: bool
+            In case the source already has a "cis" isomer, whether it should overwrite it. 
         debug: int
             Debug level. 0: no debug, 1: verbose debug
 
         Returns
         -------
-        labels: list
-            List of atom labels.
-        coord: list
-            List of atomic coordinates.
         iso: Specie_azo
             Specie_azo object containing the cis isomer.
         '''
@@ -291,19 +276,20 @@ class System_azo(System):
                 if debug > 0: print(f'AZO.CREATE_CIS: Failed to find good geometry for {self.name} by rotating adjacent dihedrals')
         
         if found_geometry: 
-            coord      = centercoords(coord, at1)
-            cis        = Specie_azo(labels, coord) 
-            cis.smiles = trans.smiles.replace('/N=N/','/N=N\\')
+            coord                = centercoords(coord, at1)
+            cis                  = Specie_azo(labels, coord) 
+            cis.smiles           = trans.smiles.replace('/N=N/','/N=N\\')
+            cis.dihedral_indices = self.dihedral_indices
 
             # Aixo s'ha de revisar
             cis.set_total_charge(0)
             cis.set_total_spin(0)
 
-            self.add_source(name="cis", new_source = cis)
+            self.add_source(name="cis", new_source = cis, overwrite=overwrite)
 
             if cis.check_fragmentation():
                 print(f"AZO.CREATE_CIS: Cis isomer for {self.name} is FRAGMENTED.")
-                return None, None, None
+                return None
             
             ini_state = cis.add_state("initial")
             ini_state.set_geometry(labels, coord)
@@ -362,7 +348,7 @@ class System_azo(System):
         coord = trans.coord
 
         # Get indices for the azo group (at1 - at2 = at3 - at4) and neighbours (at0, at5)
-        at0, at1, at2, at3, at4, at5 = self.get_dihedral_indices()
+        at0, at1, at2, at3, at4, at5 = self.dihedral_indices
         if debug > 0: print(f"AZO.CREATE_CIS: dihedral indices: {at0}, {at1}, {at2}, {at3}, {at4}, {at5}")
 
         # Get the adjacency matrix for reference when rotating the dihedral angle of the azo group
@@ -579,10 +565,10 @@ class System_azo(System):
 
 class Specie_azo(Specie):
 
-    def __init__(self, labels, coord, name: str):
+    def __init__(self, labels, coord):
         Specie.__init__(self, labels, coord)
         self.subtype  = "specie_azo"
-
+        
     def correct_tripletG(self, triplet_specie, T:float=298.15, overwrite = False, p_sh:float = 0.0002, debug: int=0):
         '''
         Corrects the Gtot of a triplet Specie_azo object using the Gtot of the parent specie. 
@@ -831,7 +817,6 @@ class Lamp:
             power: float, 
                 Power of the lamp in W. If None, power is taken from literature data.
 
-        
         '''
         power_data = {      # Power data (W) from https://doi.org/10.1016/j.bcp.2025.117065
             365: 0.10,
@@ -855,7 +840,7 @@ class Lamp:
             550: 1.57
             }
         
-        fwhm_list = {            # Fwhm data (nm) from COOLLED light source
+        fwhm_list = {       # Fwhm data (nm) from COOLLED light source
             365: 12.54,
             385: 11.38,
             405: 16.08,
@@ -885,15 +870,11 @@ class Lamp:
         else:   self.eff_wavelength = self.wavelength
 
     def __repr__(self):
-        print('--------------LAMP OBJECT--------------')
-        print(f'Name:           {self.name}')
-        print(f'Wavelength:                 {self.wavelength} nm')
-        if hasattr(self, "eff_wavelength"): 
-            print(f'Wavelength (after shift):   {self.eff_wavelength} nm')
-            
-        print(f'FWHM:                       {self.fwhm} nm')
-        if hasattr(self, "power"): 
-            print(f'Power:                      {self.power} W')
-        print('---------------------------------------')
-        print('NOTE: If no shift is applied, both wavelengths are equal.')
-        return ''
+        to_print = f'------------- LAMP OBJECT -------------\n'
+        to_print += f'Name:                       {self.name}\n'
+        to_print += f'Wavelength:                 {self.wavelength} nm\n'
+        to_print += f'FWHM:                       {self.fwhm} nm\n'
+        if hasattr(self, "eff_wavelength"): to_print += f'Wavelength (after shift):   {self.eff_wavelength} nm\n'
+        if hasattr(self, "power"):          to_print += f'Power:                      {self.power} W\n'
+        to_print += f'---------------------------------------\n'
+        return to_print

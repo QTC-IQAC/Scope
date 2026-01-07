@@ -32,6 +32,3 @@ kcal2kJmol      = 4.184
 cm2s_1          =100*speed_light
 eV2s_1          =eV2har*har2cm*cm2s_1
 har2s_1         =har2cm*cm2s_1
-
-
-    R = Cons.R              # 8.31 J/(K·mol)

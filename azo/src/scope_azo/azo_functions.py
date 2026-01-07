@@ -13,14 +13,13 @@ from copy                       import deepcopy
 from itertools                  import product
 import scipy.constants          as Cons
 from scope.elementdata          import ElementData
-from scope                      import *
-from scope_azo.azo_classes      import System_azo, Specie_azo, Lamp
-from scope_azo.azo_functions    import *
+#from scope_azo.azo_classes      import System_azo, Specie_azo, Lamp
 from scope.geometry             import *
 from scope.connectivity         import get_adjmatrix, get_blocks, inv
 elemdatabase = ElementData()
 
 def get_3D(smiles, debug: int=0):
+    from scope.geometry import centercoords
     '''
     Returns the 3D geometry of a molecule from a SMILES string, using the Openbabel module
     '''
@@ -33,6 +32,7 @@ def get_3D(smiles, debug: int=0):
     for at in mol:
         labels.append(elemdatabase.elementsym[at.atomicnum])
         coord.append(list([at.coords[0], at.coords[1], at.coords[2]]))
+    coord = centercoords(coord, 0) 
     return labels, coord
 
 def gaussian(E, E0, f, sigma=0.2, normalize=True):

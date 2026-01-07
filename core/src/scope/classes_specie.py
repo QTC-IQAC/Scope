@@ -59,25 +59,25 @@ class Specie(object):
     def charge(self):
         if not hasattr(self,"atoms"): self.set_atoms()
         if not all(hasattr(at,"charge") for at in self.atoms): return None
-        return np.sum(at.charge for at in self.atoms)
+        return int(np.sum([at.charge for at in self.atoms]))
 
     @property
     def atomic_charges(self):
         if not hasattr(self,"atoms"): self.set_atoms()
         if not all(hasattr(at,"charge") for at in self.atoms): return None
-        return [at.charge for at in self.atoms]
+        return list([at.charge for at in self.atoms])
 
     @property
     def spin(self):
         if not hasattr(self,"atoms"): self.set_atoms()
         if not all(hasattr(at,"spin") for at in self.atoms): return None
-        return np.sum(at.spin for at in self.atoms)
+        return int(np.sum([at.spin for at in self.atoms]))
 
     @property
     def atomic_spins(self):
         if not hasattr(self,"atoms"): self.set_atoms()
         if not all(hasattr(at,"spin") for at in self.atoms): return None
-        return [at.spin for at in self.atoms]
+        return list([at.spin for at in self.atoms])
 
     @property
     def ismagnetic(self):
@@ -1955,7 +1955,7 @@ def import_group(old_group: object, parent: object=None, debug: int=0) -> object
 ####################
 ### MORE IMPORTS ###
 ####################
-def import_rdkit_molecule(mol: rdkit.Chem.rdchem.Mol, debug: int=0) -> object:
+def import_rdkit_molecule(mol, debug: int=0) -> object:
     """Imports an RDKit molecule into a Scope molecule object.
     Args:
         mol (rdkit.Chem.rdchem.Mol): RDKit molecule object to be imported.
