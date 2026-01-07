@@ -559,10 +559,11 @@ class System_azo(System):
     def __repr__(self):
         to_print = ""
         to_print += f'------------- SCOPE Azo System --------------\n'
-        to_print += f' Name:              {self.name}\n'
-        if hasattr(self,"dE"):      to_print += f' Thermal Stability = {self.dE} kJ/mol (- means trans is more stable)'
+        to_print += f' Name:                       {self.name}\n'
+        to_print += f' Atom Indices for Dihedral:  {self.dihedral_indices}\n'
+        if hasattr(self,"dE"): to_print += f' Thermal Stability:          {self.dE} kJ/mol (- means trans is more stable)'
         to_print += '---------------------------------------------\n'
-        to_print += '                                              \n'
+        to_print += '\n'
         return to_print
 
 ###################################
@@ -798,6 +799,30 @@ class Specie_azo(Specie):
         sigma_Z = build_sigma(zip(Z_e, Z_f), x, normalize=False,units=False)     # Absolute
         sigma_E = build_sigma(zip(E_e, E_f), x, normalize=False,units=False)
         return 1240 / x[::-1], sigma_Z, sigma_E 
+
+    def get_azo_substituents(self, debug: int=0):
+        self.azo_substituents = []
+        azo_idx   = self.dihedral_indices[2:4]
+        rest_idx  = list(idx for idx in self.indices if idx not in azo_idx)
+        rest_indices = extract_from_list(rest_idx, self.indices, dimension=1)
+        rest_labels  = extract_from_list(rest_idx, self.labels, dimension=1)
+        rest_coord   = extract_from_list(rest_idx, self.coord, dimension=1)
+        rest_radii   = extract_from_list(rest_idx, self.radii, dimension=1)
+        rest_atoms   = extract_from_list(rest_idx, self.atoms, dimension=1)
+        blocklist = split_species(rest_labels, rest_coord)
+        for b in blocklist:
+            if debug > 0: print(f"GET_AZO_SUBSTITUENTS. PREPARING BLOCK: {b}")
+            sub_indices      = extract_from_list(b, rest_indices, dimension=1)
+            sub_labels       = extract_from_list(b, rest_labels, dimension=1)
+            sub_coord        = extract_from_list(b, rest_coord, dimension=1)
+            sub_radii        = extract_from_list(b, rest_radii, dimension=1)
+            sub_atoms        = extract_from_list(b, rest_atoms, dimension=1)
+            new_substituent  = Molecule(sub_labels, sub_coord, radii=sub_radii)
+            new_substituent.origin = "get_azo_substituents"
+            new_substituent.add_parent(self, indices=sub_indices)
+            new_substituent.set_atoms(atomlist=sub_atoms)
+            self.azo_substituents.append(new_substituent)
+        return self.azo_substituents
 
     def __repr__(self):
         to_print = ""
