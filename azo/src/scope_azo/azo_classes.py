@@ -375,6 +375,7 @@ class System_azo(System):
                     # Aixo s'ha de revisar
                     ts.set_total_charge(0)
                     ts.set_total_spin(0)
+                    ts.dihedral_indices = self.dihedral_indices
                     self.add_source('TSrot_A_S', ts)
 
                     if 'triplet' in ts_list:
@@ -382,6 +383,7 @@ class System_azo(System):
                         # Aixo s'ha de revisar
                         ts_triplet.set_total_charge(0)
                         ts_triplet.set_total_spin(2)
+                        ts_triplet.dihedral_indices = self.dihedral_indices
                         triplet_state = ts_triplet.add_state("initial")
                         triplet_state.set_geometry(labels, coord)
                         self.add_source('TSrot_A_T', ts_triplet)
@@ -408,6 +410,7 @@ class System_azo(System):
                     # Aixo s'ha de revisar
                     ts.set_total_charge(0)
                     ts.set_total_spin(0)
+                    ts.dihedral_indices = self.dihedral_indices
                     state = ts.add_state("initial")
                     state.set_geometry(labels, coord)
                     self.add_source('TSrot_B_S', ts) # tsrot created from E-isomer 
@@ -416,6 +419,7 @@ class System_azo(System):
                         # Aixo s'ha de revisar
                         ts_triplet.set_total_charge(0)
                         ts_triplet.set_total_spin(2)
+                        ts_triplet.dihedral_indices = self.dihedral_indices
                         triplet_state = ts_triplet.add_state("initial")
                         triplet_state.set_geometry(labels, coord)
                         self.add_source('TSrot_B_T', ts_triplet)
@@ -442,6 +446,7 @@ class System_azo(System):
                         # Aixo s'ha de revisar
                         ts.set_total_charge(0)
                         ts.set_total_spin(0)
+                        ts.dihedral_indices = self.dihedral_indices
                         ts_state = ts.add_state("initial")
                         ts_state.set_geometry(labels, coord)
                         self.add_source('TSinv_l', ts)
@@ -468,6 +473,7 @@ class System_azo(System):
                         # Aixo s'ha de revisar
                         ts.set_total_charge(0)
                         ts.set_total_spin(0)
+                        ts.dihedral_indices = self.dihedral_indices
                         ts_state = ts.add_state("initial")
                         ts_state.set_geometry(labels, coord)
                         self.add_source('TSinv_r', ts)
