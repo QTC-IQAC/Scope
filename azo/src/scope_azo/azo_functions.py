@@ -7,23 +7,23 @@
 ################################
 
 import numpy                    as np
-from scipy.sparse               import csr_matrix
-from scipy.sparse.csgraph       import reverse_cuthill_mckee
-from copy                       import deepcopy
-from itertools                  import product
 import scipy.constants          as Cons
 from scope.elementdata          import ElementData
-#from scope_azo.azo_classes      import System_azo, Specie_azo, Lamp
 from scope.geometry             import *
 from scope.connectivity         import get_adjmatrix, get_blocks, inv
 elemdatabase = ElementData()
 
 def get_3D(smiles, debug: int=0):
+    import warnings
     from scope.geometry import centercoords
     '''
     Returns the 3D geometry of a molecule from a SMILES string, using the Openbabel module
     '''
-    from openbabel import pybel as pb
+    try:
+        from openbabel import pybel as pb
+    except Exception as exc:
+        warnings.warn("Open Babel is not installed. Install it with: conda install -c conda-forge openbabel", RuntimeWarning,stacklevel=2)
+
     mol = pb.readstring('smiles', smiles) # first argument is a string format
     mol.addh() # add Hs for 3D
     mol.make3D()
@@ -215,6 +215,7 @@ def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems
 ################################
 
 def solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref, adjnum_ref, debug: int=0):
+    from itertools                  import product
     rot_steps = np.linspace(-180,180, 64).astype(int)
     rot_combinations = list(product(rot_steps, rot_steps))
     fixed_collision = False
