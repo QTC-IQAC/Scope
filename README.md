@@ -55,7 +55,7 @@
   ```bash
 
   # create and activate conda environment and install pip
-  conda create --name scope
+  conda create --name scope python=3.12 
   conda activate scope
   conda install pip
 
@@ -63,12 +63,14 @@
   pip install scope
 
   # install add-ons with pip if you want them
+  conda install openbabel -c conda-forge             ## only needed for the azo add-on
   pip install scope-azo
   pip install scope-sco
   ```
 
   ## Dependencies
 
+  - python 3.12
   - numpy
   - networkx < 3.3
   - rdkit
