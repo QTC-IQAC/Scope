@@ -182,7 +182,7 @@ def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems
                 # Combination of smiles
                 left_fragment = left.replace("SUB",sub)            # Replaces SUB with i substituent
                 current_smiles = core_template.replace("(LEFT)", left_fragment).replace("(RIGHT)", right)
-                name = str(f"{idx}_{jdx}_{kdx}")              # Names in (lrs) order 
+                name = str(f"{idx}_{jdx}_{kdx}")                   # Names in (left_right_sub) order 
 
                 try:
                     if name in existing_names:
