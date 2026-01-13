@@ -10,7 +10,10 @@ import numpy                    as np
 import scipy.constants          as Cons
 from scope.elementdata          import ElementData
 from scope.geometry             import *
-from scope.connectivity         import get_adjmatrix, get_blocks, inv
+from scope.connectivity         import *
+from scope_azo.azo_classes      import *
+
+
 elemdatabase = ElementData()
 
 def get_3D(smiles, debug: int=0):
