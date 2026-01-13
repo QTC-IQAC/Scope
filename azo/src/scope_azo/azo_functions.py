@@ -8,6 +8,7 @@
 
 import numpy                    as np
 import scipy.constants          as Cons
+from copy                       import deepcopy
 from scope.elementdata          import ElementData
 from scope.geometry             import *
 from scope.connectivity         import *
