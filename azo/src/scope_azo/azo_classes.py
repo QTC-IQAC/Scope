@@ -125,7 +125,7 @@ class System_azo(System):
     def create_trans(self, overwrite: bool=False, debug: int = 0):
         '''
         Creates the trans structure of the azo compound from a SMILES string. 3D geometry creation is done using openbabel. 
-        It sets up the trans isomer (including the creation of Specie_azo and its 'initial' State objects) and stores it as
+        It sets up the trans isomer (including the creation of Molecule_azo and its 'initial' State objects) and stores it as
         source of the System_azo object. 
 
         To ensure the geometry could be treated a posteriori to create cis or transition states geometries, the SMILES string
@@ -133,7 +133,7 @@ class System_azo(System):
             
             e.g. c1(ccccc1)/N=N/c2ccccc2
 
-        If no System_azo is provided, it returns labels, coord and the Specie_azo named 'trans'.  
+        If no System_azo is provided, it returns labels, coord and the Molecule_azo named 'trans'.  
 
         Workflow
         --------
@@ -142,7 +142,7 @@ class System_azo(System):
             - Move the azo group dihedral angle close to the target angle.
             - If there is steric hindrance, tries to solve it by moving adjacent rings.
             - If steric hindrance cannot be solved, returns None.
-            - If it is solved, structure is saved to a Specie_azo object with an 'initial' State. 
+            - If it is solved, structure is saved to a Molecule_azo object with an 'initial' State. 
 
         Parameters
         ----------
@@ -155,8 +155,8 @@ class System_azo(System):
 
         Returns
         -------
-            trans: Specie_azo
-                Specie_azo object containing the trans isomer.
+            trans: Molecule_azo
+                Molecule_azo object containing the trans isomer.
         '''
 
         if debug > 0: print(f"AZO.CREATE_TRANS: Creating trans isomer for {self.name}")
@@ -168,7 +168,7 @@ class System_azo(System):
 
         labels, coord          = get_3D(smiles)
         coord                  = centercoords(coord, 0)
-        trans                  = Specie_azo(labels, coord)
+        trans                  = Molecule_azo(labels, coord)
         trans.smiles           = smiles
         trans.dihedral_indices = self.dihedral_indices
         if trans.check_fragmentation():
@@ -185,13 +185,13 @@ class System_azo(System):
         return trans
 
     ######
-    def create_cis(self, target_deg: float=40.0, max_iter: int=2000, overwrite: bool=False, debug: int=0) -> "Specie_azo":
+    def create_cis(self, target_deg: float=40.0, max_iter: int=2000, overwrite: bool=False, debug: int=0) -> "Molecule_azo":
         '''
         Creates the cis structure of the azo compound from a SMILES string. To avoid troubles in 3D geometry creation using openbabel, 
-        the trans isomer is created using create_trans() function. It sets up the cis isomer (including the creation of Specie_azo and 
+        the trans isomer is created using create_trans() function. It sets up the cis isomer (including the creation of Molecule_azo and 
         its 'initial' State objects) and stores it as source of the System_azo object. 
 
-        If no System_azo is provided, it returns labels, coord and the Specie_azo named 'cis'.  
+        If no System_azo is provided, it returns labels, coord and the Molecule_azo named 'cis'.  
 
         Workflow
         --------
@@ -200,7 +200,7 @@ class System_azo(System):
         - Move the azo group dihedral angle close to the target angle.
         - If there is steric hindrance, tries to solve it by moving adjacent rings.
         - If steric hindrance cannot be solved, returns None.
-        - If it is solved, structure is saved to a Specie_azo object with an 'initial' State. 
+        - If it is solved, structure is saved to a Molecule_azo object with an 'initial' State. 
 
         Parameters
         ----------
@@ -215,8 +215,8 @@ class System_azo(System):
 
         Returns
         -------
-        iso: Specie_azo
-            Specie_azo object containing the cis isomer.
+        iso: Molecule_azo
+            Molecule_azo object containing the cis isomer.
         '''
 
         # 1st-searching for trans isomer
@@ -277,7 +277,7 @@ class System_azo(System):
         
         if found_geometry: 
             coord                = centercoords(coord, at1)
-            cis                  = Specie_azo(labels, coord) 
+            cis                  = Molecule_azo(labels, coord) 
             cis.smiles           = trans.smiles.replace('/N=N/','/N=N\\')
             cis.dihedral_indices = self.dihedral_indices
 
@@ -330,7 +330,7 @@ class System_azo(System):
         TSinv
         -------
         TSinv is created by inverting the trans isomer around the azo dihedral (setting dihedral angle to 180º).
-        By default, total spin is set as 1. It can be changed using the function for Species as Specie.set_total_spin(value).
+        By default, total spin is set as 1. It can be changed using the function for Molecule objects as Molecule.set_total_spin(value).
         Two versions are created:
             - TSinv_L: Inversion TS involving inversion of left ring (at0 - at1 = at2). Total spin is set as 1.
             - TSinv_R: Inversion TS involving inversion of right ring (at1 = at2 - at3). Total spin is set as 1.
@@ -367,7 +367,7 @@ class System_azo(System):
                 found, coord = solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref=adjmat_ref, adjnum_ref=adjnum_ref, debug=debug)
             
             if found:
-                ts = Specie_azo(labels, coord)
+                ts = Molecule_azo(labels, coord)
                 isFragmented = ts.check_fragmentation()  # Check if the TSrot is fragmented
                 if not isFragmented:
                     state = ts.add_state("initial")
@@ -379,7 +379,7 @@ class System_azo(System):
                     self.add_source('TSrot_A_S', ts)
 
                     if 'triplet' in ts_list:
-                        ts_triplet = Specie_azo(labels, coord)
+                        ts_triplet = Molecule_azo(labels, coord)
                         # Aixo s'ha de revisar
                         ts_triplet.set_total_charge(0)
                         ts_triplet.set_total_spin(2)
@@ -404,7 +404,7 @@ class System_azo(System):
     
             if found:
                 coord = centercoords(coord, at0)
-                ts = Specie_azo(labels, coord)
+                ts = Molecule_azo(labels, coord)
                 isFragmented = ts.check_fragmentation()  # Check if the TSrot is fragmented
                 if not isFragmented:
                     # Aixo s'ha de revisar
@@ -415,7 +415,7 @@ class System_azo(System):
                     state.set_geometry(labels, coord)
                     self.add_source('TSrot_B_S', ts) # tsrot created from E-isomer 
                     if 'triplet' in ts_list:
-                        ts_triplet = Specie_azo(labels, coord, name="TSrot_B_T")
+                        ts_triplet = Molecule_azo(labels, coord)
                         # Aixo s'ha de revisar
                         ts_triplet.set_total_charge(0)
                         ts_triplet.set_total_spin(2)
@@ -440,7 +440,7 @@ class System_azo(System):
                 _, adjmat, adjnum = get_adjmatrix(labels,coord)
                 is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
                 if is_equal:
-                    ts = Specie_azo(labels, coord)
+                    ts = Molecule_azo(labels, coord)
                     ts_isFragmented = ts.check_fragmentation()  # Check if the TSinv_l is fragmented
                     if not ts_isFragmented:
                         # Aixo s'ha de revisar
@@ -467,7 +467,7 @@ class System_azo(System):
                 _, adjmat, adjnum = get_adjmatrix(labels,coord)
                 is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
                 if is_equal:
-                    ts = Specie_azo(labels, coord)
+                    ts = Molecule_azo(labels, coord)
                     ts_isFragmented = ts.check_fragmentation()  # Check if the TSinv_l is fragmented
                     if not ts_isFragmented:
                         # Aixo s'ha de revisar
@@ -566,25 +566,25 @@ class System_azo(System):
         to_print += '\n'
         return to_print
 
-###################################
-##### SPECIE Object Adapted to Specie_azo Class #####
-###################################
+##################################################################
+##### MOLECULE - SPECIE Object Adapted to Molecule_azo Class #####
+##################################################################
 
-class Specie_azo(Specie):
+class Molecule_azo(Molecule):
 
     def __init__(self, labels, coord):
-        Specie.__init__(self, labels, coord)
-        self.subtype  = "specie_azo"
+        Molecule.__init__(self, labels, coord)
+        self.subtype  = "molecule_azo"
         
     def correct_tripletG(self, triplet_specie, T:float=298.15, overwrite = False, p_sh:float = 0.0002, debug: int=0):
         '''
-        Corrects the Gtot of a triplet Specie_azo object using the Gtot of the parent specie. 
+        Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
         Correction is done considering the increase of energy due to surface hopping between the singlet and triplet PESs. 
 
         Parameters
         ----------
-        triplet_specie : Specie_azo
-            The triplet specie object to correct the Gtot of.
+        triplet_specie : Molecule_azo
+            The triplet Molecule_azo object to correct the Gtot of.
         T : float, optional
             The temperature in Kelvin. The default is 298.15 K.
         overwrite : bool, optional
@@ -641,8 +641,8 @@ class Specie_azo(Specie):
 
         Parameters
         ----------
-        self : Specie_azo
-            The specie_azo object to compute the halftime for.
+        self : Molecule_azo
+            The Molecule_azo object to compute the halftime for.
         skip_triplets : bool
             Skip triplet conformers in halftime calculation.
         overwrite : bool
@@ -650,7 +650,7 @@ class Specie_azo(Specie):
 
         Notes
         -----
-        The function will only consider Specie_azo objects that have an opt state with a Gtot value.
+        The function will only consider Molecule_azo objects that have an opt state with a Gtot value.
         The function will only consider TSs that have an opt state with a Gtot value, or Gtot_corr value if skip_triplets is False.
         
         '''
@@ -684,7 +684,7 @@ class Specie_azo(Specie):
             if ts.spin == 3:     # Use corrected Gtot for triplets
                 if not skip_triplets:
                     if 'Gtot_corr' in ts_state.results.keys(): energy = ts_state.results['Gtot_corr'].value
-                    else: raise ValueError(f'AZO.SPECIE_AZO.SET_HALFTIME: Corrected Gtot for {ts.name} Specie_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
+                    else: raise ValueError(f'AZO.SPECIE_AZO.SET_HALFTIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
                 else:
                     continue
             else:   energy = ts_state.results['Gtot'].value
@@ -826,8 +826,8 @@ class Specie_azo(Specie):
 
     def __repr__(self):
         to_print = ""
-        to_print += f'------ Specie_azo custom SPECIE object ------\n'
-        to_print += Specie.__repr__(self, indirect=True)
+        to_print += f'------ Molecule_azo custom MOLECULE object ------\n'
+        to_print += Molecule.__repr__(self, indirect=True)
         to_print += '-----------------------------------------------\n'
         return to_print
 
