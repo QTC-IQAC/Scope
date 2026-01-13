@@ -192,10 +192,7 @@ def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems
                         print(f'Skipping {name}, already exists')
                         continue
 
-                    new_system = System_azo(name)
-                    new_system.set_smiles(current_smiles)
-                    new_system.get_fragments()
-                    new_system.get_dihedral_indices()
+                    new_system = System_azo(name, current_smiles)
 
                     new_system.create_trans(debug=debug)
                     new_system.create_cis(debug=debug)
