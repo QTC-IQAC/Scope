@@ -175,7 +175,6 @@ class System_azo(System):
             print(f"AZO.CREATE_TRANS: Trans isomer for {self.name} is FRAGMENTED.")
             return None
 
-        ## Aixo s'ha de revisar. La carrega s'ha de treure de l'smiles
         trans.set_total_charge(0)
         trans.set_total_spin(0)            
 
@@ -281,7 +280,6 @@ class System_azo(System):
             cis.smiles           = trans.smiles.replace('/N=N/','/N=N\\')
             cis.dihedral_indices = self.dihedral_indices
 
-            # Aixo s'ha de revisar
             cis.set_total_charge(0)
             cis.set_total_spin(0)
 
@@ -372,17 +370,19 @@ class System_azo(System):
                 if not isFragmented:
                     state = ts.add_state("initial")
                     state.set_geometry(labels, coord)
-                    # Aixo s'ha de revisar
+
                     ts.set_total_charge(0)
                     ts.set_total_spin(0)
+
                     ts.dihedral_indices = self.dihedral_indices
                     self.add_source('TSrot_A_S', ts)
 
                     if 'triplet' in ts_list:
                         ts_triplet = Molecule_azo(labels, coord)
-                        # Aixo s'ha de revisar
+
                         ts_triplet.set_total_charge(0)
                         ts_triplet.set_total_spin(2)
+
                         ts_triplet.dihedral_indices = self.dihedral_indices
                         triplet_state = ts_triplet.add_state("initial")
                         triplet_state.set_geometry(labels, coord)
@@ -407,18 +407,20 @@ class System_azo(System):
                 ts = Molecule_azo(labels, coord)
                 isFragmented = ts.check_fragmentation()  # Check if the TSrot is fragmented
                 if not isFragmented:
-                    # Aixo s'ha de revisar
+
                     ts.set_total_charge(0)
                     ts.set_total_spin(0)
+
                     ts.dihedral_indices = self.dihedral_indices
                     state = ts.add_state("initial")
                     state.set_geometry(labels, coord)
-                    self.add_source('TSrot_B_S', ts) # tsrot created from E-isomer 
+                    self.add_source('TSrot_B_S', ts)
                     if 'triplet' in ts_list:
                         ts_triplet = Molecule_azo(labels, coord)
-                        # Aixo s'ha de revisar
+
                         ts_triplet.set_total_charge(0)
                         ts_triplet.set_total_spin(2)
+
                         ts_triplet.dihedral_indices = self.dihedral_indices
                         triplet_state = ts_triplet.add_state("initial")
                         triplet_state.set_geometry(labels, coord)
@@ -443,9 +445,10 @@ class System_azo(System):
                     ts = Molecule_azo(labels, coord)
                     ts_isFragmented = ts.check_fragmentation()  # Check if the TSinv_l is fragmented
                     if not ts_isFragmented:
-                        # Aixo s'ha de revisar
+
                         ts.set_total_charge(0)
                         ts.set_total_spin(0)
+
                         ts.dihedral_indices = self.dihedral_indices
                         ts_state = ts.add_state("initial")
                         ts_state.set_geometry(labels, coord)
@@ -470,9 +473,10 @@ class System_azo(System):
                     ts = Molecule_azo(labels, coord)
                     ts_isFragmented = ts.check_fragmentation()  # Check if the TSinv_l is fragmented
                     if not ts_isFragmented:
-                        # Aixo s'ha de revisar
+
                         ts.set_total_charge(0)
                         ts.set_total_spin(0)
+
                         ts.dihedral_indices = self.dihedral_indices
                         ts_state = ts.add_state("initial")
                         ts_state.set_geometry(labels, coord)
