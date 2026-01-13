@@ -828,7 +828,7 @@ class Molecule_azo(Molecule):
         to_print = ""
         to_print += f'------ Molecule_azo custom MOLECULE object ------\n'
         to_print += Molecule.__repr__(self, indirect=True)
-        to_print += '-----------------------------------------------\n'
+        to_print +=  '-------------------------------------------------\n'
         return to_print
 
 #######################################
