@@ -173,6 +173,8 @@ def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems
     else:
         if debug != 0: print(f"AZOS.COMBINE_SMILES: systems is not None, using existing list. Actual size: {len(systems)}")
 
+    from scope_azo.azo_classes import System_azo
+
     existing_names = {sys.name for sys in systems}
 
     # SMILES combinations
