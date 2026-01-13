@@ -563,9 +563,10 @@ class System_azo(System):
     def __repr__(self):
         to_print = ""
         to_print += f'------------- SCOPE Azo System --------------\n'
-        to_print += f' Name:                       {self.name}\n'
-        to_print += f' Atom Indices for Dihedral:  {self.dihedral_indices}\n'
-        if hasattr(self,"dE"): to_print += f' Thermal Stability:          {self.dE} kJ/mol (- means trans is more stable)'
+        to_print += f' Name                  = {self.name}\n'
+        to_print += f' Atom Indices for Dihedral = {self.dihedral_indices}\n'
+        to_print += System.__repr__(self, indirect=True)
+        if hasattr(self,"dE"): to_print += f' Thermal Stability     = {self.dE} kJ/mol (- means trans is more stable)\n'
         to_print += '---------------------------------------------\n'
         to_print += '\n'
         return to_print
@@ -906,10 +907,10 @@ class Lamp:
 
     def __repr__(self):
         to_print = f'------------- LAMP OBJECT -------------\n'
-        to_print += f'Name:                       {self.name}\n'
-        to_print += f'Wavelength:                 {self.wavelength} nm\n'
-        to_print += f'FWHM:                       {self.fwhm} nm\n'
-        if hasattr(self, "eff_wavelength"): to_print += f'Wavelength (after shift):   {self.eff_wavelength} nm\n'
-        if hasattr(self, "power"):          to_print += f'Power:                      {self.power} W\n'
+        to_print += f' Name                  = {self.name}\n'
+        to_print += f' Wavelength            = {self.wavelength} nm\n'
+        to_print += f' FWHM                  = {self.fwhm} nm\n'
+        if hasattr(self, "eff_wavelength"): to_print += f' Wavelength (after shift) = {self.eff_wavelength} nm\n'
+        if hasattr(self, "power"):          to_print += f' Power                 = {self.power} W\n'
         to_print += f'---------------------------------------\n'
         return to_print
