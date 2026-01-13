@@ -218,6 +218,15 @@ def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems
 ################################
 
 def solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref, adjnum_ref, debug: int=0):
+    """
+    Solves the dihedral angles of a system to avoid steric hindrance. 
+    It does so by rotating adjacent rings dihedral angles: 
+        1 - left ring (at0-at3), 
+        2 - right ring (at2-at5)
+
+    Combinations are done in a grid of 64x64 steps, from -180 to 180 degrees.
+    The first valid combination is returned. 
+    """
     from itertools                  import product
     rot_steps = np.linspace(-180,180, 64).astype(int)
     rot_combinations = list(product(rot_steps, rot_steps))
@@ -229,7 +238,7 @@ def solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref, adjn
         found_fix = np.array_equal(adjmat_try, adjmat_ref) and np.array_equal(adjnum_try, adjnum_ref)
         if found_fix:
             coord = coord_try
-            if debug != 0: print(f'AZOS.FIND_ADJCOMBINATIONS: Found good geometry by rotating adjacent dihedrals')
+            if debug != 0: print(f'AZOS.SOLVE_DIHEDRAL: Found good geometry by rotating adjacent dihedrals')
             fixed_collision = True
             return fixed_collision, coord
 
