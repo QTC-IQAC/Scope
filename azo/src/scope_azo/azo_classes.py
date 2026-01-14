@@ -336,7 +336,7 @@ class System_azo(System):
         They are added as sources of the azosystem. They can be accessed by using azosystem.find_source('TSrot_A_T') or azosystem.find_source('TSinv_R')
         
         """
-
+        created_ts = []
         # 1st-searching for trans isomer
         trans_found, trans = self.find_source('trans')
         if not trans_found: raise Exception(f"AZO.CREATE_TS: [ERROR] Trans isomer not found. Create it first with self.create_trans()")
@@ -376,6 +376,7 @@ class System_azo(System):
 
                     ts.dihedral_indices = self.dihedral_indices
                     self.add_source('TSrot_A_S', ts)
+                    created_ts.append(ts)
 
                     if 'triplet' in ts_list:
                         ts_triplet = Molecule_azo(labels, coord)
@@ -387,6 +388,7 @@ class System_azo(System):
                         triplet_state = ts_triplet.add_state("initial")
                         triplet_state.set_geometry(labels, coord)
                         self.add_source('TSrot_A_T', ts_triplet)
+                        created_ts.append(ts_triplet)
                         if debug > 0: print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_T Specie_Azo successfully created for {self.name}')
                     if debug > 0: print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_S Specie_Azo successfully created for {self.name}')
                 else:
@@ -415,6 +417,8 @@ class System_azo(System):
                     state = ts.add_state("initial")
                     state.set_geometry(labels, coord)
                     self.add_source('TSrot_B_S', ts)
+                    created_ts.append(ts)
+
                     if 'triplet' in ts_list:
                         ts_triplet = Molecule_azo(labels, coord)
 
@@ -425,6 +429,7 @@ class System_azo(System):
                         triplet_state = ts_triplet.add_state("initial")
                         triplet_state.set_geometry(labels, coord)
                         self.add_source('TSrot_B_T', ts_triplet)
+                        created_ts.append(ts_triplet)
                         if debug > 0: print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_T Specie_Azo successfully created for {self.name}')
                     if debug > 0: print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_S Specie_Azo successfully created for {self.name}')
                 else:
@@ -453,6 +458,7 @@ class System_azo(System):
                         ts_state = ts.add_state("initial")
                         ts_state.set_geometry(labels, coord)
                         self.add_source('TSinv_l', ts)
+                        created_ts.append(ts)
                         if debug > 0: print(f'AZOS.CREATE_TS.TSINV_L: TSinv_l Specie_Azo successfully created for {self.name}')
                         break
                     else:
@@ -481,11 +487,12 @@ class System_azo(System):
                         ts_state = ts.add_state("initial")
                         ts_state.set_geometry(labels, coord)
                         self.add_source('TSinv_r', ts)
+                        created_ts.append(ts)
                         if debug > 0: print(f'AZOS.CREATE_TS.TSINV_R: TSinv_r Specie_Azo successfully created for {self.name}')
                         break
                     else:
                         raise Exception(f'AZOS.CREATE_TS.TSINV_R: [ERROR] TSinv_r fragmented for {self.name}')
-        return 
+        return created_ts
 
     def get_PSS(self, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
 
