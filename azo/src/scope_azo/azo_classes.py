@@ -665,7 +665,7 @@ class Molecule_azo(Molecule):
         found_iso_opt, iso_state = self.find_state("opt")
 
         if not found_iso_opt:
-            raise Exception(f'AZO.SPECIE_AZO.SET_HALFTIMEOptimization state not found for {self.name}.')
+            raise Exception(f'AZO.SPECIE_AZO.SET_HALFTIME: Optimization state not found for {self.name}.')
              
         if 'Gtot' in iso_state.results.keys(): g_iso = iso_state.results['Gtot'].value
         else: raise ValueError('AZO.SPECIE_AZO.SET_HALFTIME: Gtot not found for isomer')
