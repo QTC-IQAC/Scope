@@ -170,6 +170,16 @@ class System(object):
             debug (int, optional): Debug level. Defaults to 0.
         Returns: None
         """
+        if not isinstance(environment, object):
+            print("SYSTEM.SET_PATHS_FROM_ENV: environment argument must be object"); return False
+            if isinstance(environment, str):
+                if os.path.isfile(environment):                     
+                    print("SYSTEM.SET_PATHS_FROM_ENV: assuming received environment is the path and trying")
+                    try:
+                        environment = load_binary(environment) 
+                    except Exception as exc:
+                        print("SYSTEM.SET_PATHS_FROM_ENV: could not load environment"); print(exc); return False
+
         ## Fix for older versions
         if not hasattr(environment,"sources_path"):
             if hasattr(environment,"cell2mol_path"):  environment.sources_path = environment.cell2mol_path
