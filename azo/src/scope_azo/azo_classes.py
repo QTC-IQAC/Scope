@@ -569,7 +569,7 @@ class System_azo(System):
 
     def __repr__(self):
         to_print = ""
-        to_print += f'------------- SCOPE Azo System --------------\n'
+        to_print += f'------------- SCOPE System_azo Object -------\n'
         to_print += f' Name                  = {self.name}\n'
         to_print += f' Atom Indices for Dihedral = {self.dihedral_indices}\n'
         to_print += System.__repr__(self, indirect=True)
@@ -838,7 +838,7 @@ class Molecule_azo(Molecule):
 
     def __repr__(self):
         to_print = ""
-        to_print += f'------ Molecule_azo custom MOLECULE object ------\n'
+        to_print += f'---------- SCOPE Molecule_azo Object ------------\n'
         to_print += Molecule.__repr__(self, indirect=True)
         to_print +=  '-------------------------------------------------\n'
         return to_print
@@ -913,7 +913,7 @@ class Lamp:
         else:   self.eff_wavelength = self.wavelength
 
     def __repr__(self):
-        to_print = f'------------- LAMP OBJECT -------------\n'
+        to_print = f'--------- Scope Lamb Object -----------\n'
         to_print += f' Name                  = {self.name}\n'
         to_print += f' Wavelength            = {self.wavelength} nm\n'
         to_print += f' FWHM                  = {self.fwhm} nm\n'
