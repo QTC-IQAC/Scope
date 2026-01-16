@@ -856,7 +856,8 @@ class Computation(object):
         new_qc_data    = set_qc_data(inp_path, section="&qc_data" , debug=0)
         if new_qc_data != old_qc_data: 
             if debug > 1:
-                print("CHECK_QC_DATA found different qc_data:")
+                print("COMP.CHECK_QC_DATA: found different qc_data:")
+                print("COMP.CHECK_QC_DATA: it may be just the addition of defaults:")
                 print("--- OLD QC_DATA ---")
                 print(old_qc_data)
                 print("--- NEW QC_DATA ---")

@@ -117,21 +117,23 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
             if job_data.workflow.lower() == 'all': 
                 if debug > 0: 
                     for sou in sys.sources:
-                        print("RUN_TASK, step 1.5", sou.name)
-                job_data.workflow = [sou.name for sou in sys.sources]
+                        print(f"RUN_TASK, step 1.5. Found source: {sou.name}")
+                job_data.workflow = [sou.name.lower() for sou in sys.sources]
                 print(f"RUN_TASK, step 1.5: job_data.workflow contained 'all'. It was adapted to {job_data.workflow}")
         elif isinstance(job_data.workflow, list):
             if len(job_data.workflow) == 1 and 'all' in [x.lower() for x in job_data.workflow]:
                 if debug > 0: 
                     for sou in sys.sources:
                         print("RUN_TASK, step 1.5", sou.name)
-                job_data.workflow = [sou.name for sou in sys.sources]
+                job_data.workflow = [sou.name.lower() for sou in sys.sources]
                 print(f"RUN_TASK, step 1.5: job_data.workflow contained 'all'. It was adapted to {job_data.workflow}")
 
         for wrk in job_data.workflow if isinstance(job_data.workflow, list) else list([job_data.workflow]):   ### Works when job_data.workflow is a str or a list
 
             exists, this_workflow             = this_branch.find_workflow(wrk)
             if not exists: this_workflow      = this_branch.add_workflow(wrk); updated = True
+            if debug == 1:   print(f"RUN_TASK, step 2.0: Evaluating WORKFLOW with name={this_workflow.name}")
+            elif debug > 1:  print(f"RUN_TASK, step 2.0: Evaluating WORKFLOW \n {this_workflow}")
 
             ###################
             ### STEP 2: JOB ###
