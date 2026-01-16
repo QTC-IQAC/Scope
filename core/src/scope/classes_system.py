@@ -271,13 +271,13 @@ class System(object):
         return False, None
 
     ######
-    def find_computation(self, branch_keyword: str, workflow_keyword: str, job_keyword: str, comp_keyword: str='', comp_step: int=1, comp_run_number: int=1, debug: int=0):
+    def find_computation(self, branch_name: str, workflow_name: str, job_keyword: str, comp_keyword: str='', comp_step: int=1, comp_run_number: int=1, debug: int=0):
         if len(self.branches) == 0: return False, None
         for br in self.branches:
-            if br.keyword.lower() == branch_keyword.lower():
+            if br.name.lower() == branch_name.lower():
                 if len(br.workflows) == 0: return False, None
                 for wrk in br.workflows:
-                    if wrk.source.spin.lower() == workflows_keyword.lower():
+                    if wrk.source.spin.lower() == workflow_name.lower():
                         if len(wrk.jobs) == 0: return False, None
                         for job in wrk.jobs:
                             if job.keyword.lower() == job_keyword.lower():

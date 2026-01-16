@@ -24,6 +24,7 @@ def parse_args():
     parser.add_argument('-s',       '--sys_name',   help='Name of the System. SCOPE will search in the stored Environment Paths')
     parser.add_argument('-i', '-t', '--inp_path', nargs="+", type=path_exists,  help='Path to the Scope Input File(s). If more than one, you can write them in any order')
     parser.add_argument('-q', '--quiet',      help='If true, will not print the progress on screen', action='store_true')
+    parser.add_argument('-v', '--verbose',    help='If true, will print extra information on screen', action='store_true')
     parser.add_argument('-e', '--errors',     help='If true, will automatically handle some common errors', action='store_true')
     return parser.parse_args()
 
@@ -35,8 +36,9 @@ def main():
     ###############################
     # Defines Overwrite and Debug #
     ###############################
-    if args.quiet: debug = 0  
-    else:          debug = 1
+    if args.quiet:     debug = 0  
+    elif args.verbose: debug = 2
+    else:              debug = 1
     ###############################
 
     ## Convert to absolute paths
