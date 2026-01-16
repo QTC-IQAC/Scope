@@ -51,8 +51,9 @@ class Branch(object):
                 self.workflows.append(new_workflow)
                 return new_workflow
             else:
-                print(f"BRANCH. Source with name {name} does not exist. Workflow could not be created")
-                print(f"BRANCH. Current sources: {name} does not exist. Workflow could not be created")
+                print(f"BRANCH.ADD_WORKFLOW: Source with name {name} does not exist. Workflow could not be created")
+        else:
+            print(f"BRANCH.ADD_WORKFLOW: Workflow with the same name ({name}) already exists. Returning it")
     
     def find_workflow(self, name: str, debug: int=0):
         name = name.lower()
@@ -61,6 +62,12 @@ class Branch(object):
             if debug > 1: print(f"BRANCH.FIND_WORKFLOW: Comparing with",wrk.name)
             if wrk.name == name: return True, wrk 
         return False, None
+
+    def remove_workflow(self, name: str, debug: int=0):
+        found = False
+        for idx, wf in enumerate(self.workflows):
+            if wf.name == name and not found: found = True; found_idx = idx
+        if found: del self.workflows[found_idx]
 
     ##############
     ### Status ###
@@ -167,9 +174,11 @@ class Workflow(object):
     ############
     ### JOBS ### 
     ############
-    def add_job(self, job_data):                               ## As opposed to add_branch or add_workflow, add_job does not need a name, but a job_data input that will include a keyword
-        new_job               = Job(job_data, _workflow=self)
-        self.jobs.append(new_job)
+    def add_job(self, job_data, debug: int=0): ## As opposed to add_branch or add_workflow, add_job does not need a name, but a job_data input that will include a keyword
+        exists, new_job = self.find_job(job_data=job_data, debug=debug)
+        if not exists:
+            new_job = Job(job_data, _workflow=self)
+            self.jobs.append(new_job)
         return new_job 
 
     def remove_job(self, keyword=None, hierarchy=None):
@@ -341,12 +350,12 @@ class Job(object):
 
     def add_computation(self, qc_data: object, step: int=1, path: str='', comp_keyword: str='', is_update: bool=False, debug: int=0):
         ## Name of the computation and file paths are not created automatically. Use self.set_name and self.set_paths
-        if path == '': path == self.path
-        new_computation       = Computation(self, qc_data, step, path, comp_keyword, is_update=is_update, debug=debug)
+        if path == '': path = self.path
+        new_computation = Computation(self, qc_data, step, path, comp_keyword, is_update=is_update, debug=debug)
         self.computations.append(new_computation)
         return new_computation 
     
-    def remove_computation(self, comp_keyword=None, comp_step=None, comp_index=None):
+    def remove_computation(self, comp_keyword=None, comp_step=None, comp_index=None, remove_files: bool=False, debug: int=0):
         found = False
         for idx, comp in enumerate(self.computations):
             if comp_index is None and comp_step is None and comp_keyword is not None: 
@@ -357,10 +366,11 @@ class Job(object):
                 if comp.step == int(comp_step): found = True; found_idx = idx
         if found: 
             to_delete = self.computations[found_idx]
-            to_delete.check_files() 
-            if to_delete.input_exists:   os.remove(to_delete.inp_path) 
-            if to_delete.output_exists:  os.remove(to_delete.out_path) 
-            if to_delete.subfile_exists: os.remove(to_delete.sub_path) 
+            if remove_files: 
+                to_delete.check_files() 
+                if to_delete.input_exists:   os.remove(to_delete.inp_path) 
+                if to_delete.output_exists:  os.remove(to_delete.out_path) 
+                if to_delete.subfile_exists: os.remove(to_delete.sub_path) 
             del self.computations[found_idx]
             
     def check_requisites(self, debug: int=0) -> None:

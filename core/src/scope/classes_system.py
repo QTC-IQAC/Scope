@@ -34,10 +34,15 @@ class System(object):
         if hasattr(self,"computations_path"): to_print += f' Computations Path     = {self.computations_path}\n'    ## Path where folders with calculations will be stored
         if len(self.sources) > 0:
             to_print += '\n'
-            to_print += f' # of Sources          = {len(self.sources)}\n'
+            to_print += f' Num Sources           = {len(self.sources)}\n'
             to_print += f'     idx: type, name, formula               \n'
             for idx, spec in enumerate(self.sources):
                 to_print += f'     {idx}: {spec.type}, {spec.name}, {spec.formula} \n'
+        if len(self.branches) > 0:
+            to_print += '\n'
+            to_print += f' Num Branches          = {len(self.branches)}\n'
+            for idx, br in enumerate(self.branches):
+                to_print += f'     {idx}: {br.name}, Num Workflows: {len(br.workflows)}\n'
         if not indirect: to_print += '\n'
         return to_print
 
@@ -101,10 +106,28 @@ class System(object):
         return True
 
     ######
+    def set_main_path(self, path: str, create_folders: bool=True, debug: int=0) -> None:
+        if path[-1] != '/': path += '/'
+        self.sources_path      = f"{path}Sources/{self.name}/"
+        self.system_path       = f"{path}Systems/{self.name}/"
+        self.system_file       = f"{path}Systems/{self.name}/{self.name}.npy"
+        self.computations_path = f"{path}Computations/{self.name}/"
+        if not os.path.isdir(self.system_path)        and create_folders: os.makedirs(self.system_path)
+        if not os.path.isdir(self.computations_path)  and create_folders: os.makedirs(self.computations_path)
+        if not os.path.isdir(self.sources_path)       and create_folders: os.makedirs(self.sources_path)
+        if debug > 0: 
+            print(f"SYSTEM.SET_MAIN_PATH: new paths:")
+            print(f"Source path:        {self.sources_path}")
+            print(f"System path:        {self.system_path}")
+            print(f"System file:        {self.system_file}")
+            print(f"Computations path:  {self.computations_path}")
+        self.set_paths_down_hierarchy(debug=debug)
+        return True
+
     def set_paths(self, create_folders: bool=True, debug: int=0) -> None: 
         from scope.read_write import complete_path
         """
-        Modifies the paths associated with the system, as well as the branches, workflows, jobs, and computation files of a system
+        Modifies the paths associated with the system, as well as the Branches, Workflows, Jobs, and Computation files of a system
         Args:
             debug (int, optional): Debug level. Defaults to 0.
         Returns: None
@@ -205,11 +228,15 @@ class System(object):
     #########################################################
     ### Functions to Interact with Computational Workflow ###
     #########################################################
-    def add_branch(self, name: str, debug: int=0):
+    def add_branch(self, name: str, create_folder: bool=True, debug: int=0):
+        found, new_branch = self.find_branch(name, debug=debug)
+        if found: 
+            print(f"SYSTEM.ADD_BRANCH: a Branch with the same name already exists, returning it")
+            return new_branch  ## If a branch with the same name already exists, then it is return and not created, to avoid duplicities
         new_branch = Branch(self.computations_path+name, name, self, debug=debug)
         if not os.path.isdir(self.computations_path+name): 
-            if debug > 0: print(f"SYSTEM.ADD_BRANCH: creating branch in {self.computations_path}{name}")
-            os.makedirs(self.computations_path+name, exist_ok=True)
+            if debug > 0: print(f"SYSTEM.ADD_BRANCH: creating Branch in {self.computations_path}{name}")
+            if create_folder: os.makedirs(self.computations_path+name, exist_ok=True)
         self.branches.append(new_branch)
         return new_branch
 
@@ -230,15 +257,15 @@ class System(object):
     ######
     def find_branch(self, name: str, debug: int=0):
         name = name.lower()
-        if debug > 1: print(f"FIND_BRANCH. Finding branch with name:", name)
-        if debug > 1: print(f"FIND_BRANCH. There are {len(self.branches)} branches in system")
+        if debug > 1: print(f"FIND_BRANCH. Finding Branch with name:", name)
+        if debug > 1: print(f"FIND_BRANCH. There are {len(self.branches)} Branches in system")
         if len(self.branches) == 0: return False, None
         for idx, br in enumerate(self.branches):
-            if debug > 1: print(f"FIND_BRANCH. Evaluating branch {idx} with name: {br.name} and path: {br.path}")
+            if debug > 1: print(f"FIND_BRANCH. Evaluating Branch {idx} with name: {br.name} and path: {br.path}")
             if br.name.lower() == name.lower():
                 if debug > 1: print(f"FIND_BRANCH. Branch was found. Checking path...")
                 if not os.path.isdir(br.path) and debug > 0: 
-                    print(f"WARNING: The path associated with this branch (below) does not exist. Loading the branch anyway")
+                    print(f"WARNING: The path associated with this Branch (below) does not exist. Loading the Branch anyway")
                     print(f"WARNING: {br.path=}")
                 return True, br
         return False, None
