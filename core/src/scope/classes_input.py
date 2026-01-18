@@ -262,7 +262,7 @@ def read_section(lines: list, section: str, debug: int=0):
     return section_lines
 
 ##############
-def interpret_workflow_from_user(sys: object, job_data: object, debug: int=0):
+def interpret_workflow_from_user(job_data: object, debug: int=0):
     if not hasattr(job_data,"workflow"):
         raise ValueError("INTERPRET_WORKFLOW_FROM_USER: job_data is missing 'workflow' input variable")
 
@@ -271,23 +271,23 @@ def interpret_workflow_from_user(sys: object, job_data: object, debug: int=0):
         if job_data.workflow.lower() == 'all_sources': 
             job_data.workflow = [sou.name.lower() for sou in sys.sources]
             if debug > 0: print(f"INTERPRET_WORKFLOW_FROM_USER: job_data.workflow contained 'all_sources'. It was adapted to {job_data.workflow}")
-        if job_data.workflow.lower() == 'all_in_branch': 
-            if not hasattr(job_data,"branch"):
-                raise ValueError("INTERPRET_WORKFLOW_FROM_USER: job_data is missing 'branch' input variable") 
-            found, br = sys.find_branch(job_data.branch)
-            if not found: raise ValueError(f"INTERPRET_WORKFLOW_FROM_USER: Branch {job_data.branch} not found in system {sys.name}")
-            job_data.workflow = [wk.name.lower() for wk in br.workflows]
-            if debug > 0: print(f"INTERPRET_WORKFLOW_FROM_USER: job_data.workflow contained 'all_in_branch'. It was adapted to {job_data.workflow}")
+        #if job_data.workflow.lower() == 'all_in_branch': 
+        #    if not hasattr(job_data,"branch"):
+        #        raise ValueError("INTERPRET_WORKFLOW_FROM_USER: job_data is missing 'branch' input variable") 
+        #    found, br = sys.find_branch(job_data.branch)
+        #    if not found: raise ValueError(f"INTERPRET_WORKFLOW_FROM_USER: Branch {job_data.branch} not found in system {sys.name}")
+        #    job_data.workflow = [wk.name.lower() for wk in br.workflows]
+        #    if debug > 0: print(f"INTERPRET_WORKFLOW_FROM_USER: job_data.workflow contained 'all_in_branch'. It was adapted to {job_data.workflow}")
     elif isinstance(job_data.workflow, list):
         if len(job_data.workflow) == 1 and 'all_sources' in [x.lower() for x in job_data.workflow]:
             job_data.workflow = [sou.name.lower() for sou in sys.sources]
             if debug > 0: print(f"INTERPRET_WORKFLOW_FROM_USER: job_data.workflow contained 'all_sources'. It was adapted to {job_data.workflow}")
-        elif len(job_data.workflow) == 1 and 'all_in_branch' in [x.lower() for x in job_data.workflow]:
-            if not hasattr(job_data,"branch"):
-                raise ValueError("INTERPRET_WORKFLOW_FROM_USER: job_data is missing 'branch' input variable") 
-            found, br = sys.find_branch(job_data.branch)
-            if not found: raise ValueError(f"INTERPRET_WORKFLOW_FROM_USER: Branch {job_data.branch} not found in system {sys.name}")
-            job_data.workflow = [wk.name.lower() for wk in br.workflows]
-            if debug > 0: print(f"INTERPRET_WORKFLOW_FROM_USER: job_data.workflow contained 'all_in_branch'. It was adapted to {job_data.workflow}")
+        #elif len(job_data.workflow) == 1 and 'all_in_branch' in [x.lower() for x in job_data.workflow]:
+        #    if not hasattr(job_data,"branch"):
+        #        raise ValueError("INTERPRET_WORKFLOW_FROM_USER: job_data is missing 'branch' input variable") 
+        #    found, br = sys.find_branch(job_data.branch)
+        #    if not found: raise ValueError(f"INTERPRET_WORKFLOW_FROM_USER: Branch {job_data.branch} not found in system {sys.name}")
+        #    job_data.workflow = [wk.name.lower() for wk in br.workflows]
+        #    if debug > 0: print(f"INTERPRET_WORKFLOW_FROM_USER: job_data.workflow contained 'all_in_branch'. It was adapted to {job_data.workflow}")
     
     return job_data.workflow
