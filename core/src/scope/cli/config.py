@@ -49,4 +49,4 @@ def config(args):
         print(f" --> If any of those checks failed, please contact me at sergi.vela@iqac.csic.es")
 
 if __name__ == "__main__":
-    main()
+    config()
