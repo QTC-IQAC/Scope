@@ -2,13 +2,6 @@ from argparse import ArgumentParser
 from scope.classes_environment import Environment
 from scope.read_write import clear_screen
 
-#def parse_args():
-#    #parser = ArgumentParser(prog="scope config", description="Configure a new scope Environment")
-#    parser = ArgumentParser(description="Configure a new scope Environment")
-#    parser.add_argument('-n', '--name',  required=True, help='Suffix to be added to the name of the environment. File will be called: scope_env_NAME.npy}')
-#    #parser.add_argument('-n', '--name',  type=str, required=True, help='Suffix to be added to the name of the environment. File will be called: scope_env_NAME.npy}')
-#    return parser.parse_args()
-
 def config_parser(subparsers):
     parser = subparsers.add_parser("config",help="Configure SCOPE environment",description="Configure a new scope Environment")
     parser.add_argument("-n", "--name",required=True,help="Suffix to be added to the environment name")
