@@ -63,6 +63,7 @@ class System(object):
 
     ######
     def find_source(self, name: str, debug: int=0):
+        name = name.lower()
         if debug > 0: 
             print(f"SYSTEM.FIND_SOURCE. Searching for source with {name} in system with {len(self.sources)} sources:")
             for sour in self.sources:
@@ -74,6 +75,7 @@ class System(object):
 
     ######
     def add_source(self, name: str, new_source: object, overwrite: bool=False, debug: int=0):
+        name = name.lower()
         ## Sources Must Have a Name
         if not hasattr(new_source,"name"): new_source.name = name
         ## Search if source with the same name already exists

@@ -13,12 +13,14 @@ from scope.parse_general              import read_lines_file
 class Branch(object):
     def __init__(self, path: str, name: str, _system: object, debug: int=0) -> None:
         self.type             = "branch"
-        self.creation_time    = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
-        self.creation_user    = set_user()
         self.path             = path
         self.name             = name
-        self.workflows        = []
         self._system          = _system
+
+        self.creation_time    = datetime.now().strftime("%d/%m/%Y %H:%M:%S")
+        self.creation_user    = set_user()
+
+        self.workflows        = []
         self.isregistered     = False
         self.isgood           = False
         self.isfinished       = False
@@ -43,6 +45,7 @@ class Branch(object):
         return self.workflows
 
     def add_workflow(self, name: str):
+        name = name.lower()
         exists, new_workflow = self.find_workflow(name)
         if not exists: 
             exists, source = self._system.find_source(name)
