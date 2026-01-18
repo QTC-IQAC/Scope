@@ -18,25 +18,23 @@ def env_exists(path):
     else:
         raise ValueError(f'Path {path} is not an Environment binary file!')
 
-def parse_args():
-    parser = ArgumentParser(prog="scope_run_task", description="Runs an input for a given system")
+def run_parser(subparsers):
+    parser = subparsers.add_parser("run",help="Run a SCOPE task",description="Run a SCOPE task for a given system")
     parser.add_argument('-n',       '--env_path',   type=env_exists,   help='Path to the Environment. Script will load Source data in env.sources_path')
     parser.add_argument('-s',       '--sys_name',   help='Name of the System. SCOPE will search in the stored Environment Paths')
     parser.add_argument('-i', '-t', '--inp_path', nargs="+", type=path_exists,  help='Path to the Scope Input File(s). If more than one, you can write them in any order')
     parser.add_argument('-q', '--quiet',      help='If true, will not print the progress on screen', action='store_true')
     parser.add_argument('-v', '--verbose',    help='If true, will print extra information on screen', action='store_true')
     parser.add_argument('-e', '--errors',     help='If true, will automatically handle some common errors', action='store_true')
-    return parser.parse_args()
+    parser.set_defaults(func=run)
 
-def main():
-
+def run(args):
     clear_screen()
-    args = parse_args()
     
     ###############################
     # Defines Overwrite and Debug #
     ###############################
-    if args.quiet:     debug = 0  
+    if   args.quiet:   debug = 0  
     elif args.verbose: debug = 2
     else:              debug = 1
     ###############################
