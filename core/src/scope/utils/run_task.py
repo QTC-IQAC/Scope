@@ -112,22 +112,9 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
         ##########################
         ### STEP 1.5: WORKFLOW ###
         ##########################
-        # If job_data.workflow == 'all' as a str or in a list, it converts it to a list of all workflow names in the branch
-        if isinstance(job_data.workflow, str):
-            if job_data.workflow.lower() == 'all': 
-                if debug > 0: 
-                    for sou in sys.sources:
-                        print(f"RUN_TASK, step 1.5. Found source: {sou.name}")
-                job_data.workflow = [sou.name.lower() for sou in sys.sources]
-                print(f"RUN_TASK, step 1.5: job_data.workflow contained 'all'. It was adapted to {job_data.workflow}")
-        elif isinstance(job_data.workflow, list):
-            if len(job_data.workflow) == 1 and 'all' in [x.lower() for x in job_data.workflow]:
-                if debug > 0: 
-                    for sou in sys.sources:
-                        print("RUN_TASK, step 1.5", sou.name)
-                job_data.workflow = [sou.name.lower() for sou in sys.sources]
-                print(f"RUN_TASK, step 1.5: job_data.workflow contained 'all'. It was adapted to {job_data.workflow}")
-
+        if debug > 0:   print(f"RUN_TASK, step 1.5: Evaluating list of Workflows in input {job_data.workflow=}")
+        job_data.workflow = interpret_workflow_from_user(sys, job_data, debug=debug)
+  
         for wrk in job_data.workflow if isinstance(job_data.workflow, list) else list([job_data.workflow]):   ### Works when job_data.workflow is a str or a list
 
             exists, this_workflow             = this_branch.find_workflow(wrk)
