@@ -90,8 +90,8 @@ class System_sco(System):
             ## Stores Path
             new_cell.set_path(cell_path)                               
             ## Create System_SCO, and incorporate the cell
-            if hasattr(new_cell,"name"): source_name = new_cell.name
-            else:                        source_name = folder.split('/')[-2]
+            if hasattr(new_cell,"name"): source_name = new_cell.name.lower()
+            else:                        source_name = folder.split('/')[-2].lower()
             self.add_source(source_name, new_cell, overwrite=overwrite, debug=debug)
         return self
 
