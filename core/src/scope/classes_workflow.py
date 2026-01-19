@@ -265,11 +265,17 @@ class Workflow(object):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> WORKFLOW                                \n'
         to_print += f'---------------------------------------------------\n'
-        if hasattr(self.source,"name"):      to_print += f' Source Name                 = {self.source.name}\n'
-        if hasattr(self.source,"spin"):      to_print += f' Source Spin                 = {self.source.spin}\n'
-        if hasattr(self.source,"phase"):     to_print += f' Source Phase                = {self.source.phase}\n'
+        to_print += f' Source Name                 = {self.source.name}\n'
         to_print += f' Source Type                 = {self.source.type}\n'
         to_print += f' Source sub-Type             = {self.source.subtype}\n'
+
+        if hasattr(self.source,"charge"):    
+            if self.source.charge is not None: to_print += f' Source Charge               = {self.source.charge}\n'
+        if hasattr(self.source,"spin"):        
+            if self.source.spin is not None:   to_print += f' Source Spin                 = {self.source.spin}\n'
+        if hasattr(self.source,"phase"):       
+            if self.source.phase is not None:  to_print += f' Source Phase                = {self.source.phase}\n'
+
         to_print += f'---------------------------------------------------\n'
         to_print += f' Workflow Name               = {self.name}\n'
         to_print += f' Num Jobs                    = {len(self.jobs)}\n'
