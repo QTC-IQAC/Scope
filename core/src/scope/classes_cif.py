@@ -14,6 +14,7 @@ class Cif(object):
         self.origin            = "created"
         self.name              = name
         self.path              = path
+        self.get_biblio_data(path)
 
     ######
     def __repr__(self) -> None:
@@ -37,6 +38,12 @@ class Cif(object):
         return self.cell
 
     ######
+    def get_biblio_data(self, cifpath: str) -> None:
+        self.diff_temp = get_cif_diffraction_data(cifpath)
+        self.authors   = get_cif_authors(cifpath)
+        self.journal_year, self.journal_name, self.journal_volume, self.journal_page  = get_cif_journal(cifpath)
+
+    ######
     def save(self, filepath: str=None):
         from scope.read_write import save_binary
         if filepath is None: filepath = self.path
@@ -49,9 +56,8 @@ def get_cif_diffraction_data(cifpath: str):
     diff_temp = " "
     lines = read_lines_file(cifpath)
     diff_temp_line, found       = search_string("_diffrn_ambient_temperature", lines, typ='first')
-    if found: 
-        diff_temp = lines[diff_temp_line].split(" ")[1].rstrip()
-    else: print("Couldn't find diffraction temperature in cif:", fil)
+    if found: diff_temp = lines[diff_temp_line].split(" ")[1].rstrip()
+    else:               print("Couldn't find diffraction temperature in cif:")
     return diff_temp
 
 def get_cif_authors(cifpath: str):
@@ -104,20 +110,23 @@ def get_cif_journal(cifpath: str):
     else: journal_page = '-'
     return journal_year, journal_name, journal_volume, journal_page
 
-def get_name_from_cif(cifpath: str):
-    lines = read_lines_file(cifpath)
-    journal_common, found   = search_string("_chemical_name_common",lines,type='first')
-    if int(journal_common) != 0: iscommon = True
-    else:                        iscommon = False
-    journal_chemname, found = search_string("_chemical_name_systematic",lines,type='first')
-    if iscommon:
-        chemname_start = int(journal_chemname+2)
-        chemname_end   = int(journal_common-2)
-    else:
-        journal_volume, found = search_string("_cell_volume",lines,type='first')
-        chemname_start = int(journal_chemname+2)
-        chemname_end   = int(journal_common-2)
-
-def get_volume_from_cif(cifpath: str):
-    lines = read_lines_file(cifpath)
-    journal_chemname, found = search_string("_cell_volume",lines,type='first')
+#########################
+#### Other Functions ####
+#########################
+#def get_name_from_cif(cifpath: str):
+#    lines = read_lines_file(cifpath)
+#    journal_common, found   = search_string("_chemical_name_common",lines,type='first')
+#    if int(journal_common) != 0: iscommon = True
+#    else:                        iscommon = False
+#    journal_chemname, found = search_string("_chemical_name_systematic",lines,type='first')
+#    if iscommon:
+#        chemname_start = int(journal_chemname+2)
+#        chemname_end   = int(journal_common-2)
+#    else:
+#        journal_volume, found = search_string("_cell_volume",lines,type='first')
+#        chemname_start = int(journal_chemname+2)
+#        chemname_end   = int(journal_common-2)
+#
+#def get_volume_from_cif(cifpath: str):
+#    lines = read_lines_file(cifpath)
+#    journal_chemname, found = search_string("_cell_volume",lines,type='first')
