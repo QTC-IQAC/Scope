@@ -63,7 +63,9 @@ class System(object):
 
     ######
     def find_source(self, name: str, debug: int=0):
+        ## Source names are de-capitalized and spaces replaced by underscores
         name = name.lower()
+        name = name.replace(" ","_")
         if debug > 0: 
             print(f"SYSTEM.FIND_SOURCE. Searching for source with {name} in system with {len(self.sources)} sources:")
             for sour in self.sources:
@@ -75,7 +77,9 @@ class System(object):
 
     ######
     def add_source(self, name: str, new_source: object, overwrite: bool=False, debug: int=0):
+        ## Source names are de-capitalized and spaces replaced by underscores
         name = name.lower()
+        name = name.replace(" ","_")
         ## Sources Must Have a Name
         if not hasattr(new_source,"name"): new_source.name = name
         ## Search if source with the same name already exists
@@ -241,6 +245,9 @@ class System(object):
     ### Functions to Interact with Computational Workflow ###
     #########################################################
     def add_branch(self, name: str, create_folder: bool=True, debug: int=0):
+        ## Branch Names are de-capitalized and spaces replaced by underscores
+        name = name.lower()
+        name = name.replace(" ","_")
         found, new_branch = self.find_branch(name, debug=debug)
         if found: 
             print(f"SYSTEM.ADD_BRANCH: a Branch with the same name already exists, returning it")
@@ -254,12 +261,13 @@ class System(object):
 
     ######
     def remove_branch(self, br_name=None):
+        ## Branch Names are de-capitalized and spaces replaced by underscores
+        br_name = br_name.lower()
+        br_name = br_name.replace(" ","_")
         found = False
         for idx, br in enumerate(self.branches):
             if br.name == str(br_name): found = True; found_idx = idx
-        if found:
-            to_delete = self.branches[found_idx]
-            del self.branches[found_idx]
+        if found: del self.branches[found_idx]
 
     ######
     def remove_all_branches(self) -> None:
@@ -268,7 +276,9 @@ class System(object):
 
     ######
     def find_branch(self, name: str, debug: int=0):
+        ## Branch Names are de-capitalized and spaces replaced by underscores
         name = name.lower()
+        name = name.replace(" ","_")
         if debug > 1: print(f"FIND_BRANCH. Finding Branch with name:", name)
         if debug > 1: print(f"FIND_BRANCH. There are {len(self.branches)} Branches in system")
         if len(self.branches) == 0: return False, None

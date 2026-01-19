@@ -45,7 +45,9 @@ class Branch(object):
         return self.workflows
 
     def add_workflow(self, name: str):
+        ## Workflow names are de-capitalized and spaces replaced by underscores
         name = name.lower()
+        name = name.replace(" ","_")
         exists, new_workflow = self.find_workflow(name)
         if not exists: 
             exists, source = self._system.find_source(name)
@@ -59,7 +61,9 @@ class Branch(object):
             print(f"BRANCH.ADD_WORKFLOW: Workflow with the same name ({name}) already exists. Returning it")
     
     def find_workflow(self, name: str, debug: int=0):
+        ## Workflow names are de-capitalized and spaces replaced by underscores
         name = name.lower()
+        name = name.replace(" ","_")
         if debug > 1: print(f"BRANCH.FIND_WORKFLOW: Searching Workflow with {name=}:") 
         for wrk in self.workflows:
             if debug > 1: print(f"BRANCH.FIND_WORKFLOW: Comparing with",wrk.name)
