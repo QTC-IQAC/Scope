@@ -460,13 +460,13 @@ class Cell(object):
         to_print += f' Cell Parameters a:c   = {self.cell_param[0:3]}\n'
         to_print += f' Cell Parameters al:ga = {self.cell_param[3:6]}\n'
         if hasattr(self,"moleclist"):  
-            to_print += f' # Molecules:          = {len(self.moleclist)}\n'
+            to_print += f' Num Molecules:        = {len(self.moleclist)}\n'
             to_print += f' With Formulae:                               \n'
             for idx, m in enumerate(self.moleclist):
                 to_print += f'    {idx}: {m.formula} \n'
         to_print += '-------------------------------\n'
         if hasattr(self,"refmoleclist"):
-            to_print += f' # of Ref Molecules:   = {len(self.refmoleclist)}\n'
+            to_print += f' Num of Ref Molecules: = {len(self.refmoleclist)}\n'
             to_print += f' With Formulae:                                  \n'
             for idx, ref in enumerate(self.refmoleclist):
                 to_print += f'    {idx}: {ref.formula} \n'
