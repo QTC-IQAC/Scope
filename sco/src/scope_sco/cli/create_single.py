@@ -1,7 +1,7 @@
 import os
 import sys
 from argparse import ArgumentParser
-from scope.read_write import load_binary
+from scope.read_write import load_binary, clear_screen
 from scope_sco.sco_classes import System_sco
   
 def path_exists(path):
@@ -18,17 +18,16 @@ def env_exists(path):
     else:
         raise ValueError(f'Path {path} is not an Environment binary file!')
 
-def parse_args():
-    parser = ArgumentParser(prog="create_from_cell2mol", description="Creates a SCO system from cell2mol data")
-    parser.add_argument('-n', '--env',     type=env_exists,      help='Path to the Environment. Script will load Source data in env.sources_path')
-    parser.add_argument('-s', '--source',  type=str,             help='Name of the Source Folder Inside env.sources_path')
+def config_parser(subparsers):
+    parser = subparsers.add_parser("create_single",help="Creates a SCO system from a cell2mol Cell object",description="Creates a SCO system from a cell2mol Cell object")
+    parser.add_argument("-e", "--env",     type=env_exists,  help='Path to the Environment. Script will load Source data in env.sources_path')
+    parser.add_argument('-s', '--source',  type=str,         help='Name of the Source Folder Inside env.sources_path')
     parser.add_argument('-f', '--force',   action='store_true')
     parser.add_argument('-v', '--verbose', action='store_true')
-    return parser.parse_args()
+    parser.set_defaults(func=create_single)
 
-def main():
-
-    args = parse_args()
+def create_single(args):
+    clear_screen()
 
     #########################
     # Loads the Environment #
@@ -67,4 +66,4 @@ def main():
         new_sys.save()
 
 if __name__ == "__main__":
-    main()
+    create_single()
