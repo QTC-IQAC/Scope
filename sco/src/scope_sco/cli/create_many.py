@@ -12,7 +12,7 @@ def env_exists(path):
     else:
         raise ValueError(f'Path {path} is not an Environment binary file!')
 
-def config_parser(subparsers):
+def create_many_parser(subparsers):
     parser = subparsers.add_parser("create_many",help="Creates many SCO systems from cell2mol data",description="Creates many SCO systems from cell2mol data")
     parser.add_argument("-n", "--env",type=env_exists, help='Path to the Environment. Script will load all sources in env.sources_path')
     parser.add_argument('-f', '--force',   action='store_true')
