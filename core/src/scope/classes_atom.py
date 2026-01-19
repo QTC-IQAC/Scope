@@ -334,6 +334,7 @@ class Atom(object):
         to_print += f' Label                        = {self.label}\n'
         to_print += f' Atomic Number                = {self.atnum}\n'
         if hasattr(self,"charge"):     to_print += f' Atom Charge                  = {self.charge}\n'
+        if hasattr(self,"spin"):       to_print += f' Spin (alpha - beta)          = {self.spin}\n'
         # Adjacency and Metal Adjacency
         if hasattr(self,"mconnec"):    to_print += f' Metal Adjacency (mconnec)    = {self.mconnec}\n'
         elif hasattr(self,"madjnum"):  to_print += f' Metal Adjacency (madjnum)    = {self.madjnum}\n'
@@ -478,7 +479,7 @@ class Metal(Atom):
     ##########################
     ## Geometric Parameters ##
     ##########################
-    def get_Cshm(self, ref_shape: str='OC-6', overwrite: bool=False, debug: int=0):
+    def get_cshm(self, ref_shape: str='OC-6', overwrite: bool=False, debug: int=0):
         try:
             import cosymlib as cml
         except ImportError: 

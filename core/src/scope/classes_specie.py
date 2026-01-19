@@ -645,8 +645,9 @@ class Specie(object):
         to_print += f' Number of Atoms       = {self.natoms}\n'
         to_print += f' Formula               = {self.formula}\n'
         to_print += f' Charge                = {self.charge}\n'
-        to_print += f' Spin                  = {self.spin}\n'
-        if hasattr(self,"smiles"):         to_print += f' SMILES                = {self.smiles}\n'
+        to_print += f' Spin (alpha - beta)   = {self.spin}\n'
+        if hasattr(self,"smiles"):
+            if isinstance(self.smiles, str): to_print += f' SMILES                = {self.smiles}\n'
         if hasattr(self,"parents"):        to_print += f' Number of Parents     = {len(self.parents)}\n'
         if hasattr(self,"adjmat"):         to_print += f' Has Adjacency Matrix  = YES\n'
         else:                              to_print += f' Has Adjacency Matrix  = NO \n'
@@ -769,9 +770,17 @@ class Molecule(Specie):
         if not indirect: to_print += '--------------------------------------------------\n'
         to_print += Specie.__repr__(self, indirect=True)
         if hasattr(self,"ligands"):  
-            if self.ligands is not None: to_print += f' # Ligands             = {len(self.ligands)}\n'
+            to_print += '\n'
+            if self.ligands is not None: 
+                to_print += f' Num of Ligands        = {len(self.ligands)}\n'
+                for idx, lig in enumerate(self.ligands):
+                    to_print += f'   Ligand {idx}: {lig.formula} with {lig.natoms} atoms. Smiles: {lig.smiles}\n'
         if hasattr(self,"metals"):   
-            if self.metals is not None:  to_print += f' # Metals              = {len(self.metals)}\n'
+            to_print += '\n'
+            if self.metals is not None:  
+                to_print += f' Num of Metals         = {len(self.metals)}\n'
+                for idx, met in enumerate(self.metals):
+                    to_print += f'   Metal {idx}: {met.label} with {met.charge} charge and {met.spin} spin\n'
         if not indirect: to_print += '\n'
         return to_print
 
@@ -1990,4 +1999,5 @@ def import_rdkit_molecule(mol, debug: int=0) -> object:
     scope_mol = Molecule(labels, coord)       # Create Scope molecule with labels and coordinates
     scope_mol.rdkit_obj = mol                 # Store the original RDKit molecule for reference
     scope_mol.smiles = Chem.MolToSmiles(mol)  # Store the SMILES representation
+    scope_mol.set_bonds(debug=debug)          # Set bonds based on the bonding pattern in the RDKit molecule
     return scope_mol
