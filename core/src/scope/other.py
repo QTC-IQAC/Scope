@@ -20,14 +20,17 @@ def check_convergence(values: list, current_step: int=None, thres: float=1e-5, d
         return True
 
 ####
-def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="centroid", use_ext_info: bool=True, translate_to_ref: bool=True, save_to_folder: bool=False, debug: int=0):
+def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="centroid", use_ext_info: bool=True, translate_to_ref: bool=True, max_iter: int=5, debug: int=0):
+    # Function to overlap two molecules by iteratively reordering and aligning them
+    # The reordering is done using the Hungarian algorithm, using extended topological information (optional but highly recommended)
+
     from scope.connectivity import compute_centroid, get_adjmatrix
     from scope.reconstruct  import reorder_hungarian
     from scope.read_write   import print_xyz, write_xyz
-    from collections        import Counter
 
-    if save_to_folder: 
-        out_folder = os.path.abspath('.')+"/"
+    if debug > 1: 
+        out_folder = os.path.abspath('.')+"/test_overlap/"
+        os.makedirs(out_folder, exist_ok=True)
         print(f"OVERLAP_MOLECULES: Saving intermediate xyz files to {out_folder}")
 
     ## Ensure both species have the same number of atoms
@@ -63,22 +66,12 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         print("Centered Coords of 1:")
         print("---------------------")
         print_xyz(labels1, coords1c)
-        if save_to_folder: write_xyz(out_folder+"centered1.xyz", labels1, coords1c)
+        if debug > 1: write_xyz(out_folder+"centered1.xyz", labels1, coords1c)
         print("---------------------")
         print("Centered Coords of 2:")
         print("---------------------")
         print_xyz(labels2, coords2c)
-        if save_to_folder: write_xyz(out_folder+"centered2.xyz", labels2, coords2c)
-
-    ## We do a first alignment, to facilitate the hungarian
-    _, _, coords2a, _ = kabsch_align(labels2, coords2c, labels1, coords1c, center_method=center_method, debug=debug)
-    #coords2a = coords2c
-    if debug > 0:
-        print("--------------------")
-        print("Aligned Coords of 2:")
-        print("--------------------")
-        print_xyz(labels2, coords2a)
-        if save_to_folder: write_xyz(out_folder+"aligned2.xyz", labels2, coords2a)
+        if debug > 1: write_xyz(out_folder+"centered2.xyz", labels2, coords2c)
 
     if use_ext_info:
         ## Decorate the labels to facilitate the reorder hungarian
@@ -98,32 +91,80 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         labels1 = np.array([f"{l}" for l in labels1])
         labels2 = np.array([f"{l}" for l in labels2])
 
-    if debug > 0: print(f"OVERLAP_MOLECULES: {data1=}")
-    if debug > 0: print(f"OVERLAP_MOLECULES: {data2=}")
+        if debug > 0: print(f"OVERLAP_MOLECULES: {data1=}")
+        if debug > 0: print(f"OVERLAP_MOLECULES: {data2=}")
 
-    ## Now we have the relevant data. We proceed to reorder
-    if debug > 0: print("-------------------------")
-    if debug > 0: print("## STARTING TO REORDER ##")
-    if debug > 0: print("-------------------------")
-    map12 = reorder_hungarian(data1, data2, coords1c, coords2a, debug=debug)
-    if debug > 0: print(f"GET_RMSD: reorder map={map12}")
-    labels2r = np.array(labels2)[map12]
-    coords2r = coords2a[map12]
-    data2    = data2[map12]
-    if debug > 0:
-        print("--------------------------")
-        print("Coords of 1 after reorder:")
-        print("--------------------------")
-        print_xyz(labels1, coords1c)
-        if save_to_folder: write_xyz(out_folder+"reorder1.xyz", labels1, coords1c)
-        print("--------------------------")
-        print("Coords of 2 after reorder:")
-        print("--------------------------")
-        print_xyz(labels2r, coords2r)
-        if save_to_folder: write_xyz(out_folder+"reorder2.xyz", labels2r, coords2r)
+    keep_going = True
+    iter = 1
+    adjmat2   = orig_adjmat2.copy()
 
-    #### After this reorder, we check if any adjacency matrix entry is different
-    adjmat2r = orig_adjmat2[np.ix_(map12, map12)]
+    if debug > 0: print("OVERLAP_MOLECULES: Entering while loop iteratively reorder and align")
+    while keep_going:
+
+        ## We align, to facilitate the hungarian
+        _, _, coords2a, _ = kabsch_align(labels2, coords2c, labels1, coords1c, center_method=center_method, debug=debug)
+        if debug > 0:
+            print("--------------------")
+            print("Aligned Coords of 2:")
+            print("--------------------")
+            print_xyz(labels2, coords2a)
+            if debug > 1: write_xyz(out_folder+f"aligned2_{iter}.xyz", labels2, coords2a)
+
+        ## Now we have the relevant data. We proceed to reorder
+        if debug > 0: 
+            print(f"------------------------------")
+            print(f"## STARTING TO REORDER. {iter=} ##")
+            print(f"------------------------------")
+
+        ## Hungarian reorder using the extended data
+        map12 = reorder_hungarian(data1, data2, coords1c, coords2a, debug=debug)
+        if debug > 0: print(f"OVERLAP_MOLECULES: reorder map={map12}")
+
+        ## Reorder relevant arrays
+        labels2r = np.array(labels2)[map12]
+        coords2r = coords2a[map12]
+        data2    = data2[map12]
+        adjmat2r = adjmat2[np.ix_(map12, map12)]
+
+        if debug > 0:
+            print("--------------------------")
+            print(f"Coords of 1 after {iter}:")
+            print("--------------------------")
+            print_xyz(labels1, coords1c)
+            if debug > 1: write_xyz(out_folder+f"reorder1_{iter}.xyz", labels1, coords1c)
+            print("--------------------------")
+            print(f"Coords of 2 after {iter}:")
+            print("--------------------------")
+            print_xyz(labels2r, coords2r)
+            if debug > 1: write_xyz(out_folder+f"reorder2_{iter}.xyz", labels2r, coords2r)
+
+        ## Conditions to stop:
+        # 1) Map is just the ordered list of atom indices, meaning that the reorder has done nothing
+        if np.array_equal(np.asarray(map12), np.arange(len(map12))):
+            if debug > 0: print(f"OVERLAP_MOLECULES: No changes in this iteration. Stopping at {iter=}")
+            keep_going = False
+        # 2) Maximum number of iterations reached
+        elif iter >= max_iter:
+            if debug > 0: print(f"OVERLAP_MOLECULES: Maximum number of iterations reached. Stopping at {iter=}")
+            keep_going = False
+
+        # 3) If the two adjacency matrices are the same, meaning the reorder has worked
+        different = []
+        for idx in range(len(orig_adjmat1)):
+            if any(orig_adjmat1[idx] != adjmat2r[idx]): different.append(idx)
+        if len(different) == 0: 
+            isgood = True
+            keep_going = False
+
+        if keep_going:
+            labels2   = labels2r.copy() 
+            coords2c  = coords2r.copy()
+            adjmat2   = adjmat2r.copy()
+            iter += 1
+
+        ## ---- while loop ends here ----
+
+    ## After exiting the loop, we check if the final adjacency matrices are the same
     different = []
     isgood = True
     for idx in range(len(orig_adjmat1)):
@@ -134,23 +175,24 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
             print("OVERLAP_MOLECULES: WARNING! Different entries in the adjacency matrix:")
             for d in different:
                 print(d, orig_adjmat1[d], adjmat2r[d])
-    
+
     #### Then, we do the final alignment, which will be even better than the first
-    _, _, coords2ra, _ = kabsch_align(labels2r, coords2r, labels1, coords1c, center_method=center_method, debug=debug)
+    #_, _, coords2ra, _ = kabsch_align(labels2r, coords2r, labels1, coords1c, center_method=center_method, debug=debug)
     if debug > 0:
-        print("----------------------------------")
-        print("Coords of 2 after final alignment:")
-        print("----------------------------------")
-        print_xyz(labels2r, coords2ra)
-        if save_to_folder: write_xyz(out_folder+"final2.xyz", labels2r, coords2ra)
-    
+        print("---------------------------")
+        print(f"Coords of 2 after reorder:")
+        print("---------------------------")
+        print_xyz(labels2r, coords2r)
+        if debug > 1: write_xyz(out_folder+f"final2.xyz", labels2r, coords2r)
+
     #### And finally, we translate to the original center of coordinates of the reference molecule 
     if translate_to_ref:
         coords1f = coords1c  + center1
-        coords2f = coords2ra + center1
-        if save_to_folder: write_xyz(out_folder+"final_translated1.xyz", labels1, coords1f)
-        if save_to_folder: write_xyz(out_folder+"final_translated2.xyz", labels2r, coords2f)
-
+        coords2f = coords2r + center1
+        if debug > 1: write_xyz(out_folder+"final_translated1.xyz", labels1, coords1f)
+        if debug > 1: write_xyz(out_folder+"final_translated2.xyz", labels2r, coords2f)
+    
+    if debug > 0: print("OVERLAP_MOLECULES: Finished successfully. Overlap achieved in ", iter-1, "iterations.")
     return isgood, labels1, coords1f, labels2r, coords2f, map12
 
 ####
