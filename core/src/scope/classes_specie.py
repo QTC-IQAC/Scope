@@ -770,14 +770,14 @@ class Molecule(Specie):
         if not indirect: to_print += '--------------------------------------------------\n'
         to_print += Specie.__repr__(self, indirect=True)
         if hasattr(self,"ligands"):  
-            to_print += '\n'
             if self.ligands is not None: 
+                if len(self.ligands) > 0: to_print += '\n'
                 to_print += f' Num of Ligands        = {len(self.ligands)}\n'
                 for idx, lig in enumerate(self.ligands):
                     to_print += f'   Ligand {idx}: {lig.formula} with {lig.natoms} atoms. Smiles: {lig.smiles}\n'
         if hasattr(self,"metals"):   
-            to_print += '\n'
             if self.metals is not None:  
+                if len(self.metals) > 0: to_print += '\n'
                 to_print += f' Num of Metals         = {len(self.metals)}\n'
                 for idx, met in enumerate(self.metals):
                     to_print += f'   Metal {idx}: {met.label} with {met.charge} charge and {met.spin} spin\n'

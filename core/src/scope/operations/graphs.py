@@ -3,6 +3,8 @@ import numpy as np
 
 ####
 def build_graph(adj_matrix, labels, debug: int=0):
+    # Builds a NetworkX graph from an adjacency matrix and node labels
+    # It might result in a different graph than using the Specie-class function
     G = nx.Graph()
     N = len(labels)
     for i in range(N):
@@ -135,6 +137,15 @@ def compare_signatures(sign1: dict, sign2: dict):
     for layer in list(sign1.keys()):
         if not Counter(sign1[layer].values()) == Counter(sign2[layer].values()): return False
     return True
+
+####
+def compute_topological_distances(G, ref_atom: int) -> dict:
+    # Compute shortest path lengths from ref_atom
+    dist_dict = nx.single_source_shortest_path_length(G, ref_atom)
+    distances = np.full(G.number_of_nodes(), -1, dtype=int)
+    for idx, d in dist_dict.items():
+        distances[idx] = d
+    return distances
 
 ####
 def print_graph_info(G):

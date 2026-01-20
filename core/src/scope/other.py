@@ -20,11 +20,15 @@ def check_convergence(values: list, current_step: int=None, thres: float=1e-5, d
         return True
 
 ####
-def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="centroid", use_ext_info: bool=True, translate_to_ref: bool=True, save_to_folder: str="/Users/sergivela/Documents/SCOPE/Program/tests/Overlap_Molecules/", debug: int=0):
+def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="centroid", use_ext_info: bool=True, translate_to_ref: bool=True, save_to_folder: bool=False, debug: int=0):
     from scope.connectivity import compute_centroid, get_adjmatrix
     from scope.reconstruct  import reorder_hungarian
     from scope.read_write   import print_xyz, write_xyz
     from collections        import Counter
+
+    if save_to_folder: 
+        out_folder = os.path.abspath('.')+"/"
+        print(f"OVERLAP_MOLECULES: Saving intermediate xyz files to {out_folder}")
 
     ## Ensure both species have the same number of atoms
     if len(labels1) != len(labels2):
@@ -59,56 +63,35 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         print("Centered Coords of 1:")
         print("---------------------")
         print_xyz(labels1, coords1c)
-        write_xyz(save_to_folder+"centered1.xyz", labels1, coords1c)
+        if save_to_folder: write_xyz(out_folder+"centered1.xyz", labels1, coords1c)
         print("---------------------")
         print("Centered Coords of 2:")
         print("---------------------")
         print_xyz(labels2, coords2c)
-        write_xyz(save_to_folder+"centered2.xyz", labels2, coords2c)
+        if save_to_folder: write_xyz(out_folder+"centered2.xyz", labels2, coords2c)
 
     ## We do a first alignment, to facilitate the hungarian
     _, _, coords2a, _ = kabsch_align(labels2, coords2c, labels1, coords1c, center_method=center_method, debug=debug)
+    #coords2a = coords2c
     if debug > 0:
         print("--------------------")
         print("Aligned Coords of 2:")
         print("--------------------")
         print_xyz(labels2, coords2a)
-        write_xyz(save_to_folder+"aligned2.xyz", labels2, coords2a)
+        if save_to_folder: write_xyz(out_folder+"aligned2.xyz", labels2, coords2a)
 
     if use_ext_info:
         ## Decorate the labels to facilitate the reorder hungarian
-        data1 = get_extended_info(labels1, coords1c, orig_adjmat1, orig_adjnum1, debug=debug)
-        data2 = get_extended_info(labels2, coords2a, orig_adjmat2, orig_adjnum2, debug=debug)
+        data1 = get_extended_info(labels1, orig_adjmat1, orig_adjnum1, debug=debug)
+        data2 = get_extended_info(labels2, orig_adjmat2, orig_adjnum2, debug=debug)
 
         # Verify that data1 and data2 contain the same items
+        # If not, it means that the two molecules are not chemically the same
         set1 = set(data1)
         set2 = set(data2)
         if set1 != set2: print("Difference Sets", set1 - set2)
         if set1 != set2: print("Difference Sets", set2 - set1)
         if set1 != set2: raise ValueError("OVERLAP_MOLECULES: data1 and data2 do not contain the same items. This happens when the two molecules are not chemically the same")
-
-        unique1 = [d for d in np.unique(data1) if Counter(data1)[d] == 1]    ## Data's which appear only once, and thus have no possibility of error
-        unique2 = [d for d in np.unique(data2) if Counter(data2)[d] == 1]
-        ## These are going to be all atoms whose data appears once in both structures
-        safe = [index for index in range(len(data1)) if data1[index] in unique1 and data2[index] in unique2]
-        if debug > 0: 
-            print(f"Atoms that appear in both structures:") 
-            print(f"{[data1[s] for s in safe]}")
-
-        ## Defines the width of the string label for distance
-        if len(labels1) < 10:    width = 1
-        if len(labels1) >= 10:   width = 2
-        if len(labels1) >= 100:  width = 3
-        if len(labels1) >= 1000: width = 4
-        ## For each atom in SAFE, we add the topological distance of all atoms to their data
-        for s in safe:
-            if debug > 0: print(f"Taking atom {s=} as reference when computing topological distances")
-            dist1 = compute_topological_distances(orig_adjmat1, s)
-            dist2 = compute_topological_distances(orig_adjmat2, s)
-            data1 = np.array([str(f"{d1}{d2:0{width}d}") for d1, d2 in zip(data1, dist1)])
-            data2 = np.array([str(f"{d1}{d2:0{width}d}") for d1, d2 in zip(data2, dist2)])
-            labels1 = np.array([f"{l}" for l in labels1])
-            labels2 = np.array([f"{l}" for l in labels2])
     else:
         data1 = np.array([f"{l}" for l in labels1])
         data2 = np.array([f"{l}" for l in labels2])
@@ -125,19 +108,19 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
     map12 = reorder_hungarian(data1, data2, coords1c, coords2a, debug=debug)
     if debug > 0: print(f"GET_RMSD: reorder map={map12}")
     labels2r = np.array(labels2)[map12]
-    coords2r = coords2c[map12]
+    coords2r = coords2a[map12]
     data2    = data2[map12]
     if debug > 0:
         print("--------------------------")
         print("Coords of 1 after reorder:")
         print("--------------------------")
         print_xyz(labels1, coords1c)
-        write_xyz(save_to_folder+"reorder1.xyz", labels1, coords1c)
+        if save_to_folder: write_xyz(out_folder+"reorder1.xyz", labels1, coords1c)
         print("--------------------------")
         print("Coords of 2 after reorder:")
         print("--------------------------")
         print_xyz(labels2r, coords2r)
-        write_xyz(save_to_folder+"reorder2.xyz", labels2r, coords2r)
+        if save_to_folder: write_xyz(out_folder+"reorder2.xyz", labels2r, coords2r)
 
     #### After this reorder, we check if any adjacency matrix entry is different
     adjmat2r = orig_adjmat2[np.ix_(map12, map12)]
@@ -159,63 +142,43 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         print("Coords of 2 after final alignment:")
         print("----------------------------------")
         print_xyz(labels2r, coords2ra)
-        write_xyz(save_to_folder+"final2.xyz", labels2r, coords2ra)
+        if save_to_folder: write_xyz(out_folder+"final2.xyz", labels2r, coords2ra)
     
     #### And finally, we translate to the original center of coordinates of the reference molecule 
     if translate_to_ref:
         coords1f = coords1c  + center1
         coords2f = coords2ra + center1
-        write_xyz(save_to_folder+"final_translated1.xyz", labels1, coords1f)
-        write_xyz(save_to_folder+"final_translated2.xyz", labels2r, coords2f)
+        if save_to_folder: write_xyz(out_folder+"final_translated1.xyz", labels1, coords1f)
+        if save_to_folder: write_xyz(out_folder+"final_translated2.xyz", labels2r, coords2f)
 
     return isgood, labels1, coords1f, labels2r, coords2f, map12
 
 ####
-def get_extended_info(labels, coords, adjmat, adjnum, debug: int=0):
-    #if debug > 0: print(f"GET_EXT_INFO, received {adjmat[0]} for first atom")
-    ## Function to add decorators to labels
-    bonded = []
-    for jdx in range(len(labels)):
-        labs = []
-        for kdx in range(len(labels)):
-           if jdx != kdx and adjmat[jdx, kdx] > 0: labs.append(labels[kdx])
-        bonded.append(''.join(sorted(labs)))
-    data = np.array([str(f"{l}{a}{b}") for l, a, b in zip(labels, adjnum, bonded)])
-    if debug > 0: print(f"GET_EXT_INFO: {data=}")
-    return data
-
-#####
-def compute_topological_distances(adj_matrix: np.ndarray, ref_atom: int) -> dict:
+def get_extended_info(labels, adjmat, adjnum, debug: int=0):
+    # Function to add decorate atom labels with topological signatures
+    # Used in the overlap_molecules function to improve the Hungarian reorder
+    from scope.operations.graphs import build_graph, get_signatures
     import numpy as np
-    import networkx as nx
-    """
-    Compute topological distances (graph distances) from a reference atom to all others.
+    
+    def convert(dic1):
+        # function to convert the format of the signatures 
+        inner_keys = sorted(next(iter(dic1.values())).keys())
+        outer_keys = sorted(dic1.keys())
+        result = []
+        for k in inner_keys:
+            parts = []
+            for i in outer_keys:
+                parts.append(''.join(dic1[i][k]))
+            result.append('_'.join(parts))
+        return result
 
-    Parameters:
-        adj_matrix: (N, N) binary numpy array
-        ref_atom: index of the reference atom (0-based)
+    G = build_graph(adjmat, labels, debug=0)
+    _, _, signatures = get_signatures(G)#, convergence_layers=2)
+    conv_signatures = convert(signatures) 
 
-    Returns:
-        distances: dict {atom_index: topological_distance}
-    """
-    G = nx.Graph()
-    N = adj_matrix.shape[0]
-
-    # Add edges based on adjacency matrix
-    for i in range(N):
-        for j in range(i+1, N):
-            if adj_matrix[i, j] > 0:
-                G.add_edge(i, j)
-                #G.add_edge(j, i)
-
-    # Compute shortest path lengths from ref_atom
-    dist_dict = nx.single_source_shortest_path_length(G, ref_atom)
-
-    distances = np.full(N, -1, dtype=int)
-    for idx, d in dist_dict.items():
-        distances[idx] = d
-
-    return distances
+    data = np.array([str(f"{l}{a}{b}") for l, a, b in zip(labels, adjnum, conv_signatures)])
+    if debug > 0: print(f"GET_EXT_INFO_NEW: {data=}")
+    return data
 
 #############
 def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, center_method='centroid', atom_idxs: list=None, debug: int=0):
