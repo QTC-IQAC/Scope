@@ -14,6 +14,9 @@ class Cif(object):
         self.origin            = "created"
         self.name              = name
         self.path              = path
+        self.diff_temp         = get_cif_diffraction_data(cifpath)
+        self.sym_group         = get_symmetry_group(cifpath)
+        self.sym_ops           = get_symmetry_ops(cifpath)
         self.get_biblio_data(path)
 
     ######
@@ -23,13 +26,16 @@ class Cif(object):
         to_print += f'---------------------------------------------------\n'
         to_print += f' Name                  = {self.name}\n'
         to_print += f' Path                  = {self.path}\n'
-        if hasattr(self,"diff_temp"):        to_print += f' Diffraction Temp      = {self.diff_temp}\n'         
+        if self.sym_group is not None:       to_print += f' Symmetry Group        = {self.sym_group}\n'         
+        if self.sym_ops is not None:         to_print += f' Symmetry Operations   = {self.sym_ops}\n'         
+        if self.diff_temp is not None:       to_print += f' Diffraction Temp      = {self.diff_temp}\n'         
         if hasattr(self,"authors"):          to_print += f' Authors               = {self.authors}\n'           
         if hasattr(self,"journal_year"):     to_print += f' Year of Publication   = {self.journal_year}\n'      
         if hasattr(self,"journal_name"):     to_print += f' Journal Name          = {self.journal_name}\n'      
         if hasattr(self,"journal_volume"):   to_print += f' Journal Volume        = {self.journal_volume}\n'    
         if hasattr(self,"journal_page"):     to_print += f' Journal Page          = {self.journal_page}\n'      
         if hasattr(self,"cell"):             to_print += f' Has Associated Cell   = YES\n'
+        else:                                to_print += f' Has Associated Cell   = NO\n'
         return to_print
 
     ######
@@ -39,7 +45,6 @@ class Cif(object):
 
     ######
     def get_biblio_data(self, cifpath: str) -> None:
-        self.diff_temp = get_cif_diffraction_data(cifpath)
         self.authors   = get_cif_authors(cifpath)
         self.journal_year, self.journal_name, self.journal_volume, self.journal_page  = get_cif_journal(cifpath)
 
@@ -52,12 +57,41 @@ class Cif(object):
 #############################
 ## Functions to Parse Cifs ##
 #############################
+def get_symmetry_group(cifpath: str):
+    lines = read_lines_file(cifpath)
+    sym_group_line, found       = search_string("_symmetry_space_group_name", lines, typ='first')
+    if found: 
+        assert len(lines[sym_group_line].split("'")) == 3, f"wrong block length: {lines[sym_group_line]}"
+        sym_group = lines[sym_group_line].split("'")[1].rstrip()
+    else:     
+        print("Couldn't find symmetry group in cif:")
+        sym_group = None
+        return sym_group
+
+def get_symmetry_ops(cifpath: str):
+    lines = read_lines_file(cifpath)
+    sym_ops_start, found1      = search_string("_symmetry_equiv_pos_as_xyz", lines, typ='first')
+    sym_ops_end, found2        = search_string("_cell_length_a", lines, typ='first')
+    assert sym_ops_end > sym_ops_start
+    if found1 and found2: 
+        sym_ops = []
+        for l in lines[sym_ops_start+1:sym_ops_end]:
+            assert len(l.split(" ")) == 2, f"wrong block length: {l}"
+            sym_ops.append(l.split(" ")[1].rstrip())
+    else:     
+        print("Couldn't find symmetry operations in cif:")
+        sym_ops = None
+    return sym_ops
+
 def get_cif_diffraction_data(cifpath: str):
     diff_temp = " "
     lines = read_lines_file(cifpath)
     diff_temp_line, found       = search_string("_diffrn_ambient_temperature", lines, typ='first')
-    if found: diff_temp = lines[diff_temp_line].split(" ")[1].rstrip()
-    else:               print("Couldn't find diffraction temperature in cif:")
+    if found: 
+        diff_temp = lines[diff_temp_line].split(" ")[1].rstrip()
+    else:               
+        print("Couldn't find diffraction temperature in cif:")
+        diff_temp = None
     return diff_temp
 
 def get_cif_authors(cifpath: str):
