@@ -1999,5 +1999,4 @@ def import_rdkit_molecule(mol, debug: int=0) -> object:
     scope_mol = Molecule(labels, coord)       # Create Scope molecule with labels and coordinates
     scope_mol.rdkit_obj = mol                 # Store the original RDKit molecule for reference
     scope_mol.smiles = Chem.MolToSmiles(mol)  # Store the SMILES representation
-    scope_mol.set_bonds(debug=debug)          # Set bonds based on the bonding pattern in the RDKit molecule
     return scope_mol

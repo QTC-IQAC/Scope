@@ -596,7 +596,7 @@ def center(X):
     X -= C
     return X, C
 
-def reorder_hungarian(z1, z2, coord1, coord2, debug: int=0):
+def reorder_hungarian(z1, z2, coord1, coord2, metric: str='sqeuclidean', debug: int=0):
     unique_atoms = np.unique(z1)
     map12 = np.zeros_like(z1, dtype=int)
     map12 -= 1
@@ -610,7 +610,7 @@ def reorder_hungarian(z1, z2, coord1, coord2, debug: int=0):
         acoord2 = coord2[aidx2]
         if debug > 0: print(f"REORDER_HUNGARIAN: {acoord1=}")
         if debug > 0: print(f"REORDER_HUNGARIAN: {acoord2=}")
-        v = hungarian(acoord1, acoord2, debug=debug)
+        v = hungarian(acoord1, acoord2, metric=metric, debug=debug)
         if debug > 0: print(f"REORDER_HUNGARIAN: {v=}")
         if len(v) == 0:  raise ValueError(f"REORDER_HUNGARIAN: Atom type {atom} could not be fonud in molecule 2")
         else:            map12[aidx1] = aidx2[v]
@@ -620,8 +620,8 @@ def reorder_hungarian(z1, z2, coord1, coord2, debug: int=0):
                 print(i, map12[i]) 
     return map12
 
-def hungarian(a, b, debug: int=0):
-    distances = cdist(a, b, "euclidean")
+def hungarian(a, b, metric='sqeuclidean', debug: int=0):
+    distances = cdist(a, b, metric)
     if debug > 0: print(f"{distances=}")
     ia, ib = lsa(distances)
     if debug > 0: print(f"{ia=}")

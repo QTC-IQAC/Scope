@@ -95,6 +95,7 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         if debug > 0: print(f"OVERLAP_MOLECULES: {data2=}")
 
     keep_going = True
+    repeating = False
     iter = 0
     adjmat2   = orig_adjmat2.copy()
 
@@ -153,9 +154,12 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         for idx in range(len(orig_adjmat1)):
             if any(orig_adjmat1[idx] != adjmat2r[idx]): different.append(idx)
         if len(different) == 0: 
-            keep_going = False
-            iter += 1
-            if debug > 0: print(f"OVERLAP_MOLECULES: Reorder worked. Stopping at {iter=}")
+            if repeating == True: 
+                keep_going = False
+                if debug > 0: print(f"OVERLAP_MOLECULES: Reorder worked. Stopping at {iter=}")
+            else:
+                repeating = True
+                if debug > 0: print(f"OVERLAP_MOLECULES: Repeating final step")
 
         if keep_going:
             labels2   = labels2r.copy() 
@@ -171,44 +175,29 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
     for idx in range(len(orig_adjmat1)):
         if any(orig_adjmat1[idx] != adjmat2r[idx]): different.append(idx)
 
-    ## If not, it will try to permute the conflicting, which ideally should be a very short list
-    perm_index = 0
+    ## Performs a graph isomorphism repair, under constrains (limited number of problematic atoms<->nodes)
     if len(different) > 0: 
-        if debug > 0: print("OVERLAP_MOLECULES: WARNING! Different entries in the adjacency matrix. Trying permutations:")
-        from itertools import permutations
-        ## If differences in the adjacency matrices, try permutations and re-evaluate
-        perms = list(permutations(different))[1:]
+        if debug > 0: print("OVERLAP_MOLECULES: Different entries in the adjacency matrix after Hungarian Loop. Trying Graph Repair:")
+        from scope.operations.graphs            import build_graph
+        from networkx.algorithms.isomorphism    import GraphMatcher
 
-        keep_permuting = True
-        while keep_permuting:
-            p = perms[perm_index]
-            if debug > 0: print(f"OVERLAP_MOLECULES: Trying permutation {p}")
-            map12 = ([-1]*len(labels1))
-            pos = 0
-            for idx, i in enumerate(map12):
-                if idx not in different:
-                    map12[idx] = idx
-                else:
-                    map12[idx] = p[pos]
-                    pos += 1
-            if debug > 0: print(f"OVERLAP_MOLECULES: map12={map12}")
+        G1 = build_graph(orig_adjmat1, labels1)
+        G2 = build_graph(adjmat2r, labels2r)
+        nm = lambda n1, n2: n1["label"] == n2["label"]
 
-            ## Reorder relevant arrays
-            adjmat2p = adjmat2r[np.ix_(map12, map12)]
+        GM = GraphMatcher(G1, G2, node_match=nm)
+        assert GM.is_isomorphic(), f"OVERLAP_MOLECULES: graph is not isomorphic"
 
-            diff2 = []
-            for idx in range(len(orig_adjmat1)):
-                if any(orig_adjmat1[idx] != adjmat2p[idx]): diff2.append(idx)
+        map12 = [-1] * len(labels1)
+        for i, j in GM.mapping.items():
+            map12[i] = j
+        if debug > 0: print(f"OVERLAP_MOLECULES: map12 for graph repair step={map12}")
 
-            perm_index += 1
-            if len(diff2) == 0: 
-                if debug > 0: print("OVERLAP_MOLECULES: Permutations worked. Preparing outputs:")
-                keep_permuting = False
-                # Prepare final arrays
-                labels2r = np.array(labels2r)[map12]
-                coords2r = coords2r[map12]
-                adjmat2r = adjmat2p
-                isgood = True
+        # Arrange final arrays
+        labels2r = np.array(labels2r)[map12]
+        coords2r = coords2r[map12]
+        adjmat2r = adjmat2r[np.ix_(map12, map12)]
+        isgood = True
 
     ### Then, we do the final alignment, which will be even better than the first
     _, _, coords2ra, _ = kabsch_align(labels2r, coords2r, labels1, coords1c, center_method=center_method, debug=debug)
@@ -229,7 +218,7 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         coords1f = coords1c  
         coords2f = coords2ra 
     
-    if debug > 0: print(f"OVERLAP_MOLECULES: Finished successfully. Overlap achieved in {iter} iterations and {perm_index} permutations.")
+    if debug > 0: print(f"OVERLAP_MOLECULES: Finished successfully. Overlap achieved in {iter} iterations.")
     return isgood, labels1, coords1f, labels2r, coords2f, map12
 
 ####
