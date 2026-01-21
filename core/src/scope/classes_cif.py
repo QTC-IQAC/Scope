@@ -14,9 +14,9 @@ class Cif(object):
         self.origin            = "created"
         self.name              = name
         self.path              = path
-        self.diff_temp         = get_cif_diffraction_data(cifpath)
-        self.sym_group         = get_symmetry_group(cifpath)
-        self.sym_ops           = get_symmetry_ops(cifpath)
+        self.diff_temp         = get_cif_diffraction_data(path)
+        self.sym_group         = get_symmetry_group(path)
+        self.sym_ops           = get_symmetry_ops(path)
         self.get_biblio_data(path)
 
     ######
