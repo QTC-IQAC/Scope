@@ -66,7 +66,7 @@ def get_symmetry_group(cifpath: str):
     else:     
         print("Couldn't find symmetry group in cif:")
         sym_group = None
-        return sym_group
+    return sym_group
 
 def get_symmetry_ops(cifpath: str):
     lines = read_lines_file(cifpath)
