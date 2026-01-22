@@ -181,9 +181,9 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         from scope.operations.graphs            import build_graph
         from networkx.algorithms.isomorphism    import GraphMatcher
 
-        G1 = build_graph(orig_adjmat1, labels1)
-        G2 = build_graph(adjmat2r, labels2r)
-        nm = lambda n1, n2: n1["label"] == n2["label"]
+        G1 = build_graph(orig_adjmat1, labels=labels1)
+        G2 = build_graph(adjmat2r, labels=labels2r)
+        nm = lambda n1, n2: n1["labels"] == n2["labels"]
 
         GM = GraphMatcher(G1, G2, node_match=nm)
         assert GM.is_isomorphic(), f"OVERLAP_MOLECULES: graph is not isomorphic"
@@ -240,7 +240,7 @@ def get_extended_info(labels, adjmat, adjnum, debug: int=0):
             result.append('_'.join(parts))
         return result
 
-    G = build_graph(adjmat, labels, debug=0)
+    G = build_graph(adjmat, debug=0, labels=labels)
     _, _, signatures = get_signatures(G)#, convergence_layers=2)
     conv_signatures = convert(signatures) 
 

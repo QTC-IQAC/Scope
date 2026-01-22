@@ -2,23 +2,71 @@ import networkx as nx
 import numpy as np
 
 ####
-def build_graph(adj_matrix, labels, debug: int=0):
-    # Builds a NetworkX graph from an adjacency matrix and node labels
-    # It might result in a different graph than using the Specie-class function
+import networkx as nx
+
+def build_graph(adj_matrix, debug: int = 0, **node_features):
+    """
+    Builds a NetworkX graph from an adjacency matrix and node features provided as kwargs.
+    It might result in a different graph than using the Specie-class function
+
+    Parameters
+    ----------
+    adj_matrix : (N, N) array
+        Adjacency matrix
+    node_features : keyword arguments
+        Each value must be list-like of the same length as the adj_matrix.
+        Example: labels=[...], mass=[...]
+
+    Returns
+    -------
+    G : networkx.Graph
+    """
     G = nx.Graph()
-    N = len(labels)
+    N = len(adj_matrix)
+
+    # Reads features and performs sanity checks
+    for name, values in node_features.items():
+        if len(values) != N: raise ValueError(f"Feature '{name}' has length {len(values)}, expected {N}")
+
+    # Add nodes with attributes
     for i in range(N):
-        G.add_node(i, label=labels[i])#, feature=features[i] if features else None)
-        if debug > 0: print(f"BUILD_GRAPH: node created for {i}:{labels[i]}") 
+        attrs = {}
+        for name, values in node_features.items():
+            attrs[name] = values[i]
+        G.add_node(i, **attrs)
+        if debug > 0:
+            print(f"BUILD_GRAPH: node {i} created with attrs {attrs}")
+
+    # Add edges
     for i in range(N):
-        for j in range(i+1, N):
+        for j in range(i + 1, N):
             if adj_matrix[i, j] > 0:
                 G.add_edge(i, j)
-                if debug > 0: print(f"BUILD_GRAPH: edge created between {i}:{labels[i]} and {j}:{labels[j]}")
+                if debug > 0:
+                    print(f"BUILD_GRAPH: edge {i}-{j} created")
+
     if debug > 0:
         print(f"BUILD_GRAPH: {G.number_of_nodes()} nodes created")
         print(f"BUILD_GRAPH: {G.number_of_edges()} edges created")
     return G
+
+#def build_graph(adj_matrix, labels, debug: int=0):
+#    # Builds a NetworkX graph from an adjacency matrix and node labels
+#    # It might result in a different graph than using the Specie-class function
+#    G = nx.Graph()
+#    N = len(labels)
+#    for i in range(N):
+#        G.add_node(i, label=labels[i])#, feature=features[i] if features else None)
+#        if debug > 0: print(f"BUILD_GRAPH: node created for {i}:{labels[i]}") 
+#    for i in range(N):
+#        for j in range(i+1, N):
+#            if adj_matrix[i, j] > 0:
+#                G.add_edge(i, j)
+#                if debug > 0: print(f"BUILD_GRAPH: edge created between {i}:{labels[i]} and {j}:{labels[j]}")
+#    if debug > 0:
+#        print(f"BUILD_GRAPH: {G.number_of_nodes()} nodes created")
+#        print(f"BUILD_GRAPH: {G.number_of_edges()} edges created")
+#    return G
 
 ####
 def get_permutation_from_isomorphism(G1, G2):
