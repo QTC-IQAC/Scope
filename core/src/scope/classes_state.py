@@ -478,10 +478,8 @@ class State(object):
         from scope.thermal_corrections import get_Selec, get_Hvib, get_Svib, get_Gibbs
 
         if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
-        if self.ncomplex == 0: 
-            print(f"STATE.GET_THERMAL_DATA: found NO complex molecules")
-        if debug > 0: 
-            print(f"STATE.GET_THERMAL_DATA: found {self.ncomplex} complex molecules")
+        if self.ncomplex == 0:  print(f"STATE.GET_THERMAL_DATA: found NO complex molecules")
+        if debug > 0:           print(f"STATE.GET_THERMAL_DATA: found {self.ncomplex} complex molecules")
 
         if Hvib is None and Svib is None:
             assert hasattr(self,"isminimum"), f"I can't compute thermal data on this state. Missing VNMs"
@@ -493,7 +491,7 @@ class State(object):
             if overwrite or not "Helec" in self.results.keys():
                 self.add_result(Data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.get_thermal_data()"), overwrite=overwrite)
         else: 
-            if isinstance(Helec, data):
+            if isinstance(Helec, Data):
                 if overwrite or not "Helec" in self.results.keys():
                     self.add_result(Data("Helec",Helec.value,Helec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
             else:
@@ -505,7 +503,7 @@ class State(object):
             if overwrite or not "Selec" in self.results.keys():
                 self.add_result(get_Selec(self.spin_multiplicity, outunits='au', nmol=self.ncomplex), overwrite=overwrite)
         else: 
-            if isinstance(Selec, data):
+            if isinstance(Selec, Data):
                 if overwrite or not "Selec" in self.results.keys():
                     self.add_result(Data("Selec",Selec.value,Selec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
             else:
@@ -520,7 +518,7 @@ class State(object):
                     Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.ncomplex))
                 self.add_result(Hvib, overwrite=overwrite)
         else: 
-            if isinstance(Hvib, collection):
+            if isinstance(Hvib, Collection):
                 if overwrite or not "Hvib" in self.results.keys():
                     self.add_result(Hvib, overwrite=overwrite)
             else:
@@ -535,7 +533,7 @@ class State(object):
                     Svib.add_data(get_Svib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.ncomplex))
                 self.add_result(Svib, overwrite=overwrite)
         else: 
-            if isinstance(Svib, collection):
+            if isinstance(Svib, Collection):
                 if overwrite or not "Svib" in self.results.keys():
                     self.add_result(Svib, overwrite=overwrite)
             else:
@@ -562,7 +560,7 @@ class State(object):
                     Gtot.add_data(new_data)
                 self.add_result(Gtot, overwrite=overwrite)
         else: 
-            if isinstance(Gtot, collection):
+            if isinstance(Gtot, Collection):
                 if overwrite or not "Gtot" in self.results.keys():
                     self.add_result(Gtot, overwrite=overwrite)
             else:
