@@ -780,7 +780,7 @@ class Molecule(Specie):
                 if len(self.metals) > 0: to_print += '\n'
                 to_print += f' Num of Metals         = {len(self.metals)}\n'
                 for idx, met in enumerate(self.metals):
-                    to_print += f'   Metal {idx}: {met.label} with {met.charge} charge and {met.spin} spin\n'
+                    to_print += f'   Metal {idx}: {met.label} with charge:{met.charge} and spin:{met.spin}\n'
         if not indirect: to_print += '\n'
         return to_print
 
