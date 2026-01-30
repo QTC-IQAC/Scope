@@ -72,8 +72,8 @@ def get_symmetry_ops(cifpath: str):
     lines = read_lines_file(cifpath)
     sym_ops_start, found1      = search_string("_symmetry_equiv_pos_as_xyz", lines, typ='first')
     sym_ops_end, found2        = search_string("_cell_length_a", lines, typ='first')
-    assert sym_ops_end > sym_ops_start
     if found1 and found2: 
+        assert sym_ops_end > sym_ops_start
         sym_ops = []
         for l in lines[sym_ops_start+1:sym_ops_end]:
             assert len(l.split(" ")) == 2, f"wrong block length: {l}"
