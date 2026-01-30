@@ -1,5 +1,11 @@
 import numpy as np
 
+###########
+## Notes ##
+###########
+# Joule is kg·m2·s-2
+# 'cm' in variable names below, actually means cm-1
+
 ######################
 # Physical Constants #
 ######################
@@ -7,9 +13,9 @@ hbar            =1                       ## Atomic Units
 boltz_au        =0.00000316682968        ## hartree/K
 boltz_J         =1.380649e-23            ## J/K
 speed_light     =299792458               ## meter/second
-planck_hs       =1.5198300452227972e-16  ## hartree/second
-planck_Js       =6.626076e-34            ## J/second == Kg·m2/second
-R_J             =8.3144                  ## J/(K·mol)   Universal Gas Constats  
+planck_hs       =1.5198300452227972e-16  ## hartree·second
+planck_Js       =6.626076e-34            ## J·second == Kg·m2/second
+R_J             =8.3144                  ## J/(K·mol)                       Universal Gas Constant
 
 ######################
 # Conversion Factors #
