@@ -31,13 +31,19 @@ class Collection(object):
                 value = getattr(data, condition_name.lower())
                 if value == condition_value: return data
 
-    def view(self):
+    def find_min(self):
+        return self.datas[np.argmin(self.get_values())]
+
+    def find_max(self):
+        return self.datas[np.argmax(self.get_values())]
+
+    def plot(self):
         import matplotlib.pyplot as plt
         plt.style.use('seaborn-v0_8-whitegrid')
         fig, ax = plt.subplots(figsize=(6, 4))
         x = self.get_variables()
         y = self.get_values()
-        ax.scatter(x, y, color='blue', edgecolor='k', s=20, alpha=0.8, label='Data points')
+        ax.scatter(x, y, color='blue', s=20, alpha=0.8, label='Data points')
         ax.set_xlabel(str(self.variable), fontsize=12)
         ax.set_ylabel(f"{self.key} (in {str(self.datas[0].units)})", fontsize=12)
         ax.set_title(f"{self.variable} vs {self.key} (in {self.datas[0].units})", fontsize=14, weight='bold')
