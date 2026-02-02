@@ -16,6 +16,7 @@ speed_light     =299792458               ## meter/second
 planck_hs       =1.5198300452227972e-16  ## hartree·second
 planck_Js       =6.626076e-34            ## J·second == Kg·m2/second
 R_J             =8.3144                  ## J/(K·mol)                       Universal Gas Constant
+avogadro        =6.02214076e23           ## Avogadro's number
 
 ######################
 # Conversion Factors #
