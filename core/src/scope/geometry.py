@@ -254,6 +254,8 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
 ### Former Unit Cell Tools ###
 ##############################
 def get_unit_cell_volume(a, b, c, alpha, beta, gamma):
+    # I know alpha and gamma are not used, but that way it is just simpler to execute as:
+    # get_unit_cell_volume(*cell_parameters)
     return float(a*b*c*np.sin(np.deg2rad(beta)))
 
 ######
