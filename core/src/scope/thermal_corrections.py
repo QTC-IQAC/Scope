@@ -27,9 +27,10 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     FR_cutoff *= constants.cm2s_1
         
     total=0.0
-    for idx, f in enumerate(freqs_mod):                                                      # Freqs in au
-        #if f < 0.0: f = np.abs(f)                                                        # Converts Negative frequencies to positive
-        #if np.abs(f) < 1.0*constants.cm2s_1: continue                                    # Ignores frequencies below 1 cm-1
+    if debug > 0: print(f"GET_Svib: Computing Svib with {len(freqs)} frequencies, and first: {freqs[0]} {freq_units}")
+    for idx, f in enumerate(freqs_mod):                                                  # Freqs in au
+        if f < 0.0: f = np.abs(f)                                                        # Converts Negative frequencies to positive
+        if np.abs(f) < 1.0*constants.cm2s_1: continue                                    # Ignores frequencies below 1 cm-1
 
         ## Free Rotor Term
         if typ.lower() == 'qrrho':
@@ -40,7 +41,7 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
             b=np.sqrt(a)                                                                 # Dimensionless, equation 6, square root
             c=np.log(b)                                                                  # Dimensionless, equation 6, ln()
             Svib_FR=constants.boltz_au*(c+0.5)                                           # Hartree/K/molecule, equation 6
-            weight_FR = 1-(1/(1+(FR_cutoff/f)**FR_alpha))                                  # Dimensionless
+            weight_FR = 1-(1/(1+(FR_cutoff/f)**FR_alpha))                                # Dimensionless
             if debug > 1: 
                 print(f"\tGET_Svib: FR Term: {idx=} {f=}: {mu=}, {mu_prime=}, {a=}, {Svib_FR=}, {weight_FR=}")
             elif debug == 1: 
@@ -53,10 +54,10 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
         f /= constants.har2s_1
 
         ## Harmonic Oscillator Term
-        exponential_pos     =np.exp(f/(constants.boltz_au*temp))                              # Dimensionless
-        exponential_neg     =np.exp(-f/(constants.boltz_au*temp))                             # Dimensionless
-        fstterm             =f/(temp*(exponential_pos-1))                                             # Hartree/molecule*K
-        scnterm             =-constants.boltz_au*np.log(1-exponential_neg)                            # Hartree/molecule*K
+        exponential_pos     =np.exp(f/(constants.boltz_au*temp))                          # Dimensionless
+        exponential_neg     =np.exp(-f/(constants.boltz_au*temp))                         # Dimensionless
+        fstterm             =f/(temp*(exponential_pos-1))                                 # Hartree/molecule*K
+        scnterm             =-constants.boltz_au*np.log(1-exponential_neg)                # Hartree/molecule*K
         Svib_HO             = fstterm+scnterm
         weight_HO           = 1 - weight_FR
         if debug > 1: 
@@ -66,7 +67,6 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
 
         ## Combine both terms through weights and divide by number of molecules
         total += (Svib_FR * weight_FR + Svib_HO * weight_HO)/nmol
-        if debug > 0: print(f"GET_Svib: {total:.4e} au")
         
     ## Arranges units 
     if   outunits.lower() == 'kj':  total = total*constants.har2kJmol
