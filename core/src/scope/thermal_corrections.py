@@ -32,7 +32,7 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
         #if np.abs(f) < 1.0*constants.cm2s_1: continue                                    # Ignores frequencies below 1 cm-1
 
         ## Free Rotor Term
-        if typ.lower() == 'free-rotor' or typ.lower() == 'fr':
+        if typ.lower() == 'qrrho':
             bav=1.0000E-44                                                               # Kg·m2, parameter in manuscript
             mu=constants.planck_Js/(8*(np.pi)**2*f)                                      # [J·s]/[s_1] = J·s2 = Kg·m2, equation 4
             mu_prime=(mu*bav)/(mu+bav)                                                   # Kg·m2, equation 5 
@@ -53,12 +53,12 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
         f /= constants.har2s_1
 
         ## Harmonic Oscillator Term
-        exponential_pos=np.exp(f/(constants.boltz_au*temp))                              # Dimensionless
-        exponential_neg=np.exp(-f/(constants.boltz_au*temp))                             # Dimensionless
-        fstterm=f/(temp*(exponential_pos-1))                                             # Hartree/molecule*K
-        scnterm=-constants.boltz_au*np.log(1-exponential_neg)                            # Hartree/molecule*K
-        Svib_HO = fstterm+scnterm
-        weight_HO = 1 - weight_FR
+        exponential_pos     =np.exp(f/(constants.boltz_au*temp))                              # Dimensionless
+        exponential_neg     =np.exp(-f/(constants.boltz_au*temp))                             # Dimensionless
+        fstterm             =f/(temp*(exponential_pos-1))                                             # Hartree/molecule*K
+        scnterm             =-constants.boltz_au*np.log(1-exponential_neg)                            # Hartree/molecule*K
+        Svib_HO             = fstterm+scnterm
+        weight_HO           = 1 - weight_FR
         if debug > 1: 
             print(f"\tGET_Svib: HO Term: {idx=} {f=}: {exponential_pos=}, {exponential_neg=}, {fstterm=}, {scnterm=}, {Svib_HO=}, {weight_HO=}")
         elif debug == 1:
@@ -86,25 +86,23 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     # temperature in K
     # function works with freqs in au, so we adapt if needed
 
-    if   freq_units.lower() == 'au':  freqs = np.array(freqs)
-    elif freq_units.lower() == 'cm':  freqs = np.array(freqs) * constants.cm2har
-    elif freq_units.lower() == 'ev':  freqs = np.array(freqs) * constants.eV2har
-    elif freq_units.lower() == 's_1': freqs = np.array(freqs) * constants/har2s_1
+    if   freq_units.lower() == 'au':  freqs_mod = np.array(freqs)
+    elif freq_units.lower() == 'cm':  freqs_mod = np.array(freqs) * constants.cm2har
+    elif freq_units.lower() == 'ev':  freqs_mod = np.array(freqs) * constants.eV2har
+    elif freq_units.lower() == 's_1': freqs_mod = np.array(freqs) * constants/har2s_1
     else: raise ValueError("GET_Hvib: can't understand input units of frequencies")
     
     total=0.0
-    if debug > 0: print(f"GET_Hvib: Computing Hvib with {len(freqs)} frequencies, and first: {freqs[0]} au")
-    for idx, f in enumerate(freqs):
+    if debug > 0: print(f"GET_Hvib: Computing Hvib with {len(freqs)} frequencies, and first: {freqs[0]} {freq_units}")
+    for idx, f in enumerate(freqs_mod):
         if f > 0.0:
-            if temp > 0: exponential = np.exp(-f/(constants.boltz_au*temp))       # Dimensionless
-            else:        exponential = float(0.0)                                 # Dimensionless
-            fstterm = f/2.                                           # hartree/molecule
-            scnterm = (f*exponential)/(1-exponential)                # hartree/molecule
-            total += (fstterm+scnterm)/nmol
-            if debug > 0: print(f"GET_Hvib: {idx} {total} {f} {fstterm} {scnterm}")
-        else:
-            if debug > 0: print(f"GET_Hvib: {idx} {total} {f}")
-    if debug > 0: print(f"GET_Hvib: Left loop with {total=} au")
+            if temp > 0: exponential = np.exp(-f/(constants.boltz_au*temp))  # Dimensionless
+            else:        exponential = float(0.0)                            # Dimensionless
+            fstterm                  = f/2.                                  # hartree/molecule
+            scnterm                  = (f*exponential)/(1-exponential)       # hartree/molecule
+            t_i                      = (fstterm+scnterm)/nmol 
+            total                    += t_i
+            if debug > 0: print(f"\t{idx} i= {freqs[idx]:.2f} cm-1: Hvib(i)= {t_i:.4e} a.u, Hvib(i)= {t_i*constants.har2kJmol/constants.kcal2kJmol:.4f} kcal/mol")
 
     ## Arranges units 
     if outunits.lower() == 'kj':  total = total*constants.har2kJmol    # kJ/mol
