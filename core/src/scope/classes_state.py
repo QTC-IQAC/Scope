@@ -114,6 +114,7 @@ class State(object):
             self.cell_vector      = cell_vector
             self.cell_param       = cell_param
         self.frac_coord           = cart2frac(self.coord, self.cell_vector)
+        self.volume               = get_unit_cell_volume(*self.cell_param) 
 
     def set_forces(self, forces):
         self.forces      = forces
@@ -471,6 +472,21 @@ class State(object):
         if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
         self.add_result(Data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.set_Helec()"), overwrite=overwrite)
 
+    def compute_PV_term(self, pressure: float = 1.0, overwrite: bool=False, debug: int=0):
+        from scope import constants
+        # Volume in angs^3
+        # Pressure in kilo-pascal (10e3 Pa)
+        if self._source.type != 'cell': return None                     ## Only for Cells
+        if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
+        vm3 = self.volume * 1e-30 * constants.bohr2angs**3              ## Convert volume to m^3
+        ppa = float(pressure) * 1e+6                                    ## Convert pressure to Pa 
+        pv  = (ppa * vm3)                                               ## [Pa·m3] = [Joule] 
+        pv *= constants.avogadro / 1000 / self.ncomplex                 ## kJ/molecule
+        if overwrite or not "PV" in self.results.keys():
+            data = Data("PV",pv,'kj',"state.compute_PV_term()")
+            self.add_result(data, overwrite=overwrite)
+        return data 
+        
 ################################
 #### Get Thermodynamic Data ####
 ################################

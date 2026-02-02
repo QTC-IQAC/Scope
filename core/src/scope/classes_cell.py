@@ -4,7 +4,7 @@
 
 import numpy as np
 from scope.connectivity     import *
-from scope.geometry         import cellparam_2_cellvec, cellvec_2_cellparam, cart2frac
+from scope.geometry         import cellparam_2_cellvec, cellvec_2_cellparam, cart2frac, get_unit_cell_volume
 from scope.elementdata      import ElementData
 elemdatabase = ElementData()
 
@@ -36,6 +36,9 @@ class Cell(object):
             self.cell_vector      = cell_vector
             self.cell_param       = cell_param
         self.frac_coord           = cart2frac(self.coord, self.cell_vector)
+
+        ## Gets the volume
+        self.volume               = get_unit_cell_volume(*self.cell_param) 
 
     #####################
     ## Charge and Spin ##
@@ -459,6 +462,8 @@ class Cell(object):
         to_print += f' Num Atoms             = {self.natoms}\n'
         to_print += f' Cell Parameters a:c   = {self.cell_param[0:3]}\n'
         to_print += f' Cell Parameters al:ga = {self.cell_param[3:6]}\n'
+        if hasattr(self,"volume"):  
+            to_print += f' Volume (Angs^3)       = {self.volume}\n'
         if hasattr(self,"moleclist"):  
             to_print += f' Num Molecules:        = {len(self.moleclist)}\n'
             to_print += f' With Formulae:                               \n'
