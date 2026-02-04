@@ -181,7 +181,6 @@ class Specie(object):
     ###########
     def get_graph(self, debug: int=0):
         import networkx as nx
-        from scope.other import get_extended_info
         if not hasattr(self,"adjmat"): self.get_adjmatrix(debug=debug)
         if not hasattr(self,"bonds"):  self.set_bonds(debug=debug)
         # Create Empty Graph
@@ -192,14 +191,27 @@ class Specie(object):
             self.mol_graph.add_node(idx, label=at.label, connec=at.adjnum, mconnec=at.madjnum)
             if debug > 0: print(f"SPECIE.GET_GRAPH: node created for {idx}:{at.label}") 
         # Add edges
-        for at in self.atoms:
-            idx = at.get_parent_index(self.subtype)
-            for b in at.bonds:
-                idx1 = b.atom1.get_parent_index(self.subtype)
-                idx2 = b.atom2.get_parent_index(self.subtype)
-                if idx2 > idx1: 
-                    self.mol_graph.add_edge(idx1, idx2, order=b.order, distance=b.distance)
-                    if debug > 0: print(f"SPECIE.GET_GRAPH: edge created between atoms {idx1}:{b.atom1.label} and {idx2}:{b.atom2.label}")
+        if self.has_bonds: ## We use bonds as source of info
+            if debug > 0: print(f"SPECIE.GET_GRAPH: Bonds info is not available")
+            for at in self.atoms:
+                idx = at.get_parent_index(self.subtype)
+                for b in at.bonds:
+                    idx1 = b.atom1.get_parent_index(self.subtype)
+                    idx2 = b.atom2.get_parent_index(self.subtype)
+                    if idx2 > idx1: 
+                        self.mol_graph.add_edge(idx1, idx2, order=b.order, distance=b.distance)
+                        if debug > 0: print(f"SPECIE.GET_GRAPH: edge created between atoms {idx1}:{b.atom1.label} and {idx2}:{b.atom2.label} from Bonds")
+        else:
+            if debug > 0: print(f"SPECIE.GET_GRAPH: Using Adjacencies instead")
+            self.set_atoms(create_adjacencies=True, debug=debug)
+            for at in self.atoms:
+                idx1 = at.get_parent_index(self.subtype)
+                for b in at.adjacency:
+                    idx2 = self.atoms[b].get_parent_index(self.subtype)
+                    if idx2 > idx1: 
+                        distance = np.linalg.norm(np.array(at.coord) - np.array(self.atoms[b].coord))
+                        self.mol_graph.add_edge(idx1, idx2, distance=distance)
+                        if debug > 0: print(f"SPECIE.GET_GRAPH: edge created between atoms {idx1}:{b.atom1.label} and {idx2}:{b.atom2.label} from Adjacency")
         if debug > 0:
             print(f"SPECIE.GET_GRAPH: {self.mol_graph.number_of_nodes()} nodes created")
             print(f"SPECIE.GET_GRAPH: {self.mol_graph.number_of_edges()} edges created")
@@ -357,7 +369,6 @@ class Specie(object):
                 ismetal = elemdatabase.elementblock[l] == "d" or elemdatabase.elementblock[l] == "f"
                 # non transition metals
                 if len(get_non_transition_metal_idxs([l])) > 0: ismetal = True
-                if ismetal and debug > 0: print(f"SPECIE.SET_ATOMS: {l}")
                 if debug > 0:             print(f"SPECIE.SET_ATOMS: {ismetal=}")
 
                 #################################
@@ -370,8 +381,12 @@ class Specie(object):
                        if hasattr(par,"cell_vector"): self.get_fractional_coord(debug=debug)
                 # If it managed, then it established the frac_coord to atoms 
                 if hasattr(self,"frac_coord"):
-                    if ismetal: newatom = Metal(l, self.coord[idx], self.frac_coord[idx], radii=self.radii[idx])
-                    else:       newatom =  Atom(l, self.coord[idx], self.frac_coord[idx],radii=self.radii[idx])
+                    if len(self.frac_coord) == len(self.labels):
+                        if ismetal: newatom = Metal(l, self.coord[idx], self.frac_coord[idx], radii=self.radii[idx])
+                        else:       newatom =  Atom(l, self.coord[idx], self.frac_coord[idx], radii=self.radii[idx])
+                    else :
+                        if ismetal: newatom = Metal(l, self.coord[idx], radii=self.radii[idx])
+                        else:       newatom =  Atom(l, self.coord[idx], radii=self.radii[idx])
                 # Otherwise, frac_coord is empty
                 else :
                     if ismetal: newatom = Metal(l, self.coord[idx], radii=self.radii[idx])
@@ -548,18 +563,16 @@ class Specie(object):
     ######
     def get_occurrence(self, substructure: object, debug: int=0) -> int:
         """
-        Counts the number of times a given substructure appears within the current object.
+        Counts the number of times a given substructure appears inside self.
         The method supports different types of substructures:
         - Ligands within Complexes (when substructure.subtype == 'ligand' and self.subtype == 'molecule')
         - Groups within Ligands    (when substructure.subtype == 'group' and self.subtype == 'ligand')
         - Atoms within Species     (when substructure.type == 'atom' and self.type == 'specie')
-        The method uses helper functions such as `compare_species` and `compare_atoms` to determine equivalence,
-        and may call `split_complex`, `split_ligand`, or `set_atoms` to ensure the relevant attributes are initialized.
         Args:
             substructure (object): The substructure to search for within the current object.
             debug (int, optional): Debug level for comparison functions. Defaults to 0.
         Returns:
-            int: The number of times the substructure appears within the current object.
+            int: The number of times the substructure appears within self.
         """
     
         ## Finds how many times a substructure appears in self
@@ -572,7 +585,7 @@ class Specie(object):
                 if not hasattr(self,"ligands"): self.split_complex()
                 if self.ligands is not None:
                     for l in self.ligands:
-                        issame = compare_species(substructure, l, debug=debug)
+                        issame = l.__eq__(substructure, with_graph=True)
                         if issame: occurrence += 1
                     done = True 
             elif substructure.subtype == 'group' and self.subtype == 'ligand':
@@ -581,7 +594,7 @@ class Specie(object):
                     for l in self.ligands:
                         if not hasattr(l,"groups"): self.split_ligand()
                         for g in l.groups:
-                            issame = compare_species(substructure, g, debug=debug)
+                            issame = g.__eq__(substructure, with_graph=True)
                             if issame: occurrence += 1
                 done = True 
         ## Atoms in Species
@@ -589,7 +602,7 @@ class Specie(object):
             if substructure.type == 'atom' and self.type == 'specie':
                 if not hasattr(self,"atoms"): self.set_atoms()
                 for at in self.atoms:
-                    issame = compare_atoms(substructure, at)
+                    issame = at.__eq__(substructure, at)
                     if issame: occurrence += 1
         return occurrence
 
@@ -712,19 +725,22 @@ class Specie(object):
     def __len__(self):
         return self.natoms
 
-    def __eq__(self, other, with_graph: bool=True):
+    def __eq__(self, other, with_graph: bool=True, debug: int=0):
         ## Function to compare two molecules based on their chemical composition and connectivity
         ## It should be able to discriminate up to isomers. Cannot differentiate conformers
+        ## To select 'with_graph', it must be run as: mol1.__eq__(mol2,with_graph=False)
         if not isinstance(other, type(self)): return False
         elems = elemdatabase.elementnr.keys()
         
         # a pair of species is compared on the basis of:
         # 1) the total number of atoms
         if (self.natoms != other.natoms): 
+            if debug > 0: print(f"SPECIE.__EQ__: found different number of atoms {self.natoms} vs. {other.natoms}")
             return False
 
         # 2) the total number of electrons (as sum of atomic number)
         if (self.eleccount != other.eleccount): 
+            if debug > 0: print(f"SPECIE.__EQ__: found different electron count {self.eleccount} vs. {other.eleccount}")
             return False
 
         # 3) the number of atoms of each type
@@ -732,6 +748,7 @@ class Specie(object):
         if not hasattr(other,"element_count"): other.set_element_count()
         for kdx, elem in enumerate(self.element_count):
             if elem != other.element_count[kdx]: 
+                if debug > 0: print(f"SPECIE.__EQ__: found different element count for element {kdx}: {elem} vs. {other.element_count[kdx]}")
                 return False       
         # 4) the number of adjacencies between each pair of element types
         if not hasattr(self,"adj_types"):     self.set_adj_types()
@@ -749,7 +766,11 @@ class Specie(object):
             if not hasattr(self,"mol_graph"):  self.get_graph()
             if not hasattr(other,"mol_graph"): other.get_graph()
             from scope.operations.graphs import compare_graphs
-            if not compare_graphs(self.mol_graph, other.mol_graph): return False
+            if debug > 0: 
+                print(f"SPECIE.__EQ__: entering graph comparison")
+                print(f"SPECIE.__EQ__: comparing graph \n\t{self.mol_graph}")
+                print(f"SPECIE.__EQ__: with: \n\t{other.mol_graph}")
+            if not compare_graphs(self.mol_graph, other.mol_graph, debug=debug): return False
     
             # Conformers cannot be discriminated 
 
@@ -774,7 +795,8 @@ class Molecule(Specie):
                 if len(self.ligands) > 0: to_print += '\n'
                 to_print += f' Num of Ligands        = {len(self.ligands)}\n'
                 for idx, lig in enumerate(self.ligands):
-                    to_print += f'   Ligand {idx}: {lig.formula} with {lig.natoms} atoms. Smiles: {lig.smiles}\n'
+                    if hasattr(lig,"smiles"): to_print += f'   Ligand {idx}: {lig.formula} with {lig.natoms} atoms. Smiles: {lig.smiles}\n'
+                    else:                     to_print += f'   Ligand {idx}: {lig.formula} with {lig.natoms} atoms.\n'
         if hasattr(self,"metals"):   
             if self.metals is not None:  
                 if len(self.metals) > 0: to_print += '\n'
@@ -960,7 +982,8 @@ class Molecule(Specie):
         # If it is a transition metal complex, then:
         if not hasattr(self,"metals") or not hasattr(self,"ligands"): self.split_complex(debug=debug)
         for lig in self.ligands:            ## Runs for each ligand individually
-            lig.set_bonds(debug=debug)      
+            worked = lig.set_bonds(debug=debug)      
+            if not worked: return False
         self.set_metal_ligand_bonds(debug=debug) ## Creates bond between metals and ligands...
         self.set_metal_metal_bonds(debug=debug)  ## ... and between metals 
         self.has_bonds = True

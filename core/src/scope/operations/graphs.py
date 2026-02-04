@@ -43,7 +43,7 @@ def build_graph(adj_matrix, debug: int = 0, **node_features):
             if adj_matrix[i, j] > 0:
                 G.add_edge(i, j)
                 if debug > 0:
-                    print(f"BUILD_GRAPH: edge {i}-{j} created")
+                    print(f"BUILD_GRAPH: edge {i}-{j} created from adjacency matrix")
 
     if debug > 0:
         print(f"BUILD_GRAPH: {G.number_of_nodes()} nodes created")
@@ -95,8 +95,12 @@ def compare_graphs(G1, G2, debug: int=0):
 
     # Compares whether two graphs are identical using resistances
     # 1) compares number of nodes and edges
-    if G1.number_of_nodes() != G2.number_of_nodes(): return False
-    if G1.number_of_edges() != G2.number_of_edges(): return False
+    if G1.number_of_nodes() != G2.number_of_nodes(): 
+        if debug > 0: print(f"COMPARE_GRAPHS: different number of nodes: {G1.number_of_nodes()} vs. {G2.number_of_nodes()}")
+        return False
+    if G1.number_of_edges() != G2.number_of_edges(): 
+        if debug > 0: print(f"COMPARE_GRAPHS: different number of edges: {G1.number_of_edges()} vs. {G2.number_of_edges()}")
+        return False
 
     # 2) compares topologies via resistance matrices:
     # 2.1) Compute resistance matrices
@@ -106,20 +110,34 @@ def compare_graphs(G1, G2, debug: int=0):
     # 2.2) Compare their eigenvalue spectra. If spectra differ, graphs are not isomorphic
     eig1 = np.sort(np.linalg.eigvalsh(R1))
     eig2 = np.sort(np.linalg.eigvalsh(R2))
-    if not np.allclose(eig1, eig2, atol=1e-6):       return False
+    if not np.allclose(eig1, eig2, atol=1e-6):       
+        if debug > 0: print(f"COMPARE_GRAPHS: different eigenvalue spectra for the resistance matrices")
+        if debug > 0: print(f"\t {eig1}")
+        if debug > 0: print(f"\t {eig2}")
+        return False
 
     # 2.3) If spectra match, perform a graph isomorphism test
     GM = nx.isomorphism.GraphMatcher(G1, G2)
-    if not GM.is_isomorphic(): return False
+    if not GM.is_isomorphic(): 
+        if debug > 0: print(f"COMPARE_GRAPHS: graphs are not isomorphic according to NX test")
+        return False
 
     # 3) Compares Topologies via signatures
     _, n_neigh_x_layer1, sign1 = get_signatures(G1) 
     _, n_neigh_x_layer2, sign2 = get_signatures(G2) 
     # 3.1) Get neighbours per layer. If they differ, graphs are not isomorphic
-    if n_neigh_x_layer1 != n_neigh_x_layer2: return False
+    if n_neigh_x_layer1 != n_neigh_x_layer2: 
+        if debug > 0: print(f"COMPARE_GRAPHS: different neighbours per layer")
+        if debug > 0: print(f"\t {n_neigh_x_layer1}")
+        if debug > 0: print(f"\t {n_neigh_x_layer2}")
+        return False
 
     # 3.2) Compares signatures:
-    if not compare_signatures(sign1, sign2): return False
+    if not compare_signatures(sign1, sign2): 
+        if debug > 0: print(f"COMPARE_GRAPHS: different signatures")
+        if debug > 0: print(f"\t {sign1}")
+        if debug > 0: print(f"\t {sign2}")
+        return False
 
     return True
 

@@ -32,8 +32,7 @@ def classify_fragments(blocklist: list, refmoleclist: list, debug: int=0):
         else:
             found = False 
             for ref in refmoleclist:
-                issame = compare_species(ref, block)
-                if issame: 
+                if ref == block: 
                     block.subtype = "molecule"
                     moleclist.append(block)
                     found = True
@@ -184,8 +183,7 @@ def absolute_value(num):
 ######
 def assign_subtype(molecule: object, references: list) -> str:
     for ref in references:
-        issame = compare_species(molecule, ref)
-        if issame: 
+        if ref == molecule:
             if ref.iscomplex: return "Complex"
             else:             return "Other"
     # If not in references
@@ -519,8 +517,7 @@ def combine(tobemerged: list, references: list, cellvec: list, threshold_tmat: f
                     if debug >= 1: print(f"COMBINE: {reordered_newmolec.formula=}")
                     if debug >= 1: print(f"COMBINE: {reordered_newmolec=}")
 
-                    issame = compare_species(reordered_newmolec, ref, debug=debug)
-                    if issame:    ## Then is a molecule that appears in the reference list 
+                    if ref == reordered_newmolec:    ## Then is a molecule that appears in the reference list 
                         found = True 
                         reordered_newmolec.subtype = ref.subtype
                         goodlist.append(reordered_newmolec)

@@ -77,6 +77,16 @@ class Cell(object):
     def spin_multiplicity(self):
         return int(self.spin + 1) 
 
+    @property
+    def Z(self):
+        return self.z
+
+    @property
+    def z(self):
+        if not hasattr(self, "_z"):
+            return self.get_z()
+        return self._z
+
     #### 
     def reset_charge(self, debug: int=0):
         if not hasattr(self,"moleclist"): return None
@@ -140,6 +150,28 @@ class Cell(object):
             if mol.iscomplex: self.ncomplex += 1
         if debug > 0: print(f"CELL.GET_NCOMPLEX {self.ncomplex} complexes found in cell: {self.name}")
         return self.ncomplex
+
+    def get_z(self, debug: int=0):
+        ## Returns the Stoichiometry number of the unit cell. Basically how many times the same stoichiometry unit is repeated in the cell
+        from scope.operations.vecs_and_mats import gcd_list
+        if debug > 0: print(f"self.GET_Z checking fragmentation")
+        if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
+        assert not self.fragmented, f"self.GET_Z found Fragmented molecules in the geometry of self: {self.name}"
+
+        if debug > 0: print(f"self.GET_Z getting moleclist")
+        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+
+        unique = [] 
+        occurrences = []
+        for mol in self.moleclist:
+            found = False
+            for uni in unique:
+                if mol == uni: found = True
+            if not found: 
+                unique.append(mol)
+                occurrences.append(self.get_occurrence(mol))
+        self._z = int(gcd_list(occurrences))
+        return self._z 
 
     #############
     ## Parents ##
@@ -233,6 +265,33 @@ class Cell(object):
             self.moleclist.append(newmolec)
         return self.moleclist
 
+    ######
+    def get_occurrence(self, substructure: object, debug: int=0) -> int:
+        """
+        Counts the number of times a given substructure appears inside the Cell.
+        Args:
+            substructure (object): The substructure to search for within the Cell.
+            debug (int, optional): Debug level for comparison functions. Defaults to 0.
+        Returns:
+            int: The number of times the substructure appears within the Cell.
+        """
+        ## Finds how many times a substructure appears in self
+        occurrence = 0
+
+        if debug > 0: print(f"CELL.GET_OCCURRENCE checking fragmentation")
+        if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
+        assert not self.fragmented, f"CELL.GET_OCCURRENCE found fragmented molecules in the geometry of cell: {self.name}"
+         
+        if debug > 0: print(f"CELL.GET_OCCURRENCE getting moleclist")
+        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+
+        ## Case of Species inside self
+        if hasattr(substructure,"type"):
+            if substructure.type == 'specie':
+                for mol in self.moleclist:
+                    if mol.__eq__(substructure, with_graph=True): occurrence += 1
+        return occurrence
+
     ##################
     ## Connectivity ##
     ##################
@@ -255,9 +314,7 @@ class Cell(object):
         for mol in self.moleclist:
             found = False
             for rmol in self.refmoleclist:
-                # Comparison using graphs cannot be used for rmol, since it doesn't have rdkit object
-                # Which means that not all bonds will be created, and hence not all edges
-                if mol.__eq__(rmol, with_graph=False): found = True 
+                if rmol == mol: found = True
             if not found: self.fragmented = True
 
         # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
@@ -267,9 +324,7 @@ class Cell(object):
             for mol in new_moleclist:
                 found = False
                 for rmol in self.refmoleclist:
-                    # Comparison using graphs cannot be used for rmol, since it doesn't have rdkit object
-                    # Which means that not all bonds will be created, and hence not all edges
-                    if mol.__eq__(rmol, with_graph=False): found = True
+                    if rmol == mol: found = True
                 if not found: self.fragmented = True
             if not self.fragmented: 
                 self.moleclist = new_moleclist
@@ -462,8 +517,9 @@ class Cell(object):
         to_print += f' Num Atoms             = {self.natoms}\n'
         to_print += f' Cell Parameters a:c   = {self.cell_param[0:3]}\n'
         to_print += f' Cell Parameters al:ga = {self.cell_param[3:6]}\n'
-        if hasattr(self,"volume"):  
-            to_print += f' Volume (Angs^3)       = {self.volume}\n'
+        if hasattr(self,"volume"): to_print += f' Volume (Angs^3)       = {self.volume}\n'
+        to_print += f' Number of Units (Z)   = {self.z}\n'
+        #if hasattr(self,"z"):      to_print += f' Z                     = {self.z}\n'
         if hasattr(self,"moleclist"):  
             to_print += f' Num Molecules:        = {len(self.moleclist)}\n'
             to_print += f' With Formulae:                               \n'

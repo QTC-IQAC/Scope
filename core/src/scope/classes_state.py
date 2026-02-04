@@ -36,6 +36,7 @@ class State(object):
     atoms : list                        List of atom objects.
     moleclist : list                    List of molecule objects in the state.
     ncomplex : int                      Number of Transition Metal Complexes in the state.
+    z : int                             Number of stoichiometric Units in the state (Z).
     fragmented : bool                   Whether the state geometry is fragmented.
     VNMs : list                         Vibrational normal modes.
 
@@ -49,6 +50,7 @@ class State(object):
     get_atoms()                         Retrieve list of atom objects from molecules.
     get_moleclist()                     Generate molecule list from geometry.
     get_ncomplex()                      Count number of complex molecules.
+    get_z()                             Count number of stoichiometric Units in the state (Z)
     reconstruct()                       Attempt to reconstruct fragmented state geometry.
     check_fragmentation()               Check if the state geometry is fragmented.
     check_minimum()                     Check if the state is a minimum or almost a minimum.
@@ -142,6 +144,19 @@ class State(object):
     def spin_multiplicity(self):
         return self._source.spin_multiplicity
 
+##########################
+#### Other Properties ####
+##########################
+    @property
+    def Z(self):
+        return self.z
+
+    @property
+    def z(self):
+        if not hasattr(self, "_z"):
+            return self.get_z()
+        return self._z
+
 ###################################
 #### Operations with Molecules ####
 ###################################
@@ -197,6 +212,8 @@ class State(object):
 
     ######
     def get_ncomplex(self, debug: int=0):
+        ## Returns the number of Transition Metal Complexes (TMC) in the unit cell. 
+        ## Gradually replacing it by Z (computed with get_z).
         if debug > 0: print(f"STATE.GET_NCOMPLEX checking fragmentation")
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"Found Fragmented molecules in the geometry of state: {self.name}"
@@ -208,6 +225,30 @@ class State(object):
             if mol.iscomplex: self.ncomplex += 1
         if debug > 0: print(f"State.get_ncomplex {self.ncomplex} complexes found in state: {self.name}")
         return self.ncomplex
+
+    ######
+    def get_z(self, debug: int=0):
+        ## Returns the number of stoichiometric units in the unit cell. 
+        ## Basically, how many times the same stoichiometry unit is repeated in the cell
+        from scope.operations.vecs_and_mats import gcd_list
+        if debug > 0: print(f"STATE.GET_Z checking fragmentation")
+        if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
+        assert not self.fragmented, f"STATE.GET_Z found Fragmented molecules in the geometry of self: {self.name}"
+
+        if debug > 0: print(f"STATE.GET_Z getting moleclist")
+        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+
+        unique = [] 
+        occurrences = []
+        for mol in self.moleclist:
+            found = False
+            for uni in unique:
+                if mol == uni: found = True
+            if not found: 
+                unique.append(mol)
+                occurrences.append(self.get_occurrence(mol))
+        self._z = int(gcd_list(occurrences))
+        return self._z 
     
     ######
     def get_atoms(self, debug: int=0):
@@ -225,6 +266,33 @@ class State(object):
                 self.atoms.append(at)
         self.atoms = [x for _, x in sorted(zip(tmp_indices, self.atoms), key=lambda pair: pair[0])]
         return self.atoms
+
+    ######
+    def get_occurrence(self, substructure: object, debug: int=0) -> int:
+        """
+        Counts the number of times a given substructure appears inside the State.
+        Args:
+            substructure (object): The substructure to search for within the State.
+            debug (int, optional): Debug level for comparison functions. Defaults to 0.
+        Returns:
+            int: The number of times the substructure appears within the State.
+        """
+        ## Finds how many times a substructure appears in self
+        occurrence = 0
+
+        if debug > 0: print(f"STATE.GET_OCCURRENCE checking fragmentation")
+        if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
+        assert not self.fragmented, f"STATE.GET_OCCURRENCE found fragmented molecules in the geometry of cell: {self.name}"
+         
+        if debug > 0: print(f"STATE.GET_OCCURRENCE getting moleclist")
+        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+
+        ## Case of Species inside self
+        if hasattr(substructure,"type"):
+            if substructure.type == 'specie':
+                for mol in self.moleclist:
+                    if mol.__eq__(substructure, with_graph=True): occurrence += 1
+        return occurrence
 
 ########################
 #### Reconstruction ####
@@ -469,19 +537,19 @@ class State(object):
 
     def set_Helec(self, overwrite: bool=True, debug: int=0):
         assert "energy" in self.results
-        if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
-        self.add_result(Data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.set_Helec()"), overwrite=overwrite)
+        if not hasattr(self,"z"): self.get_z(debug=debug)
+        self.add_result(Data("Helec",self.results["energy"].value/self.z,self.results["energy"].units,"state.set_Helec()"), overwrite=overwrite)
 
     def compute_PV_term(self, pressure: float = 1.0, overwrite: bool=False, debug: int=0):
         from scope import constants
         # Volume in angs^3
         # Pressure in kilo-pascal (10e3 Pa)
         if self._source.type != 'cell': return None                     ## Only for Cells
-        if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
+        if not hasattr(self,"z"): self.get_z(debug=debug)
         vm3 = self.volume * 1e-30 * constants.bohr2angs**3              ## Convert volume to m^3
         ppa = float(pressure) * 1e+6                                    ## Convert pressure to Pa 
         pv  = (ppa * vm3)                                               ## [Pa·m3] = [Joule] 
-        pv *= constants.avogadro / 1000 / self.ncomplex                 ## kJ/molecule
+        pv *= constants.avogadro / 1000 / self.z                        ## kJ/molecule
         if overwrite or not "PV" in self.results.keys():
             data = Data("PV",pv,'kj',"state.compute_PV_term()")
             self.add_result(data, overwrite=overwrite)
@@ -493,9 +561,8 @@ class State(object):
     def get_thermal_data(self, Trange: range=range(10,501,1), Helec=None, Selec=None, Hvib=None, Svib=None, Gtot=None, overwrite: bool=False, debug: int=0):
         from scope.thermal_corrections import get_Selec, get_Hvib, get_Svib, get_Gibbs
 
-        if not hasattr(self,"ncomplex"): self.get_ncomplex(debug=debug)
-        if self.ncomplex == 0:  print(f"STATE.GET_THERMAL_DATA: found NO complex molecules")
-        if debug > 0:           print(f"STATE.GET_THERMAL_DATA: found {self.ncomplex} complex molecules")
+        if not hasattr(self,"z"): self.get_z(debug=debug)
+        if debug > 0:           print(f"STATE.GET_THERMAL_DATA: found {self.z} stoichiometric units")
 
         if Hvib is None and Svib is None:
             assert hasattr(self,"isminimum"), f"I can't compute thermal data on this state. Missing VNMs"
@@ -505,7 +572,7 @@ class State(object):
         ############## Helec ##############
         if Helec is None:   ### One can provide specific values for Helec, Selec, Hvib, Svib and Gtot 
             if overwrite or not "Helec" in self.results.keys():
-                self.add_result(Data("Helec",self.results["energy"].value/self.ncomplex,self.results["energy"].units,"state.get_thermal_data()"), overwrite=overwrite)
+                self.add_result(Data("Helec",self.results["energy"].value/self.z,self.results["energy"].units,"state.get_thermal_data()"), overwrite=overwrite)
         else: 
             if isinstance(Helec, Data):
                 if overwrite or not "Helec" in self.results.keys():
@@ -517,7 +584,7 @@ class State(object):
         ############## Selec ##############
         if Selec is None:
             if overwrite or not "Selec" in self.results.keys():
-                self.add_result(get_Selec(self.spin_multiplicity, outunits='au', nmol=self.ncomplex), overwrite=overwrite)
+                self.add_result(get_Selec(self.spin_multiplicity, outunits='au', nmol=self.z), overwrite=overwrite)
         else: 
             if isinstance(Selec, Data):
                 if overwrite or not "Selec" in self.results.keys():
@@ -531,7 +598,7 @@ class State(object):
             if overwrite or not "Hvib" in self.results.keys():
                 Hvib = Collection("Hvib", "Temperature")
                 for temp in Trange:
-                    Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.ncomplex))
+                    Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
                 self.add_result(Hvib, overwrite=overwrite)
         else: 
             if isinstance(Hvib, Collection):
@@ -546,7 +613,7 @@ class State(object):
             if overwrite or not "Svib" in self.results.keys():
                 Svib = Collection("Svib", "Temperature")
                 for temp in Trange:
-                    Svib.add_data(get_Svib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.ncomplex))
+                    Svib.add_data(get_Svib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
                 self.add_result(Svib, overwrite=overwrite)
         else: 
             if isinstance(Svib, Collection):
@@ -595,7 +662,7 @@ class State(object):
         if hasattr(self._source,"type"):   to_print += f' Source Type           = {self._source.type}\n'
         if hasattr(self,"labels"):         to_print += f' Labels                = {self.labels[0]}...\n'
         if hasattr(self,"coord"):          to_print += f' Coord                 = {self.coord[0]}...\n'
-        if hasattr(self,"ncomplex"):       to_print += f' Number of Complexes   = {self.ncomplex}\n' 
+        if hasattr(self,"z"):              to_print += f' Number of Units (Z)   = {self.z}\n' 
         if hasattr(self,"isminimum"):      to_print += f' Is Minimum            = {self.isminimum}\n'
         if hasattr(self,"almost_minimum"): to_print += f' Almost a Minimum      = {self.almost_minimum}\n'
         if hasattr(self,"freq_cm"):        to_print += f' First Frequency (cm-1)= {self.freq_cm[0]}...\n'

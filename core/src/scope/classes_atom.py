@@ -336,8 +336,8 @@ class Atom(object):
         if hasattr(self,"charge"):     to_print += f' Atom Charge                  = {self.charge}\n'
         if hasattr(self,"spin"):       to_print += f' Spin (alpha - beta)          = {self.spin}\n'
         # Adjacency and Metal Adjacency
-        if hasattr(self,"mconnec"):    to_print += f' Metal Adjacency (mconnec)    = {self.mconnec}\n'
-        elif hasattr(self,"madjnum"):  to_print += f' Metal Adjacency (madjnum)    = {self.madjnum}\n'
+        if hasattr(self,"mconnec"):    to_print += f' Metal Adjacencies (mconnec)  = {self.mconnec}\n'
+        elif hasattr(self,"madjnum"):  to_print += f' Metal Adjacencies (madjnum)  = {self.madjnum}\n'
         else:                          to_print += f' No Metal Adjacency Info\n'
         if hasattr(self,"connec"):     to_print += f' Regular Adjacencies (connec) = {self.connec}\n'
         elif hasattr(self,"adjnum"):   to_print += f' Regular Adjacencies (adjnum) = {self.adjnum}\n'
