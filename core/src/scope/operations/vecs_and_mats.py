@@ -30,3 +30,16 @@ def symmetrize(matrix, debug: int=0):
             sym_matrix[idx,jdx] = (matrix[idx,jdx] + matrix[jdx,idx])/2.0
             sym_matrix[jdx,idx] = sym_matrix[idx,jdx]
     return sym_matrix 
+
+def gcd(a, b):
+    # gcd = Greatest common divisor
+    while b != 0:
+        a, b = b, a % b
+    return a
+
+def gcd_list(numbers):
+    # returns the gcd for a list of numbers
+    result = numbers[0]
+    for n in numbers[1:]:
+        result = gcd(result, n)
+    return result
