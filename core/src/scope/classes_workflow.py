@@ -733,8 +733,8 @@ class Computation(object):
         self.software         = qc_data.software
         self.jobtype          = qc_data.jobtype       ## Type of computation (opt, scf, vc-relax)
         self.step             = step
-        self.keyword          = keyword               ## Not the software, but a string used to identify the type of job computation
-        self.suffix           = _job.suffix           ## A string to add to the file name. This should be eliminated 
+        self.keyword          = keyword               ## Normally blank, but it can be used to identify the computation in jobs with complex setups
+        self.suffix           = _job.suffix           ## A string to add to the file name. I think this could be eliminated 
         self.path             = path
         self.index            = len(_job.computations)+1
         self.isregistered     = False
@@ -1124,13 +1124,13 @@ class Computation(object):
         to_print += f' Comp index            = {self.index}\n' 
         to_print += f' Comp step             = {self.step}\n' 
         to_print += f' Comp run_number       = {self.run_number}\n' 
-        to_print += f' Comp keyword          = {self.keyword}\n' 
+        if self.keywords != '': to_print += f' Comp keyword          = {self.keyword}\n' 
         to_print += f' Comp inp_path         = {self.inp_path}\n' 
         to_print += f' Comp out_path         = {self.out_path}\n' 
         to_print += f' Comp isregistered     = {self.isregistered}\n' 
         if self.isregistered: to_print += f' Comp isgood           = {self.isgood}\n' 
         if self.isregistered: to_print += f' Comp isfinished       = {self.isfinished}\n' 
-        if self.isregistered: to_print += f' Comp elapsed_time     = {self.elapsed_time}\n' 
+        if self.isregistered: to_print += f' Comp elapsed_time     = {self.elapsed_time} seconds\n' 
         if hasattr(self,"output"): to_print += f' Has OUTPUT            = YES\n'
         else:                      to_print += f' Has OUTPUT            = NO\n'
         to_print += '\n'
