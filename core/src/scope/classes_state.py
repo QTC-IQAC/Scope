@@ -2,7 +2,7 @@ import numpy as np
 from scope.connectivity      import *
 from scope.classes_data      import Collection, Data
 from scope.classes_specie    import *
-from scope.operations.dicts_and_lists import where_in_array, extract_from_list
+from scope.operations.dicts_and_lists import extract_from_list
 from scope.elementdata       import ElementData
 elemdatabase = ElementData()
 
@@ -71,7 +71,6 @@ class State(object):
         self.name         = name
         self.results      = dict()
         self.computations = []
-
 
 ############################################
 #### Basic Functions to add information ####
