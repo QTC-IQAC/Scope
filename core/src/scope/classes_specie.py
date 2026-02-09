@@ -648,9 +648,9 @@ class Specie(object):
     ###################################
     def __repr__(self, indirect: bool=False):
         to_print                   = ''
-        if not indirect: to_print += '------------------------------------------------\n'
-        if not indirect: to_print += '------------- SCOPE SPECIE Object --------------\n'
-        if not indirect: to_print += '------------------------------------------------\n'
+        if not indirect: to_print += '----------------------------------\n'
+        if not indirect: to_print += '------ SCOPE SPECIE Object -------\n'
+        if not indirect: to_print += '----------------------------------\n'
         to_print += f' Version               = {self.version}\n'
         to_print += f' Type                  = {self.type}\n'
         to_print += f' Sub-Type              = {self.subtype}\n'
@@ -786,9 +786,9 @@ class Molecule(Specie):
 
     def __repr__(self, indirect: bool=False):
         to_print                   = ''
-        if not indirect: to_print += '--------------------------------------------------\n'
-        if not indirect: to_print += '------------- SCOPE MOLECULE Object --------------\n'
-        if not indirect: to_print += '--------------------------------------------------\n'
+        if not indirect: to_print += '-----------------------------------\n'
+        if not indirect: to_print += '------ SCOPE MOLECULE Object ------\n'
+        if not indirect: to_print += '-----------------------------------\n'
         to_print += Specie.__repr__(self, indirect=True)
         if hasattr(self,"ligands"):  
             if self.ligands is not None: 
@@ -1058,9 +1058,9 @@ class Ligand(Specie):
     ######
     def __repr__(self, indirect: bool=False):
         to_print                   = ''
-        if not indirect: to_print += '------------------------------------------------\n'
-        if not indirect: to_print += '------------- SCOPE LIGAND Object --------------\n'
-        if not indirect: to_print += '------------------------------------------------\n'
+        if not indirect: to_print += '-----------------------------------\n'
+        if not indirect: to_print += '------- SCOPE LIGAND Object -------\n'
+        if not indirect: to_print += '-----------------------------------\n'
         to_print += Specie.__repr__(self, indirect=True)
         if hasattr(self,"rdkit_obj"):  to_print += f' Has RDKIT Object      = YES\n'
         else:                          to_print += f' Has RDKIT Object      = NO\n'
@@ -1657,9 +1657,9 @@ class Group(Specie):
     ######
     def __repr__(self, indirect: bool=False) -> str:
         to_print                   = ''
-        if not indirect: to_print += '------------------------------------------------\n'
-        if not indirect: to_print += '------------- SCOPE GROUP Object ---------------\n'
-        if not indirect: to_print += '------------------------------------------------\n'
+        if not indirect: to_print += '-----------------------------------\n'
+        if not indirect: to_print += '------- SCOPE GROUP Object --------\n'
+        if not indirect: to_print += '-----------------------------------\n'
         to_print += Specie.__repr__(self, indirect=True)
         if not indirect: to_print += '\n'
         return to_print
