@@ -213,6 +213,22 @@ def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems
     print(f"AZOS.COMBINE_SMILES: END. Total valid systems: {len(systems)}")
     return systems
 
+def get_abs_spectrum(state1, state2, normalize: bool = False, units: bool = False):
+        # Add checks for thermal stability
+        if not hasattr(cis_state, 'es_list') or not hasattr(trans_state, 'es_list'):
+            print('WARNING: No TDDFT data found for cis or trans isomers')
+            return None, None, None, None
+        Z_e = [es.energy for es in state1.es_list]
+        Z_f = [es.fosc for es in state1.es_list]
+        E_e = [es.energy for es in state2.es_list]
+        E_f = [es.fosc for es in state2.es_list]
+        Emin = min(min(Z_e), min(E_e)) - 1
+        Emax = max(max(Z_e), max(E_e)) + 1
+        x = np.linspace(Emin, Emax, 5000)
+        sigma_Z = build_sigma(zip(Z_e, Z_f), x, normalize=False,units=False)     # Absolute
+        sigma_E = build_sigma(zip(E_e, E_f), x, normalize=False,units=False)
+        return 1240 / x[::-1], sigma_Z, sigma_E 
+
 ################################
 ###     HELP FUNCTION
 ################################

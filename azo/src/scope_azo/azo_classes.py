@@ -773,44 +773,19 @@ class Molecule_azo(Molecule):
                 state.energy = parse_energy(lines)
                 state.gtot = parse_free_energy(lines)
 
-                labels, coord = parse_last_geometry(lines, debug=1)
-                state.set_geometry(labels, coord)
-                newG = data("Gtot", state.gtot, "au", "parse_free_energy")
-                state.add_result(newG)
+                    labels, coord = output.get_last_geometry(lines)
+                    state.set_geometry(labels, coord)
+                    newG = Data("Gtot", state.gtot, "au", "get_free_energy")
+                    newH = Data("energy", state.gtot, "au", "get_last_energy")
+                    state.add_result(newG)
+                else:
+                    print('LINK_OPT_TO_STATE: WARNING: An optimization did not finished')
+                    print(f'LINK_OPT_TO_STATE: Optimization file: {filepath}')
+
+
         else:
             print(f"File {filepath} does not exist.")
 
-    def get_abs_spectrum(self, normalize: bool = False, units: bool = False, custom_cis: str = None, custom_trans: str = None):
-        if custom_cis is not None:
-            name = str(custom_cis)
-            Z_exists, cis = self.find_conformer(custom_cis)
-        if custom_trans:
-            name = str(custom_trans)
-            E_exists, trans = self.find_conformer(custom_trans)
-        if not Z_exists or not E_exists:
-            print(f'Z_exists: {Z_exists}, E_exists: {E_exists}')
-            raise ValueError(f'Error: No cis or trans conformers found for system {self.name}')
-        opt_Z_exists, cis_state = find_state(cis, 'opt')
-        opt_E_exists, trans_state = find_state(trans, 'opt')
-        if not opt_Z_exists or not opt_E_exists:
-            print(f'opt_Z_exists: {opt_Z_exists}, opt_E_exists: {opt_E_exists}')
-            raise ValueError(f'Error: No opt state found for Z or E isomers')
-
-        # Add checks for thermal stability
-        if not hasattr(cis_state, 'es_list') or not hasattr(trans_state, 'es_list'):
-            print('WARNING: No TDDFT data found for cis or trans isomers')
-            return None, None, None, None
-
-        Z_e = [es.energy for es in cis_state.es_list]
-        Z_f = [es.fosc for es in cis_state.es_list]
-        E_e = [es.energy for es in trans_state.es_list]
-        E_f = [es.fosc for es in trans_state.es_list]
-        Emin = min(min(Z_e), min(E_e)) - 1
-        Emax = max(max(Z_e), max(E_e)) + 1
-        x = np.linspace(Emin, Emax, 5000)
-        sigma_Z = build_sigma(zip(Z_e, Z_f), x, normalize=False,units=False)     # Absolute
-        sigma_E = build_sigma(zip(E_e, E_f), x, normalize=False,units=False)
-        return 1240 / x[::-1], sigma_Z, sigma_E 
 
     def get_azo_substituents(self, debug: int=0):
         self.azo_substituents = []
