@@ -499,6 +499,110 @@ class System_azo(System):
                         raise Exception(f'AZOS.CREATE_TS.TSINV_R: [ERROR] TSinv_r fragmented for {self.name}')
         return created_ts
 
+    def plot_energies(self):
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        plt.rcParams.update({
+            'font.size': 12,
+            'font.family': 'sans-serif',
+            'axes.linewidth': 1.5,
+            'xtick.major.width': 1.5,
+            'ytick.major.width': 1.5
+        })
+
+        # --- SOURCE DETECTION ---
+        # Find Transition States
+        ts_candidates = [i for i, source in enumerate(self.sources) 
+            if source.name.lower().startswith('ts') 
+            and "Gtot" in source.find_state('opt')[1].results]
+        
+        # Find Isomers
+        isomer_candidates = [i for i, source in enumerate(self.sources) 
+            if (source.name.lower().startswith('cis') or source.name.lower().startswith('trans')) 
+            and "Gtot" in source.find_state('opt')[1].results]
+        candidates_idx = ts_candidates + isomer_candidates
+        if not candidates_idx:
+            print("No valid isomers or TS structures with 'Gtot' found.")
+            return
+
+        energies = []
+        labels = []
+
+        # --- DATA EXTRACTION ---
+        for i in candidates_idx:
+            source = self.sources[i]
+            opt_results = source.find_state('opt')[1].results
+            
+            if source.spin == 2 and "Gtot_corr" in opt_results:
+                e_val = opt_results["Gtot_corr"].value
+            else:
+                e_val = opt_results["Gtot"].value
+                print('AZO.PLOT_ENERGIES: WARNING! A source in the triplet state does not have its Free Energy corrected.')
+                
+            energies.append(e_val)
+            labels.append(source.name)
+
+        energies = np.array(energies)
+        labels = np.array(labels)
+
+        # --- CLASSIFICATION & COORDINATES ---
+        is_trans = np.char.startswith(np.char.lower(labels), "trans")
+        is_cis = np.char.startswith(np.char.lower(labels), "cis")
+
+        # X-axis: TS default to 2.0
+        x_coords = np.full_like(energies, 2.0)
+        x_coords[is_trans] = 1.0  # E isomer
+        x_coords[is_cis] = 3.0    # Z isomer
+
+        # --- NORMALIZATION ---
+        if np.any(is_trans):
+            # Use the first trans isomer as the reference zero
+            ref_idx = np.where(is_trans)[0][0]
+            ref_energy = energies[ref_idx]
+            
+            energies = (energies - ref_energy) * Constants.har2kJmol * Constants.kJmol2kcal  # Hartree to kcal/mol
+            ylabel = r"$\Delta G$ (kcal mol$^{-1}$)"
+        else:
+            ylabel = "Gibbs Energy (Hartree)"
+
+        # --- HIGHLIGHT LOGIC ---
+        ts_indices = (x_coords == 2.0)
+        # Added a check to ensure we don't pass an empty array to np.min
+        min_ts_energy = np.min(energies[ts_indices]) if np.any(ts_indices) else None
+
+        # --- PLOTTING ---
+        fig, ax = plt.subplots(figsize=(7, 5))
+
+        for x, e, name in zip(x_coords, energies, labels):
+            
+            color = 'black'
+            font_weight = 'normal'
+            
+            # Lowest Energy TS is highlighted
+            if x == 2.0 and min_ts_energy is not None and np.isclose(e, min_ts_energy):
+                color = '#D55E00'  
+                font_weight = 'bold'
+
+            ax.plot(x, e, marker='_', markersize=50, markeredgewidth=3, color=color)
+            
+            clean_name = name.replace("trans", "").replace("cis", "").strip("-_ ")
+            ax.text(x + 0.4, e - 0.5, clean_name, 
+                    ha='center', va='bottom', 
+                    fontsize=10, color=color, weight=font_weight)
+
+        # --- AXIS FORMATTING ---
+        ax.set_ylabel(ylabel)
+        ax.set_xticks([1, 2, 3])
+        ax.set_xticklabels(['E', 'TS', 'Z'])
+        ax.set_xlim(0.5, 3.5)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        plt.tight_layout()
+        plt.show()
+
+
     def get_PSS(self, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
 
         lambda_grid, sigma_Z, sigma_E = self.get_abs_spectrum(normalize=False, units=True, get_PSS=True)
