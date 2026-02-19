@@ -593,3 +593,25 @@ def show_thermal_data(systems):
 
             print(f'by {trans.mets}\n')
             print('\n')
+
+def format_time(t):
+    """
+    Converts seconds to a more comprehensive unit.
+    """
+    units = [
+        (1e-15, "fs", 1e15),
+        (1e-12, "ps", 1e12),
+        (1e-9,  "ns", 1e9),
+        (1e-6,  "µs", 1e6),
+        (1e-3,  "ms", 1e3),
+        (1,     "s",  1),
+        (60,    "min", 1/60),
+        (3600,  "h",  1/3600),
+        (86400, "d",  1/86400),
+        (31557600, "y", 1/31557600),        # y
+        (31557600000, "ky", 1/31557600000)  # millenia
+    ]
+    for threshold, unit, factor in units:
+        if abs(t) < threshold * 100:
+            return f"{t * factor:.2f} {unit}"
+    return f"{t / 31557600000:.2f} ka"
