@@ -587,76 +587,21 @@ class Molecule_azo(Molecule):
     def __init__(self, labels, coord):
         Molecule.__init__(self, labels, coord)
         self.subtype  = "molecule_azo"
+
+    def set_halflife_time(self, skip_triplets : bool = True, overwrite = False, debug: int = 0):
+        '''
+        Computes t0.5 in seconds for a given conformer/isomer stored in a Molecule_azo object e.g. cis or trans using the Eyring equation.
+        Saves the result as a data object with the key 'halflife' in the Molecule_azo object.
+        Minimum energy Transition State can be accessed using the key 'mets' in the Molecule_azo object. E. g. cis.mets
+        The argument skip_triplets is used to whether take into account triplet states, since their optimized geometry could 
         
-    def correct_tripletG(self, triplet_specie, T:float=298.15, overwrite = False, p_sh:float = 0.0002, debug: int=0):
-        '''
-        Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
-        Correction is done considering the increase of energy due to surface hopping between the singlet and triplet PESs. 
-
-        Parameters
-        ----------
-        triplet_specie : Molecule_azo
-            The triplet Molecule_azo object to correct the Gtot of.
-        T : float, optional
-            The temperature in Kelvin. The default is 298.15 K.
-        overwrite : bool, optional
-            Whether to overwrite the existing Gtot_corr value. The default is False.
-        p_sh : float, optional
-            The probability of surface hopping. The default is 0.0002.
-        debug : int, optional
-            The debug level. The default is 0
-        '''
-        k_b = Constants.boltz_J # J/K
-        h = Constants.planck_Js # J·s
-        R = Constants.R_J       # 8.31 J/(K·mol)
-
-        found_iso_opt, iso_opt = self.find_state("opt")
-        found_triplet_opt, triplet_opt = triplet_specie.find_state("opt")
-
-        if not found_iso_opt or not found_triplet_opt:
-            print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: No opt state found for {self.name} or {triplet_specie.name}.')
-            return
-
-        parent = self._sys
-        exist = 'Gtot_corr' in triplet_opt.results
-
-        if not 'Gtot' in iso_opt.results or not 'Gtot' in triplet_opt.results:
-            print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: No Gtot found for {self.name} or {triplet_specie.name}.')
-            return
-        
-        if not exist or overwrite:
-            if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Found Gtot for {self.name} and {triplet_specie.name}. Correcting Gtot of {parent.name} triplet state.')
-            G_triplet = triplet_opt.results['Gtot'].value
-            G_iso = iso_opt.results['Gtot'].value
-
-            if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: {parent.name} triplet G: {G_triplet} hartree, iso G: {G_iso} hartree')
-
-            dG = (G_triplet - G_iso) * Constants.har2kJmol * 1000  # in J/mol
-            t, k = compute_t(G_triplet, G_iso, T)
-            k_sh = k * p_sh *p_sh 
-            deltax = - (dG + R * T * np.log((h*k_sh)/(k_b*T))) # in J/mol
-
-            if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Adding deltax in kcal/mol: {deltax*0.24/1000}')
-            newG = (G_triplet + deltax / (1000*Constants.har2kJmol))
-            newG = float(newG)
-            newdata = Data("Gtot_corr", newG, "au", "correct_triplet_G")
-            
-            triplet_opt.add_result(newdata)
-            if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Corrected Gtot of {parent.name} triplet state by {deltax*0.24/1000:.2f} Kcal/mol.')
-            return newG
-
-    def set_iso_halftime(self, skip_triplets : bool = True, overwrite = False):
-        '''
-        Computes t0.5 in seconds for a given conformer/isomer e.g. cis or trans using the Eyring equation.
-        Saves the result as a data object with the key 'halftime' in the conformer object.
-        Minimum energy Transition State can be accessed using the key 'mets' in the conformer object. E. g. cis.mets
 
         Parameters
         ----------
         self : Molecule_azo
-            The Molecule_azo object to compute the halftime for.
+            The Molecule_azo object to compute the halflife for.
         skip_triplets : bool
-            Skip triplet conformers in halftime calculation.
+            Skip triplet conformers in halflife calculation.
         overwrite : bool
             Overwrite existing t0.5 values.
 
