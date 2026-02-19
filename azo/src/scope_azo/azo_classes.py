@@ -394,8 +394,8 @@ class System_azo(System):
                         triplet_state.set_geometry(labels, coord)
                         self.add_source('TSrot_A_T', ts_triplet)
                         created_ts.append(ts_triplet)
-                        if debug > 0: print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_T Specie_Azo successfully created for {self.name}')
-                    if debug > 0: print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_S Specie_Azo successfully created for {self.name}')
+                        if debug > 0:   print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_T Molecule_azo successfully created for {self.name}')
+                    if debug > 0:       print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_S Molecule_azo successfully created for {self.name}')
                 else:
                     raise Exception(f'AZOS.CREATE_TS.TSROT_A: [ERROR] TSrot_A fragmented for {self.name}')
 
@@ -435,8 +435,8 @@ class System_azo(System):
                         triplet_state.set_geometry(labels, coord)
                         self.add_source('TSrot_B_T', ts_triplet)
                         created_ts.append(ts_triplet)
-                        if debug > 0: print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_T Specie_Azo successfully created for {self.name}')
-                    if debug > 0: print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_S Specie_Azo successfully created for {self.name}')
+                        if debug > 0:   print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_T Molecule_Azo successfully created for {self.name}')
+                    if debug > 0:       print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_S Molecule_Azo successfully created for {self.name}')
                 else:
                     raise Exception(f'WARNING: TSrot_B fragmented for {self.name}')
         
@@ -464,7 +464,7 @@ class System_azo(System):
                         ts_state.set_geometry(labels, coord)
                         self.add_source('TSinv_l', ts)
                         created_ts.append(ts)
-                        if debug > 0: print(f'AZOS.CREATE_TS.TSINV_L: TSinv_l Specie_Azo successfully created for {self.name}')
+                        if debug > 0: print(f'AZOS.CREATE_TS.TSINV_L: TSinv_l Molecule_azo successfully created for {self.name}')
                         break
                     else:
                         raise Exception(f'AZOS.CREATE_TS.TSINV_L: [ERROR] TSinv_l fragmented for {self.name}')
@@ -493,7 +493,7 @@ class System_azo(System):
                         ts_state.set_geometry(labels, coord)
                         self.add_source('TSinv_r', ts)
                         created_ts.append(ts)
-                        if debug > 0: print(f'AZOS.CREATE_TS.TSINV_R: TSinv_r Specie_Azo successfully created for {self.name}')
+                        if debug > 0: print(f'AZOS.CREATE_TS.TSINV_R: TSinv_r Molecule_azo successfully created for {self.name}')
                         break
                     else:
                         raise Exception(f'AZOS.CREATE_TS.TSINV_R: [ERROR] TSinv_r fragmented for {self.name}')
@@ -734,10 +734,10 @@ class Molecule_azo(Molecule):
         found_iso_opt, iso_state = self.find_state("opt")
 
         if not found_iso_opt:
-            raise Exception(f'AZO.SPECIE_AZO.SET_HALFLIFE_TIME: Optimization state not found for {self.name}.')
+            raise Exception(f'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: Optimization state not found for {self.name}.')
              
         if 'Gtot' in iso_state.results.keys(): g_iso = iso_state.results['Gtot'].value
-        else: raise ValueError('AZO.SPECIE_AZO.SET_HALFLIFE_TIME: Gtot not found for isomer')
+        else: raise ValueError('AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: Gtot not found for isomer')
 
         parent = self._sys
         candidates = [source for source in parent.sources if source.name.lower().startswith('ts')]
@@ -751,14 +751,14 @@ class Molecule_azo(Molecule):
         for ts in candidates:
             found_ts_state, ts_state = ts.find_state("opt")
             if not found_ts_state or not 'Gtot' in ts_state.results.keys():
-                print(f'AZO.SPECIE_AZO.SET_HALFLIFE_TIME: [WARNING] Optimization state or Gtot not found for {ts.name}.')
+                print(f'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: [WARNING] Optimization state or Gtot not found for {ts.name}.')
                 continue
             # Use only TSs with Gtot or Gtot_corr
 
             if ts.spin == 2:     # Use corrected Gtot for triplets
                 if not skip_triplets:
                     if 'Gtot_corr' in ts_state.results.keys(): energy = ts_state.results['Gtot_corr'].value
-                    else: raise ValueError(f'AZO.SPECIE_AZO.SET_HALFLIFE_TIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
+                    else: raise ValueError(f'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
                 else:
                     continue
             else:   energy = ts_state.results['Gtot'].value
@@ -768,8 +768,8 @@ class Molecule_azo(Molecule):
             ts_values.append(energy)
         
         if not hasattr(self, 'halflife') or overwrite:
-            if debug > 0: print(rf'AZO.SPECIE_AZO.SET_HALFLIFE_TIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')
-            if debug > 0: print(f'AZO.SPECIE_AZO.SET_HALFLIFE_TIME:Doing halflife for {parent.name} {self.name}')
+            if debug > 0: print(rf'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')
+            if debug > 0: print(f'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME:Doing halflife for {parent.name} {self.name}')
             
             # Choosing Minimum Energy TS (mets)
             min_idx = int(np.argmin(ts_values))
