@@ -1,11 +1,16 @@
 import numpy as np
-from scope import *
-from scope.classes_system import *
-from scope.classes_specie import *
-from scope.software.gaussian.g16_parse import *
-from scope.geometry import *
-from scope.connectivity import *
-from scope_azo.azo_functions import *
+from    scope                               import *
+from    scope.classes_system                import *
+from    scope.classes_specie                import *
+from    scope.software.gaussian.g16_parse   import *
+from    scope.geometry                      import *
+from    scope.connectivity                  import *
+from    scope_azo.azo_functions             import *
+from    scope.parse_general                 import search_string, read_lines_file
+from    scope.software.gaussian.g16_parse   import * 
+from    scope.software.gaussian.g16_output  import * 
+from    scope.classes_data                  import *
+from    scope.classes_qc                    import *
 
 ############################################
 #### SYSTEM Object adapted to System_azo ###
