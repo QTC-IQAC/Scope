@@ -7,7 +7,6 @@
 ################################
 
 import numpy                    as np
-import scipy.constants          as Cons
 from copy                       import deepcopy
 from scope.elementdata          import ElementData
 from scope.geometry             import *
@@ -94,7 +93,7 @@ def build_sigma(transitions, E_grid, sigma=0.2, normalize=False, units=True):
     spec = np.zeros_like(E_grid)
     for E0, f in transitions:
         spec += gaussian(E_grid, E0, f,sigma=sigma, normalize=normalize)
-    K = (np.pi * Cons.h * Cons.e) / (Cons.epsilon_0 * Constants.speed_light * Cons.electron_mass)
+    K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
     if units:
         return spec[::-1] * K  # in m^2 / molecule
     else: 
@@ -134,7 +133,7 @@ def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug
         I_lambda = Itot * 1e-3 / 1e-6 * profile  # mW/mm2 to W/m2/nm
     # I_lambda = Itot * profile  # W/m2/nm
     lam_m = np.ones_like(lam_grid)* lam_grid * 1e-9  # in m
-    photon_E = Cons.h * Constants.speed_light / lam_m  # in J
+    photon_E = Constants.planck_Js * Constants.speed_light / lam_m  # in J
     phi = I_lambda / photon_E           # photons m-2 s-1 nm-1        
     return phi
 
@@ -216,7 +215,7 @@ def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems
 
 def get_abs_spectrum(state1, state2, normalize: bool = False, units: bool = False):
         # Add checks for thermal stability
-        if not hasattr(cis_state, 'es_list') or not hasattr(trans_state, 'es_list'):
+        if not hasattr(state1, 'es_list') or not hasattr(state2, 'es_list'):
             print('WARNING: No TDDFT data found for cis or trans isomers')
             return None, None, None, None
         Z_e = [es.energy for es in state1.es_list]
