@@ -780,6 +780,7 @@ class Molecule_azo(Molecule):
         to_print = ""
         to_print += f'---------- SCOPE Molecule_azo Object ------------\n'
         to_print += Molecule.__repr__(self, indirect=True)
+        # if hasattr(self,"halflife"): to_print += f'     Half-life (t1/2):{self.halflife}                         \n'
         to_print +=  '-------------------------------------------------\n'
         return to_print
 
