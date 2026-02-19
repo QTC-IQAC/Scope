@@ -768,10 +768,11 @@ class Molecule_azo(Molecule):
 
                 state.opt_filepath = filepath
                 lines = read_lines_file(filepath)
-                opt_finished = parse_opt_status(lines)
-                if not opt_finished: raise ValueError('Optimization not finished')
-                state.energy = parse_energy(lines)
-                state.gtot = parse_free_energy(lines)
+                output= G16_output(lines)
+                opt_finished = output.get_optimization_finished()
+                if opt_finished:
+                    state.energy = output.get_last_energy()
+                    state.gtot = output.get_free_energy()
 
                     labels, coord = output.get_last_geometry(lines)
                     state.set_geometry(labels, coord)
