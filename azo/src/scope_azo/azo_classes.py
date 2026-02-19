@@ -741,11 +741,13 @@ class Molecule_azo(Molecule):
                 state.tda_filepath = filepath
                 state.es_list = []
                 lines = read_lines_file(filepath)
-                state.gs_energy = parse_energy_from_step(lines)
+                # state.gs_energy = parse_energy_from_step(lines)
                 if parse_status_finished(lines):
                     for st_num in range(1,11):
-                        if st_num < 10:    line_nums, found = search_string(f"Excited State   {st_num}:", lines, typ='first')
-                        elif st_num == 10: line_nums, found = search_string(f"Excited State  {st_num}:", lines, typ='first')
+                        if st_num < 10:    
+                            line_nums, found = search_string(f"Excited State   {st_num}:", lines, typ='first')
+                        elif st_num >= 10 and st_num < 100: 
+                            line_nums, found = search_string(f"Excited State  {st_num}:", lines, typ='first')
                         if found:
                             dummy, dummy, idx, dummy, energy, dummy, wavelength, dummy, fosc, s2 = lines[line_nums].split() 
                             idx  = int(idx.replace(':',''))
