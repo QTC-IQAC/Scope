@@ -618,10 +618,10 @@ class System_azo(System):
         # Half-lives in seconds
         if not hasattr(trans_state, 'halflife'):
             print('No halflife found for trans isomer. Computing...')
-            self.set_iso_halftime('trans', skip_triplets=True, overwrite=False)
+            self.set_halflife_time('trans', skip_triplets=True, overwrite=False)
         if not hasattr(cis_state, 'halflife'):
             print('No halflife found for cis isomer. Computing...')
-            self.set_iso_halftime('cis', skip_triplets=True, overwrite=False)
+            self.set_halflife_time('cis', skip_triplets=True, overwrite=False)
             raise ValueError(f'Error: No halflife found for Z or E isomers in system {self.name}')
         if t_EZ is None:
             t_EZ = trans_state.results['halflife'].value
@@ -751,11 +751,11 @@ class Molecule_azo(Molecule):
         for ts in candidates:
             found_ts_state, ts_state = ts.find_state("opt")
             if not found_ts_state or not 'Gtot' in ts_state.results.keys():
-                print(f'AZO.SPECIE_AZO.SET_HALFTIME: [WARNING] Optimization state or Gtot not found for {ts.name}.')
+                print(f'AZO.SPECIE_AZO.SET_HALFLIFE_TIME: [WARNING] Optimization state or Gtot not found for {ts.name}.')
                 continue
             # Use only TSs with Gtot or Gtot_corr
 
-            if ts.spin == 3:     # Use corrected Gtot for triplets
+            if ts.spin == 2:     # Use corrected Gtot for triplets
                 if not skip_triplets:
                     if 'Gtot_corr' in ts_state.results.keys(): energy = ts_state.results['Gtot_corr'].value
                     else: raise ValueError(f'AZO.SPECIE_AZO.SET_HALFLIFE_TIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
@@ -764,9 +764,6 @@ class Molecule_azo(Molecule):
             else:   energy = ts_state.results['Gtot'].value
 
             name = ts.name 
-            # if type(energy) is not float:
-            #     energy = 0.
-            #     print("Warning: energy is not a float for", name, 'Setting to 0.')
             ts_names.append(name)
             ts_values.append(energy)
         
@@ -833,7 +830,6 @@ class Molecule_azo(Molecule):
         '''
         if not hasattr(state, 'opt') or overwrite:
             if os.path.exists(filepath):
-
                 state.opt_filepath = filepath
                 lines = read_lines_file(filepath)
                 output= G16_output(lines)
