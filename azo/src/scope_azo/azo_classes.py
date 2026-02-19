@@ -666,19 +666,27 @@ class Molecule_azo(Molecule):
         The function will only consider TSs that have an opt state with a Gtot value, or Gtot_corr value if skip_triplets is False.
         
         '''
+
+        # Check if triplets are corrected.
+
+        iscorrect = check_triplet(self, overwrite=overwrite, debug=debug)
+
+        if not iscorrect:
+            raise Exception("There has been an error with correcting triplet Gtot. Check if computations have finished ")
+
         ts_values = []
         ts_names = []
 
         found_iso_opt, iso_state = self.find_state("opt")
 
         if not found_iso_opt:
-            raise Exception(f'AZO.SPECIE_AZO.SET_HALFTIME: Optimization state not found for {self.name}.')
+            raise Exception(f'AZO.SPECIE_AZO.SET_HALFLIFE_TIME: Optimization state not found for {self.name}.')
              
         if 'Gtot' in iso_state.results.keys(): g_iso = iso_state.results['Gtot'].value
-        else: raise ValueError('AZO.SPECIE_AZO.SET_HALFTIME: Gtot not found for isomer')
+        else: raise ValueError('AZO.SPECIE_AZO.SET_HALFLIFE_TIME: Gtot not found for isomer')
 
         parent = self._sys
-        candidates = [source for source in parent.sources if not source.name.lower().startswith('cis') or not source.name.lower().startswith('trans')]
+        candidates = [source for source in parent.sources if source.name.lower().startswith('ts')]
         candidates_names = [source.name for source in candidates]
 
         if 'TSrot_A_T' in candidates_names or 'TSrot_B_T' in candidates_names:
@@ -696,7 +704,7 @@ class Molecule_azo(Molecule):
             if ts.spin == 3:     # Use corrected Gtot for triplets
                 if not skip_triplets:
                     if 'Gtot_corr' in ts_state.results.keys(): energy = ts_state.results['Gtot_corr'].value
-                    else: raise ValueError(f'AZO.SPECIE_AZO.SET_HALFTIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
+                    else: raise ValueError(f'AZO.SPECIE_AZO.SET_HALFLIFE_TIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
                 else:
                     continue
             else:   energy = ts_state.results['Gtot'].value
@@ -709,28 +717,32 @@ class Molecule_azo(Molecule):
             ts_values.append(energy)
         
         if not hasattr(self, 'halflife') or overwrite:
-            if debug > 0: print(rf'AZO.SPECIE_AZO.SET_HALFTIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')
-            if debug > 0: print(f'AZO.SPECIE_AZO.SET_HALFTIME:Doing halftime for {parent.name} {self.name}')
+            if debug > 0: print(rf'AZO.SPECIE_AZO.SET_HALFLIFE_TIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')
+            if debug > 0: print(f'AZO.SPECIE_AZO.SET_HALFLIFE_TIME:Doing halflife for {parent.name} {self.name}')
+            
             # Choosing Minimum Energy TS (mets)
             min_idx = int(np.argmin(ts_values))
-            mets = ts_names[min_idx]                        
+            mets = ts_names[min_idx]        # Name of the METS 
             g_cross = ts_values[min_idx]
             dG_cross = (float(g_cross)- float(g_iso)) * Constants.har2kJmol * 0.24 # in Kcal/mol
-            # Compute and store halftime
+            
+            # Compute and store halflife
             t,k = compute_t(float(g_cross), float(g_iso))           
             if debug > 0: print(t, ' s for isomer ', self.name)
             new_time = Data('halflife', float(t), 's', 'compute_t')
             self.halflife = float(t)
             self.mets = mets
-            self.add_result(new_time, overwrite)
+            iso_state.add_result(new_time, overwrite=overwrite)
             
             if debug > 0: print(dG_cross, 'for isomer ', self.name)
-            self.dG_cross = dG_cross
-            newdata = Data('dG_cross', float(dG_cross), 'kcal/mol', 'set_iso_halftime')
-            self.add_result(newdata, overwrite)
+            self.dG_cross = dG_cross        # Stored in kcal/mol
+            newdata = Data('dG_cross', float(dG_cross), 'kcal/mol', 'set_halflife_time')
+            iso_state.add_result(newdata, overwrite=overwrite)
         else: 
             print(f'State not found in {self.name}.')
-        print('Done! Note that missing energy values have been set to 0.')
+        print(f'AZO.SET_HALFLIFE_TIME: Half-life time has been computed for {self.name} and was stored as a result to the corresponding State!')
+        print(f'AZO.SET_HALFLIFE_TIME: dG_cross and mets can be accessed by self.dG_cross and self.mets!')
+        
 
     def link_tda_to_state(self, state: object, filepath: str, overwrite: bool=False):
         '''
