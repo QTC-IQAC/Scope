@@ -523,7 +523,7 @@ def correct_tripletG(isomer_state, triplet_state, T:float=298.15, overwrite = Fa
         newG = float(newG)
         newG_data = Data("Gtot_corr", newG, "au", "correct_tripletG")
         
-        triplet_state.add_result(newG_data)
+        triplet_state.add_result(newG_data, overwrite=overwrite)
         if debug > 0: print (f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Corrected Gtot of {triplet_source.name} triplet state by {deltax*0.24/1000:.2f} Kcal/mol.')
         return newG_data
 
@@ -551,8 +551,7 @@ def check_triplet(input_object, overwrite:bool = False, debug:int = 0):
         for idx in triplet_indices:
             exist_state, triplet_state = system.sources[idx].find_state('opt')
             if exist_state:
-                correct_tripletG(trans_state, triplet_state, overwrite, debug)
-                
+                correct_tripletG(trans_state, triplet_state, overwrite=overwrite, debug=debug)
                 if "Gtot_corr" in triplet_state.results.keys(): good+=1
     if good == len(triplet_indices): return True
     return False
