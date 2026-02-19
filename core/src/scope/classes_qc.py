@@ -203,5 +203,5 @@ class ExcitedState(object):
         to_print += f'  {self.energy:6.2f} eV'
         to_print += f'  {self.wavelength:6f} nm'
         to_print += f'  {self.fosc:6f}'
-        to_print += f'  {self.get_character()}'
+        # to_print += f'  {self.get_character()}'
         return to_print
