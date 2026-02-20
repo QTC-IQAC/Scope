@@ -613,3 +613,139 @@ def format_time(t):
         if abs(t) < threshold * 100:
             return f"{t * factor:.2f} {unit}"
     return f"{t / 31557600000:.2f} ka"
+
+
+#######################################
+#
+#         OPTICAL PROPERTIES
+#             FUNCTIONS
+#
+#######################################
+
+def get_abs_spectrum(state1, state2, normalize: bool = False, units: bool = False):
+        # Add checks for thermal stability
+        if not hasattr(state1, 'es_list') or not hasattr(state2, 'es_list'):
+            print('WARNING: No TDDFT data found for cis or trans isomers')
+            return None, None, None, None
+        Z_e = [es.energy for es in state1.es_list]
+        Z_f = [es.fosc for es in state1.es_list]
+        E_e = [es.energy for es in state2.es_list]
+        E_f = [es.fosc for es in state2.es_list]
+        Emin = min(min(Z_e), min(E_e)) - 1
+        Emax = max(max(Z_e), max(E_e)) + 1
+        x = np.linspace(Emin, Emax, 5000)
+        sigma_Z = build_sigma(zip(Z_e, Z_f), x, normalize=False,units=False)     # Absolute
+        sigma_E = build_sigma(zip(E_e, E_f), x, normalize=False,units=False)
+        return 1240 / x[::-1], sigma_Z, sigma_E 
+
+def get_PSS(cis_state, trans_state, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
+
+    cis_source = cis_state._source
+    trans_source = trans_state._source
+    system = cis_source._sys
+    lambda_grid, sigma_Z, sigma_E = get_abs_spectrum(cis_state, trans_state, normalize=False, units=True, get_PSS=True) # Need units to compute PSS
+
+    # Photon flux from lamp
+    photon_flux = get_photon_flux_spectrum(lamp.wavelength, lamp.fwhm, lambda_grid, Itot=lamp.irradiance)
+    
+    # Half-lives in seconds
+    if not hasattr(trans_state, 'halflife'):
+        print('No halflife found for trans isomer. Computing...')
+        trans_source.set_halflife_time('trans', skip_triplets=True, overwrite=False)
+    if not hasattr(cis_state, 'halflife'):
+        print('No halflife found for cis isomer. Computing...')
+        cis_source.set_halflife_time(skip_triplets=False, overwrite=True)
+        raise ValueError(f'Error: No halflife found for Z or E isomers in system {self.name}')
+
+    # If no half-life times are given (for research), halflife is taken from the corresponding state
+    if t_EZ is None:
+        t_EZ = trans_state.results['halflife'].value
+    if t_ZE is None:
+        t_ZE = cis_state.results['halflife'].value
+
+    # Photochemical rates
+    k_ph_EZ = phi_EZ * np.trapz(sigma_E * photon_flux, lambda_grid)
+    k_ph_ZE = phi_ZE * np.trapz(sigma_Z * photon_flux, lambda_grid)
+    # Thermal rates
+    k_th_EZ = np.log(2) /  t_EZ
+    k_th_ZE = np.log(2) /  t_ZE
+    # Steady-state populations
+    N_E = (k_th_ZE + k_ph_ZE) / (k_ph_EZ + k_ph_ZE + k_th_EZ + k_th_ZE)
+    return lambda_grid, sigma_Z, sigma_E, N_E
+
+def build_sigma(transitions, E_grid, sigma=0.2, normalize=False, units=True):
+    """
+    Build a spectrum from a list of transitions.
+    
+    Parameters
+    ----------
+    transitions : list of tuples
+        List of transitions, where each transition is a tuple of (E0, f).
+    E_grid : array_like
+        Energy grid, in eV.
+    sigma : float, optional
+        Standard deviation of the Gaussian, in eV. Default is 0.2 eV.
+    normalize : bool, optional
+        Whether to normalize the Gaussian. Default is False.
+    units : bool, optional
+        Whether to return the spectrum in units of m^2 / molecule. Default is True.
+    
+    Returns
+    -------
+    spec : array_like
+        Spectrum, in m^2 / molecule if units is True, otherwise in arbitrary units.
+    """
+    
+    spec = np.zeros_like(E_grid)
+    for E0, f in transitions:
+        spec += gaussian(E_grid, E0, f,sigma=sigma, normalize=normalize)
+    K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
+    if units:
+        return spec[::-1] * K  # in m^2 / molecule
+    else: 
+        return spec[::-1]  # in arbitrary units
+
+def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug=0):
+    """
+    Returns the photon flux spectrum from a given wavelength grid and intensity.
+    
+    Parameters
+    ----------
+    lam0_nm : float
+        Central wavelength, in nm.
+    fwhm_nm : float
+        Full width at half maximum, in nm.
+    lam_grid : array_like
+        Wavelength grid, in nm.
+    Itot : float
+        Total intensity, in W/m2/nm.
+    power : float, optional
+        Power, in W. Default is None.
+    debug : int, optional
+        Debug level. Default is 0.
+    
+    Returns
+    -------
+    I_lambda : array_like
+        Photon flux spectrum, in photons m-2 s-1 nm-1.
+    """
+
+    sigma = fwhm_nm / (2 * np.sqrt(2 * np.log(2)))
+    profile = gaussian(lam_grid, lam0_nm, 1.0, sigma) 
+    if power is not None:
+        area = np.pi * (4.605e-3)**2  # in m2, area of a circle with diameter 0.92 cm
+        I_lambda = power * profile / area   # W/m2/nm
+    else:
+        I_lambda = Itot * 1e-3 / 1e-6 * profile  # mW/mm2 to W/m2/nm
+    # I_lambda = Itot * profile  # W/m2/nm
+    lam_m = np.ones_like(lam_grid)* lam_grid * 1e-9  # in m
+    photon_E = Constants.planck_Js * Constants.speed_light / lam_m  # in J
+    phi = I_lambda / photon_E           # photons m-2 s-1 nm-1        
+    return phi
+
+def build_pss_spectrum(pss, sigma_Z, sigma_E):
+
+    sigma_Z *= Cons.Avogadro / (1000 * np.log(10)) * 1e4  # in M^-1 cm^-1
+    sigma_E *= Cons.Avogadro / (1000 * np.log(10)) * 1e4  # in M^-1 cm^-1
+    sigma_pss = pss * sigma_E + (1 - pss) * sigma_Z
+    return sigma_pss
