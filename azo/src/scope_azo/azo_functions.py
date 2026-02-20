@@ -7,12 +7,12 @@
 ################################
 
 import numpy                    as np
-import scipy.constants          as Cons
 from copy                       import deepcopy
 from scope.elementdata          import ElementData
 from scope.geometry             import *
 from scope.connectivity         import *
 from scope_azo.azo_classes      import *
+import scope.constants          as Constants
 
 
 elemdatabase = ElementData()
@@ -93,7 +93,7 @@ def build_sigma(transitions, E_grid, sigma=0.2, normalize=False, units=True):
     spec = np.zeros_like(E_grid)
     for E0, f in transitions:
         spec += gaussian(E_grid, E0, f,sigma=sigma, normalize=normalize)
-    K = (np.pi * Cons.h * Cons.e) / (Cons.epsilon_0 * Constants.speed_light * Cons.electron_mass)
+    K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
     if units:
         return spec[::-1] * K  # in m^2 / molecule
     else: 
@@ -133,7 +133,7 @@ def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug
         I_lambda = Itot * 1e-3 / 1e-6 * profile  # mW/mm2 to W/m2/nm
     # I_lambda = Itot * profile  # W/m2/nm
     lam_m = np.ones_like(lam_grid)* lam_grid * 1e-9  # in m
-    photon_E = Cons.h * Constants.speed_light / lam_m  # in J
+    photon_E = Constants.planck_Js * Constants.speed_light / lam_m  # in J
     phi = I_lambda / photon_E           # photons m-2 s-1 nm-1        
     return phi
 
@@ -212,6 +212,22 @@ def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems
 
     print(f"AZOS.COMBINE_SMILES: END. Total valid systems: {len(systems)}")
     return systems
+
+def get_abs_spectrum(state1, state2, normalize: bool = False, units: bool = False):
+        # Add checks for thermal stability
+        if not hasattr(state1, 'es_list') or not hasattr(state2, 'es_list'):
+            print('WARNING: No TDDFT data found for cis or trans isomers')
+            return None, None, None, None
+        Z_e = [es.energy for es in state1.es_list]
+        Z_f = [es.fosc for es in state1.es_list]
+        E_e = [es.energy for es in state2.es_list]
+        E_f = [es.fosc for es in state2.es_list]
+        Emin = min(min(Z_e), min(E_e)) - 1
+        Emax = max(max(Z_e), max(E_e)) + 1
+        x = np.linspace(Emin, Emax, 5000)
+        sigma_Z = build_sigma(zip(Z_e, Z_f), x, normalize=False,units=False)     # Absolute
+        sigma_E = build_sigma(zip(E_e, E_f), x, normalize=False,units=False)
+        return 1240 / x[::-1], sigma_Z, sigma_E 
 
 ################################
 ###     HELP FUNCTION
@@ -455,25 +471,145 @@ def compute_t(g_ts:float, g_iso:float, T:float=298.15):
     k = ((k_b*T )/ h)* np.exp(-dG / (R * T))  
     t = np.log(2) / k           # Assuming a first-order reaction
     return float(t), float(k)
+
+def correct_tripletG(isomer_state, triplet_state, T:float=298.15, overwrite = False, p_sh:float = 0.0002, debug: int=0):
+    '''
+    Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
+    Correction is done considering the increase of energy due to surface hopping between the singlet and triplet PESs. 
+
+    Parameters
+    ----------
+    triplet_specie : Molecule_azo
+        The triplet Molecule_azo object to correct the Gtot of.
+    T : float, optional
+        The temperature in Kelvin. The default is 298.15 K.
+    overwrite : bool, optional
+        Whether to overwrite the existing Gtot_corr value. The default is False.
+    p_sh : float, optional
+        The probability of surface hopping. The default is 0.0002.
+    debug : int, optional
+        The debug level. The default is 0
+    '''
+    from scope.classes_data import Data
+    k_b = Constants.boltz_J # J/K
+    h = Constants.planck_Js # J·s
+    R = Constants.R_J       # 8.31 J/(K·mol)
+
+    triplet_source = triplet_state._source
+    triplet_system = triplet_source._sys
+
+    isomer_source = isomer_state._source
+
+    exist = 'Gtot_corr' in triplet_state.results
+
+    if not 'Gtot' in isomer_state.results or not 'Gtot' in triplet_state.results:
+        print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: No Gtot found for {isomer_source.name} or {source_parent.name}.')
+        return
+    
+    if not exist or overwrite:
+        if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Found Gtot for {isomer_source.name} and {triplet_source.name}. Correcting Gtot of triplet State.')
+        G_triplet = triplet_state.results['Gtot'].value
+        G_iso = isomer_state.results['Gtot'].value
+
+        if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: {triplet_source.name} Gtot: {G_triplet} hartree, iso Gtot: {G_iso} hartree')
+
+        dG = (G_triplet - G_iso) * Constants.har2kJmol * 1000  # in J/mol
+        t, k = compute_t(G_triplet, G_iso, T)       # Adiabatic rate
+        k_sh = k * p_sh                             # Surface hopping rate (non-adiabatic rate)
+        deltax = - (dG + R * T * np.log((h*k_sh)/(k_b*T))) # in J/mol
+
+        if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Adding deltax in kcal/mol: {deltax*0.24/1000}')
+        newG = (G_triplet + deltax / (1000*Constants.har2kJmol))
+        newG = float(newG)
+        newG_data = Data("Gtot_corr", newG, "au", "correct_tripletG")
         
+        triplet_state.add_result(newG_data, overwrite=overwrite)
+        if debug > 0: print (f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Corrected Gtot of {triplet_source.name} triplet state by {deltax*0.24/1000:.2f} Kcal/mol.')
+        return newG_data
+
+def check_triplet(input_object, overwrite:bool = False, debug:int = 0):
+    """
+    Checks if Triplet energies from results after computations have been corrected.
+    If not, correction is applied.
+    """
+    if input_object.type == 'specie':
+        system = input_object._sys
+    elif input_object.type == 'state':
+        system = input_object._source._sys
+    else: 
+        raise Exception('CHECK_TRIPLET: Type not recognised. Please insert a Specie or System-derived object')
+    
+    source_exists, trans = system.find_source('trans')
+    state_exists, trans_state = trans.find_state("opt")
+
+
+    triplet_indices = [i for i, source in enumerate(system.sources) if source.spin==2]
+    #Check if the computation exists 
+
+    good=0
+    if source_exists and state_exists:
+        for idx in triplet_indices:
+            exist_state, triplet_state = system.sources[idx].find_state('opt')
+            if exist_state:
+                correct_tripletG(trans_state, triplet_state, overwrite=overwrite, debug=debug)
+                if "Gtot_corr" in triplet_state.results.keys(): good+=1
+    if good == len(triplet_indices): return True
+    return False
+
+
+def calculate_dG(t): 
+    k_b = Constants.boltz_J # J/K
+    T = 298.15              # K    
+    h = Constants.planck_Js # J·s
+    R = 8.31446             # J/(K·mol)
+
+    k = np.log(2) / t          # Assuming a first-order reaction
+    # dG = (g_ts - g_iso)* Constants.har2kJmol * 1000  # in J/mol
+    # k = ((k_b*T )/ h)* np.exp(-dG / (R * T))  
+    dG = -R * T * np.log((k * h) / (k_b * T))  # in J/mol
+    dG /= 1000  # in kJ/mol
+    dG *= 0.24  # in kcal/mol
+    return dG
+    
 def show_thermal_data(systems):
     for sys in systems:
-        cis = sys.find_conformer('cis')[1]
-        trans = sys.find_conformer('trans')[1]
-        cis_opt = find_state(cis,'opt')
-        trans_opt = find_state(trans,'opt')
+        cis = sys.find_source('cis')[1]
+        trans = sys.find_source('trans')[1]
+        cis_opt = cis.find_state('opt')
+        trans_opt = trans.find_state('opt')
         # dG = (cis_opt[1].results['Gtot'].value - trans_opt[1].results['Gtot'].value)* har2kJmol * 0.24
         if cis_opt[0] and trans_opt[0]:
             print(f'---------------Azo: {sys.name}-----------------')
             # print(f'Delta G (cis - trans) = {dG:.2f} kcal/mol')
             print('                 CIS                         ')
-            print(cis_opt[1].results['dG_corr'])
-            print(format_time(cis_opt[1].results['halflife'].value))
-
-            print(f'by {cis_opt[1].mets}')
+            print(cis_opt[1].results['dG_cross'])
+            print("t0.5 = " + format_time(cis_opt[1].results['halflife'].value))
+            print(f'by {cis.mets}')
             print('                TRANS                        ')
-            print(trans_opt[1].results['dG_corr'])
-            print(format_time(trans_opt[1].results['halflife'].value))
+            print(trans_opt[1].results['dG_cross'])
+            print("t0.5 = " + format_time(trans_opt[1].results['halflife'].value))
 
-            print(f'by {trans_opt[1].mets}\n')
+            print(f'by {trans.mets}\n')
             print('\n')
+
+def format_time(t):
+    """
+    Converts seconds to a more comprehensive unit.
+    """
+    units = [
+        (1e-15, "fs", 1e15),
+        (1e-12, "ps", 1e12),
+        (1e-9,  "ns", 1e9),
+        (1e-6,  "µs", 1e6),
+        (1e-3,  "ms", 1e3),
+        (1,     "s",  1),
+        (60,    "min", 1/60),
+        (3600,  "h",  1/3600),
+        (86400, "d",  1/86400),
+        (31557600, "y", 1/31557600),        # y
+        (31557600000, "ky", 1/31557600000)  # millenia
+    ]
+    for threshold, unit, factor in units:
+        if abs(t) < threshold * 100:
+            return f"{t * factor:.2f} {unit}"
+    return f"{t / 31557600000:.2f} ka"

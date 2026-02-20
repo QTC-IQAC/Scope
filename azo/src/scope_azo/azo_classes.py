@@ -1,11 +1,16 @@
 import numpy as np
-from scope import *
-from scope.classes_system import *
-from scope.classes_specie import *
-from scope.software.gaussian.g16_parse import *
-from scope.geometry import *
-from scope.connectivity import *
-from scope_azo.azo_functions import *
+from    scope                               import *
+from    scope.classes_system                import *
+from    scope.classes_specie                import *
+from    scope.software.gaussian.g16_parse   import *
+from    scope.geometry                      import *
+from    scope.connectivity                  import *
+from    scope_azo.azo_functions             import *
+from    scope.parse_general                 import search_string, read_lines_file
+from    scope.software.gaussian.g16_parse   import * 
+from    scope.software.gaussian.g16_output  import * 
+from    scope.classes_data                  import *
+from    scope.classes_qc                    import *
 
 ############################################
 #### SYSTEM Object adapted to System_azo ###
@@ -389,8 +394,8 @@ class System_azo(System):
                         triplet_state.set_geometry(labels, coord)
                         self.add_source('TSrot_A_T', ts_triplet)
                         created_ts.append(ts_triplet)
-                        if debug > 0: print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_T Specie_Azo successfully created for {self.name}')
-                    if debug > 0: print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_S Specie_Azo successfully created for {self.name}')
+                        if debug > 0:   print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_T Molecule_azo successfully created for {self.name}')
+                    if debug > 0:       print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_S Molecule_azo successfully created for {self.name}')
                 else:
                     raise Exception(f'AZOS.CREATE_TS.TSROT_A: [ERROR] TSrot_A fragmented for {self.name}')
 
@@ -430,8 +435,8 @@ class System_azo(System):
                         triplet_state.set_geometry(labels, coord)
                         self.add_source('TSrot_B_T', ts_triplet)
                         created_ts.append(ts_triplet)
-                        if debug > 0: print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_T Specie_Azo successfully created for {self.name}')
-                    if debug > 0: print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_S Specie_Azo successfully created for {self.name}')
+                        if debug > 0:   print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_T Molecule_Azo successfully created for {self.name}')
+                    if debug > 0:       print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_S Molecule_Azo successfully created for {self.name}')
                 else:
                     raise Exception(f'WARNING: TSrot_B fragmented for {self.name}')
         
@@ -459,7 +464,7 @@ class System_azo(System):
                         ts_state.set_geometry(labels, coord)
                         self.add_source('TSinv_l', ts)
                         created_ts.append(ts)
-                        if debug > 0: print(f'AZOS.CREATE_TS.TSINV_L: TSinv_l Specie_Azo successfully created for {self.name}')
+                        if debug > 0: print(f'AZOS.CREATE_TS.TSINV_L: TSinv_l Molecule_azo successfully created for {self.name}')
                         break
                     else:
                         raise Exception(f'AZOS.CREATE_TS.TSINV_L: [ERROR] TSinv_l fragmented for {self.name}')
@@ -488,11 +493,115 @@ class System_azo(System):
                         ts_state.set_geometry(labels, coord)
                         self.add_source('TSinv_r', ts)
                         created_ts.append(ts)
-                        if debug > 0: print(f'AZOS.CREATE_TS.TSINV_R: TSinv_r Specie_Azo successfully created for {self.name}')
+                        if debug > 0: print(f'AZOS.CREATE_TS.TSINV_R: TSinv_r Molecule_azo successfully created for {self.name}')
                         break
                     else:
                         raise Exception(f'AZOS.CREATE_TS.TSINV_R: [ERROR] TSinv_r fragmented for {self.name}')
         return created_ts
+
+    def plot_energies(self):
+        import matplotlib.pyplot as plt
+        import numpy as np
+
+        plt.rcParams.update({
+            'font.size': 12,
+            'font.family': 'sans-serif',
+            'axes.linewidth': 1.5,
+            'xtick.major.width': 1.5,
+            'ytick.major.width': 1.5
+        })
+
+        # --- SOURCE DETECTION ---
+        # Find Transition States
+        ts_candidates = [i for i, source in enumerate(self.sources) 
+            if source.name.lower().startswith('ts') 
+            and "Gtot" in source.find_state('opt')[1].results]
+        
+        # Find Isomers
+        isomer_candidates = [i for i, source in enumerate(self.sources) 
+            if (source.name.lower().startswith('cis') or source.name.lower().startswith('trans')) 
+            and "Gtot" in source.find_state('opt')[1].results]
+        candidates_idx = ts_candidates + isomer_candidates
+        if not candidates_idx:
+            print("No valid isomers or TS structures with 'Gtot' found.")
+            return
+
+        energies = []
+        labels = []
+
+        # --- DATA EXTRACTION ---
+        for i in candidates_idx:
+            source = self.sources[i]
+            opt_results = source.find_state('opt')[1].results
+            
+            if source.spin == 2 and "Gtot_corr" in opt_results:
+                e_val = opt_results["Gtot_corr"].value
+            else:
+                e_val = opt_results["Gtot"].value
+                print('AZO.PLOT_ENERGIES: WARNING! A source in the triplet state does not have its Free Energy corrected.')
+                
+            energies.append(e_val)
+            labels.append(source.name)
+
+        energies = np.array(energies)
+        labels = np.array(labels)
+
+        # --- CLASSIFICATION & COORDINATES ---
+        is_trans = np.char.startswith(np.char.lower(labels), "trans")
+        is_cis = np.char.startswith(np.char.lower(labels), "cis")
+
+        # X-axis: TS default to 2.0
+        x_coords = np.full_like(energies, 2.0)
+        x_coords[is_trans] = 1.0  # E isomer
+        x_coords[is_cis] = 3.0    # Z isomer
+
+        # --- NORMALIZATION ---
+        if np.any(is_trans):
+            # Use the first trans isomer as the reference zero
+            ref_idx = np.where(is_trans)[0][0]
+            ref_energy = energies[ref_idx]
+            
+            energies = (energies - ref_energy) * Constants.har2kJmol * Constants.kJmol2kcal  # Hartree to kcal/mol
+            ylabel = r"$\Delta G$ (kcal mol$^{-1}$)"
+        else:
+            ylabel = "Gibbs Energy (Hartree)"
+
+        # --- HIGHLIGHT LOGIC ---
+        ts_indices = (x_coords == 2.0)
+        # Added a check to ensure we don't pass an empty array to np.min
+        min_ts_energy = np.min(energies[ts_indices]) if np.any(ts_indices) else None
+
+        # --- PLOTTING ---
+        fig, ax = plt.subplots(figsize=(7, 5))
+
+        for x, e, name in zip(x_coords, energies, labels):
+            
+            color = 'black'
+            font_weight = 'normal'
+            
+            # Lowest Energy TS is highlighted
+            if x == 2.0 and min_ts_energy is not None and np.isclose(e, min_ts_energy):
+                color = '#D55E00'  
+                font_weight = 'bold'
+
+            ax.plot(x, e, marker='_', markersize=50, markeredgewidth=3, color=color)
+            
+            clean_name = name.replace("trans", "").replace("cis", "").strip("-_ ")
+            ax.text(x + 0.4, e - 0.5, clean_name, 
+                    ha='center', va='bottom', 
+                    fontsize=10, color=color, weight=font_weight)
+
+        # --- AXIS FORMATTING ---
+        ax.set_ylabel(ylabel)
+        ax.set_xticks([1, 2, 3])
+        ax.set_xticklabels(['E', 'TS', 'Z'])
+        ax.set_xlim(0.5, 3.5)
+        ax.spines['top'].set_visible(False)
+        ax.spines['right'].set_visible(False)
+
+        plt.tight_layout()
+        plt.show()
+
 
     def get_PSS(self, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
 
@@ -509,10 +618,10 @@ class System_azo(System):
         # Half-lives in seconds
         if not hasattr(trans_state, 'halflife'):
             print('No halflife found for trans isomer. Computing...')
-            self.set_iso_halftime('trans', skip_triplets=True, overwrite=False)
+            self.set_halflife_time('trans', skip_triplets=True, overwrite=False)
         if not hasattr(cis_state, 'halflife'):
             print('No halflife found for cis isomer. Computing...')
-            self.set_iso_halftime('cis', skip_triplets=True, overwrite=False)
+            self.set_halflife_time('cis', skip_triplets=True, overwrite=False)
             raise ValueError(f'Error: No halflife found for Z or E isomers in system {self.name}')
         if t_EZ is None:
             t_EZ = trans_state.results['halflife'].value
@@ -587,76 +696,21 @@ class Molecule_azo(Molecule):
     def __init__(self, labels, coord):
         Molecule.__init__(self, labels, coord)
         self.subtype  = "molecule_azo"
+
+    def set_halflife_time(self, skip_triplets : bool = True, overwrite = False, debug: int = 0):
+        '''
+        Computes t0.5 in seconds for a given conformer/isomer stored in a Molecule_azo object e.g. cis or trans using the Eyring equation.
+        Saves the result as a data object with the key 'halflife' in the Molecule_azo object.
+        Minimum energy Transition State can be accessed using the key 'mets' in the Molecule_azo object. E. g. cis.mets
+        The argument skip_triplets is used to whether take into account triplet states, since their optimized geometry could 
         
-    def correct_tripletG(self, triplet_specie, T:float=298.15, overwrite = False, p_sh:float = 0.0002, debug: int=0):
-        '''
-        Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
-        Correction is done considering the increase of energy due to surface hopping between the singlet and triplet PESs. 
-
-        Parameters
-        ----------
-        triplet_specie : Molecule_azo
-            The triplet Molecule_azo object to correct the Gtot of.
-        T : float, optional
-            The temperature in Kelvin. The default is 298.15 K.
-        overwrite : bool, optional
-            Whether to overwrite the existing Gtot_corr value. The default is False.
-        p_sh : float, optional
-            The probability of surface hopping. The default is 0.0002.
-        debug : int, optional
-            The debug level. The default is 0
-        '''
-        k_b = Constants.boltz_J # J/K
-        h = Constants.planck_Js # J·s
-        R = Constants.R_J       # 8.31 J/(K·mol)
-
-        found_iso_opt, iso_opt = self.find_state("opt")
-        found_triplet_opt, triplet_opt = triplet_specie.find_state("opt")
-
-        if not found_iso_opt or not found_triplet_opt:
-            print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: No opt state found for {self.name} or {triplet_specie.name}.')
-            return
-
-        parent = self._sys
-        exist = 'Gtot_corr' in triplet_opt.results
-
-        if not 'Gtot' in iso_opt.results or not 'Gtot' in triplet_opt.results:
-            print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: No Gtot found for {self.name} or {triplet_specie.name}.')
-            return
-        
-        if not exist or overwrite:
-            if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Found Gtot for {self.name} and {triplet_specie.name}. Correcting Gtot of {parent.name} triplet state.')
-            G_triplet = triplet_opt.results['Gtot'].value
-            G_iso = iso_opt.results['Gtot'].value
-
-            if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: {parent.name} triplet G: {G_triplet} hartree, iso G: {G_iso} hartree')
-
-            dG = (G_triplet - G_iso) * Constants.har2kJmol * 1000  # in J/mol
-            t, k = compute_t(G_triplet, G_iso, T)
-            k_sh = k * p_sh *p_sh 
-            deltax = - (dG + R * T * np.log((h*k_sh)/(k_b*T))) # in J/mol
-
-            if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Adding deltax in kcal/mol: {deltax*0.24/1000}')
-            newG = (G_triplet + deltax / (1000*Constants.har2kJmol))
-            newG = float(newG)
-            newdata = Data("Gtot_corr", newG, "au", "correct_triplet_G")
-            
-            triplet_opt.add_result(newdata)
-            if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Corrected Gtot of {parent.name} triplet state by {deltax*0.24/1000:.2f} Kcal/mol.')
-            return newG
-
-    def set_iso_halftime(self, skip_triplets : bool = True, overwrite = False):
-        '''
-        Computes t0.5 in seconds for a given conformer/isomer e.g. cis or trans using the Eyring equation.
-        Saves the result as a data object with the key 'halftime' in the conformer object.
-        Minimum energy Transition State can be accessed using the key 'mets' in the conformer object. E. g. cis.mets
 
         Parameters
         ----------
         self : Molecule_azo
-            The Molecule_azo object to compute the halftime for.
+            The Molecule_azo object to compute the halflife for.
         skip_triplets : bool
-            Skip triplet conformers in halftime calculation.
+            Skip triplet conformers in halflife calculation.
         overwrite : bool
             Overwrite existing t0.5 values.
 
@@ -666,19 +720,27 @@ class Molecule_azo(Molecule):
         The function will only consider TSs that have an opt state with a Gtot value, or Gtot_corr value if skip_triplets is False.
         
         '''
+
+        # Check if triplets are corrected.
+
+        iscorrect = check_triplet(self, overwrite=overwrite, debug=debug)
+
+        if not iscorrect:
+            raise Exception("There has been an error with correcting triplet Gtot. Check if computations have finished ")
+
         ts_values = []
         ts_names = []
 
         found_iso_opt, iso_state = self.find_state("opt")
 
         if not found_iso_opt:
-            raise Exception(f'AZO.SPECIE_AZO.SET_HALFTIME: Optimization state not found for {self.name}.')
+            raise Exception(f'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: Optimization state not found for {self.name}.')
              
         if 'Gtot' in iso_state.results.keys(): g_iso = iso_state.results['Gtot'].value
-        else: raise ValueError('AZO.SPECIE_AZO.SET_HALFTIME: Gtot not found for isomer')
+        else: raise ValueError('AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: Gtot not found for isomer')
 
         parent = self._sys
-        candidates = [source for source in parent.sources if not source.name.lower().startswith('cis') or not source.name.lower().startswith('trans')]
+        candidates = [source for source in parent.sources if source.name.lower().startswith('ts')]
         candidates_names = [source.name for source in candidates]
 
         if 'TSrot_A_T' in candidates_names or 'TSrot_B_T' in candidates_names:
@@ -689,48 +751,49 @@ class Molecule_azo(Molecule):
         for ts in candidates:
             found_ts_state, ts_state = ts.find_state("opt")
             if not found_ts_state or not 'Gtot' in ts_state.results.keys():
-                print(f'AZO.SPECIE_AZO.SET_HALFTIME: [WARNING] Optimization state or Gtot not found for {ts.name}.')
+                print(f'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: [WARNING] Optimization state or Gtot not found for {ts.name}.')
                 continue
             # Use only TSs with Gtot or Gtot_corr
 
-            if ts.spin == 3:     # Use corrected Gtot for triplets
+            if ts.spin == 2:     # Use corrected Gtot for triplets
                 if not skip_triplets:
                     if 'Gtot_corr' in ts_state.results.keys(): energy = ts_state.results['Gtot_corr'].value
-                    else: raise ValueError(f'AZO.SPECIE_AZO.SET_HALFTIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
+                    else: raise ValueError(f'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
                 else:
                     continue
             else:   energy = ts_state.results['Gtot'].value
 
             name = ts.name 
-            # if type(energy) is not float:
-            #     energy = 0.
-            #     print("Warning: energy is not a float for", name, 'Setting to 0.')
             ts_names.append(name)
             ts_values.append(energy)
         
         if not hasattr(self, 'halflife') or overwrite:
-            if debug > 0: print(rf'AZO.SPECIE_AZO.SET_HALFTIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')
-            if debug > 0: print(f'AZO.SPECIE_AZO.SET_HALFTIME:Doing halftime for {parent.name} {self.name}')
+            if debug > 0: print(rf'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')
+            if debug > 0: print(f'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME:Doing halflife for {parent.name} {self.name}')
+            
             # Choosing Minimum Energy TS (mets)
             min_idx = int(np.argmin(ts_values))
-            mets = ts_names[min_idx]                        
+            mets = ts_names[min_idx]        # Name of the METS 
             g_cross = ts_values[min_idx]
             dG_cross = (float(g_cross)- float(g_iso)) * Constants.har2kJmol * 0.24 # in Kcal/mol
-            # Compute and store halftime
+            
+            # Compute and store halflife
             t,k = compute_t(float(g_cross), float(g_iso))           
             if debug > 0: print(t, ' s for isomer ', self.name)
             new_time = Data('halflife', float(t), 's', 'compute_t')
             self.halflife = float(t)
             self.mets = mets
-            self.add_result(new_time, overwrite)
+            iso_state.add_result(new_time, overwrite=overwrite)
             
             if debug > 0: print(dG_cross, 'for isomer ', self.name)
-            self.dG_cross = dG_cross
-            newdata = Data('dG_cross', float(dG_cross), 'kcal/mol', 'set_iso_halftime')
-            self.add_result(newdata, overwrite)
+            self.dG_cross = dG_cross        # Stored in kcal/mol
+            newdata = Data('dG_cross', float(dG_cross), 'kcal/mol', 'set_halflife_time')
+            iso_state.add_result(newdata, overwrite=overwrite)
         else: 
             print(f'State not found in {self.name}.')
-        print('Done! Note that missing energy values have been set to 0.')
+        print(f'AZO.SET_HALFLIFE_TIME: Half-life time has been computed for {self.name} and was stored as a result to the corresponding State!')
+        print(f'AZO.SET_HALFLIFE_TIME: dG_cross and mets can be accessed by self.dG_cross and self.mets!')
+        
 
     def link_tda_to_state(self, state: object, filepath: str, overwrite: bool=False):
         '''
@@ -741,11 +804,13 @@ class Molecule_azo(Molecule):
                 state.tda_filepath = filepath
                 state.es_list = []
                 lines = read_lines_file(filepath)
-                state.gs_energy = parse_energy_from_step(lines)
+                # state.gs_energy = parse_energy_from_step(lines)
                 if parse_status_finished(lines):
                     for st_num in range(1,11):
-                        if st_num < 10:    line_nums, found = search_string(f"Excited State   {st_num}:", lines, typ='first')
-                        elif st_num == 10: line_nums, found = search_string(f"Excited State  {st_num}:", lines, typ='first')
+                        if st_num < 10:    
+                            line_nums, found = search_string(f"Excited State   {st_num}:", lines, typ='first')
+                        elif st_num >= 10 and st_num < 100: 
+                            line_nums, found = search_string(f"Excited State  {st_num}:", lines, typ='first')
                         if found:
                             dummy, dummy, idx, dummy, energy, dummy, wavelength, dummy, fosc, s2 = lines[line_nums].split() 
                             idx  = int(idx.replace(':',''))
@@ -765,52 +830,27 @@ class Molecule_azo(Molecule):
         '''
         if not hasattr(state, 'opt') or overwrite:
             if os.path.exists(filepath):
-
                 state.opt_filepath = filepath
                 lines = read_lines_file(filepath)
-                opt_finished = parse_opt_status(lines)
-                if not opt_finished: raise ValueError('Optimization not finished')
-                state.energy = parse_energy(lines)
-                state.gtot = parse_free_energy(lines)
+                output= G16_output(lines)
+                opt_finished = output.get_optimization_finished()
+                if opt_finished:
+                    state.energy = output.get_last_energy()
+                    state.gtot = output.get_free_energy()
 
-                labels, coord = parse_last_geometry(lines, debug=1)
-                state.set_geometry(labels, coord)
-                newG = data("Gtot", state.gtot, "au", "parse_free_energy")
-                state.add_result(newG)
+                    labels, coord = output.get_last_geometry(lines)
+                    state.set_geometry(labels, coord)
+                    newG = Data("Gtot", state.gtot, "au", "get_free_energy")
+                    newH = Data("energy", state.gtot, "au", "get_last_energy")
+                    state.add_result(newG)
+                else:
+                    print('LINK_OPT_TO_STATE: WARNING: An optimization did not finished')
+                    print(f'LINK_OPT_TO_STATE: Optimization file: {filepath}')
+
+
         else:
             print(f"File {filepath} does not exist.")
 
-    def get_abs_spectrum(self, normalize: bool = False, units: bool = False, custom_cis: str = None, custom_trans: str = None):
-        if custom_cis is not None:
-            name = str(custom_cis)
-            Z_exists, cis = self.find_conformer(custom_cis)
-        if custom_trans:
-            name = str(custom_trans)
-            E_exists, trans = self.find_conformer(custom_trans)
-        if not Z_exists or not E_exists:
-            print(f'Z_exists: {Z_exists}, E_exists: {E_exists}')
-            raise ValueError(f'Error: No cis or trans conformers found for system {self.name}')
-        opt_Z_exists, cis_state = find_state(cis, 'opt')
-        opt_E_exists, trans_state = find_state(trans, 'opt')
-        if not opt_Z_exists or not opt_E_exists:
-            print(f'opt_Z_exists: {opt_Z_exists}, opt_E_exists: {opt_E_exists}')
-            raise ValueError(f'Error: No opt state found for Z or E isomers')
-
-        # Add checks for thermal stability
-        if not hasattr(cis_state, 'es_list') or not hasattr(trans_state, 'es_list'):
-            print('WARNING: No TDDFT data found for cis or trans isomers')
-            return None, None, None, None
-
-        Z_e = [es.energy for es in cis_state.es_list]
-        Z_f = [es.fosc for es in cis_state.es_list]
-        E_e = [es.energy for es in trans_state.es_list]
-        E_f = [es.fosc for es in trans_state.es_list]
-        Emin = min(min(Z_e), min(E_e)) - 1
-        Emax = max(max(Z_e), max(E_e)) + 1
-        x = np.linspace(Emin, Emax, 5000)
-        sigma_Z = build_sigma(zip(Z_e, Z_f), x, normalize=False,units=False)     # Absolute
-        sigma_E = build_sigma(zip(E_e, E_f), x, normalize=False,units=False)
-        return 1240 / x[::-1], sigma_Z, sigma_E 
 
     def get_azo_substituents(self, debug: int=0):
         self.azo_substituents = []
@@ -840,6 +880,7 @@ class Molecule_azo(Molecule):
         to_print = ""
         to_print += f'---------- SCOPE Molecule_azo Object ------------\n'
         to_print += Molecule.__repr__(self, indirect=True)
+        # if hasattr(self,"halflife"): to_print += f'     Half-life (t1/2):{self.halflife}                         \n'
         to_print +=  '-------------------------------------------------\n'
         return to_print
 
@@ -913,10 +954,10 @@ class Lamp:
         else:   self.eff_wavelength = self.wavelength
 
     def __repr__(self):
-        to_print = f'--------- Scope Lamb Object -----------\n'
-        to_print += f' Name                  = {self.name}\n'
-        to_print += f' Wavelength            = {self.wavelength} nm\n'
-        to_print += f' FWHM                  = {self.fwhm} nm\n'
+        to_print = f'--------- Scope Lamp Object -----------\n'
+        to_print += f' Name                     = {self.name}\n'
+        to_print += f' Wavelength               = {self.wavelength} nm\n'
+        to_print += f' FWHM                     = {self.fwhm} nm\n'
         if hasattr(self, "eff_wavelength"): to_print += f' Wavelength (after shift) = {self.eff_wavelength} nm\n'
         if hasattr(self, "power"):          to_print += f' Power                 = {self.power} W\n'
         to_print += f'---------------------------------------\n'
