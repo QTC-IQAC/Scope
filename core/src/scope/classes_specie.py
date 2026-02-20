@@ -358,7 +358,7 @@ class Specie(object):
             self.atoms = atomlist.copy()
             for idx, at in enumerate(self.atoms):
                 at.add_parent(self, index=idx)
-                if debug > 0: print(f"SPECIE.SET_ATOMS: set parent {self.subtype} to atom, with index={idx}")
+                if debug > 1: print(f"SPECIE.SET_ATOMS: set parent {self.subtype} to atom, with index={idx}")
 
         ## If not, that is, if the atom objects must be created from scratch....
         else: 
