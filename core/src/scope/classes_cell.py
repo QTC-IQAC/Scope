@@ -12,7 +12,27 @@ elemdatabase = ElementData()
 #### CELL ####
 ##############
 class Cell(object):
+    """Represent a periodic crystal cell and its molecular decomposition.
+
+    The class stores atom labels and cartesian coordinates together with unit-cell
+    metadata (cell vectors, cell parameters, fractional coordinates, and volume).
+    It also provides helpers for connectivity, fragmentation/reconstruction, spin/
+    charge aggregation, and state handling.
+    """
+
     def __init__(self, name: str, labels: list, coord: list, cell_vector: list=None, cell_param: list=None) -> None:
+        """Create a `Cell` from atomic data and either vectors or parameters.
+
+        Args:
+            name: Identifier for the cell.
+            labels: Atomic symbols for each atom.
+            coord: Cartesian coordinates for each atom.
+            cell_vector: 3x3 lattice vectors.
+            cell_param: Lattice parameters `[a, b, c, alpha, beta, gamma]`.
+
+        Raises:
+            ValueError: If both `cell_vector` and `cell_param` are not provided.
+        """
         self.version              = "1.0"
         self.type                 = "cell"
         self.subtype              = "cell"
@@ -79,27 +99,40 @@ class Cell(object):
 
     @property
     def Z(self):
+        """Alias for `z` (number of formula units in the unit cell)."""
         return self.z
 
     @property
     def z(self):
+        """Return cached `Z` value, computing it from composition if needed."""
         if not hasattr(self, "_z"):
             return self.get_z()
         return self._z
 
     #### 
     def reset_charge(self, debug: int=0):
+        """Reset charge information for all molecules in `moleclist`."""
         if not hasattr(self,"moleclist"): return None
         for mol in self.moleclist:
             mol.reset_charge()
 
     def reset_spin(self, debug: int=0):
+        """Reset spin information for all molecules in `moleclist`."""
         if not hasattr(self,"moleclist"): return None
         for mol in self.moleclist:
             mol.reset_spin()
 
     ####
     def set_spin_metals(self, spins: list | int, debug: int=0):
+        """Assign spin values to metal centers in transition-metal complexes.
+
+        Args:
+            spins: Single spin value applied to all complexes, or one value per complex.
+            debug: Verbosity level.
+
+        Returns:
+            Total cell spin after assignment, or `None` if no complexes are found.
+        """
         ## Function to simplify setting the spin for the Transition Metal Complexes of this cell
         if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
         ncomplex = self.get_ncomplex(debug=debug) 
@@ -129,16 +162,23 @@ class Cell(object):
     ## Other ##
     ###########
     def save(self, filepath):
+        """Serialize the cell object to disk."""
         save_binary(self, filepath)
 
     def associate_cif(self, cif: object) -> None:
+        """Attach a CIF-like object to the cell and return it."""
         self.cif       = cif
         return self.cif
 
     def set_path(self, path: str) -> None:
+        """Store a filesystem path associated with this cell."""
         self.path = path
 
     def get_ncomplex(self, debug: int=0):
+        """Count transition-metal complexes in `moleclist`.
+
+        Ensures fragmentation checks pass before counting.
+        """
         if debug > 0: print(f"CELL.GET_NCOMPLEX checking fragmentation")
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"Found Fragmented molecules in the geometry of cell: {self.name}"
@@ -152,7 +192,11 @@ class Cell(object):
         return self.ncomplex
 
     def get_z(self, debug: int=0):
-        ## Returns the Stoichiometry number of the unit cell. Basically how many times the same stoichiometry unit is repeated in the cell
+        """Compute and cache the unit-cell stoichiometric multiplicity (`Z`).
+
+        `Z` is calculated as the greatest common divisor of occurrences of unique
+        molecular substructures within the cell.
+        """
         from scope.operations.vecs_and_mats import gcd_list
         if debug > 0: print(f"self.GET_Z checking fragmentation")
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
@@ -178,16 +222,19 @@ class Cell(object):
     #############
     ## This function mimics the specie-class function with the same name
     def check_parent(self, subtype):
+        """Return whether this object matches the requested parent subtype."""
         if subtype == "cell": return True
         else:                 return False
 
     ## This function mimics the specie-class function with the same name
     def get_parent(self, subtype):
+        """Return this object when `subtype == "cell"`, else `None`."""
         if subtype == "cell": return self
         else:                 return None
 
     ## This function mimics the specie-class function with the same name
     def get_parent_indices(self, subtype: str):
+        """Return atom indices for this parent subtype when applicable."""
         if subtype == "cell": return list(range(0,self.natoms))
         else:                 return None
 
@@ -195,19 +242,32 @@ class Cell(object):
     ## Atoms and Molecules ##
     #########################
     def get_atoms(self):
+        """Collect and return all atom objects from molecules in `moleclist`."""
         if not hasattr(self,"moleclist"): self.get_moleclist()
         self.atoms = []
         for mol in self.moleclist:
-            for at in enumerate(mol.atoms):
+            for at in mol.atoms:
                 self.atoms.append(at)
         return self.atoms
 
     ######
     def set_moleclist(self, moleclist: list) -> None:
+        """Set the internal molecule list representation."""
         self.moleclist = moleclist
     
     ######
     def get_moleclist(self, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
+        """Build or return the list of molecules detected in the cell.
+
+        Args:
+            overwrite: Recompute even if `moleclist` already exists.
+            cov_factor: Covalent radii scaling factor for connectivity.
+            metal_factor: Metal-specific scaling factor for connectivity.
+            debug: Verbosity level.
+
+        Returns:
+            A list of `Molecule` objects, or `None` if input data is insufficient.
+        """
         ## Overwrite and Warning
         if not overwrite and hasattr(self,"moleclist"): 
             if debug > 0: print(f"CELL.GET_MOLECLIST. Moleclist already exists and default is overwrite=False")
@@ -296,6 +356,7 @@ class Cell(object):
     ## Connectivity ##
     ##################
     def get_adjmatrix(self, adjust_factor: bool=False, debug: int=0):
+        """Compute and cache adjacency matrix and coordination numbers for the cell."""
         isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord, adjust_factor=adjust_factor, debug=debug)
         if isgood:
             self.adjmat = adjmat
@@ -307,6 +368,15 @@ class Cell(object):
 
     ######
     def check_fragmentation(self, reconstruct: bool = False, debug: int=0):
+        """Check whether current molecules match reference molecules.
+
+        Args:
+            reconstruct: Attempt reconstruction before final fragmentation verdict.
+            debug: Verbosity level.
+
+        Returns:
+            `True` if fragmented, `False` otherwise.
+        """
         if not hasattr(self,"moleclist"): self.get_moleclist()
         self.fragmented = False
 
@@ -334,6 +404,7 @@ class Cell(object):
 
     ######
     def fix_cell_coord(self, debug: int=0) -> None:
+        """Rebuild cell labels/coordinates from molecule atoms and restore ordering."""
         ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell.
         ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
         if not hasattr(self,"moleclist"): self.get_moleclist()
@@ -357,6 +428,16 @@ class Cell(object):
 
     ######
     def reconstruct(self, cov_factor: float=None, metal_factor: float=None, debug: int=0):
+        """Reconstruct fragmented molecules in the periodic cell.
+
+        Args:
+            cov_factor: Covalent radii scaling factor.
+            metal_factor: Metal-specific scaling factor.
+            debug: Verbosity level.
+
+        Returns:
+            Updated `moleclist` after reconstruction (or unchanged if not fragmented).
+        """
         from scope.reconstruct import classify_fragments, fragments_reconstruct
 
         if not hasattr(self,"fragmented"): self.check_fragmentation()
@@ -419,6 +500,7 @@ class Cell(object):
     ### Functions to Interact with States ###
     #########################################
     def add_state(self, name: object, debug: int=0):
+        """Create or return a `State` object with the given name."""
         from scope.classes_state import State
         if not hasattr(self,"states"): setattr(self,"states",list([]))
         exists, new_state = self.find_state(name)
@@ -433,6 +515,11 @@ class Cell(object):
 
     ######
     def find_state(self, search_name: str, debug: int=0):
+        """Find a state by name.
+
+        Returns:
+            Tuple `(exists, state_obj)` where `state_obj` is `None` if not found.
+        """
         from scope.classes_state import State
         if not hasattr(self,"states"): return False, None
         if debug > 0: print(f"CELL.FIND_STATE: Searching {search_name} in Cell object with {len(self.states)} states")
@@ -506,6 +593,7 @@ class Cell(object):
         fig.show()
 
     def __repr__(self, indirect: bool=False):
+        """Return a human-readable summary of the cell and related molecules."""
         to_print = ''   
         if not indirect: to_print += '-------------------------------\n'
         if not indirect: to_print += '   >>> SCOPE CELL Object >>>   \n'
