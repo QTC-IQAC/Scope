@@ -954,10 +954,10 @@ class Lamp:
         else:   self.eff_wavelength = self.wavelength
 
     def __repr__(self):
-        to_print = f'--------- Scope Lamb Object -----------\n'
-        to_print += f' Name                  = {self.name}\n'
-        to_print += f' Wavelength            = {self.wavelength} nm\n'
-        to_print += f' FWHM                  = {self.fwhm} nm\n'
+        to_print = f'--------- Scope Lamp Object -----------\n'
+        to_print += f' Name                     = {self.name}\n'
+        to_print += f' Wavelength               = {self.wavelength} nm\n'
+        to_print += f' FWHM                     = {self.fwhm} nm\n'
         if hasattr(self, "eff_wavelength"): to_print += f' Wavelength (after shift) = {self.eff_wavelength} nm\n'
         if hasattr(self, "power"):          to_print += f' Power                 = {self.power} W\n'
         to_print += f'---------------------------------------\n'
