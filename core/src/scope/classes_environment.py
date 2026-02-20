@@ -3,57 +3,60 @@ import pwd
 import grp 
 import subprocess
 import numpy as np
-import glob
 import readline
 import tempfile
 from dataclasses         import dataclass
 from pathlib             import Path
 from scope.classes_queue import Queue 
 from scope.read_write    import read_user_input, input_with_default
-from scope.read_write    import get_config_path, save_to_config, load_config 
-from scope.read_write    import save_json, load_json
+from scope.read_write    import save_to_config, load_config 
 
 ###################
 ### ENVIRONMENT ###
 ###################
 class Environment(object):
     """
-    The `environment` class controls the computational environment of SCOPE, for job submission and resource allocation.
-    It should be ready to work in SGE and Slurm, although extensive testing encompassing different version has not been done.
+    The `environment` class controls the computational environment of SCOPE, for
+    job submission, queue selection, and resource accounting.
+    It supports SGE, Slurm, and local mode (when no scheduler is detected).
 
     Attributes:
-        type (str):                     Type of the environment object.
+        type (str):                     Type of the environment object ("environment").
         name (str):                     Name of the environment.
-        user (str):                     User name, set via `set_user()`.
-        group (str):                    Group name, set via `set_group()`.
+        user (str):                     Current OS user name.
+        group (str):                    Current OS group name.
         available_queues (list):        List of available queue objects.
         selected_queues (list):         List of selected queue objects.
-        method (str):                   Method for queue selection (default: 'weighted').
+        method (str):                   Method for queue scoring/selection (default: 'weighted').
+        scheduler (str):                Scheduler type ('sge', 'slurm', or 'local'); set lazily.
+        commands (dict):                Scheduler command map; set lazily by `set_commands()`.
+        mqueues (list):                 Queues discovered from the scheduler; set lazily.
+
     Methods:
         __init__(name):                 Initializes the environment object.
         set_scheduler():                Detects and sets the job scheduler.
-        set_commands():                 Sets command-line instructions for scheduler.
-        read_user_queue_list():         Processes user-provided queue names and selects corresponding queues.
-        read_job_specs():               Reads and applies user-specific environment settings from a local file.
+        set_commands():                 Sets command-line instructions for scheduler operations.
+        test_scheduler():               Runs basic checks for scheduler commands and directives.
+        read_user_queue_list():         Processes user-provided queue names and selects queues.
+        read_job_specs():               Reads and applies user-specific environment settings.
         -----------------
         set_queues():                   Interactively sets available queues for the environment.
         get_mqueues():                  Retrieves and initializes queues based on scheduler.
-        add_mqueue():                   Adds a new queue to the environment.
+        add_mqueue():                   Adds or merges a queue in the environment queue list.
         find_queue():                   Finds a queue by name or alternate name.
         make_queue_available():         Makes a queue available for selection.
         select_queue():                 Selects a queue for job submission.
         -----------------
-        save():                         Saves the environment object to a file.
-        save_to_config():               Saves a JSON config file in the user's config dir.
-        load_config():                  Loads a JSON config file as a dictionary.
-        -----------------
-        set_software():                 Sets software modules for Gaussian16 and Quantum Espresso 7.0.
+        save():                         Saves the environment object to a binary file.
         set_storage_path():             Sets the storage path with tab completion.
-        set_scope_program():            Sets the main scope program path with tab completion.
+        set_scope_program():            Sets the main SCOPE program path with tab completion.
         set_paths():                    Sets paths for sources, calculations, and systems.
         check_paths():                  Checks if specified paths exist.
+        get_all_systems():              Loads all serialized systems from systems_path.
         -----------------
-        get_user_requested():           Gets total CPUs and jobs requested by the user.
+        set_software():                 Sets software modules for Gaussian16 and Quantum Espresso 7.0.
+        -----------------
+        get_user_requested():           Gets total requested CPUs and jobs for the user.
         get_user_waiting():             Gets number of waiting CPUs and jobs for the user.
         get_user_running():             Gets number of running CPUs and jobs for the user.
         get_best_queue():               Returns the best queue for job submission based on scoring.
@@ -63,9 +66,11 @@ class Environment(object):
         __repr__():                     Returns a formatted string representation of the environment object.
         _add_attr(key, value):          Adds an attribute to the environment.
         _mod_attr(key, value):          Modifies an attribute in the environment.
+
     Usage:
-        1) Instantiate the class giving a name and follow prompts.
-        2) If in a computation cluster, run self.set_queues(), to specify which queues are available
+        1) Instantiate the class with a name.
+        2) Run `set_scheduler()` and `set_queues()` when using a computation cluster.
+        3) Run `set_paths()` to configure project paths.
     """
     def __init__(self, name: str):
         self.type                   = "environment"
@@ -557,7 +562,7 @@ class Environment(object):
 
         ## If it is not a computation cluster, returns an empty list
         if self.scheduler == "local": 
-            print("ENV.SET_QUEUES. Identified local computer, returning empty list of available queues")
+            print("\tENV.SET_QUEUES: Identified local computer, returning empty list of available queues")
             return self.available_queues
 
         if not hasattr(self,"mqueues"):   self.get_mqueues()
@@ -638,9 +643,9 @@ class Environment(object):
                                 mq.set_nodes()
                                 mq.alter_name = uq
                                 self.available_queues.append(mq)
-                if not found: print(f"USER_QUEUES: could not find {uq} in the system queues")
+                if not found: print(f"SET_QUEUES: could not find {uq} in the system queues")
         else:
-            print(f"USER_QUEUES: You said the interpreted queues are not correct. Please restart function to repeat the process")
+            print(f"SET_QUEUES: You said the interpreted queues are not correct. Please restart function to repeat the process")
             return self.available_queues
 
         ####################
@@ -909,7 +914,6 @@ def run_command(cmd: str, timeout: int = 10) -> CommandResult:
     except FileNotFoundError as e:
         return CommandResult(cmd, -1, "", str(e))
 
-  
 #############
 ### OTHER ###
 #############
@@ -946,4 +950,3 @@ def write_test_job(scheduler: str):
             print("#$ -l h_rt=00:01:00", file=f)
             print("echo test", file=f)
         return Path(f.name)
-

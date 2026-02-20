@@ -283,18 +283,17 @@ class Cell(object):
         if debug > 0: print(f"CELL.GET_MOLECLIST passed initial checks")
 
         ## If fragmented, then it reconstructs the unit cell
-        if not hasattr(self,"fragmented"): self.check_fragmentation()
-        if self.fragmented:
-            print("CELL.GET_MOLECLIST. Reconstructing unit cell")
-            self.reconstruct(debug=debug)
-            print("CELL.GET_MOLECLIST. Arranging new coordinates from moleclist")
-            new_coord = self.fix_cell_coord()
-            if new_coord is None:
-                print("CELL.GET_MOLECLIST. NONE received from FIX_CELL_COORD. Stopping")
-                return 
+        if hasattr(self,"fragmented"): 
+            if self.fragmented:
+                print("CELL.GET_MOLECLIST. Reconstructing unit cell")
+                self.reconstruct(debug=debug)
+                print("CELL.GET_MOLECLIST. Arranging new coordinates from moleclist")
+                new_coord = self.fix_cell_coord()
+                if new_coord is None:
+                    print("CELL.GET_MOLECLIST. NONE received from FIX_CELL_COORD. Stopping")
+                    return None 
 
         blocklist = split_species(self.labels, self.coord, cov_factor=cov_factor, debug=debug)
-        
         if blocklist is None: 
             return None
         else :
@@ -654,7 +653,7 @@ def import_cell(old_cell: object, debug: int=0) -> object:
     new_cell            = Cell(name, labels, coord, cell_vector, cell_param)
     new_cell.subtype    = "cell"
     new_cell.origin     = "import_cell"
-    if debug > 0: print(f"IMPORT CELL: importing cell {new_cell}")
+    if debug > 0: print(f"IMPORT CELL: importing cell {new_cell.name}")
 
     ## Moleclist
     if debug > 0: print(f"IMPORT CELL: creating moleclist")

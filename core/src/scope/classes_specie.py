@@ -358,7 +358,7 @@ class Specie(object):
             self.atoms = atomlist.copy()
             for idx, at in enumerate(self.atoms):
                 at.add_parent(self, index=idx)
-                if debug > 0: print(f"SPECIE.SET_ATOMS: set parent {self.subtype} to atom, with index={idx}")
+                if debug > 1: print(f"SPECIE.SET_ATOMS: set parent {self.subtype} to atom, with index={idx}")
 
         ## If not, that is, if the atom objects must be created from scratch....
         else: 
@@ -944,11 +944,12 @@ class Molecule(Specie):
             for lig in self.ligands:
                 print(f"        {lig.formula} {lig.smiles}")
         if self.iscomplex and not hasattr(self,"ligands"): self.split_complex(debug=debug)
+        # Currently, only complexes (iscomplex = True) have ligands, whose RDKit objects might need to be fixed. 
         if not self.iscomplex: return self.smiles
         self.smiles = []
         for lig in self.ligands:
-            if not hasattr(lig,"smiles"): 
-                raise ValueError(self, lig) 
+            #if not hasattr(lig,"smiles"): 
+            #    raise ValueError(self, lig) 
             lig.fix_rdkit_obj(debug=debug)
             lig.set_smiles_from_rdkit_obj(debug=debug) 
             self.smiles.append(lig.smiles)
@@ -1837,10 +1838,18 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
         for at in new_molec.atoms:
             if at.subtype == "metal": new_molec.metals.append(at)
 
+        # Checks and fixes ligands_rdkit_obj if necessary
+        try:
+            new_molec.fix_ligands_rdkit_obj(debug=debug)    
+        except Exception as exc:
+            if debug > 0: print(f"Error fixing rdkit objects of ligands. Preserving old ones. Exception below:")
+            if debug > 0: print(exc)
+
     ### Charges
     if hasattr(mol,"atcharge"):
+        if debug > 0: print(f"IMPORT MOLEC: importing atomic charges")
         new_molec.set_atomic_charges(mol.atcharge)
-        if debug > 0: print(f"IMPORT MOLEC: imported atomic charges")
+        if debug > 0: print(f"IMPORT MOLEC: imported atomic charges: {new_molec.atomic_charges}")
 
     ## Fractional coordinates
     if debug > 0: print(f"IMPORT MOLEC: trying to import fractional coordinates")
