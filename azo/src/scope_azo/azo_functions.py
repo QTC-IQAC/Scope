@@ -67,76 +67,6 @@ def gaussian(E, E0, f, sigma=0.2, normalize=True):
         g /= sigma * np.sqrt(2 * np.pi)
     return f * g 
 
-def build_sigma(transitions, E_grid, sigma=0.2, normalize=False, units=True):
-    """
-    Build a spectrum from a list of transitions.
-    
-    Parameters
-    ----------
-    transitions : list of tuples
-        List of transitions, where each transition is a tuple of (E0, f).
-    E_grid : array_like
-        Energy grid, in eV.
-    sigma : float, optional
-        Standard deviation of the Gaussian, in eV. Default is 0.2 eV.
-    normalize : bool, optional
-        Whether to normalize the Gaussian. Default is False.
-    units : bool, optional
-        Whether to return the spectrum in units of m^2 / molecule. Default is True.
-    
-    Returns
-    -------
-    spec : array_like
-        Spectrum, in m^2 / molecule if units is True, otherwise in arbitrary units.
-    """
-    
-    spec = np.zeros_like(E_grid)
-    for E0, f in transitions:
-        spec += gaussian(E_grid, E0, f,sigma=sigma, normalize=normalize)
-    K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
-    if units:
-        return spec[::-1] * K  # in m^2 / molecule
-    else: 
-        return spec[::-1]  # in arbitrary units
-
-def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug=0):
-    """
-    Returns the photon flux spectrum from a given wavelength grid and intensity.
-    
-    Parameters
-    ----------
-    lam0_nm : float
-        Central wavelength, in nm.
-    fwhm_nm : float
-        Full width at half maximum, in nm.
-    lam_grid : array_like
-        Wavelength grid, in nm.
-    Itot : float
-        Total intensity, in W/m2/nm.
-    power : float, optional
-        Power, in W. Default is None.
-    debug : int, optional
-        Debug level. Default is 0.
-    
-    Returns
-    -------
-    I_lambda : array_like
-        Photon flux spectrum, in photons m-2 s-1 nm-1.
-    """
-
-    sigma = fwhm_nm / (2 * np.sqrt(2 * np.log(2)))
-    profile = gaussian(lam_grid, lam0_nm, 1.0, sigma) 
-    if power is not None:
-        area = np.pi * (4.605e-3)**2  # in m2, area of a circle with diameter 0.92 cm
-        I_lambda = power * profile / area   # W/m2/nm
-    else:
-        I_lambda = Itot * 1e-3 / 1e-6 * profile  # mW/mm2 to W/m2/nm
-    # I_lambda = Itot * profile  # W/m2/nm
-    lam_m = np.ones_like(lam_grid)* lam_grid * 1e-9  # in m
-    photon_E = Constants.planck_Js * Constants.speed_light / lam_m  # in J
-    phi = I_lambda / photon_E           # photons m-2 s-1 nm-1        
-    return phi
-
 def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems: list['System_azo'] = None, debug: int = 0) -> list['System_azo']:
     """
     Combines left, right and substituent SMILES strings to create azo compounds. Geometries are named following the 
@@ -212,22 +142,6 @@ def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems
 
     print(f"AZOS.COMBINE_SMILES: END. Total valid systems: {len(systems)}")
     return systems
-
-def get_abs_spectrum(state1, state2, normalize: bool = False, units: bool = False):
-        # Add checks for thermal stability
-        if not hasattr(state1, 'es_list') or not hasattr(state2, 'es_list'):
-            print('WARNING: No TDDFT data found for cis or trans isomers')
-            return None, None, None, None
-        Z_e = [es.energy for es in state1.es_list]
-        Z_f = [es.fosc for es in state1.es_list]
-        E_e = [es.energy for es in state2.es_list]
-        E_f = [es.fosc for es in state2.es_list]
-        Emin = min(min(Z_e), min(E_e)) - 1
-        Emax = max(max(Z_e), max(E_e)) + 1
-        x = np.linspace(Emin, Emax, 5000)
-        sigma_Z = build_sigma(zip(Z_e, Z_f), x, normalize=False,units=False)     # Absolute
-        sigma_E = build_sigma(zip(E_e, E_f), x, normalize=False,units=False)
-        return 1240 / x[::-1], sigma_Z, sigma_E 
 
 ################################
 ###     HELP FUNCTION
@@ -622,21 +536,29 @@ def format_time(t):
 #
 #######################################
 
-def get_abs_spectrum(state1, state2, normalize: bool = False, units: bool = False):
-        # Add checks for thermal stability
-        if not hasattr(state1, 'es_list') or not hasattr(state2, 'es_list'):
-            print('WARNING: No TDDFT data found for cis or trans isomers')
-            return None, None, None, None
-        Z_e = [es.energy for es in state1.es_list]
-        Z_f = [es.fosc for es in state1.es_list]
-        E_e = [es.energy for es in state2.es_list]
-        E_f = [es.fosc for es in state2.es_list]
-        Emin = min(min(Z_e), min(E_e)) - 1
-        Emax = max(max(Z_e), max(E_e)) + 1
-        x = np.linspace(Emin, Emax, 5000)
-        sigma_Z = build_sigma(zip(Z_e, Z_f), x, normalize=False,units=False)     # Absolute
-        sigma_E = build_sigma(zip(E_e, E_f), x, normalize=False,units=False)
-        return 1240 / x[::-1], sigma_Z, sigma_E 
+def get_abs_spectrum(state1, state2, normalize: bool = False, units: bool = False, get_PSS=False):
+    # Check if TDDFT data exists.
+    if not hasattr(state1, 'es_list') or not hasattr(state2, 'es_list'):
+        print('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in some of the selected states')
+        return None, None, None, None
+
+    Z_e = [es.energy for es in state1.es_list]
+    Z_f = [es.fosc for es in state1.es_list]
+    E_e = [es.energy for es in state2.es_list]
+    E_f = [es.fosc for es in state2.es_list]
+
+    # Select a reasonable energy range
+    Emin = min(min(Z_e), min(E_e)) - 1
+    Emax = max(max(Z_e), max(E_e)) + 1
+    x = np.linspace(Emin, Emax, 5000)
+
+    if get_PSS:
+        units=True
+    
+    sigma_Z = build_sigma(zip(Z_e, Z_f), x, normalize=False,units=units)     # Absolute, no units
+    sigma_E = build_sigma(zip(E_e, E_f), x, normalize=False,units=units)
+
+    return 1240 / x[::-1], sigma_Z, sigma_E 
 
 def get_PSS(cis_state, trans_state, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
 
@@ -649,13 +571,13 @@ def get_PSS(cis_state, trans_state, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t
     photon_flux = get_photon_flux_spectrum(lamp.wavelength, lamp.fwhm, lambda_grid, Itot=lamp.irradiance)
     
     # Half-lives in seconds
-    if not hasattr(trans_state, 'halflife'):
+    if not 'halflife' in trans_state.results.keys():
         print('No halflife found for trans isomer. Computing...')
-        trans_source.set_halflife_time('trans', skip_triplets=True, overwrite=False)
-    if not hasattr(cis_state, 'halflife'):
+        trans_source.set_halflife_time(skip_triplets=False, overwrite=False)
+    if not 'halflife' in cis_state.results.keys():
         print('No halflife found for cis isomer. Computing...')
         cis_source.set_halflife_time(skip_triplets=False, overwrite=True)
-        raise ValueError(f'Error: No halflife found for Z or E isomers in system {self.name}')
+        raise ValueError(f'Error: No halflife found for Z or E isomers in system {system.name}')
 
     # If no half-life times are given (for research), halflife is taken from the corresponding state
     if t_EZ is None:
@@ -664,8 +586,8 @@ def get_PSS(cis_state, trans_state, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t
         t_ZE = cis_state.results['halflife'].value
 
     # Photochemical rates
-    k_ph_EZ = phi_EZ * np.trapz(sigma_E * photon_flux, lambda_grid)
-    k_ph_ZE = phi_ZE * np.trapz(sigma_Z * photon_flux, lambda_grid)
+    k_ph_EZ = phi_EZ * np.trapezoid(sigma_E * photon_flux, lambda_grid)
+    k_ph_ZE = phi_ZE * np.trapezoid(sigma_Z * photon_flux, lambda_grid)
     # Thermal rates
     k_th_EZ = np.log(2) /  t_EZ
     k_th_ZE = np.log(2) /  t_ZE
@@ -743,9 +665,102 @@ def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug
     phi = I_lambda / photon_E           # photons m-2 s-1 nm-1        
     return phi
 
-def build_pss_spectrum(pss, sigma_Z, sigma_E):
-
-    sigma_Z *= Cons.Avogadro / (1000 * np.log(10)) * 1e4  # in M^-1 cm^-1
-    sigma_E *= Cons.Avogadro / (1000 * np.log(10)) * 1e4  # in M^-1 cm^-1
+def build_pss_spectrum(pss, sigma_Z, sigma_E, debug=0):
+    """
+    Builds the spectrum using 
+    """
+    # sigma_Z *= Constants.avogadro / (1000 * np.log(10)) * 1e4  # in M^-1 cm^-1
+    # sigma_E *= Constants.avogadro / (1000 * np.log(10)) * 1e4  # in M^-1 cm^-1
     sigma_pss = pss * sigma_E + (1 - pss) * sigma_Z
     return sigma_pss
+
+def wavelength_to_rgb(nm: float):
+    """Approximate the RGB color perceived for a wavelength in nm."""
+    gamma = 0.8
+    # intensity = 1.0
+    nm +=30
+    if nm < 360 or nm > 780:
+        return (0.5, 0.5, 0.5)  # gray for non-visible (e.g., 350 nm)
+
+    if 360 <= nm < 440:
+        r, g, b = -(nm - 440) / (440 - 380), 0.0, 1.0
+    elif 440 <= nm < 490:
+        r, g, b = 0.0, (nm - 440) / (490 - 440), 1.0
+    elif 490 <= nm < 510:
+        r, g, b = 0.0, 1.0, -(nm - 510) / (510 - 490)
+    elif 510 <= nm < 580:
+        r, g, b = (nm - 510) / (580 - 510), 1.0, 0.0
+    elif 580 <= nm < 645:
+        r, g, b = 1.0, -(nm - 645) / (645 - 580), 0.0
+    else:  # 645–780
+        r, g, b = 1.0, 0.0, 0.0
+
+    # intensity correction at spectrum edges
+    if 360 <= nm < 420:
+        factor = 0.3 + 0.7 * (nm - 380) / (420 - 380)
+    elif 420 <= nm <= 700:
+        factor = 1.0
+    else:
+        factor = 0.3 + 0.7 * (780 - nm) / (780 - 700)
+
+    r = (r * factor) ** gamma if r > 0 else 0.0
+    g = (g * factor) ** gamma if g > 0 else 0.0
+    b = (b * factor) ** gamma if b > 0 else 0.0
+
+    return (r, g, b)
+
+def plot_pss(azo, lambda_grid, wl_list, sigma_Z, sigma_E, frac_list, pss_list, solvent, xlim, t_EZ=None, t_ZE=None, skip_spectra=False, only_dark=False, savetoimg=False):
+
+
+
+    if t_ZE is None:
+        t_cis = azo.find_conformer('cis')[1].find_state('opt')[1].results['halflife'].value
+    else:
+        t_cis = t_ZE
+    if t_EZ is None:
+        t_trans = azo.find_conformer('trans')[1].find_state('opt')[1].results['halflife'].value
+    else:
+        t_trans = t_EZ
+    t_trans = format_time(t_trans)
+    t_cis = format_time(t_cis)
+    
+    plt.figure(figsize=(6, 4), dpi=300)
+    if not skip_spectra:
+        plt.plot(lambda_grid, sigma_Z, color='blue', linestyle='dashed', linewidth=1, label=f'Z-{azo.name}              t = {t_cis}')
+        plt.plot(lambda_grid, sigma_E, color='black', linestyle='dashed', linewidth=1, label=f'E-{azo.name}              t = {t_trans}')
+
+    for i, pss_wl in enumerate(pss_list):
+
+        if i == 0:
+            plt.plot(lambda_grid, pss_wl, color='black', linewidth=2, label=f'DARK                 ({frac_list[i]:.2f} E)')
+            if only_dark:
+                print('AZO.PLOT_PSS: Remember DARK represents only the thermal relaxation.')
+                plt.title(f'Thermal relaxation of {azo.name} in {solvent}')
+                plt.legend(fontsize=9)
+                plt.xlabel('Wavelength (nm)')
+                plt.ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
+                plt.xlim(xlim[0],xlim[1]) 
+                return
+
+        else:
+            
+            color = wavelength_to_rgb(wl_list[i-1])
+
+            plt.plot(lambda_grid, pss_wl, linewidth=0.75,c=color, label=f'{wl_list[i-1]} nm              ({frac_list[i]:.2f} E)')
+
+    plt.title(f'{azo.name} in {solvent}')
+    plt.legend(fontsize=9)
+    plt.xlabel('Wavelength (nm)')
+    plt.ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
+    plt.xlim(xlim[0],xlim[1]) 
+    plt.figure(figsize=(6, 4), dpi=300)
+    plt.plot(lambda_grid, sigma_Z, color='blue', linestyle='dashed', linewidth=1, label=f'Z-{azo.name}  t = {t_cis}')
+    plt.plot(lambda_grid, sigma_E, color='black', linestyle='dashed', linewidth=1, label=f'E_{azo.name}  t = {t_trans}')
+    plt.title(f'{azo.name} in {solvent}')
+    plt.legend()
+    plt.xlabel('Wavelength (nm)')
+    plt.ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
+    plt.xlim(xlim[0], xlim[1])
+    if savetoimg:
+        plt.savefig(os.path.join(plots_dir, f"{azo.name}_pss.png"), dpi=300)
+    plt.close()

@@ -601,80 +601,145 @@ class System_azo(System):
 
         plt.tight_layout()
         plt.show()
+        
+        print("----SUMMARY OF ENERGY BARRIERS----")
+        for name, energy in zip(labels,energies):
+            print(name, ' ', energy)
 
 
     def get_PSS(self, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
 
-        lambda_grid, sigma_Z, sigma_E = self.get_abs_spectrum(normalize=False, units=True, get_PSS=True)
-        Z_exists, cis = self.find_conformer('cis')
-        E_exists, trans = self.find_conformer('Trans')
-        if not Z_exists or not E_exists:
-            print(f'Z_exists: {Z_exists}, E_exists: {E_exists}')
-            raise ValueError(f'Error: No cis or trans conformers found for system {self.name}')
-        cis_state = cis.find_state('opt')[1]
-        trans_state = trans.find_state('opt')[1]
-        # Photon flux from lamp
-        photon_flux = get_photon_flux_spectrum(lamp.wavelength, lamp.fwhm, lambda_grid, Itot=lamp.irradiance)
-        # Half-lives in seconds
-        if not hasattr(trans_state, 'halflife'):
-            print('No halflife found for trans isomer. Computing...')
-            self.set_halflife_time('trans', skip_triplets=True, overwrite=False)
-        if not hasattr(cis_state, 'halflife'):
-            print('No halflife found for cis isomer. Computing...')
-            self.set_halflife_time('cis', skip_triplets=True, overwrite=False)
-            raise ValueError(f'Error: No halflife found for Z or E isomers in system {self.name}')
-        if t_EZ is None:
-            t_EZ = trans_state.results['halflife'].value
-        if t_ZE is None:
-            t_ZE = cis_state.results['halflife'].value
-        # Photochemical rates
-        k_ph_EZ = phi_EZ * np.trapz(sigma_E * photon_flux, lambda_grid)
-        k_ph_ZE = phi_ZE * np.trapz(sigma_Z * photon_flux, lambda_grid)
-        # Thermal rates
-        k_th_EZ = np.log(2) /  t_EZ
-        k_th_ZE = np.log(2) /  t_ZE
-        # Steady-state populations
-        N_E = (k_th_ZE + k_ph_ZE) / (k_ph_EZ + k_ph_ZE + k_th_EZ + k_th_ZE)
-        return lambda_grid, sigma_Z, sigma_E, N_E
+        # Search for cis and trans sources.
+        found_cis_opt, cis_state = self.find_source('cis')[1].find_state('opt')
+        found_trans_opt, trans_state = self.find_source('trans')[1].find_state('opt')
+
+        if not (found_cis_opt and found_trans_opt):
+            raise Exception('SYSTEM_AZO.GET_PSS: One of the optimized states were not found.')
+
+        print(f'SYSTEM_AZO.GET_PSS: TRANS: {trans_state.results}')
+        print(f'SYSTEM_AZO.GET_PSS: CIS: {cis_state.results}')
+        return get_PSS(cis_state, trans_state, lamp = lamp, phi_EZ = phi_EZ, phi_ZE = phi_ZE, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug)
     
-    def get_abs_spectrum(self, normalize: bool = False, units: bool = False, get_PSS: bool = False, custom_cis: str = None, custom_trans: str = None):
-        if custom_cis is not None:
-            name = str(custom_cis)
-            Z_exists, cis = self.find_conformer(custom_cis)
-        else:
-            Z_exists, cis = self.find_conformer('cis')
-        if custom_trans is not None:
-            name = str(custom_trans)
-            E_exists, trans = self.find_conformer(custom_trans)
-        else:
-            E_exists, trans = self.find_conformer('Trans')
-        if not Z_exists or not E_exists:
-            print(f'Z_exists: {Z_exists}, E_exists: {E_exists}')
+    def get_abs_spectrum(self, normalize: bool = False, units: bool = False, get_PSS: bool = False,
+                         custom_cis= None, custom_trans= None):
+
+        if custom_cis is None:
+            found_cis, cis = self.find_source('cis')
+        if custom_trans is None:
+            found_trans, trans = self.find_source('trans')
+
+        if not found_cis or not found_trans:
+            print(f'Z_exists: {found_cis}, E_exists: {found_trans}')
             raise ValueError(f'Error: No cis or trans conformers found for system {self.name}')
-        opt_Z_exists, cis_state = find_state(cis, 'opt')
-        opt_E_exists, trans_state = find_state(trans, 'opt')
-        if not opt_Z_exists or not opt_E_exists:
+
+        opt_cis_exists, cis_state = cis.find_state('opt')
+        opt_trans_exists, trans_state = trans.find_state('opt')
+
+        if not opt_cis_exists or not opt_trans_exists:
             print(f'opt_Z_exists: {opt_Z_exists}, opt_E_exists: {opt_E_exists}')
             raise ValueError(f'Error: No opt state found for Z or E isomers')
 
-        # Add checks for thermal stability
-        if not hasattr(cis_state, 'es_list') or not hasattr(trans_state, 'es_list'):
-            print('WARNING: No TDDFT data found for cis or trans isomers')
-            return None, None, None, None
+        return get_abs_spectrum(cis_state, trans_state, normalize= normalize, 
+            units= units, get_PSS= get_PSS)
 
-        Z_e = [es.energy for es in cis_state.es_list]
-        Z_f = [es.fosc for es in cis_state.es_list]
-        E_e = [es.energy for es in trans_state.es_list]
-        E_f = [es.fosc for es in trans_state.es_list]
-        Emin = min(min(Z_e), min(E_e)) - 1
-        Emax = max(max(Z_e), max(E_e)) + 1
-        x = np.linspace(Emin, Emax, 5000)
-        sigma_Z = build_sigma(zip(Z_e, Z_f), x, normalize=False,units=False)     # Absolute
-        sigma_E = build_sigma(zip(E_e, E_f), x, normalize=False,units=False)
-        if get_PSS:
-            sigma_Z = build_sigma(zip(Z_e, Z_f), x, normalize=False,units=True)     # Absolute
-            sigma_E = build_sigma(zip(E_e, E_f), x, normalize=False,units=True)
-        return 1240 / x[::-1], sigma_Z, sigma_E  
+    def compute_pss(self, wl_list, state_trans=None, state_cis=None, phi_EZ=0.3, phi_ZE=0.5, t_EZ=None, t_ZE=None, shift_nm=None, debug =0): 
+        """
+        Calculates the photostationary state for a A <--> B photo-interconversion.
+        """
+       
+        if state_trans is None: 
+            state_trans = self.find_source('trans')[1].find_state('opt')[1]
+        if state_cis is None: 
+            state_cis = self.find_source('cis')[1].find_state('opt')[1]
+
+        if debug>0: print(f'SYSTEM_AZO.COMPUTE_PSS: Trans results: {state_trans.results}')
+        if debug>0: print(f'SYSTEM_AZO.COMPUTE_PSS: Cis results: {state_cis.results}')
+        name_trans = state_trans._source.name # Trans
+        name_cis = state_cis._source.name # Cis
+
+        frac_list = []
+        pss_list = []
+
+        # 1. Initial dark condition
+        lamp = Lamp(name='DARK', wavelength=365)
+        
+        lambda_grid, sigma_cis, sigma_trans, pss_B = self.get_PSS(lamp, phi_EZ=0, phi_ZE=0, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug) 
+        
+        sigma_cis *= Constants.avogadro / (1000 * np.log(10)) * 1e4
+        sigma_trans *= Constants.avogadro / (1000 * np.log(10)) * 1e4
+
+        sigma_pss = build_pss_spectrum(pss_B, sigma_cis, sigma_trans, debug = debug) 
+        frac_list.append(pss_B)     
+        pss_list.append(sigma_pss)  
+
+        # 2. Iterate through irradiations
+        for irr_wl in wl_list:
+            lamp = Lamp(name='COOLLED', wavelength=irr_wl, shift_nm=shift_nm)
+            _, _, _, pss_B = self.get_PSS(lamp, phi_EZ=phi_EZ, phi_ZE=phi_ZE, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug) 
+            sigma_pss = build_pss_spectrum(pss_B, sigma_cis, sigma_trans)
+            frac_list.append(pss_B)    
+            pss_list.append(sigma_pss)  
+
+        # 3. Store the extracted names AND the extracted half-lives!
+        # This saves the plotting function from having to look them up again.
+        self.pss_data = {
+            "name_trans": name_trans,
+            "name_cis": name_cis,
+            "lambda_grid": lambda_grid,
+            "wl_list": wl_list,
+            "sigma_cis": sigma_cis,
+            "sigma_trans": sigma_trans,
+            "frac_list": frac_list,      
+            "pss_list": pss_list,
+            # Safely grab the halflife from the State object's results dictionary
+            "t_EZ": t_EZ if t_EZ is not None else state_trans.results['halflife'].value, 
+            "t_ZE": t_ZE if t_ZE is not None else state_cis.results['halflife'].value   
+        }
+        print(f"PSS data for {name_trans}/{name_cis} successfully computed!")
+
+    def plot_pss(self, solvent="Unknown", xlim=(250, 600), skip_spectra=False, only_dark=False, savetoimg=False, plots_dir="./plots/"):
+        import matplotlib.pyplot as plt
+        import os
+
+        if not hasattr(self, 'pss_data'):
+            raise AttributeError(f"No PSS data found for {self.name}. Please run .compute_pss() first.")
+
+        data = self.pss_data
+        name_trans = data["name_trans"]
+        name_cis = data["name_cis"]
+        
+        # The half-lives were already safely extracted and stored by compute_pss!
+        t_EZ_str = format_time(data["t_EZ"])
+        t_ZE_str = format_time(data["t_ZE"])
+        
+        fig, ax = plt.subplots(figsize=(6, 4), dpi=300)
+        
+        if not skip_spectra:
+            ax.plot(data["lambda_grid"], data["sigma_trans"], color='black', linestyle='dashed', linewidth=1, label=f'{name_trans}  t = {t_EZ_str}')
+            ax.plot(data["lambda_grid"], data["sigma_cis"], color='blue', linestyle='dashed', linewidth=1, label=f'{name_cis}  t = {t_ZE_str}')
+
+        for i, pss_wl in enumerate(data["pss_list"]):
+            frac_A = data["frac_list"][i]
+            if i == 0:
+                ax.plot(data["lambda_grid"], pss_wl, color='black', linewidth=2, label=f'DARK ({frac_A:.2f} {name_trans})')
+                if only_dark: break
+            else:
+                color = wavelength_to_rgb(data["wl_list"][i-1])
+                ax.plot(data["lambda_grid"], pss_wl, linewidth=0.75, c=color, label=f'{data["wl_list"][i-1]} nm ({frac_A:.2f} {name_trans})')
+
+        ax.set_title(f'{self.name} in {solvent}')
+        ax.legend(fontsize=9)
+        ax.set_xlabel('Wavelength (nm)')
+        ax.set_ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
+        ax.set_xlim(xlim[0], xlim[1]) 
+        plt.tight_layout()
+
+        if savetoimg:
+            os.makedirs(plots_dir, exist_ok=True)
+            plt.savefig(os.path.join(plots_dir, f"{self.name}_{name_trans}_{name_cis}_pss.png"), dpi=300)
+            plt.close(fig)
+        else:
+            plt.show()
 
     def __repr__(self):
         to_print = ""
@@ -720,45 +785,38 @@ class Molecule_azo(Molecule):
         The function will only consider TSs that have an opt state with a Gtot value, or Gtot_corr value if skip_triplets is False.
         
         '''
-
-        # Check if triplets are corrected.
-
-        iscorrect = check_triplet(self, overwrite=overwrite, debug=debug)
-
-        if not iscorrect:
-            raise Exception("There has been an error with correcting triplet Gtot. Check if computations have finished ")
-
         ts_values = []
         ts_names = []
 
-        found_iso_opt, iso_state = self.find_state("opt")
+        # Check if triplets are corrected.
+        iscorrect = check_triplet(self, overwrite=overwrite, debug=debug) 
 
+        if not iscorrect:
+            raise Exception("MOLECULE_AZO.SET_HALFLIFE_TIME: There has been an error with correcting triplet Gtot. Check if computations have finished ")
+
+        found_iso_opt, iso_state = self.find_state("opt")
         if not found_iso_opt:
-            raise Exception(f'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: Optimization state not found for {self.name}.')
-             
+            raise Exception(f'MOLECULE_AZO.SET_HALFLIFE_TIME: Optimization state not found for {self.name}.')
+
+        # Find Gtot from selected isomer, stored as Molecule_azo object
         if 'Gtot' in iso_state.results.keys(): g_iso = iso_state.results['Gtot'].value
-        else: raise ValueError('AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: Gtot not found for isomer')
+        else: raise ValueError('MOLECULE_AZO.SET_HALFLIFE_TIME: Gtot not found for isomer')
 
         parent = self._sys
         candidates = [source for source in parent.sources if source.name.lower().startswith('ts')]
         candidates_names = [source.name for source in candidates]
 
-        if 'TSrot_A_T' in candidates_names or 'TSrot_B_T' in candidates_names:
-            triplets = [source for source in parent.sources if source.name.lower().startswith('TSrot_A_T') or source.name.lower().startswith('TSrot_B_T')]
-            for triplet in triplets:
-                correct_tripletG(self, triplet)
-
         for ts in candidates:
             found_ts_state, ts_state = ts.find_state("opt")
             if not found_ts_state or not 'Gtot' in ts_state.results.keys():
-                print(f'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: [WARNING] Optimization state or Gtot not found for {ts.name}.')
+                print(f'MOLECULE_AZO.SET_HALFLIFE_TIME: [WARNING] Optimization state or Gtot not found for {ts.name}.')
                 continue
             # Use only TSs with Gtot or Gtot_corr
 
             if ts.spin == 2:     # Use corrected Gtot for triplets
                 if not skip_triplets:
                     if 'Gtot_corr' in ts_state.results.keys(): energy = ts_state.results['Gtot_corr'].value
-                    else: raise ValueError(f'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
+                    else: raise ValueError(f'MOLECULE_AZO.SET_HALFLIFE_TIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
                 else:
                     continue
             else:   energy = ts_state.results['Gtot'].value
@@ -768,8 +826,8 @@ class Molecule_azo(Molecule):
             ts_values.append(energy)
         
         if not hasattr(self, 'halflife') or overwrite:
-            if debug > 0: print(rf'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')
-            if debug > 0: print(f'AZO.MOLECULE_AZO.SET_HALFLIFE_TIME:Doing halflife for {parent.name} {self.name}')
+            if debug > 0: print(rf'MOLECULE_AZO.SET_HALFLIFE_TIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')
+            if debug > 0: print(f'MOLECULE_AZO.SET_HALFLIFE_TIME:Doing halflife for {parent.name} {self.name}')
             
             # Choosing Minimum Energy TS (mets)
             min_idx = int(np.argmin(ts_values))
@@ -790,9 +848,10 @@ class Molecule_azo(Molecule):
             newdata = Data('dG_cross', float(dG_cross), 'kcal/mol', 'set_halflife_time')
             iso_state.add_result(newdata, overwrite=overwrite)
         else: 
-            print(f'State not found in {self.name}.')
-        print(f'AZO.SET_HALFLIFE_TIME: Half-life time has been computed for {self.name} and was stored as a result to the corresponding State!')
-        print(f'AZO.SET_HALFLIFE_TIME: dG_cross and mets can be accessed by self.dG_cross and self.mets!')
+            print(f'MOLECULE_AZO.SET_HALFLIFE_TIME: State not found in {self.name}.')
+            
+        print(f'MOLECULE_AZO.SET_HALFLIFE_TIME: Half-life time has been computed for {self.name} and was stored as a result to the corresponding State!')
+        print(f'MOLECULE_AZO.SET_HALFLIFE_TIME: ---- Attributes such as dG_cross and mets can be accessed by self.dG_cross and self.mets)')
         
 
     def link_tda_to_state(self, state: object, filepath: str, overwrite: bool=False):
@@ -953,12 +1012,18 @@ class Lamp:
         if shift_nm != float(0.0):  self.eff_wavelength = self.wavelength - shift_nm
         else:   self.eff_wavelength = self.wavelength
 
+        if name=='DARK':
+            self.wavelength = 365
+            self.irradiance = 0 
+            self.power = 0
+
+
     def __repr__(self):
         to_print = f'--------- Scope Lamp Object -----------\n'
         to_print += f' Name                     = {self.name}\n'
         to_print += f' Wavelength               = {self.wavelength} nm\n'
         to_print += f' FWHM                     = {self.fwhm} nm\n'
         if hasattr(self, "eff_wavelength"): to_print += f' Wavelength (after shift) = {self.eff_wavelength} nm\n'
-        if hasattr(self, "power"):          to_print += f' Power                 = {self.power} W\n'
+        if hasattr(self, "power"):          to_print += f' Power                    = {self.power} W\n'
         to_print += f'---------------------------------------\n'
         return to_print
