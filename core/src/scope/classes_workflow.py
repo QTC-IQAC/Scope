@@ -1124,7 +1124,7 @@ class Computation(object):
         to_print += f' Comp index            = {self.index}\n' 
         to_print += f' Comp step             = {self.step}\n' 
         to_print += f' Comp run_number       = {self.run_number}\n' 
-        if self.keywords != '': to_print += f' Comp keyword          = {self.keyword}\n' 
+        if self.keyword != '': to_print += f' Comp keyword          = {self.keyword}\n' 
         to_print += f' Comp inp_path         = {self.inp_path}\n' 
         to_print += f' Comp out_path         = {self.out_path}\n' 
         to_print += f' Comp isregistered     = {self.isregistered}\n' 

@@ -309,9 +309,9 @@ def set_scene(fig, positions, padding=1.0, width: int=500, height: int=500):
     zmin, zmax = positions[:,2].min() - padding, positions[:,2].max() + padding
 
     fig.update_layout(scene=dict(
-        xaxis  = dict(title='X ()', range=[xmin, xmax]),
-        yaxis  = dict(title='Y ()', range=[ymin, ymax]),
-        zaxis  = dict(title='Z ()', range=[zmin, zmax]),
+        xaxis  = dict(title='X (Å)', range=[xmin, xmax]),
+        yaxis  = dict(title='Y (Å)', range=[ymin, ymax]),
+        zaxis  = dict(title='Z (Å)', range=[zmin, zmax]),
     ))
 
     fig.update_layout(width=width,height=height)
@@ -418,32 +418,6 @@ def input_with_default(prompt: str, default: str | None = None) -> str:
         prompt = f"{prompt}[{default}] "
     value = input(prompt)
     return value.strip() or default
-
-#def input_with_default(prompt: str, default: str | None = None) -> str:
-#    """
-#    Show a prompt with a default value. User can accept it by pressing Enter.
-#    If should work on Linux/macOS with readline.
-#    """
-#    default = "" if default is None else str(default)
-#    inserted = False
-#
-#    # Show default in prompt
-#    if default:
-#        prompt = f"{prompt}[{default}] "
-#
-#    def pre_input_hook():
-#        nonlocal inserted
-#        if not inserted and default:
-#            readline.insert_text(default)
-#            readline.redisplay()
-#            inserted = True
-#
-#    readline.set_pre_input_hook(pre_input_hook)
-#    try:
-#        value = input(prompt)
-#        return value.strip() or default
-#    finally:
-#        readline.set_pre_input_hook(None)
 
 ################
 ## Exceptions ##

@@ -109,7 +109,7 @@ class System_sco(System):
     def set_reference_molecs(self, overwrite: bool=False, debug: int=0):
         found_hs, hs = self.find_source("ref_hs_mol")
         found_ls, ls = self.find_source("ref_ls_mol")
-        if not overwrite and found_hs and found_ls:
+        if not overwrite and (found_hs or found_ls):
             if debug > 0: print(f"SET_REF_MOLEC: reference molecules already present. Use overwrite=True to reset them")
             return True
 
@@ -164,8 +164,8 @@ class System_sco(System):
     def set_reference_cells(self, overwrite: bool=False, debug: int=0):
         found_hs, hs = self.find_source("ref_hs_cell")
         found_ls, ls = self.find_source("ref_ls_cell")
-        if not overwrite and found_hs and found_ls:
-            if debug > 0: print(f"SET_REF_CELLS: reference HS or LS cells already present. Use overwrite=True to reset them")
+        if not overwrite and (found_hs or found_ls): 
+            if debug > 0: print(f"SET_REF_CELLS: reference HS of LS cells already present. Use overwrite=True to reset them")
             return True
 
         hs_ref_temp = 1000  ## Initial high value to find the lowest temperature
@@ -222,14 +222,14 @@ class System_sco(System):
         for mol in hs.moleclist:
             mol.set_bonds()
             if mol.iscomplex: mol.fix_ligands_rdkit_obj()
-        self.add_source(hs.name, hs)
+        self.add_source(hs.name, hs, overwrite=overwrite)
 
         ls.name = "ref_ls_cell"
         ls.set_spin_metals(0, debug=debug) # Not strictly necessary, but for clarity 
         for mol in ls.moleclist:
             mol.set_bonds()
             if mol.iscomplex: mol.fix_ligands_rdkit_obj()
-        self.add_source(ls.name, ls)
+        self.add_source(ls.name, ls, overwrite=overwrite)
 
         if hs.natoms != ls.natoms: print(f"Warning: different number of atoms in crystal; HS: {hs.natoms} vs. LS: {ls.natoms}")
 
