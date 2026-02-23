@@ -349,10 +349,18 @@ class G16_output(object):
             if tmp is None: tmp = parse_vnms_from_step(self.lines[init_line:last_line], witheigen=witheigen, debug=debug)
             if tmp is not None:    
                 self.vnms = tmp; return self.vnms
-            else:                  
-                if debug > 0: print("get_vnms: vnms is None")
+            else: 
+                if debug > 0: print("G16_OUTPUT.GET_VNMS: vnms is None")
         self.vnms = None
         return self.vnms
+
+################
+### TD / TDA ###
+################
+    def get_exc_states(self, nstates: int=10, debug: int=0):
+        self.exc_states = parse_exc_states(self.lines, nstates=nstates, debug=debug)
+        if self.exc_states is None: print("G16_OUTPUT.GET_EXC_STATES: WARNING! excited states are None")
+        return self.exc_states
 
 ############
 ### TIME ###

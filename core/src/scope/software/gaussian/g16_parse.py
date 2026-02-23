@@ -336,6 +336,44 @@ def parse_vnms_from_step(lines: list, witheigen: bool=False, debug: int=0):
             index += 1
     return vnms
 
+################
+### TD / TDA ###
+################
+def parse_exc_states(lines, nstates: int=10, debug: int=0):
+    from scope.classes_qc import ExcitedState
+    if not parse_status_finished(lines): 
+        if debug > 0: print("PARSE_TD: Job not finished, excited states may be incomplete or inaccurate.")
+        return None
+
+    if debug > 0: print(f"PARSE_TD: Parsing excited states, looking for {nstates} states in the output lines.")
+    es_list = []
+    for st_num in range(1,nstates+1):
+
+        # Format changes depending on the state number
+        if st_num < 10:    
+            line_nums, found = search_string(f"Excited State   {st_num}:", lines, typ='first')
+        elif st_num >= 10 and st_num < 100: 
+            line_nums, found = search_string(f"Excited State  {st_num}:", lines, typ='first')
+        elif st_num >= 100 and st_num < 1000: 
+            line_nums, found = search_string(f"Excited State {st_num}:", lines, typ='first')
+        if not found: print(f"PARSE_TD: Excited State {st_num} not found in lines") 
+
+        # Parses relevant data
+        _, _, idx, _, energy, _, wavelength, _, fosc, s2 = lines[line_nums].split() 
+        idx         = int(idx.replace(':',''))
+        s2          = float(s2.replace('<S**2>=',''))
+        fosc        = float(fosc.replace('f=',''))
+        wavelength  = float(wavelength)
+        energy      = float(energy)
+        if debug > 0: print(f"PARSE_TD: Parsed data for state {st_num}: energy={energy} eV, wavelength={wavelength} nm, fosc={fosc}, s2={s2}")
+
+        if not st_num == idx:  
+            raise ValueError(f"PARSE_TD: State number mismatch in TD parsing: expected {st_num}, found {idx} in line: {lines[line_nums]}")
+        new_es = ExcitedState(st_num, energy, wavelength, fosc, s2)
+        es_list.append(new_es)
+
+    return es_list
+
 ############
 ### TIME ###
 ############

@@ -76,7 +76,6 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
 
     if VNMs is not None:
         fstate.set_VNMs(VNMs)
-        fstate.add_computation(comp)
         worked = True
         comp.isgood = True 
         if debug > 0: print("REG_FREQUENCIES: VNMs were parsed")
@@ -119,4 +118,30 @@ def reg_energy(comp: object, debug: int=0):
         # Computation is linked to the fstate
         fstate.add_computation(comp)
         worked = True
+    return worked
+
+###########################################
+def reg_excited_states(comp: object, debug: int=0):
+
+    ### 0-In Case Reg_General hasn't been run:
+    if not hasattr(comp,"output"): reg_general(comp)
+    
+    worked = False
+    ### 1-Parsing VNMs and Forces ###
+    exc_states = comp.output.get_exc_states(nstates=comp.qc_data.td_nstates, debug=debug)
+
+    ### 2a-Saving Data in fstate ###
+    exists, fstate        = comp.source.find_state(comp.qc_data.fstate, debug=debug)         ## If exists, it will be updated
+    if not exists: fstate = comp.source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created 
+
+    ### 2b-Computation is linked to the fstate
+    fstate.add_computation(comp)
+
+    if exc_states is not None:
+        fstate.set_exc_states(exc_states)
+        worked = True
+        comp.isgood = True 
+        if debug > 0: print("REG_EXCITED_STATES: excited states were parsed")
+    else: print("REG_EXCITED_STATES: could not parse excited states")
+
     return worked

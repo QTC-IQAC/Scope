@@ -386,6 +386,13 @@ class State(object):
             if self.num_neg_freqs <= 3 and VNMs[0].freq_cm > -50: self.almost_minimum = True
             else:                                                 self.almost_minimum = False
 
+########################################
+#### Connection with Excited States ####
+########################################
+    def set_exc_states(self, exc_states, debug: int=0):
+        self.set_exc_states = exc_states
+        return self.set_exc_states
+
 ##################################
 #### Connection with Workflow ####
 ##################################

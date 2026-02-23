@@ -4,7 +4,7 @@ from datetime import datetime
 from scope.classes_environment        import * 
 from scope.classes_state              import State, find_state
 from scope.operations.dicts_and_lists import where_in_array, extract_from_list
-from scope.register_data              import reg_general, reg_optimization, reg_frequencies, reg_energy
+from scope.register_data              import reg_general, reg_optimization, reg_frequencies, reg_energy, reg_excited_states
 from scope.parse_general              import read_lines_file
 
 ##########################
@@ -1088,11 +1088,13 @@ class Computation(object):
         ## 2-Registration of Energy 
         worked = reg_energy(self, debug=debug)      # Stores the "last energy of a complete block" to State if it is not None
 
-        ## 3-Registration of Optimization of Frequency Tasks 
+        ## 3-Registration of Optimization, Frequency and TD/TDA Tasks 
         if 'opt' in self._job.keyword or 'relax' in self._job.keyword:
             worked = reg_optimization(self, debug=debug)
         elif 'freq' in self._job.keyword: 
             worked = reg_frequencies(self, witheigen=False, debug=debug)
+        elif 'td' in self._job.keyword or 'tda' in self._job.keyword: 
+            worked = reg_excited_states(self, debug=debug)
 
         ## 4-Wraps Up
         if worked:
