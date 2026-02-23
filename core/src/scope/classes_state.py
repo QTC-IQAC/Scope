@@ -50,7 +50,7 @@ class State(object):
     get_atoms()                         Retrieve list of atom objects from molecules.
     get_moleclist()                     Generate molecule list from geometry.
     get_ncomplex()                      Count number of complex molecules.
-    get_z()                             Count number of stoichiometric Units in the state (Z)
+    get_z()                             Count number of stoichiometric units in the state (Z)
     reconstruct()                       Attempt to reconstruct fragmented state geometry.
     check_fragmentation()               Check if the state geometry is fragmented.
     check_minimum()                     Check if the state is a minimum or almost a minimum.
@@ -60,10 +60,8 @@ class State(object):
     sample_geometries()                 Sample geometries around the current state using VNMs and furthest point sampling.
     add_result()                        Add a result to the state.
     set_energy()                        Set electronic energy result.
-    set_Helec()                         Set electronic energy per complex.
+    set_Helec()                         Set electronic energy per stoichiometric unit (Z)
     get_thermal_data()                  Compute and store thermodynamic data (Helec, Selec, Hvib, Svib, Gtot).
-
-    - The class is tightly integrated with other classes in scope (e.g., Classes_Scecie).
     """
     def __init__(self, _source: object, name: str, debug: int=0):
         self.type         = "state"

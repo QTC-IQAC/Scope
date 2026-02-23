@@ -341,8 +341,8 @@ class G16_output(object):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks()
         if len(self.opt_blocks) == 0: return None
         for idx in range(len(self.opt_blocks)-1,-1,-1):
-            init_line = self.opt_blocks[idx][0]#+1
-            last_line = self.opt_blocks[idx][1]#+1
+            init_line = self.opt_blocks[idx][0]
+            last_line = self.opt_blocks[idx][1]
             ## After June 2025, I force frequencies in Gaussian to be computed with freq=hpmodes. 
             ## As a result, two parsing routines are needed.
             tmp = parse_hp_vnms_from_step(self.lines[init_line:last_line], witheigen=witheigen, debug=debug)

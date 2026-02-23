@@ -143,7 +143,7 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
     Notes
     -----
     - The function assumes that the input frequencies and eigenvectors are mass-weighted and in atomic units.
-    - Sampling is performed using a normal distribution for each mode, with width determined by thermal fluctuations.
+    - The sampling is performed using a normal distribution for each mode, with width determined by thermal fluctuations.
     - If `check_adjacencies` is True, geometries that change the molecular connectivity are discarded.
     - Large unphysical displacements are discarded, which breaks the expected energy distribution of the resulting geometries. (np.mean(energies) should approach ZPE/2) 
     - The function may return fewer than `n_samples` geometries if the adjacency check fails frequently.
@@ -251,20 +251,6 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
     return np.array(geometries), np.array(q_coords), np.array(energies)
 
 ####
-def expected_vibrational_energy(omega_au, T):
-    ### Simple way to compute the vibrational energy of a given VNM at temperature T. 
-    omega_au = np.array(omega_au)
-    if T == 0:
-        # Pure zero-point energy
-        return 0.5 * constants.hbar * np.sum(omega_au)
-    else:
-        # Finite temperature using coth expression
-        x = (constants.hbar * omega_au) / (2 * constants.boltz_au * T)
-        coth_x = (np.exp(x) + np.exp(-x)) / (np.exp(x) - np.exp(-x))  # coth(x) = (e^x + e^(-x)) / (e^x - e^(-x))
-        E_vib = 0.5 * constants.hbar * np.sum(omega_au * coth_x)
-        return E_vib
-####
-
 def apply_q_displacement(x_ref, q_coords, freqs):
     """
     Applies normal mode displacements to a reference geometry using given mode amplitudes.
