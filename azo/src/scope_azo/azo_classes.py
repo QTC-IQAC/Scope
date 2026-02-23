@@ -745,7 +745,7 @@ class System_azo(System):
         to_print = ""
         to_print += f'------------- SCOPE System_azo Object -------\n'
         to_print += f' Name                  = {self.name}\n'
-        to_print += f' Atom Indices for Dihedral = {self.dihedral_indices}\n'
+        to_print += f' Dihedral Indices:     = {self.dihedral_indices}\n'
         to_print += System.__repr__(self, indirect=True)
         if hasattr(self,"dE"): to_print += f' Thermal Stability     = {self.dE} kJ/mol (- means trans is more stable)\n'
         to_print += '---------------------------------------------\n'
