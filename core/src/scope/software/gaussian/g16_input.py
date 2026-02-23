@@ -13,6 +13,7 @@ elemdatabase = ElementData()
 
 #######################
 def gen_g16_input(comp, debug: int=0):
+
     ## 1-Change some variable names to simplify calls
     source     = comp.source
     jobtype    = comp.qc_data.jobtype
@@ -59,6 +60,8 @@ def gen_g16_input(comp, debug: int=0):
             elif tight_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,VeryTight)")
             else:           commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral)")
         elif jobtype == "opt&freq" or jobtype == "freq": commandline.append(" freq(hpmodes)")
+        elif jobtype == "td":  commandline.append(f" td=({qc_data.td_type},nstates={qc_data.td_nstates})")
+        elif jobtype == "tda": commandline.append(f" tda=({qc_data.td_type},nstates={qc_data.td_nstates})")
         elif jobtype == "scf": pass
         else: print("G16_INPUT: jobtype", jobtype, "not recognized")
 
@@ -67,6 +70,9 @@ def gen_g16_input(comp, debug: int=0):
 
         ## 2.6-Integral Grid
         if tight_opt: commandline.append(" Int=UltraFine")
+
+        ## 2.7-TD-DFT options for Theodore: 
+        if jobtype == "td" or jobtype == "tda": commandline.append("pop=full iop(9/40=3) GFINPUT Integral=NoXCTest")
 
         ## 3-Commandline is put together
         commandline = ''.join(commandline)
