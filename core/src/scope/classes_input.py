@@ -7,7 +7,8 @@ from ast import literal_eval
 def interpret_software(name: str):
     if   name == 'g16' or name == 'gaussian': software = 'g16'
     elif name == 'qe' or name == 'quantum_espresso' or name == 'quantum_espresso' or name == 'espresso': software = 'qe'
-    else: print("INTERPRET SOFTWARE: software",name," could not be interpreted. EXITING"); sys.exit()
+    else: 
+        raise ValueError(f"INTERPRET SOFTWARE: software {name} not recognized. Available options are 'g16' or 'qe'. EXITING")
     return software
 
 #######################
@@ -198,6 +199,13 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"is_grimme"):     data._add_attr("is_grimme", False)
         if not hasattr(data,"grimme_type"):   data._add_attr("grimme_type", "d2")
 
+        if data.jobtype == "td" or data.jobtype == "tda":
+            if not hasattr(data,"td_type"):    data._add_attr("td_type", "singlets")
+            if not hasattr(data,"td_nstates"): data._add_attr("td_nstates", int(10))
+
+        g16_available_jobtypes = ["opt", "freq", "scf", "td", "tda"]
+        if data.jobtype not in g16_available_jobtypes: raise ValueError(f"{data.jobtype} is not implemented")
+
     elif data.software == "qe":
         if not hasattr(data,"version"):       data._add_attr("version", float(7.0))
         if not hasattr(data,"pp_library"):    data._add_attr("pp_library", "vanderbilt")
@@ -216,8 +224,8 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"forc_conv"):     data._add_attr("forc_conv", float(1e-5))
         if not hasattr(data,"elec_conv"):     data._add_attr("elec_conv", float(1e-5))
 
-        available_jobtypes = ["opt", "relax", "freq", "scf", "vc-relax"]
-        if data.jobtype not in available_jobtypes: raise ValueError(f"{data.jobtype} is not implemented")
+        qe_available_jobtypes = ["scf", "opt", "relax", "vc-relax", "freq"]
+        if data.jobtype not in qe_available_jobtypes: raise ValueError(f"{data.jobtype} is not implemented")
 
     return data
 
