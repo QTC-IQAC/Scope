@@ -203,7 +203,15 @@ class Specie(object):
                         if debug > 0: print(f"SPECIE.GET_GRAPH: edge created between atoms {idx1}:{b.atom1.label} and {idx2}:{b.atom2.label} from Bonds")
         else:
             if debug > 0: print(f"SPECIE.GET_GRAPH: Using Adjacencies instead")
-            self.set_atoms(create_adjacencies=True, debug=debug)
+            # Avoid rebuilding atom objects here: set_atoms() initializes charge/spin to 0.
+            if not hasattr(self, "atoms"):
+                self.set_atoms(create_adjacencies=True, debug=debug)
+            else:
+                if not hasattr(self, "adjmat"):  self.get_adjmatrix()
+                if not hasattr(self, "madjmat"): self.get_metal_adjmatrix()
+                if self.adjmat is not None and self.madjmat is not None:
+                    for idx, at in enumerate(self.atoms):
+                        at.set_adjacencies(self.adjmat[idx], self.madjmat[idx], self.adjnum[idx], self.madjnum[idx])
             for at in self.atoms:
                 idx1 = at.get_parent_index(self.subtype)
                 for b in at.adjacency:
