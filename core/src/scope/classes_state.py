@@ -634,15 +634,21 @@ class State(object):
 
     ######
     def compute_PV_term(self, pressure: float = 101.325, overwrite: bool=False, debug: int=0):
+        from scope import constants
         # This function computes the PV term in kJ/mol, given a pressure in kilo-pascal
         # It is only valid for states whose source is a cell, as it uses its volume. 
 
         # Volume in angs^3
         # Pressure in kilo-pascal (10e3 Pa). The default is 1 atm = 101.325 kPa
 
-        from scope import constants
-        if self._source.type != 'cell': return None                     ## Only for Cells
+        # It gets the stoichiometry number (Z)
         if not hasattr(self,"z"): self.get_z(debug=debug)
+
+        # If the source is not a cell, it doesn't make sense to compute the PV term, so we return 0.0 kJ as a default value.
+        if self._source.type != 'cell': 
+            data = Data("PV",float(0.0),'kj',"state.compute_PV_term()")
+            return data                     
+        
         vm3 = self.volume * 1e-30 * constants.bohr2angs**3              ## Convert volume to m^3
         ppa = float(pressure) * 1e+6                                    ## Convert pressure to Pa 
         pv  = (ppa * vm3)                                               ## [Pa·m3] = [Joule] 
