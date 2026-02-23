@@ -72,7 +72,7 @@ class Collection(object):
         assert isinstance(other, type(self))
         assert self.variable.lower() == other.variable.lower() # checks that they have the same variable 
         assert self.units == other.units                       # and units
-        new_col = Collection(f"Sum of {self.key}+{other.key}", self.variable)
+        new_col = Collection(f"Sum: {self.key} \N{PLUS SIGN} {other.key}", self.variable)
         for data1 in self.datas:
             for data2 in other.datas:
                 prop1 = getattr(data1,self.variable.lower())
@@ -91,7 +91,7 @@ class Collection(object):
         assert isinstance(other, type(self))
         assert self.variable.lower() == other.variable.lower() # checks that they have the same variable 
         assert self.units == other.units                       # and units
-        new_col = Collection(f"Subtraction of {self.key}-{other.key}", self.variable)
+        new_col = Collection(f"Delta: {self.key} \N{MINUS SIGN} {other.key}", self.variable)
         for data1 in self.datas:
             for data2 in other.datas:
                 prop1 = getattr(data1,self.variable.lower())
