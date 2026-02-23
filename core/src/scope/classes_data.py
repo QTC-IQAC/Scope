@@ -56,7 +56,7 @@ class Collection(object):
         ax.scatter(x, y, color='blue', s=20, alpha=0.8, label='Data points')
         ax.set_xlabel(str(self.variable), fontsize=12)
         ax.set_ylabel(f"{self.key} (in {str(self.datas[0].units)})", fontsize=12)
-        ax.set_title(f"{self.variable} vs {self.key} (in {self.datas[0].units})", fontsize=14, weight='bold')
+        ax.set_title(f"{self.key} vs {self.variable} (in {self.datas[0].units})", fontsize=14, weight='bold')
         ax.legend(frameon=True, shadow=False)
         ax.grid(True, linestyle='--', alpha=0.7)
         plt.tight_layout()
@@ -71,11 +71,10 @@ class Collection(object):
     def __add__(self, other):
         assert isinstance(other, type(self))
         assert self.variable.lower() == other.variable.lower() # checks that they have the same variable 
-        #assert len(self) == len(other)                         # and length
         assert self.units == other.units                       # and units
-        new_col = Collection(f"{self.key}+{other.key}", self.variable)
-        for idx, data1 in enumerate(self.datas):
-            for jdx, data2 in enumerate(other.datas):
+        new_col = Collection(f"Sum of {self.key}+{other.key}", self.variable)
+        for data1 in self.datas:
+            for data2 in other.datas:
                 prop1 = getattr(data1,self.variable.lower())
                 prop2 = getattr(data2,self.variable.lower())
                 if data1.units == data2.units and prop1 == prop2:
@@ -91,11 +90,10 @@ class Collection(object):
     def __sub__(self, other):
         assert isinstance(other, type(self))
         assert self.variable.lower() == other.variable.lower() # checks that they have the same variable 
-        #assert len(self) == len(other)                         # and length
         assert self.units == other.units                       # and units
-        new_col = Collection(f"{self.key}-{other.key}", self.variable)
-        for idx, data1 in enumerate(self.datas):
-            for jdx, data2 in enumerate(other.datas):
+        new_col = Collection(f"Subtraction of {self.key}-{other.key}", self.variable)
+        for data1 in self.datas:
+            for data2 in other.datas:
                 prop1 = getattr(data1,self.variable.lower())
                 prop2 = getattr(data2,self.variable.lower())
                 if data1.units == data2.units and prop1 == prop2:
