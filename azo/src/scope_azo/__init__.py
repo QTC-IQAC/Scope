@@ -1,4 +1,3 @@
-from scope.classes_specie   import Specie
-from scope.classes_system   import System
-from .azo_classes           import *
-from .azo_functions         import *
+import scope
+from scope_azo.azo_classes   import *
+from scope_azo.azo_functions import *
