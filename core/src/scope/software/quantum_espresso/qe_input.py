@@ -49,7 +49,7 @@ def gen_qe_input(comp: object, debug: int=0):
     #########################
     metal_indices            = get_metal_idxs(istate.labels)     ## Indices of metal atoms in the structure 
     metal_species            = get_metal_species(istate.labels)  ## 
-    species                  = get_QE_data(istate)
+    species                  = get_qe_data(istate)
     nspecies                 = len(species)
 
     if debug >= 1: 
@@ -213,7 +213,7 @@ def gen_qe_input(comp: object, debug: int=0):
                 if spec[1] != 0: print(f"U {spec[0]}-3d {comp.qc_data.uterm}", file=inp)
 
 ###################################################
-def gen_qe_subfile(comp: object, queue: object, procs: int=1, exe: str="pw.x", version: float=7.0): 
+def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: str="pw.x", version: float=7.0): 
     version = str(version)
     with open(comp.sub_path, 'w+') as sub:
         if queue._environment.scheduler == 'slurm':
