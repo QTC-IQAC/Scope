@@ -40,6 +40,9 @@ kcal2kJmol      = 4.184
 kJmol2kcal      = 1/kcal2kJmol
 
 ### Derived Factors. Always to be applied as multiplications
-cm2s_1          =100*speed_light
-eV2s_1          =eV2har*har2cm*cm2s_1
-har2s_1         =har2cm*cm2s_1
+cm2s_1          = 100 * speed_light
+eV2s_1          = eV2har * har2cm * cm2s_1
+har2s_1         = har2cm * cm2s_1
+
+### Pressure
+atm2kpa         = 101.325
