@@ -536,21 +536,6 @@ class State(object):
         assert "energy" in self.results
         if not hasattr(self,"z"): self.get_z(debug=debug)
         self.add_result(Data("Helec",self.results["energy"].value/self.z,self.results["energy"].units,"state.set_Helec()"), overwrite=overwrite)
-
-    def compute_PV_term(self, pressure: float = 1.0, overwrite: bool=False, debug: int=0):
-        from scope import constants
-        # Volume in angs^3
-        # Pressure in kilo-pascal (10e3 Pa)
-        if self._source.type != 'cell': return None                     ## Only for Cells
-        if not hasattr(self,"z"): self.get_z(debug=debug)
-        vm3 = self.volume * 1e-30 * constants.bohr2angs**3              ## Convert volume to m^3
-        ppa = float(pressure) * 1e+6                                    ## Convert pressure to Pa 
-        pv  = (ppa * vm3)                                               ## [Pa·m3] = [Joule] 
-        pv *= constants.avogadro / 1000 / self.z                        ## kJ/molecule
-        if overwrite or not "PV" in self.results.keys():
-            data = Data("PV",pv,'kj',"state.compute_PV_term()")
-            self.add_result(data, overwrite=overwrite)
-        return data 
         
 ################################
 #### Get Thermodynamic Data ####
@@ -646,6 +631,26 @@ class State(object):
             else:
                 print("Get_Thermal_Data: wrong type of data provided when enforcing Gtot. It must be a COLLECTION")
         if debug > 0: print(f"Gtot is {self.results['Gtot']}")
+
+    ######
+    def compute_PV_term(self, pressure: float = 101.325, overwrite: bool=False, debug: int=0):
+        # This function computes the PV term in kJ/mol, given a pressure in kilo-pascal
+        # It is only valid for states whose source is a cell, as it uses its volume. 
+
+        # Volume in angs^3
+        # Pressure in kilo-pascal (10e3 Pa). The default is 1 atm = 101.325 kPa
+
+        from scope import constants
+        if self._source.type != 'cell': return None                     ## Only for Cells
+        if not hasattr(self,"z"): self.get_z(debug=debug)
+        vm3 = self.volume * 1e-30 * constants.bohr2angs**3              ## Convert volume to m^3
+        ppa = float(pressure) * 1e+6                                    ## Convert pressure to Pa 
+        pv  = (ppa * vm3)                                               ## [Pa·m3] = [Joule] 
+        pv *= constants.avogadro / 1000 / self.z                        ## kJ/molecule
+        if overwrite or not "PV" in self.results.keys():
+            data = Data("PV",pv,'kj',"state.compute_PV_term()")
+            self.add_result(data, overwrite=overwrite)
+        return data 
 
 #######################
 #### Visualization ####
