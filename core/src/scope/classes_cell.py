@@ -199,13 +199,14 @@ class Cell(object):
         molecular substructures within the cell.
         """
         from scope.operations.vecs_and_mats import gcd_list
-        #if debug > 0: print(f"self.GET_Z checking fragmentation")
-        #if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
-        #assert not self.fragmented, f"self.GET_Z found Fragmented molecules in the geometry of self: {self.name}"
 
-        #if not hasattr(self,"moleclist"): 
-        #    if debug > 0: print(f"self.GET_Z getting moleclist")
-        #    self.get_moleclist(debug=debug)
+        if debug > 0: print(f"self.GET_Z checking fragmentation")
+        if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
+        assert not self.fragmented, f"self.GET_Z found Fragmented molecules in the geometry of self: {self.name}"
+
+        if not hasattr(self,"moleclist"): 
+            if debug > 0: print(f"self.GET_Z getting moleclist")
+            self.get_moleclist(debug=debug)
 
         unique = [] 
         occurrences = []
@@ -341,12 +342,12 @@ class Cell(object):
         ## Finds how many times a substructure appears in self
         occurrence = 0
 
-        #if debug > 0: print(f"CELL.GET_OCCURRENCE checking fragmentation")
-        #if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
-        #assert not self.fragmented, f"CELL.GET_OCCURRENCE found fragmented molecules in the geometry of cell: {self.name}"
-        # 
-        #if debug > 0: print(f"CELL.GET_OCCURRENCE getting moleclist")
-        #if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+        if debug > 0: print(f"CELL.GET_OCCURRENCE checking fragmentation")
+        if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
+        assert not self.fragmented, f"CELL.GET_OCCURRENCE found fragmented molecules in the geometry of cell: {self.name}"
+         
+        if debug > 0: print(f"CELL.GET_OCCURRENCE getting moleclist")
+        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
 
         ## Case of Species inside self
         if hasattr(substructure,"type"):
