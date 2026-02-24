@@ -614,7 +614,7 @@ class System_azo(System):
         sigma_cis *= Constants.avogadro / (1000 * np.log(10)) * 1e4
         sigma_trans *= Constants.avogadro / (1000 * np.log(10)) * 1e4
 
-        sigma_pss = build_pss_spectrum(pss_B, sigma_cis, sigma_trans, debug = debug) 
+        sigma_pss = build_pss_spectrum(pss_B, sigma_trans, sigma_cis, debug=debug) 
         frac_list.append(pss_B)     
         pss_list.append(sigma_pss)  
 
@@ -622,9 +622,9 @@ class System_azo(System):
         for irr_wl in wl_list:
             lamp = Lamp(name='COOLLED', wavelength=irr_wl, shift_nm=shift_nm)
             _, _, _, pss_B = self.get_PSS(lamp, phi_EZ=phi_EZ, phi_ZE=phi_ZE, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug) 
-            sigma_pss = build_pss_spectrum(pss_B, sigma_cis, sigma_trans)
-            frac_list.append(pss_B)    
-            pss_list.append(sigma_pss)  
+            sigma_pss = build_pss_spectrum(pss_B, sigma_trans, sigma_cis, debug=debug)
+            frac_list.append(pss_B)
+            pss_list.append(sigma_pss)
 
         # 3. Store the extracted names AND the extracted half-lives!
         # This saves the plotting function from having to look them up again.
