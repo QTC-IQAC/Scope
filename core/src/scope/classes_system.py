@@ -87,10 +87,12 @@ class System(object):
         ## If not, it is added
         if not found: 
             new_source._sys = self ## Links the system to the source 
+            new_source.set_initial_state(debug=debug)
             self.sources.append(new_source)
         ## If it exists, it is overwritten if specified 
         elif found and overwrite: 
             new_source._sys = self ## Links the system to the source 
+            new_source.set_initial_state(debug=debug)
             self.sources = [s for s in self.sources if s.name.lower() != name.lower()]
             self.sources.append(new_source)
         else: 

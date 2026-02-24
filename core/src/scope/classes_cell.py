@@ -98,6 +98,9 @@ class Cell(object):
     def spin_multiplicity(self):
         return int(self.spin + 1) 
 
+    ######################
+    ## Other Properties ##
+    ######################
     @property
     def Z(self):
         """Alias for `z` (number of formula units in the unit cell)."""
@@ -176,10 +179,7 @@ class Cell(object):
         self.path = path
 
     def get_ncomplex(self, debug: int=0):
-        """Count transition-metal complexes in `moleclist`.
-
-        Ensures fragmentation checks pass before counting.
-        """
+        # Counts transition-metal complexes in `moleclist`.
         if debug > 0: print(f"CELL.GET_NCOMPLEX checking fragmentation")
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"Found Fragmented molecules in the geometry of cell: {self.name}"
@@ -518,6 +518,14 @@ class Cell(object):
     #########################################
     ### Functions to Interact with States ###
     #########################################
+    def set_initial_state(self, name: str='initial', debug: int=0):
+        """Creates the initial state of the cell, with the cell geometry, and initiates moleclist"""
+        ini_state = self.add_state(name)
+        ini_state.set_geometry(self.labels, self.coord)
+        ini_state.set_cell(self.cell_vector, self.cell_param)
+        ini_state.get_moleclist(debug=debug)
+        return ini_state
+        
     def add_state(self, name: object, debug: int=0):
         """Create or return a `State` object with the given name."""
         from scope.classes_state import State

@@ -624,6 +624,12 @@ class Specie(object):
     #########################################
     ### Functions to Interact with States ###
     #########################################
+    def set_initial_state(self, name: str='initial', debug: int=0):
+        """Creates the initial state of the specie, with only the geometry"""
+        ini_state = self.add_state(name)
+        ini_state.set_geometry(self.labels, self.coord)
+        return ini_state
+
     def add_state(self, name: str, debug: int=0):
         from scope.classes_state import State
         if not hasattr(self,"states"): setattr(self,"states",list([]))

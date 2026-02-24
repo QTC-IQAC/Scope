@@ -168,10 +168,7 @@ class System_azo(System):
 
         trans.set_total_charge(0)
         trans.set_total_spin(0)            
-
-        trans_state = trans.add_state("initial")
-        trans_state.set_geometry(labels, coord)
-        self.add_source(name="trans", new_source = trans, overwrite=overwrite)
+        self.add_source(name="trans", new_source = trans, overwrite=overwrite) ## Initial State is now created when 'sourcing'
         return trans
 
     ######
@@ -273,13 +270,10 @@ class System_azo(System):
             cis.set_total_spin(trans.spin)
 
             self.add_source("cis",cis,overwrite=overwrite)
-
             if cis.check_fragmentation(debug=debug):
                 print(f"AZO.CREATE_CIS: Cis isomer for {self.name} is FRAGMENTED.")
                 return None
             
-            ini_state = cis.add_state("initial")
-            ini_state.set_geometry(labels, coord)
             return cis
         else:
             raise Exception(f'AZO.CREATE_CIS: Target dihedral for {self.name} could not be reached. Reached max. iterations: {max_iter}.')
@@ -357,9 +351,6 @@ class System_azo(System):
                 ts = Molecule_azo(labels, coord)
                 isFragmented = ts.check_fragmentation()  # Check if the TSrot is fragmented
                 if not isFragmented:
-                    state = ts.add_state("initial")
-                    state.set_geometry(labels, coord)
-
                     ts.set_total_charge(0)
                     ts.set_total_spin(0)
 
@@ -374,8 +365,6 @@ class System_azo(System):
                         ts_triplet.set_total_spin(2)
 
                         ts_triplet.dihedral_indices = self.dihedral_indices
-                        triplet_state = ts_triplet.add_state("initial")
-                        triplet_state.set_geometry(labels, coord)
                         self.add_source('TSrot_A_T', ts_triplet)
                         created_ts.append(ts_triplet)
                         if debug > 0:   print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_T Molecule_azo successfully created for {self.name}')
@@ -403,8 +392,6 @@ class System_azo(System):
                     ts.set_total_spin(0)
 
                     ts.dihedral_indices = self.dihedral_indices
-                    state = ts.add_state("initial")
-                    state.set_geometry(labels, coord)
                     self.add_source('TSrot_B_S', ts)
                     created_ts.append(ts)
 
@@ -415,8 +402,6 @@ class System_azo(System):
                         ts_triplet.set_total_spin(2)
 
                         ts_triplet.dihedral_indices = self.dihedral_indices
-                        triplet_state = ts_triplet.add_state("initial")
-                        triplet_state.set_geometry(labels, coord)
                         self.add_source('TSrot_B_T', ts_triplet)
                         created_ts.append(ts_triplet)
                         if debug > 0:   print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_T Molecule_Azo successfully created for {self.name}')
@@ -444,8 +429,6 @@ class System_azo(System):
                         ts.set_total_spin(0)
 
                         ts.dihedral_indices = self.dihedral_indices
-                        ts_state = ts.add_state("initial")
-                        ts_state.set_geometry(labels, coord)
                         self.add_source('TSinv_l', ts)
                         created_ts.append(ts)
                         if debug > 0: print(f'AZOS.CREATE_TS.TSINV_L: TSinv_l Molecule_azo successfully created for {self.name}')
@@ -473,8 +456,6 @@ class System_azo(System):
                         ts.set_total_spin(0)
 
                         ts.dihedral_indices = self.dihedral_indices
-                        ts_state = ts.add_state("initial")
-                        ts_state.set_geometry(labels, coord)
                         self.add_source('TSinv_r', ts)
                         created_ts.append(ts)
                         if debug > 0: print(f'AZOS.CREATE_TS.TSINV_R: TSinv_r Molecule_azo successfully created for {self.name}')
