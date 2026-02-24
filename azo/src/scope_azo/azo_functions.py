@@ -48,9 +48,11 @@ def solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref, adjn
     Combinations are done in a grid of 64x64 steps, from -180 to 180 degrees.
     The first valid combination is returned. 
     """
-    from itertools                  import product
+    from itertools import product
     rot_steps = np.linspace(-180,180, 64).astype(int)
+    if debug>0: print(f'AZO.SOLVE_DIHEDRAL: Angles {rot_steps}')
     rot_combinations = list(product(rot_steps, rot_steps))
+
     worked = False
     for angle1, angle2 in rot_combinations:
         new_coord = set_dihedral(labels, coord, angle1, at0,at1,at2,at3, adjmat=adjmat_ref, adjnum=adjnum_ref)  # Coords de tsinv                        
@@ -69,15 +71,15 @@ def solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref, adjn
 ############################
 #### Thermal Properties ####
 ############################
-def compute_t(g_ts:float, g_iso:float, T:float=298.15):
+def compute_t(g_excited:float, g_initial:float, T:float=298.15):
     '''
     Computes half-life time in seconds using Eyring equation.
     
     Parameters
     ----------
-    g_ts : float
+    g_excited : float
         Free Gibbs energy of transition state in Hartree
-    g_iso : float
+    g_initial : float
         Free Gibbs energy of isomer/conformer in Hartree
     T : float
         Temperature in Kelvin
@@ -92,12 +94,16 @@ def compute_t(g_ts:float, g_iso:float, T:float=298.15):
     k_b = Constants.boltz_J # J/K
     h = Constants.planck_Js # J·s
     R = Constants.R_J       # 8.31 J/(K·mol)
-
-    dG = (g_ts - g_iso)* Constants.har2kJmol * 1000  # in J/mol
-    k = ((k_b*T )/ h)* np.exp(-dG / (R * T))  
-    t = np.log(2) / k           # Assuming a first-order reaction
+    if debug>0: print(f'AZO.COMPUTE_T: dG: {dG} kJ/mol / {dG*Constants.kJmol2kcal} kcal/mol')
+    dG = (g_excited - g_initial)* Constants.har2kJmol  # in kJ/mol
+    if debug>0: print(f'AZO.COMPUTE_T: dG: {dG} kJ/mol / {dG*Constants.kJmol2kcal} kcal/mol')
+    dG *= 1000  # J/mol
+    k = ((k_b * T) / h)* np.exp(-dG / (R * T))  
+    t = np.log(2) / k  # Assuming a first-order reaction
+    if debug>0: print(f'AZO.COMPUTE_T: t05: {t:.2f} s / k: {k:.2f}')
     return float(t), float(k)
 
+######
 def correct_tripletG(isomer_state, triplet_state, T:float=298.15, overwrite = False, p_sh:float = 0.0002, debug: int=0):
     '''
     Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
@@ -153,6 +159,7 @@ def correct_tripletG(isomer_state, triplet_state, T:float=298.15, overwrite = Fa
         if debug > 0: print (f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Corrected Gtot of {triplet_source.name} triplet state by {deltax*0.24/1000:.2f} Kcal/mol.')
         return newG_data
 
+######
 def check_triplet(input_object, overwrite:bool = False, debug:int = 0):
     """
     Checks if Triplet energies from results after computations have been corrected.
@@ -182,7 +189,7 @@ def check_triplet(input_object, overwrite:bool = False, debug:int = 0):
     if good == len(triplet_indices): return True
     return False
 
-
+######
 def calculate_dG(t): 
     k_b = Constants.boltz_J # J/K
     T = 298.15              # K    
@@ -190,13 +197,12 @@ def calculate_dG(t):
     R = 8.31446             # J/(K·mol)
 
     k = np.log(2) / t          # Assuming a first-order reaction
-    # dG = (g_ts - g_iso)* Constants.har2kJmol * 1000  # in J/mol
-    # k = ((k_b*T )/ h)* np.exp(-dG / (R * T))  
     dG = -R * T * np.log((k * h) / (k_b * T))  # in J/mol
     dG /= 1000  # in kJ/mol
     dG *= 0.24  # in kcal/mol
     return dG
-    
+
+######  
 def show_thermal_data(systems):
     for sys in systems:
         cis = sys.find_source('cis')[1]
@@ -218,6 +224,7 @@ def show_thermal_data(systems):
             print(f'by {trans.mets}\n')
             print('\n')
 
+######
 def format_time(t):
     """
     Converts seconds to a more comprehensive unit.
@@ -290,30 +297,29 @@ def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug
     
     Returns
     -------
-    I_lambda : array_like       Photon flux spectrum, in photons m-2 s-1 nm-1.
+    phi : array_like       Photon flux spectrum, in photons m-2 s-1 nm-1.
     """
 
     sigma = fwhm_nm / (2 * np.sqrt(2 * np.log(2)))
     profile = gaussian(lam_grid, lam0_nm, sigma=sigma)
+
     if power is not None:
+        if debug>0: print(f'AZO.GET_PHOTON_FLUX_SPECTRUM: Power: {power} W')
         area = np.pi * (4.605e-3)**2  # in m2, area of a circle with diameter 0.92 cm
         I_lambda = power * profile / area   # W/m2/nm
     else:
         I_lambda = Itot * 1e-3 / 1e-6 * profile  # mW/mm2 to W/m2/nm
     # I_lambda = Itot * profile  # W/m2/nm
-    lam_m = np.ones_like(lam_grid)* lam_grid * 1e-9  # in m
-    photon_E = Constants.planck_Js * Constants.speed_light / lam_m  # in J
-    phi = I_lambda / photon_E           # photons m-2 s-1 nm-1        
-    return phi
+    wavelength_m = np.ones_like(lam_grid) * lam_grid * 1e-9  # in m
+    photonic_energy = Constants.planck_Js * Constants.speed_light / wavelength_m  # in J   
+    return I_lambda / photonic_energy # phi: photons m-2 s-1 nm-1  
 
-def build_pss_spectrum(pss, sigma_Z, sigma_E, debug=0):
+######
+def build_pss_spectrum(initial_fraction, initial_spectrum, final_spectrum, debug=0):
     """
-    Builds the spectrum using 
+    Builds the PSS spectrum using the fraction of trans isomer. 
     """
-    # sigma_Z *= Constants.avogadro / (1000 * np.log(10)) * 1e4  # in M^-1 cm^-1
-    # sigma_E *= Constants.avogadro / (1000 * np.log(10)) * 1e4  # in M^-1 cm^-1
-    sigma_pss = pss * sigma_E + (1 - pss) * sigma_Z
-    return sigma_pss
+    return initial_fraction * initial_spectrum + (1 - initial_fraction) * final_spectrum
 
 def wavelength_to_rgb(nm: float):
     """Approximate the RGB color perceived for a wavelength in nm."""
@@ -335,7 +341,6 @@ def wavelength_to_rgb(nm: float):
         r, g, b = 1.0, -(nm - 645) / (645 - 580), 0.0
     else:  # 645–780
         r, g, b = 1.0, 0.0, 0.0
-
     # intensity correction at spectrum edges
     if 360 <= nm < 420:
         factor = 0.3 + 0.7 * (nm - 380) / (420 - 380)
@@ -343,11 +348,9 @@ def wavelength_to_rgb(nm: float):
         factor = 1.0
     else:
         factor = 0.3 + 0.7 * (780 - nm) / (780 - 700)
-
     r = (r * factor) ** gamma if r > 0 else 0.0
     g = (g * factor) ** gamma if g > 0 else 0.0
     b = (b * factor) ** gamma if b > 0 else 0.0
-
     return (r, g, b)
 
 
