@@ -43,3 +43,22 @@ def gcd_list(numbers):
     for n in numbers[1:]:
         result = gcd(result, n)
     return result
+
+def gaussian(range, center, sigma=0.2, normalize=True):
+    """
+    Parameters
+    ----------
+    E : array_like              Grid/range where the Gaussian is evaluated (any units).
+    center : float              Center of the Gaussian in the same units as E.
+    sigma : float, optional     Standard deviation (width) in the same units as E. Default is 0.2.
+    normalize : bool, optional  Whether to normalize the Gaussian to unit area. Default is True.
+
+    Returns
+    -------
+    g: array_like               Gaussian profile evaluated on range.
+    """
+    if sigma <= 0: raise ValueError("sigma must be > 0")
+
+    g = np.exp(-(range - center) ** 2 / (2 * sigma ** 2))
+    if normalize: g /= sigma * np.sqrt(2 * np.pi)
+    return g

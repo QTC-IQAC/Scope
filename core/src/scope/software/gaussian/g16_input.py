@@ -74,6 +74,9 @@ def gen_g16_input(comp, debug: int=0):
         ## 2.7-TD-DFT options for Theodore: 
         if jobtype == "td" or jobtype == "tda": commandline.append(" pop=full iop(9/40=3) GFINPUT Integral=NoXCTest")
 
+        ## 2.8-Other options
+        if comp.qc_data.ultrafine_grid: commandline.append(" Int=Ultrafine")
+
         ## 3-Commandline is put together
         commandline = ''.join(commandline)
         print(f"{commandline}", file=inp) 

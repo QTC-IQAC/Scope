@@ -1,21 +1,20 @@
 import numpy as np
 from    scope                               import *
 from    scope.classes_system                import *
+from    scope.classes_state                 import State
 from    scope.classes_specie                import *
-from    scope.software.gaussian.g16_parse   import *
 from    scope.geometry                      import *
 from    scope.connectivity                  import *
-from    scope_azo.azo_functions             import *
 from    scope.parse_general                 import search_string, read_lines_file
 from    scope.software.gaussian.g16_parse   import * 
 from    scope.software.gaussian.g16_output  import * 
 from    scope.classes_data                  import *
 from    scope.classes_qc                    import *
+from    scope_azo.azo_functions             import *
 
 ############################################
 #### SYSTEM Object adapted to System_azo ###
 ############################################
-
 class System_azo(System):
     def __init__(self, name: str, smiles: str, debug: int=0):
         System.__init__(self, name)
@@ -110,23 +109,10 @@ class System_azo(System):
         at5 = fragments[2][1] -1 
         return list([at0, at1, at2, at3, at4, at5])
 
-    ######
-    def get_thermal_stability(self, target_state: str="initial", debug: int=0):
-        found_cis,   cis_iso   = self.find_conformer("cis")
-        found_trans, trans_iso = self.find_conformer("trans")
-        if found_cis: 
-            found_state_cis, state_cis = find_state(cis_iso, target_state)
-            if found_state_cis:
-                if hasattr(state_cis,"gs_energy"): cis_E = state_cis.gs_energy
-        if found_trans:
-            found_state_trans, state_trans = find_state(trans_iso, target_state)
-            if found_state_trans:
-                if hasattr(state_trans,"gs_energy"): trans_E = state_trans.gs_energy
-        if found_cis and found_trans:
-            self.dE = np.round((trans_E - cis_E) * Constants.har2kJmol/Constants.kcal2kJmol,4)
-            print(self.name, self.dE, "kJ/mol. Negative means trans is more stable")
 
-    ######
+    ############################
+    ## Creation of Structures ##
+    ############################
     def create_trans(self, overwrite: bool=False, debug: int = 0):
         '''
         Creates the trans structure of the azo compound from a SMILES string. 3D geometry creation is done using openbabel. 
@@ -224,8 +210,8 @@ class System_azo(System):
         '''
 
         # 1st-searching for trans isomer
-        trans_found, trans = self.find_source('trans')
-        if not trans_found: raise Exception(f"AZO.CREATE_CIS: [ERROR] Trans isomer not found. Create it first with self.create_trans()")
+        found, trans = self.find_source('trans')
+        if not found: self.create_trans(debug=debug)
         
         # Get trans isomer geometry as reference
         labels = trans.labels
@@ -235,11 +221,11 @@ class System_azo(System):
         at0, at1, at2, at3, at4, at5 = self.get_dihedral_indices()
         if debug > 0: print(f"AZO.CREATE_CIS: dihedral indices: {at0}, {at1}, {at2}, {at3}, {at4}, {at5}")
 
-        # Get the adjacency matrix for reference when rotating the dihedral angle of the azo group
+        # Get the adjacency matrix. Used as a reference when rotating the dihedral angle
         adjmat_ref, adjnum_ref = trans.get_adjmatrix()
 
         # Initial dihedral angle, for info 
-        current_rad = get_dihedral(coord[at1],coord[at2],coord[at3],coord[at4]) # Initial dihedral angle
+        current_rad = scope.get_dihedral(coord[at1],coord[at2],coord[at3],coord[at4]) # Initial dihedral angle
         current_deg = np.degrees(current_rad)
         if debug > 0: print(f"AZO.CREATE_CIS: Initial dihedral angle: {current_deg} degrees")
 
@@ -249,16 +235,14 @@ class System_azo(System):
             jump_target = target_deg+1 if current_deg > 0 else -target_deg-1 
             if debug > 0: print(f"AZO.CREATE_CIS: Jumping to {jump_target} degrees")
             if debug > 0: print(f"AZO.CREATE_CIS: Selected atoms: {at1}, {at2}, {at3}, {at4}")
-            coord_next = set_dihedral(labels, coord, jump_target, at1,at2,at3,at4,adjmat=adjmat_ref, adjnum=adjnum_ref)
-            angle_next = np.degrees(get_dihedral(coord_next[at1],coord_next[at2],coord_next[at3],coord_next[at4]))
+            coord_next = scope.set_dihedral(labels, coord, jump_target, at1,at2,at3,at4,adjmat=adjmat_ref, adjnum=adjnum_ref)
+            angle_next = np.degrees(scope.get_dihedral(coord_next[at1],coord_next[at2],coord_next[at3],coord_next[at4]))
             if debug > 0:  print(f"AZO.CREATE_CIS: Changed dihedral in {self.name} from {current_deg} to {angle_next}, it should be near +-{target_deg}")
-            _, adjmat_cis, adjnum_cis = get_adjmatrix(labels,coord_next)
+            _, adjmat_cis, adjnum_cis = scope.get_adjmatrix(labels,coord_next)
         else:
-            _, adjmat_cis, adjnum_cis = get_adjmatrix(labels,coord)
-
+            _, adjmat_cis, adjnum_cis = scope.get_adjmatrix(labels,coord)
 
         found_geometry = False 
-
         matrices_match = np.array_equal(adjmat_cis, adjmat_ref) and np.array_equal(adjnum_cis, adjnum_ref)
  
         if debug > 0: print(f"AZO.CREATE_CIS: Matrices match: {matrices_match}")
@@ -285,12 +269,12 @@ class System_azo(System):
             cis.smiles           = trans.smiles.replace('/N=N/','/N=N\\')
             cis.dihedral_indices = self.dihedral_indices
 
-            cis.set_total_charge(0)
-            cis.set_total_spin(0)
+            cis.set_total_charge(trans.charge)
+            cis.set_total_spin(trans.spin)
 
-            self.add_source(name="cis", new_source = cis, overwrite=overwrite)
+            self.add_source("cis",cis,overwrite=overwrite)
 
-            if cis.check_fragmentation():
+            if cis.check_fragmentation(debug=debug):
                 print(f"AZO.CREATE_CIS: Cis isomer for {self.name} is FRAGMENTED.")
                 return None
             
@@ -499,149 +483,39 @@ class System_azo(System):
                         raise Exception(f'AZOS.CREATE_TS.TSINV_R: [ERROR] TSinv_r fragmented for {self.name}')
         return created_ts
 
-    def plot_energies(self):
-        import matplotlib.pyplot as plt
-        import numpy as np
+    #######################
+    ## Thermal Stability ##
+    #######################
+    def get_thermal_stability(self, target_state: str, debug: int=0):
+        # Requires having the energies of Cis and Trans
+        found_cis,   cis_iso   = self.find_conformer("cis")
+        found_trans, trans_iso = self.find_conformer("trans")
+        if found_cis: 
+            found_state_cis, state_cis = find_state(cis_iso, target_state)
+            if found_state_cis:
+                if "energy" in state_cis.results: cis_E = state_cis.results["gs_energy"]
+        if found_trans:
+            found_state_trans, state_trans = find_state(trans_iso, target_state)
+            if found_state_trans:
+                if "energy" in state_trans.results: trans_E = state_trans.results["gs_energy"]
+        if found_cis and found_trans:
+            self.dE = np.round((trans_E - cis_E) * Constants.har2kJmol/Constants.kcal2kJmol,4)
+            print(self.name, self.dE, "kJ/mol. Negative means trans is more stable")
+        return self.dE
 
-        plt.rcParams.update({
-            'font.size': 12,
-            'font.family': 'sans-serif',
-            'axes.linewidth': 1.5,
-            'xtick.major.width': 1.5,
-            'ytick.major.width': 1.5
-        })
-
-        # --- SOURCE DETECTION ---
-        # Find Transition States
-        ts_candidates = [i for i, source in enumerate(self.sources) 
-            if source.name.lower().startswith('ts') 
-            and "Gtot" in source.find_state('opt')[1].results]
-        
-        # Find Isomers
-        isomer_candidates = [i for i, source in enumerate(self.sources) 
-            if (source.name.lower().startswith('cis') or source.name.lower().startswith('trans')) 
-            and "Gtot" in source.find_state('opt')[1].results]
-        candidates_idx = ts_candidates + isomer_candidates
-        if not candidates_idx:
-            print("No valid isomers or TS structures with 'Gtot' found.")
-            return
-
-        energies = []
-        labels = []
-
-        # --- DATA EXTRACTION ---
-        for i in candidates_idx:
-            source = self.sources[i]
-            opt_results = source.find_state('opt')[1].results
-            
-            if source.spin == 2 and "Gtot_corr" in opt_results:
-                e_val = opt_results["Gtot_corr"].value
-            else:
-                e_val = opt_results["Gtot"].value
-                print('AZO.PLOT_ENERGIES: WARNING! A source in the triplet state does not have its Free Energy corrected.')
-                
-            energies.append(e_val)
-            labels.append(source.name)
-
-        energies = np.array(energies)
-        labels = np.array(labels)
-
-        # --- CLASSIFICATION & COORDINATES ---
-        is_trans = np.char.startswith(np.char.lower(labels), "trans")
-        is_cis = np.char.startswith(np.char.lower(labels), "cis")
-
-        # X-axis: TS default to 2.0
-        x_coords = np.full_like(energies, 2.0)
-        x_coords[is_trans] = 1.0  # E isomer
-        x_coords[is_cis] = 3.0    # Z isomer
-
-        # --- NORMALIZATION ---
-        if np.any(is_trans):
-            # Use the first trans isomer as the reference zero
-            ref_idx = np.where(is_trans)[0][0]
-            ref_energy = energies[ref_idx]
-            
-            energies = (energies - ref_energy) * Constants.har2kJmol * Constants.kJmol2kcal  # Hartree to kcal/mol
-            ylabel = r"$\Delta G$ (kcal mol$^{-1}$)"
-        else:
-            ylabel = "Gibbs Energy (Hartree)"
-
-        # --- HIGHLIGHT LOGIC ---
-        ts_indices = (x_coords == 2.0)
-        # Added a check to ensure we don't pass an empty array to np.min
-        min_ts_energy = np.min(energies[ts_indices]) if np.any(ts_indices) else None
-
-        # --- PLOTTING ---
-        fig, ax = plt.subplots(figsize=(7, 5))
-
-        for x, e, name in zip(x_coords, energies, labels):
-            
-            color = 'black'
-            font_weight = 'normal'
-            
-            # Lowest Energy TS is highlighted
-            if x == 2.0 and min_ts_energy is not None and np.isclose(e, min_ts_energy):
-                color = '#D55E00'  
-                font_weight = 'bold'
-
-            ax.plot(x, e, marker='_', markersize=50, markeredgewidth=3, color=color)
-            
-            clean_name = name.replace("trans", "").replace("cis", "").strip("-_ ")
-            ax.text(x + 0.4, e - 0.5, clean_name, 
-                    ha='center', va='bottom', 
-                    fontsize=10, color=color, weight=font_weight)
-
-        # --- AXIS FORMATTING ---
-        ax.set_ylabel(ylabel)
-        ax.set_xticks([1, 2, 3])
-        ax.set_xticklabels(['E', 'TS', 'Z'])
-        ax.set_xlim(0.5, 3.5)
-        ax.spines['top'].set_visible(False)
-        ax.spines['right'].set_visible(False)
-
-        plt.tight_layout()
-        plt.show()
-        
-        print("----SUMMARY OF ENERGY BARRIERS----")
-        for name, energy in zip(labels,energies):
-            print(name, ' ', energy)
-
-
-    def get_PSS(self, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
-
-        # Search for cis and trans sources.
-        found_cis_opt, cis_state = self.find_source('cis')[1].find_state('opt')
-        found_trans_opt, trans_state = self.find_source('trans')[1].find_state('opt')
-
-        if not (found_cis_opt and found_trans_opt):
-            raise Exception('SYSTEM_AZO.GET_PSS: One of the optimized states were not found.')
-
-        print(f'SYSTEM_AZO.GET_PSS: TRANS: {trans_state.results}')
-        print(f'SYSTEM_AZO.GET_PSS: CIS: {cis_state.results}')
+    ########################
+    ## Optical Properties ##
+    ########################
+    def get_PSS(self, target_state: str, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
+        # Search for cis and trans sources and states.
+        found_cis_state, cis_state = self.find_source('cis')[1].find_state(target_state)
+        if not found_cis_state:   raise Exception('SYSTEM_AZO.GET_PSS: The target state for the CIS isomer was not found.')
+        found_trans_state, trans_state = self.find_source('trans')[1].find_state(target_state)
+        if not found_trans_state: raise Exception('SYSTEM_AZO.GET_PSS: The target state for the TRANS isomer was not found.')
+        # Computes
         return get_PSS(cis_state, trans_state, lamp = lamp, phi_EZ = phi_EZ, phi_ZE = phi_ZE, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug)
     
-    def get_abs_spectrum(self, normalize: bool = False, units: bool = False, get_PSS: bool = False,
-                         custom_cis= None, custom_trans= None):
-
-        if custom_cis is None:
-            found_cis, cis = self.find_source('cis')
-        if custom_trans is None:
-            found_trans, trans = self.find_source('trans')
-
-        if not found_cis or not found_trans:
-            print(f'Z_exists: {found_cis}, E_exists: {found_trans}')
-            raise ValueError(f'Error: No cis or trans conformers found for system {self.name}')
-
-        opt_cis_exists, cis_state = cis.find_state('opt')
-        opt_trans_exists, trans_state = trans.find_state('opt')
-
-        if not opt_cis_exists or not opt_trans_exists:
-            print(f'opt_Z_exists: {opt_Z_exists}, opt_E_exists: {opt_E_exists}')
-            raise ValueError(f'Error: No opt state found for Z or E isomers')
-
-        return get_abs_spectrum(cis_state, trans_state, normalize= normalize, 
-            units= units, get_PSS= get_PSS)
-
+    ######
     def compute_pss(self, wl_list, state_trans=None, state_cis=None, phi_EZ=0.3, phi_ZE=0.5, t_EZ=None, t_ZE=None, shift_nm=None, debug =0): 
         """
         Calculates the photostationary state for a A <--> B photo-interconversion.
@@ -697,50 +571,7 @@ class System_azo(System):
         }
         print(f"PSS data for {name_trans}/{name_cis} successfully computed!")
 
-    def plot_pss(self, solvent="Unknown", xlim=(250, 600), skip_spectra=False, only_dark=False, savetoimg=False, plots_dir="./plots/"):
-        import matplotlib.pyplot as plt
-        import os
-
-        if not hasattr(self, 'pss_data'):
-            raise AttributeError(f"No PSS data found for {self.name}. Please run .compute_pss() first.")
-
-        data = self.pss_data
-        name_trans = data["name_trans"]
-        name_cis = data["name_cis"]
-        
-        # The half-lives were already safely extracted and stored by compute_pss!
-        t_EZ_str = format_time(data["t_EZ"])
-        t_ZE_str = format_time(data["t_ZE"])
-        
-        fig, ax = plt.subplots(figsize=(6, 4), dpi=300)
-        
-        if not skip_spectra:
-            ax.plot(data["lambda_grid"], data["sigma_trans"], color='black', linestyle='dashed', linewidth=1, label=f'{name_trans}  t = {t_EZ_str}')
-            ax.plot(data["lambda_grid"], data["sigma_cis"], color='blue', linestyle='dashed', linewidth=1, label=f'{name_cis}  t = {t_ZE_str}')
-
-        for i, pss_wl in enumerate(data["pss_list"]):
-            frac_A = data["frac_list"][i]
-            if i == 0:
-                ax.plot(data["lambda_grid"], pss_wl, color='black', linewidth=2, label=f'DARK ({frac_A:.2f} {name_trans})')
-                if only_dark: break
-            else:
-                color = wavelength_to_rgb(data["wl_list"][i-1])
-                ax.plot(data["lambda_grid"], pss_wl, linewidth=0.75, c=color, label=f'{data["wl_list"][i-1]} nm ({frac_A:.2f} {name_trans})')
-
-        ax.set_title(f'{self.name} in {solvent}')
-        ax.legend(fontsize=9)
-        ax.set_xlabel('Wavelength (nm)')
-        ax.set_ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
-        ax.set_xlim(xlim[0], xlim[1]) 
-        plt.tight_layout()
-
-        if savetoimg:
-            os.makedirs(plots_dir, exist_ok=True)
-            plt.savefig(os.path.join(plots_dir, f"{self.name}_{name_trans}_{name_cis}_pss.png"), dpi=300)
-            plt.close(fig)
-        else:
-            plt.show()
-
+    ######
     def __repr__(self):
         to_print = ""
         to_print += f'------------- SCOPE System_azo Object -------\n'
@@ -752,10 +583,32 @@ class System_azo(System):
         to_print += '\n'
         return to_print
 
-##################################################################
-##### MOLECULE - SPECIE Object Adapted to Molecule_azo Class #####
-##################################################################
 
+#########################################
+##### STATE Object Adapted to Azo's #####
+#########################################
+class State_azo(State):
+    def __init__(self, _source: object, name: str, debug: int=0):
+        State.__init__(self, _source, name, debug=debug)
+        self.subtype  = "state_azo" 
+
+    def get_abs_spectrum(self, normalize: bool = False, units: bool = False, lmin: float=200, lmax: float=1000, debug: int=0):
+        # Check if TDDFT data exists.
+        if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in this state')
+
+        # Collects Values
+        energies = [es.energy for es in self.exc_states]
+        fosc     = [es.fosc for es in self.exc_states]
+
+        erange = np.linspace(lmin, lmax, lmax-lmin)
+
+        # Builds the spectrum from discrete values, using Gaussian broadening
+        self.abs_spectrum = build_spectrum(erange, energies, fosc, lmax=lmax, lmin=lmin, normalize=normalize, units=units)
+        return self.abs_spectrum
+
+############################################
+##### MOLECULE Object Adapted to Azo's #####
+############################################
 class Molecule_azo(Molecule):
 
     def __init__(self, labels, coord):

@@ -1,28 +1,22 @@
- 
-################################
-#
-#       Geometry functions
-#            for Azos
-#
-################################
+####################################################
+#### Functions that are Specific to Azo Species ####
+####################################################
 
-import numpy                    as np
-from copy                       import deepcopy
+import numpy as np
+import scope.constants as Constants
+
+from scope_azo.azo_classes              import *
+from copy                               import deepcopy
+from scope.geometry                     import *
+from scope.connectivity                 import *
+from scope.operations.vecs_and_mats     import gaussian
 from scope.elementdata          import ElementData
-from scope.geometry             import *
-from scope.connectivity         import *
-from scope_azo.azo_classes      import *
-import scope.constants          as Constants
-
-
 elemdatabase = ElementData()
 
 def get_3D(smiles, debug: int=0):
     import warnings
     from scope.geometry import centercoords
-    '''
-    Returns the 3D geometry of a molecule from a SMILES string, using the Openbabel module
-    '''
+
     try:
         from openbabel import pybel as pb
     except Exception as exc:
@@ -38,34 +32,6 @@ def get_3D(smiles, debug: int=0):
         coord.append(list([at.coords[0], at.coords[1], at.coords[2]]))
     coord = centercoords(coord, 0) 
     return labels, coord
-
-def gaussian(E, E0, f, sigma=0.2, normalize=True):
-    """
-    Gaussian centered at E0 with oscillator strength f.
-    
-    Parameters
-    ----------
-    E : array_like
-        Energy grid, in eV.
-    E0 : float
-        Center of the Gaussian, in eV.
-    f : float
-        Oscillator strength.
-    sigma : float, optional
-        Standard deviation of the Gaussian, in eV. Default is 0.2 eV.
-    normalize : bool, optional
-        Whether to normalize the Gaussian. Default is True.
-    
-    Returns
-    -------
-    g : array_like
-        Gaussian centered at E0 with oscillator strength f.
-    """
-
-    g = np.exp(-(E - E0)**2 / (2*sigma**2))
-    if normalize:
-        g /= sigma * np.sqrt(2 * np.pi)
-    return f * g 
 
 def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems: list['System_azo'] = None, debug: int = 0) -> list['System_azo']:
     """
@@ -250,106 +216,6 @@ def put_atoms_on_xy(coord, atom1:int, atom2:int, atom3:int, debug=0):
     c3 = rot_in_x(a2, c2)                       # Rotate c2 around the x-axis by the angle a2
     if debug == 1: print('Angle between y_proj and y_axis',a2 * (180 / np.pi))
     return c3
-
-def set_angle(labels, coord, target_angle: float, atom1: int, atom2: int, atom3: int, debug=0):
-    '''
-    Adjusts the angle formed by three specified atoms to a target angle.
-
-    Parameters
-    ----------
-    labels : list
-        List of atomic symbols corresponding to the coordinates.
-    coord : array-like
-        Array of shape (N, 3) representing the coordinates of N atoms.
-    target_angle : float
-        The desired angle in degrees between the three atoms.
-    atom1, atom2, atom3 : int
-        Indices of the three atoms forming the angle (atom2 is the vertex).
-
-    Returns
-    -------
-    coord_final : array-like
-        Array of shape (N, 3) representing the adjusted coordinates with the target angle.
-
-    Notes
-    -----
-    The function first aligns the specified atoms onto the xy-plane, then adjusts the angle
-    between atom1-atom2-atom3 to the target angle by rotating the appropriate atoms.
-    '''
-
-    xy_plane = put_atoms_on_xy(coord, atom1, atom2, atom3, debug)
-    isgood, adjmat, adjnum = get_adjmatrix(labels,xy_plane)
-    if not isgood:
-        print("Adjacency matrix is not good, returning original coordinates")
-        return coord
-    else:
-        # Remove connection between atoms 2 and 3
-        adjnum[atom2] = adjnum[atom2]-1
-        adjnum[atom3] = adjnum[atom3]-1
-        adjmat[atom2][atom3] = 0
-        adjmat[atom3][atom2] = 0
-
-        ### This below is part of split_species function in Scope
-        indices = [*range(0,len(labels),1)]
-        degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
-        lap = adjmat - degree
-        # creates block matrix
-        graph = csr_matrix(lap)
-        perm = reverse_cuthill_mckee(graph)
-        gp1 = graph[perm, :]
-        gp2 = gp1[:, perm]
-        dense = gp2.toarray()
-        # detects blocks in the block diagonal matrix called "dense"
-        startlist, endlist = get_blocks(dense)
-        nblocks = len(startlist)
-
-        if debug > 0: print("nblocks", nblocks)
-        # keeps track of the atom movement within the matrix. Needed later
-        atomlist = np.zeros((len(dense)))
-        for b in range(0, nblocks):
-            for i in range(0, len(dense)):
-                if (i >= startlist[b]) and (i <= endlist[b]):
-                    atomlist[i] = b + 1
-        invperm = inv(perm)
-        atomlistperm = [int(atomlist[i]) for i in invperm]
-
-        # assigns atoms to blocks
-        blocklist = []
-        for b in range(0, nblocks):
-            atlist = []    # atom indices in the original ordering
-            for i in range(0, len(atomlistperm)):
-                if atomlistperm[i] == b + 1:
-                    atlist.append(indices[i])
-            blocklist.append(atlist)
-        for b in blocklist:
-            if debug > 0: print("found block:", b, len(b))
-            # if atom3 in b and atom4 in b: atoms_to_move = deepcopy(b)
-            if atom3 in b: atoms_to_move = deepcopy(b)
-
-        if debug > 0: print("atoms_to_move", atoms_to_move)
-
-        v4 = xy_plane[atom1] - xy_plane[atom2]  # Vector from atom1 to atom2
-        v5 = xy_plane[atom3] - xy_plane[atom2] # Vector from atom2 to atom3
-        target_angle = target_angle * (np.pi / 180)  # Convert to radians
-        a5 = get_angle(v4,v5)  # Angle between atom2 and atom3
-
-        if debug > 0: print("target_angle", target_angle * (180 / np.pi))  # Target angle in degrees
-
-        theta = a5 - target_angle  # Difference between target angle and current angle
-        c4 = []
-        for idx in range(len(xy_plane)):
-            if idx in atoms_to_move:
-                # Calculate the new coordinates for the atoms to move
-                c4.append(xy_plane[idx])
-
-        c5 = rot_in_z(theta, c4)
-        coord_final = deepcopy(xy_plane)  # Create a copy of the coordinates to modify
-
-        for i, idx in enumerate(atoms_to_move):
-            if idx in atoms_to_move:
-                coord_final[idx] = c5[i]  # Initialize with original coordinates
-
-        return coord_final
 
 ################################
 #
@@ -536,30 +402,6 @@ def format_time(t):
 #
 #######################################
 
-def get_abs_spectrum(state1, state2, normalize: bool = False, units: bool = False, get_PSS=False):
-    # Check if TDDFT data exists.
-    if not hasattr(state1, 'es_list') or not hasattr(state2, 'es_list'):
-        print('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in some of the selected states')
-        return None, None, None, None
-
-    Z_e = [es.energy for es in state1.es_list]
-    Z_f = [es.fosc for es in state1.es_list]
-    E_e = [es.energy for es in state2.es_list]
-    E_f = [es.fosc for es in state2.es_list]
-
-    # Select a reasonable energy range
-    Emin = min(min(Z_e), min(E_e)) - 1
-    Emax = max(max(Z_e), max(E_e)) + 1
-    x = np.linspace(Emin, Emax, 5000)
-
-    if get_PSS:
-        units=True
-    
-    sigma_Z = build_sigma(zip(Z_e, Z_f), x, normalize=False,units=units)     # Absolute, no units
-    sigma_E = build_sigma(zip(E_e, E_f), x, normalize=False,units=units)
-
-    return 1240 / x[::-1], sigma_Z, sigma_E 
-
 def get_PSS(cis_state, trans_state, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
 
     cis_source = cis_state._source
@@ -595,37 +437,35 @@ def get_PSS(cis_state, trans_state, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t
     N_E = (k_th_ZE + k_ph_ZE) / (k_ph_EZ + k_ph_ZE + k_th_EZ + k_th_ZE)
     return lambda_grid, sigma_Z, sigma_E, N_E
 
-def build_sigma(transitions, E_grid, sigma=0.2, normalize=False, units=True):
+def build_spectrum(erange, energies, fosc, sigma=0.2, normalize=False, units=True, debug: int=0):
     """
     Build a spectrum from a list of transitions.
     
     Parameters
     ----------
-    transitions : list of tuples
-        List of transitions, where each transition is a tuple of (E0, f).
-    E_grid : array_like
-        Energy grid, in eV.
-    sigma : float, optional
-        Standard deviation of the Gaussian, in eV. Default is 0.2 eV.
-    normalize : bool, optional
-        Whether to normalize the Gaussian. Default is False.
-    units : bool, optional
-        Whether to return the spectrum in units of m^2 / molecule. Default is True.
+    erange: array_like             Desired energy range for the spectrum, in eV.
+    energies : list of floats      List of excitation energies, in eV.
+    fosc : list of floats          List of oscillator strengths for each transition.
+    sigma : float, optional        Standard deviation of the Gaussian, in eV. Default is 0.2 eV.
+    normalize : bool, optional     Whether to normalize the Gaussian. Default is False.
+    units : bool, optional         Whether to return the spectrum in units of m^2 / molecule. Default is True.
     
     Returns
     -------
     spec : array_like
         Spectrum, in m^2 / molecule if units is True, otherwise in arbitrary units.
     """
+    assert len(energies) == len(fosc), "Energies and oscillator strengths must have the same length."
     
-    spec = np.zeros_like(E_grid)
-    for E0, f in transitions:
-        spec += gaussian(E_grid, E0, f,sigma=sigma, normalize=normalize)
-    K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
-    if units:
-        return spec[::-1] * K  # in m^2 / molecule
-    else: 
-        return spec[::-1]  # in arbitrary units
+    spec = np.zeros_like(energies)
+    for E0, f in zip(energies, fosc):
+        spec += f * gaussian(erange, E0, sigma=sigma, normalize=normalize)
+
+    if units: 
+        # Conversion to m^2 / molecule
+        K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
+        return spec[::-1] * K 
+    return spec[::-1]
 
 def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug=0):
     """
@@ -653,7 +493,7 @@ def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug
     """
 
     sigma = fwhm_nm / (2 * np.sqrt(2 * np.log(2)))
-    profile = gaussian(lam_grid, lam0_nm, 1.0, sigma) 
+    profile = gaussian(lam_grid, lam0_nm, sigma=sigma)
     if power is not None:
         area = np.pi * (4.605e-3)**2  # in m2, area of a circle with diameter 0.92 cm
         I_lambda = power * profile / area   # W/m2/nm
@@ -709,58 +549,3 @@ def wavelength_to_rgb(nm: float):
 
     return (r, g, b)
 
-def plot_pss(azo, lambda_grid, wl_list, sigma_Z, sigma_E, frac_list, pss_list, solvent, xlim, t_EZ=None, t_ZE=None, skip_spectra=False, only_dark=False, savetoimg=False):
-
-
-
-    if t_ZE is None:
-        t_cis = azo.find_conformer('cis')[1].find_state('opt')[1].results['halflife'].value
-    else:
-        t_cis = t_ZE
-    if t_EZ is None:
-        t_trans = azo.find_conformer('trans')[1].find_state('opt')[1].results['halflife'].value
-    else:
-        t_trans = t_EZ
-    t_trans = format_time(t_trans)
-    t_cis = format_time(t_cis)
-    
-    plt.figure(figsize=(6, 4), dpi=300)
-    if not skip_spectra:
-        plt.plot(lambda_grid, sigma_Z, color='blue', linestyle='dashed', linewidth=1, label=f'Z-{azo.name}              t = {t_cis}')
-        plt.plot(lambda_grid, sigma_E, color='black', linestyle='dashed', linewidth=1, label=f'E-{azo.name}              t = {t_trans}')
-
-    for i, pss_wl in enumerate(pss_list):
-
-        if i == 0:
-            plt.plot(lambda_grid, pss_wl, color='black', linewidth=2, label=f'DARK                 ({frac_list[i]:.2f} E)')
-            if only_dark:
-                print('AZO.PLOT_PSS: Remember DARK represents only the thermal relaxation.')
-                plt.title(f'Thermal relaxation of {azo.name} in {solvent}')
-                plt.legend(fontsize=9)
-                plt.xlabel('Wavelength (nm)')
-                plt.ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
-                plt.xlim(xlim[0],xlim[1]) 
-                return
-
-        else:
-            
-            color = wavelength_to_rgb(wl_list[i-1])
-
-            plt.plot(lambda_grid, pss_wl, linewidth=0.75,c=color, label=f'{wl_list[i-1]} nm              ({frac_list[i]:.2f} E)')
-
-    plt.title(f'{azo.name} in {solvent}')
-    plt.legend(fontsize=9)
-    plt.xlabel('Wavelength (nm)')
-    plt.ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
-    plt.xlim(xlim[0],xlim[1]) 
-    plt.figure(figsize=(6, 4), dpi=300)
-    plt.plot(lambda_grid, sigma_Z, color='blue', linestyle='dashed', linewidth=1, label=f'Z-{azo.name}  t = {t_cis}')
-    plt.plot(lambda_grid, sigma_E, color='black', linestyle='dashed', linewidth=1, label=f'E_{azo.name}  t = {t_trans}')
-    plt.title(f'{azo.name} in {solvent}')
-    plt.legend()
-    plt.xlabel('Wavelength (nm)')
-    plt.ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
-    plt.xlim(xlim[0], xlim[1])
-    if savetoimg:
-        plt.savefig(os.path.join(plots_dir, f"{azo.name}_pss.png"), dpi=300)
-    plt.close()

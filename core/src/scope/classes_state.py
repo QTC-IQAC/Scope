@@ -65,6 +65,7 @@ class State(object):
     """
     def __init__(self, _source: object, name: str, debug: int=0):
         self.type         = "state"
+        self.subtype      = "state"
         self._source      = _source
         self.name         = name
         self.results      = dict()
@@ -390,8 +391,8 @@ class State(object):
 #### Connection with Excited States ####
 ########################################
     def set_exc_states(self, exc_states, debug: int=0):
-        self.set_exc_states = exc_states
-        return self.set_exc_states
+        self.exc_states = exc_states
+        return self.exc_states
 
 ##################################
 #### Connection with Workflow ####
