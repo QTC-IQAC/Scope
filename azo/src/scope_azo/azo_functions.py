@@ -13,7 +13,9 @@ from scope.operations.vecs_and_mats     import gaussian
 from scope.elementdata          import ElementData
 elemdatabase = ElementData()
 
+######
 def get_3D(smiles, debug: int=0):
+    # Function to generate 3D coordinates from a SMILES string using Open Babel
     import warnings
     from scope.geometry import centercoords
 
@@ -33,89 +35,12 @@ def get_3D(smiles, debug: int=0):
     coord = centercoords(coord, 0) 
     return labels, coord
 
-def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems: list['System_azo'] = None, debug: int = 0) -> list['System_azo']:
-    """
-    Combines left, right and substituent SMILES strings to create azo compounds. Geometries are named following the 
-    order of the input lists. 
-    It is hardly recommended to use this function for SMILES that do follow the following structure: c1(ccccc1)/N=N/ring2. 
-    This allows a well-defined indices to set dihedral angles.
-
-    Guide
-    -----
-    Selected atoms to rotate dihedral angles are  the following (example for azobenzene):
-
-      4 --- 5                     9 --- 10
-    //      \\\\                  //      \\\\
-    3          0 --- 6 === 7 --- 8        11
-    \\        /      N     N     \\       /
-      2 === 1                     13 === 12
-
-    where:
-    - at0 = 0: is the atom with index 0, found in the left ring
-    - at1 = 1: is the atom with index 1, found in the left ring
-    - at2 = 6: is the Nitrogen atom with index 6, found in the Azo fragment
-    - at3 = 7: is the Nitrogen atom with index 7, found in the Azo fragment
-    - at4 = 8: is the atom with index 8, found in the right ring
-    - at5 = 9: is the atom with index 9, found in of the right ring
-
-    The variables at1, at2, at3 and at4 are used to define the dihedral angle of the azo fragment.
-
-    The variables at0 and at5 are used to define the dihedral angle of the rings with
-    respect to the azo fragment.
-
-    """
-    if systems is None:
-        if debug != 0: print(f"AZOS.COMBINE_SMILES: systems is None, creating empty list.")
-        systems = []
-    else:
-        if debug != 0: print(f"AZOS.COMBINE_SMILES: systems is not None, using existing list. Actual size: {len(systems)}")
-
-    from scope_azo.azo_classes import System_azo
-
-    existing_names = {sys.name for sys in systems}
-
-    # SMILES combinations
-    # Note: Assuming 'SUB' is only present in the left fragment.
-    core_template = '(LEFT)/N=N/(RIGHT)'
-    print(f"AZOS.COMBINE_SMILES: START combining {len(lefts)} left fragments, {len(rights)} right fragments, and {len(subs)} subs")
-    for idx, left in enumerate(lefts):
-        for jdx, right in enumerate(rights):
-            for kdx, sub in enumerate(subs):
-                # Combination of smiles
-                left_fragment = left.replace("SUB",sub)            # Replaces SUB with i substituent
-                current_smiles = core_template.replace("(LEFT)", left_fragment).replace("(RIGHT)", right)
-                name = str(f"{idx}_{jdx}_{kdx}")                   # Names in (left_right_sub) order 
-
-                try:
-                    if name in existing_names:
-                        print(f'Skipping {name}, already exists')
-                        continue
-
-                    new_system = System_azo(name, current_smiles)
-
-                    new_system.create_trans(debug=debug)
-                    new_system.create_cis(debug=debug)
-                    new_system.create_ts(debug=debug)
-
-                    if new_system.find_source('trans') is not None and new_system.find_source('cis') is not None:
-                        systems.append(new_system)
-                        existing_names.add(name)
-                    else:
-                        print(f"AZOS.COMBINE_SMILES: ERROR combining {name}: Trans or cis isomer not found")
-
-                except Exception as e:
-                    print(f"AZOS.COMBINE_SMILES: ERROR combining {name}: {e}")
-
-    print(f"AZOS.COMBINE_SMILES: END. Total valid systems: {len(systems)}")
-    return systems
-
-################################
-###     HELP FUNCTION
-################################
-
+#############################
+### Structure Preparation ###
+#############################
 def solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref, adjnum_ref, debug: int=0):
     """
-    Solves the dihedral angles of a system to avoid steric hindrance. 
+    Finds the dihedral angles of a system to avoid steric hindrance. 
     It does so by rotating adjacent rings dihedral angles: 
         1 - left ring (at0-at3), 
         2 - right ring (at2-at5)
@@ -126,18 +51,22 @@ def solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref, adjn
     from itertools                  import product
     rot_steps = np.linspace(-180,180, 64).astype(int)
     rot_combinations = list(product(rot_steps, rot_steps))
-    fixed_collision = False
+    worked = False
     for angle1, angle2 in rot_combinations:
-        coord_try = set_dihedral(labels, coord, angle1, at0,at1,at2,at3, adjmat=adjmat_ref, adjnum=adjnum_ref)  # Coords de tsinv                        
-        coord_try = set_dihedral(labels, coord_try, angle2, at2,at3,at4,at5, adjmat=adjmat_ref, adjnum=adjnum_ref)
-        _, adjmat_try, adjnum_try = get_adjmatrix(labels,coord_try)
-        found_fix = np.array_equal(adjmat_try, adjmat_ref) and np.array_equal(adjnum_try, adjnum_ref)
-        if found_fix:
-            coord = coord_try
-            if debug != 0: print(f'AZOS.SOLVE_DIHEDRAL: Found good geometry by rotating adjacent dihedrals')
-            fixed_collision = True
-            return fixed_collision, coord
+        new_coord = set_dihedral(labels, coord, angle1, at0,at1,at2,at3, adjmat=adjmat_ref, adjnum=adjnum_ref)  # Coords de tsinv                        
+        new_coord = set_dihedral(labels, new_coord, angle2, at2,at3,at4,at5, adjmat=adjmat_ref, adjnum=adjnum_ref)
 
+        # Gets the adjacency matrix of the new coordinates, to check is the original connectivity is preserved (i.e., no steric clashes)
+        _, adjmat_try, adjnum_try = get_adjmatrix(labels,new_coord)
+        is_same = np.array_equal(adjmat_try, adjmat_ref) and np.array_equal(adjnum_try, adjnum_ref)
+        if is_same:
+            if debug != 0: print(f'AZOS.SOLVE_DIHEDRAL: Found good geometry by rotating adjacent dihedrals')
+            worked = True
+            return worked, new_coord
+    print(f'AZOS.SOLVE_DIHEDRAL: No good geometry found by rotating adjacent dihedrals. Returning original geometry.')
+    return worked, coord
+
+######
 def rotation_matrix(axis: np.ndarray, angle: float):
     """
     Returns a rotation matrix for a given axis and angle based on Rodrigues' rotation formula.
@@ -217,12 +146,9 @@ def put_atoms_on_xy(coord, atom1:int, atom2:int, atom3:int, debug=0):
     if debug == 1: print('Angle between y_proj and y_axis',a2 * (180 / np.pi))
     return c3
 
-################################
-#
-#  Functions for thermal props
-#
-################################
-
+############################
+#### Thermal Properties ####
+############################
 def compute_t(g_ts:float, g_iso:float, T:float=298.15):
     '''
     Computes half-life time in seconds using Eyring equation.
@@ -395,51 +321,12 @@ def format_time(t):
     return f"{t / 31557600000:.2f} ka"
 
 
-#######################################
-#
-#         OPTICAL PROPERTIES
-#             FUNCTIONS
-#
-#######################################
-
-def get_PSS(cis_state, trans_state, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
-
-    cis_source = cis_state._source
-    trans_source = trans_state._source
-    system = cis_source._sys
-    lambda_grid, sigma_Z, sigma_E = get_abs_spectrum(cis_state, trans_state, normalize=False, units=True, get_PSS=True) # Need units to compute PSS
-
-    # Photon flux from lamp
-    photon_flux = get_photon_flux_spectrum(lamp.wavelength, lamp.fwhm, lambda_grid, Itot=lamp.irradiance)
-    
-    # Half-lives in seconds
-    if not 'halflife' in trans_state.results.keys():
-        print('No halflife found for trans isomer. Computing...')
-        trans_source.set_halflife_time(skip_triplets=False, overwrite=False)
-    if not 'halflife' in cis_state.results.keys():
-        print('No halflife found for cis isomer. Computing...')
-        cis_source.set_halflife_time(skip_triplets=False, overwrite=True)
-        raise ValueError(f'Error: No halflife found for Z or E isomers in system {system.name}')
-
-    # If no half-life times are given (for research), halflife is taken from the corresponding state
-    if t_EZ is None:
-        t_EZ = trans_state.results['halflife'].value
-    if t_ZE is None:
-        t_ZE = cis_state.results['halflife'].value
-
-    # Photochemical rates
-    k_ph_EZ = phi_EZ * np.trapezoid(sigma_E * photon_flux, lambda_grid)
-    k_ph_ZE = phi_ZE * np.trapezoid(sigma_Z * photon_flux, lambda_grid)
-    # Thermal rates
-    k_th_EZ = np.log(2) /  t_EZ
-    k_th_ZE = np.log(2) /  t_ZE
-    # Steady-state populations
-    N_E = (k_th_ZE + k_ph_ZE) / (k_ph_EZ + k_ph_ZE + k_th_EZ + k_th_ZE)
-    return lambda_grid, sigma_Z, sigma_E, N_E
-
+############################
+#### Optical Properties ####
+############################
 def build_spectrum(erange, energies, fosc, sigma=0.2, normalize=False, units=True, debug: int=0):
     """
-    Build a spectrum from a list of transitions.
+    Build the absorption spectrum from a list of transitions.
     
     Parameters
     ----------
@@ -467,29 +354,23 @@ def build_spectrum(erange, energies, fosc, sigma=0.2, normalize=False, units=Tru
         return spec[::-1] * K 
     return spec[::-1]
 
+######
 def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug=0):
     """
     Returns the photon flux spectrum from a given wavelength grid and intensity.
     
     Parameters
     ----------
-    lam0_nm : float
-        Central wavelength, in nm.
-    fwhm_nm : float
-        Full width at half maximum, in nm.
-    lam_grid : array_like
-        Wavelength grid, in nm.
-    Itot : float
-        Total intensity, in W/m2/nm.
-    power : float, optional
-        Power, in W. Default is None.
-    debug : int, optional
-        Debug level. Default is 0.
+    lam0_nm : float             Central wavelength, in nm.
+    fwhm_nm : float             Full width at half maximum, in nm.
+    lam_grid : array_like       Wavelength grid, in nm.
+    Itot : float                Total intensity, in W/m2/nm.
+    power : float, optional     Power, in W. Default is None.
+    debug : int, optional       Debug level. Default is 0.
     
     Returns
     -------
-    I_lambda : array_like
-        Photon flux spectrum, in photons m-2 s-1 nm-1.
+    I_lambda : array_like       Photon flux spectrum, in photons m-2 s-1 nm-1.
     """
 
     sigma = fwhm_nm / (2 * np.sqrt(2 * np.log(2)))
@@ -549,3 +430,82 @@ def wavelength_to_rgb(nm: float):
 
     return (r, g, b)
 
+
+###############
+### For CLI ###
+###############
+#def combine_smiles(lefts: list[str], rights: list[str], subs: list[str], systems: list['System_azo'] = None, debug: int = 0) -> list['System_azo']:
+#    """
+#    Combines left, right and substituent SMILES strings to create azo compounds. Geometries are named following the 
+#    order of the input lists. 
+#    It is hardly recommended to use this function for SMILES that do follow the following structure: c1(ccccc1)/N=N/ring2. 
+#    This allows a well-defined indices to set dihedral angles.
+#
+#    Guide
+#    -----
+#    Selected atoms to rotate dihedral angles are  the following (example for azobenzene):
+#
+#      4 --- 5                     9 --- 10
+#    //      \\\\                  //      \\\\
+#    3          0 --- 6 === 7 --- 8        11
+#    \\        /      N     N     \\       /
+#      2 === 1                     13 === 12
+#
+#    where:
+#    - at0 = 0: is the atom with index 0, found in the left ring
+#    - at1 = 1: is the atom with index 1, found in the left ring
+#    - at2 = 6: is the Nitrogen atom with index 6, found in the Azo fragment
+#    - at3 = 7: is the Nitrogen atom with index 7, found in the Azo fragment
+#    - at4 = 8: is the atom with index 8, found in the right ring
+#    - at5 = 9: is the atom with index 9, found in of the right ring
+#
+#    The variables at1, at2, at3 and at4 are used to define the dihedral angle of the azo fragment.
+#
+#    The variables at0 and at5 are used to define the dihedral angle of the rings with
+#    respect to the azo fragment.
+#
+#    """
+#    if systems is None:
+#        if debug != 0: print(f"AZOS.COMBINE_SMILES: systems is None, creating empty list.")
+#        systems = []
+#    else:
+#        if debug != 0: print(f"AZOS.COMBINE_SMILES: systems is not None, using existing list. Actual size: {len(systems)}")
+#
+#    from scope_azo.azo_classes import System_azo
+#
+#    existing_names = {sys.name for sys in systems}
+#
+#    # SMILES combinations
+#    # Note: Assuming 'SUB' is only present in the left fragment.
+#    core_template = '(LEFT)/N=N/(RIGHT)'
+#    print(f"AZOS.COMBINE_SMILES: START combining {len(lefts)} left fragments, {len(rights)} right fragments, and {len(subs)} subs")
+#    for idx, left in enumerate(lefts):
+#        for jdx, right in enumerate(rights):
+#            for kdx, sub in enumerate(subs):
+#                # Combination of smiles
+#                left_fragment = left.replace("SUB",sub)            # Replaces SUB with i substituent
+#                current_smiles = core_template.replace("(LEFT)", left_fragment).replace("(RIGHT)", right)
+#                name = str(f"{idx}_{jdx}_{kdx}")                   # Names in (left_right_sub) order 
+#
+#                try:
+#                    if name in existing_names:
+#                        print(f'Skipping {name}, already exists')
+#                        continue
+#
+#                    new_system = System_azo(name, current_smiles)
+#
+#                    new_system.create_trans(debug=debug)
+#                    new_system.create_cis(debug=debug)
+#                    new_system.create_ts(debug=debug)
+#
+#                    if new_system.find_source('trans') is not None and new_system.find_source('cis') is not None:
+#                        systems.append(new_system)
+#                        existing_names.add(name)
+#                    else:
+#                        print(f"AZOS.COMBINE_SMILES: ERROR combining {name}: Trans or cis isomer not found")
+#
+#                except Exception as e:
+#                    print(f"AZOS.COMBINE_SMILES: ERROR combining {name}: {e}")
+#
+#    print(f"AZOS.COMBINE_SMILES: END. Total valid systems: {len(systems)}")
+#    return systems
