@@ -113,7 +113,7 @@ class System_azo(System):
     ############################
     ## Creation of Structures ##
     ############################
-    def create_trans(self, overwrite: bool=False, debug: int = 0):
+    def create_trans(self, charge: int=0, overwrite: bool=False, debug: int=0):
         '''
         Creates the trans structure of the azo compound from a SMILES string. 3D geometry creation is done using openbabel. 
         It sets up the trans isomer (including the creation of Molecule_azo and its 'initial' State objects) and stores it as
@@ -160,19 +160,26 @@ class System_azo(System):
         labels, coord          = get_3D(smiles)
         coord                  = centercoords(coord, 0)
         trans                  = Molecule_azo(labels, coord)
-        trans.smiles           = smiles
-        trans.dihedral_indices = self.dihedral_indices
+
+        # Checks fragmentation to verify that the 3D structure is correct (or, at least, not fragmented)
         if trans.check_fragmentation():
             print(f"AZO.CREATE_TRANS: Trans isomer for {self.name} is FRAGMENTED.")
             return None
 
-        trans.set_total_charge(0)
-        trans.set_total_spin(0)            
-        self.add_source(name="trans", new_source = trans, overwrite=overwrite) ## Initial State is now created when 'sourcing'
+        # Sets charge and spin
+        trans.set_total_charge(charge)
+        #trans.set_total_spin(0)      ## Not needed, it should be the default      
+
+        # Sets other attributes
+        trans.smiles           = smiles
+        trans.dihedral_indices = self.dihedral_indices
+
+        # Adds to System as source. Initial State is created automatically when sourcing
+        self.add_source("trans",trans,overwrite=overwrite) 
         return trans
 
     ######
-    def create_cis(self, target_deg: float=40.0, max_iter: int=2000, overwrite: bool=False, debug: int=0) -> "Molecule_azo":
+    def create_cis(self, target_deg: float=40.0, max_iter: int=2000, overwrite: bool=False, debug: int=0):
         '''
         Creates the cis structure of the azo compound from a SMILES string. To avoid troubles in 3D geometry creation using openbabel, 
         the trans isomer is created using create_trans() function. It sets up the cis isomer (including the creation of Molecule_azo and 
@@ -260,23 +267,28 @@ class System_azo(System):
             else: 
                 if debug > 0: print(f'AZO.CREATE_CIS: Failed to find good geometry for {self.name} by rotating adjacent dihedrals')
         
-        if found_geometry: 
-            coord                = centercoords(coord, at1)
-            cis                  = Molecule_azo(labels, coord) 
-            cis.smiles           = trans.smiles.replace('/N=N/','/N=N\\')
-            cis.dihedral_indices = self.dihedral_indices
-
-            cis.set_total_charge(trans.charge)
-            cis.set_total_spin(trans.spin)
-
-            self.add_source("cis",cis,overwrite=overwrite)
-            if cis.check_fragmentation(debug=debug):
-                print(f"AZO.CREATE_CIS: Cis isomer for {self.name} is FRAGMENTED.")
-                return None
-            
-            return cis
-        else:
+        if not found_geometry: 
             raise Exception(f'AZO.CREATE_CIS: Target dihedral for {self.name} could not be reached. Reached max. iterations: {max_iter}.')
+
+        # Here, it found a good geometry for the cis isomer, without clashes
+        coord                = centercoords(coord, at1)
+        cis                  = Molecule_azo(labels, coord) 
+
+        # Checks fragmentation to verify that the 3D structure is correct (or, at least, not fragmented)
+        if cis.check_fragmentation(debug=debug):
+            print(f"AZO.CREATE_CIS: Cis isomer for {self.name} is FRAGMENTED.")
+            return None
+
+        # Sets other attributes
+        cis.smiles           = trans.smiles.replace('/N=N/','/N=N\\')
+        cis.dihedral_indices = self.dihedral_indices
+        cis.set_total_charge(trans.charge)
+        cis.set_total_spin(trans.spin)
+
+        # Adds to System as source. Initial State is created automatically when sourcing
+        self.add_source("cis",cis,overwrite=overwrite)
+
+        return cis
 
     ######
     def create_ts(self, ts_list:list = ['TSrot', 'TSinv_l', 'TSinv_r', 'triplet'], debug: int=0):
@@ -484,18 +496,76 @@ class System_azo(System):
             print(self.name, self.dE, "kJ/mol. Negative means trans is more stable")
         return self.dE
 
+    def get_trans_halflife_time(self, target_state: str = 'opt', skip_triplets: bool = False, overwrite: bool = False, debug: int = 0):
+        ## Funcio que calcula el temps de vida promig (t05). Busca TRANS i el TS mes baix en energia, i calcula eyring
+        ##
+        ##
+        ## t05 =  
+        ## units = 'seconds'
+        self.add_result(Data("trans_halflife_time",t05,units,"system.get_trans_halflife_time()"), overwrite=overwrite)
+        return self.results['trans_halflife_time']
+
+    def get_cis_halflife_time(self, target_state: str = 'opt', skip_triplets: bool = False, overwrite: bool = False, debug: int = 0):
+        ## Funcio que calcula el temps de vida promig (t05). Busca CIS i el TS mes baix en energia, i calcula eyring
+        ##
+        ##
+        ## t05 =  
+        ## units = 'seconds'
+        self.add_result(Data("cis_halflife_time",t05,units,"system.get_cis_halflife_time()"), overwrite=overwrite)
+        return self.results['cis_halflife_time']
+
     ########################
     ## Optical Properties ##
     ########################
+    
     def get_PSS(self, target_state: str, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
+        """
+        Function to calculate the photostationary state (PSS) for a given System_azo, based on the photochemical and thermal rates.
+        Returns the PSS value, which is the fraction of the Trans isomer at the PSS.
+        """
+
         # Search for cis and trans sources and states.
         found_cis_state, cis_state = self.find_source('cis')[1].find_state(target_state)
         if not found_cis_state:   raise Exception('SYSTEM_AZO.GET_PSS: The target state for the CIS isomer was not found.')
         found_trans_state, trans_state = self.find_source('trans')[1].find_state(target_state)
         if not found_trans_state: raise Exception('SYSTEM_AZO.GET_PSS: The target state for the TRANS isomer was not found.')
-        # Computes
-        return get_PSS(cis_state, trans_state, lamp = lamp, phi_EZ = phi_EZ, phi_ZE = phi_ZE, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug)
-    
+
+        trans_abs_spectrum = trans_state.get_abs_spectrum(normalize=False, units=True, debug=debug) # Need units to compute PSS
+        cis_abs_spectrum   = cis_state.get_abs_spectrum(normalize=False, units=True, debug=debug)   # Need units to compute PSS
+
+        # Photon flux from lamp
+        photon_flux = get_photon_flux_spectrum(lamp.wavelength, lamp.fwhm, lambda_grid, Itot=lamp.irradiance)
+
+        # Gets Half-life times (in seconds). If not provided, it computes them using the corresponding functions.
+        if t_EZ is None:
+            if not 'trans_halflife_time' in self.results.keys():
+                print('SYSTEM_AZO.get_PSS: No halflife time found for trans isomer. Computing...')
+                self.get_trans_halflife_time(skip_triplets=False, overwrite=False)               ## MANEL: les funcions son "get_" quan calculen, i "set_" quan assignen
+            assert self.results['trans_halflife_time'].units == 'seconds'
+            t_EZ = self.results['trans_halflife_time'].value
+        else: 
+            assert t_EZ > 0, "SYSTEM_AZO.get_PSS: t_EZ must be a positive value in seconds."
+        
+        if t_ZE is None:
+            if not 'cis_halflife_time' in self.results.keys():
+                print('SYSTEM_AZO.get_PSS: No halflife time found for cis isomer. Computing...')
+                self.get_cis_halflife_time(skip_triplets=False, overwrite=True)                  ## MANEL: xk es overwrite true i l'anterior false?
+            assert self.results['cis_halflife_time'].units == 'seconds'
+            t_ZE = self.results['cis_halflife_time'].value
+        else: 
+            assert t_ZE > 0, "SYSTEM_AZO.get_PSS: t_ZE must be a positive value in seconds."
+
+        # Photochemical rates
+        k_ph_EZ = phi_EZ * np.trapezoid(trans_abs_spectrum * photon_flux, lambda_grid)      ## MANEL: ojo, ara trans_abs_spectrum es un array de 2 columnes, (x, y). Adapta-ho com calgui
+        k_ph_ZE = phi_ZE * np.trapezoid(cis_abs_spectrum   * photon_flux, lambda_grid)      ##      per altra banda, lambda grid no se d'on surt. Pot ser que sigui trans_abs_spectrum[:,0]? 
+        # Thermal rates
+        k_th_EZ = np.log(2) / t_EZ
+        k_th_ZE = np.log(2) / t_ZE
+        # Steady-state populations
+        self.PSS = (k_th_ZE + k_ph_ZE) / (k_ph_EZ + k_ph_ZE + k_th_EZ + k_th_ZE)             ## MANEL_ N_E es la fracció de trans?
+
+        return self.PSS 
+
     ######
     def compute_pss(self, wl_list, state_trans=None, state_cis=None, phi_EZ=0.3, phi_ZE=0.5, t_EZ=None, t_ZE=None, shift_nm=None, debug =0): 
         """
@@ -580,11 +650,10 @@ class State_azo(State):
         # Collects Values
         energies = [es.energy for es in self.exc_states]
         fosc     = [es.fosc for es in self.exc_states]
-
-        erange = np.linspace(lmin, lmax, lmax-lmin)
+        erange   = np.linspace(lmin, lmax, lmax-lmin)
 
         # Builds the spectrum from discrete values, using Gaussian broadening
-        self.abs_spectrum = build_spectrum(erange, energies, fosc, lmax=lmax, lmin=lmin, normalize=normalize, units=units)
+        self.abs_spectrum = build_spectrum(erange, energies, fosc, normalize=normalize, units=units)
         return self.abs_spectrum
 
 ############################################
@@ -688,61 +757,61 @@ class Molecule_azo(Molecule):
         print(f'MOLECULE_AZO.SET_HALFLIFE_TIME: ---- Attributes such as dG_cross and mets can be accessed by self.dG_cross and self.mets)')
         
 
-    def link_tda_to_state(self, state: object, filepath: str, overwrite: bool=False):
-        '''
-        Parses excited states from a TDDFT Gaussian16 .log file to a ExcitedState object.
-        '''
-        if not hasattr(state,"es_list") or overwrite: 
-            if os.path.exists(filepath):
-                state.tda_filepath = filepath
-                state.es_list = []
-                lines = read_lines_file(filepath)
-                # state.gs_energy = parse_energy_from_step(lines)
-                if parse_status_finished(lines):
-                    for st_num in range(1,11):
-                        if st_num < 10:    
-                            line_nums, found = search_string(f"Excited State   {st_num}:", lines, typ='first')
-                        elif st_num >= 10 and st_num < 100: 
-                            line_nums, found = search_string(f"Excited State  {st_num}:", lines, typ='first')
-                        if found:
-                            dummy, dummy, idx, dummy, energy, dummy, wavelength, dummy, fosc, s2 = lines[line_nums].split() 
-                            idx  = int(idx.replace(':',''))
-                            s2   = float(s2.replace('<S**2>=',''))
-                            fosc = float(fosc.replace('f=',''))
-                            wavelength = float(wavelength)
-                            energy = float(energy)
-                            if st_num == idx:
-                                new_es = ExcitedState(self, st_num, energy, wavelength, fosc, s2)
-                                state.es_list.append(new_es)
-                        else: print(f"Excited State {st_num} not found in {filepath}.") 
-            else: print(f"File {filepath} does not exists.") 
+    ## MANEL: aquestes funcions ja no son necessaries
 
-    def link_opt_to_state(self, state:object, filepath:str, overwrite: bool=False):
-        '''
-        Parses a Gaussian16 .log file to save geometry and free Gibbs energy to a state object.
-        '''
-        if not hasattr(state, 'opt') or overwrite:
-            if os.path.exists(filepath):
-                state.opt_filepath = filepath
-                lines = read_lines_file(filepath)
-                output= G16_output(lines)
-                opt_finished = output.get_optimization_finished()
-                if opt_finished:
-                    state.energy = output.get_last_energy()
-                    state.gtot = output.get_free_energy()
+    #def link_tda_to_state(self, state: object, filepath: str, overwrite: bool=False):
+    #    '''
+    #    Parses excited states from a TDDFT Gaussian16 .log file to a ExcitedState object.
+    #    '''
+    #    if not hasattr(state,"es_list") or overwrite: 
+    #        if os.path.exists(filepath):
+    #            state.tda_filepath = filepath
+    #            state.es_list = []
+    #            lines = read_lines_file(filepath)
+    #            # state.gs_energy = parse_energy_from_step(lines)
+    #            if parse_status_finished(lines):
+    #                for st_num in range(1,11):
+    #                    if st_num < 10:    
+    #                        line_nums, found = search_string(f"Excited State   {st_num}:", lines, typ='first')
+    #                    elif st_num >= 10 and st_num < 100: 
+    #                        line_nums, found = search_string(f"Excited State  {st_num}:", lines, typ='first')
+    #                    if found:
+    #                        dummy, dummy, idx, dummy, energy, dummy, wavelength, dummy, fosc, s2 = lines[line_nums].split() 
+    #                        idx  = int(idx.replace(':',''))
+    #                        s2   = float(s2.replace('<S**2>=',''))
+    #                        fosc = float(fosc.replace('f=',''))
+    #                        wavelength = float(wavelength)
+    #                        energy = float(energy)
+    #                        if st_num == idx:
+    #                            new_es = ExcitedState(self, st_num, energy, wavelength, fosc, s2)
+    #                            state.es_list.append(new_es)
+    #                    else: print(f"Excited State {st_num} not found in {filepath}.") 
+    #        else: print(f"File {filepath} does not exists.") 
 
-                    labels, coord = output.get_last_geometry(lines)
-                    state.set_geometry(labels, coord)
-                    newG = Data("Gtot", state.gtot, "au", "get_free_energy")
-                    newH = Data("energy", state.gtot, "au", "get_last_energy")
-                    state.add_result(newG)
-                else:
-                    print('LINK_OPT_TO_STATE: WARNING: An optimization did not finished')
-                    print(f'LINK_OPT_TO_STATE: Optimization file: {filepath}')
+    #def link_opt_to_state(self, state:object, filepath:str, overwrite: bool=False):
+    #    '''
+    #    Parses a Gaussian16 .log file to save geometry and free Gibbs energy to a state object.
+    #    '''
+    #    if not hasattr(state, 'opt') or overwrite:
+    #        if os.path.exists(filepath):
+    #            state.opt_filepath = filepath
+    #            lines = read_lines_file(filepath)
+    #            output= G16_output(lines)
+    #            opt_finished = output.get_optimization_finished()
+    #            if opt_finished:
+    #                state.energy = output.get_last_energy()
+    #                state.gtot = output.get_free_energy()
 
-
-        else:
-            print(f"File {filepath} does not exist.")
+    #                labels, coord = output.get_last_geometry(lines)
+    #                state.set_geometry(labels, coord)
+    #                newG = Data("Gtot", state.gtot, "au", "get_free_energy")
+    #                newH = Data("energy", state.gtot, "au", "get_last_energy")
+    #                state.add_result(newG)
+    #            else:
+    #                print('LINK_OPT_TO_STATE: WARNING: An optimization did not finished')
+    #                print(f'LINK_OPT_TO_STATE: Optimization file: {filepath}')
+    #    else:
+    #        print(f"File {filepath} does not exist.")
 
 
     def get_azo_substituents(self, debug: int=0):

@@ -236,13 +236,9 @@ def set_angle(labels, coord, target_angle: float, atom1: int, atom2: int, atom3:
 #########
 def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, atom3: int, atom4: int, adjmat=None, adjnum=None,  debug: int=0):
     from copy import deepcopy
-    from scipy import sparse
-    from scipy.sparse import csr_matrix
+    from scipy.sparse         import csr_matrix
     from scipy.sparse.csgraph import reverse_cuthill_mckee
-    from typing import Tuple
-    from scope.elementdata import ElementData
-    from scope.connectivity import get_adjmatrix, get_blocks, inv
-    elemdatabase = ElementData()
+    from scope.connectivity   import get_adjmatrix, get_blocks, inv
 
     d0 = get_dihedral(coord[atom1], coord[atom2], coord[atom3], coord[atom4])
     if debug > 0: print(f"SET_DIHEDRAL: initial dihedral {np.degrees(d0)=}")
