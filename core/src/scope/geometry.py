@@ -162,6 +162,11 @@ def put_atoms_on_xy(coord, atom1:int, atom2:int, atom3:int, debug=0):
 
 #########
 def set_angle(labels, coord, target_angle: float, atom1: int, atom2: int, atom3: int, debug=0):
+    from copy import deepcopy
+    from scipy.sparse         import csr_matrix
+    from scipy.sparse.csgraph import reverse_cuthill_mckee
+    from scope.connectivity   import get_adjmatrix, get_blocks, inv
+
     '''
     Adjusts the angle formed by three specified atoms to a target angle.
     '''
