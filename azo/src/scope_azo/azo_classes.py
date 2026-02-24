@@ -291,7 +291,7 @@ class System_azo(System):
         return cis
 
     ######
-    def create_ts(self, ts_list:list = ['TSrot', 'TSinv_l', 'TSinv_r', 'triplet'], debug: int=0):
+    def create_ts(self, ts_list:list = ['TSrot', 'TSinv', 'TSinv', 'triplet'], debug: int=0):
         """
         Creates a set of TS for a given System_azo. Users can select which TS to create from a list of options, 
         it must be in ts_list (['TSrot', 'TSinv', 'triplet']). By default, TSrot_A, TSrot_B, TSinv_L, TSinv_R are created, 
@@ -322,13 +322,13 @@ class System_azo(System):
         -------
         TSinv
         -------
-        TSinv is created by inverting the trans isomer around the azo dihedral (setting dihedral angle to 180º).
-        By default, total spin is set as 1. It can be changed using the function for Molecule objects as Molecule.set_total_spin(value).
-        Two versions are created:
-            - TSinv_L: Inversion TS involving inversion of left ring (at0 - at1 = at2). Total spin is set as 1.
-            - TSinv_R: Inversion TS involving inversion of right ring (at1 = at2 - at3). Total spin is set as 1.
+        TSinv is created by inverting the trans isomer around the azo dihedral (setting N=N-ring angle to 180º).
+        By default, total spin is set as 0. It can be changed using the function for Molecule objects as Molecule.set_total_spin(value).
+        4 versions are created:
+            - tsinv_l: Inversion TS involving inversion of left ring (at0 - at1 = at2).
+            - tsinv_r: Inversion TS involving inversion of right ring (at1 = at2 - at3).
 
-        They are added as sources of the azosystem. They can be accessed by using azosystem.find_source('TSrot_A_T') or azosystem.find_source('TSinv_R')
+        They are added as sources of the System_azo. They can be accessed by using System_azo.find_source('TSrot_A_T') or system_azo.find_source('TSinv_R_a'). 
         
         """
         created_ts = []
@@ -342,7 +342,7 @@ class System_azo(System):
 
         # Get indices for the azo group (at1 - at2 = at3 - at4) and neighbours (at0, at5)
         at0, at1, at2, at3, at4, at5 = self.dihedral_indices
-        if debug > 0: print(f"AZO.CREATE_CIS: dihedral indices: {at0}, {at1}, {at2}, {at3}, {at4}, {at5}")
+        if debug > 0: print(f"SYSTEM_AZO.CREATE_CIS: dihedral indices: {at0}, {at1}, {at2}, {at3}, {at4}, {at5}")
 
         # Get the adjacency matrix for reference when rotating the dihedral angle of the azo group
         adjmat_ref, adjnum_ref = trans.get_adjmatrix()
@@ -363,31 +363,24 @@ class System_azo(System):
                 ts = Molecule_azo(labels, coord)
                 isFragmented = ts.check_fragmentation()  # Check if the TSrot is fragmented
                 if not isFragmented:
-                    ts.set_total_charge(0)
-                    ts.set_total_spin(0)
-
                     ts.dihedral_indices = self.dihedral_indices
                     self.add_source('TSrot_A_S', ts)
                     created_ts.append(ts)
-
+                    if debug > 0:       print(f'SYSTEM_AZO.CREATE_TS: TSrot_A_S Molecule_azo successfully created for {self.name}')
                     if 'triplet' in ts_list:
                         ts_triplet = Molecule_azo(labels, coord)
-
-                        ts_triplet.set_total_charge(0)
                         ts_triplet.set_total_spin(2)
-
                         ts_triplet.dihedral_indices = self.dihedral_indices
                         self.add_source('TSrot_A_T', ts_triplet)
                         created_ts.append(ts_triplet)
-                        if debug > 0:   print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_T Molecule_azo successfully created for {self.name}')
-                    if debug > 0:       print(f'AZOS.CREATE_TS.TSROT_A: TSrot_A_S Molecule_azo successfully created for {self.name}')
+                        if debug > 0:   print(f'SYSTEM_AZO.CREATE_TS: TSrot_A_T Molecule_azo successfully created for {self.name}')
                 else:
-                    raise Exception(f'AZOS.CREATE_TS.TSROT_A: [ERROR] TSrot_A fragmented for {self.name}')
+                    raise Exception(f'SYSTEM_AZO.CREATE_TS: [ERROR] TSrot_A fragmented for {self.name}')
 
-            ## TSrot_B ##                
+            ## TSrot_B ##
             if debug > 0:
                 dg_deg = np.degrees(get_dihedral(trans.coord[at1], trans.coord[at2], trans.coord[at3], trans.coord[at4]))
-                print(f'AZOS.CREATE_TS.TSROT_B: Dihedral angle for reference geometry: {dg_deg} degrees')
+                print(f'SYSTEM_AZO.CREATE_TS: Dihedral angle for reference geometry: {dg_deg} degrees')
             coord = set_dihedral(labels, trans.coord, -90, at1,at2,at3,at4, adjmat=adjmat_ref, adjnum=adjnum_ref)            # Coords de tsrot
             _, adjmat, adjnum = get_adjmatrix(labels,coord)
             is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
@@ -399,62 +392,75 @@ class System_azo(System):
                 ts = Molecule_azo(labels, coord)
                 isFragmented = ts.check_fragmentation()  # Check if the TSrot is fragmented
                 if not isFragmented:
-
-                    ts.set_total_charge(0)
-                    ts.set_total_spin(0)
-
                     ts.dihedral_indices = self.dihedral_indices
                     self.add_source('TSrot_B_S', ts)
                     created_ts.append(ts)
-
+                    if debug > 0:       print(f'SYSTEM_AZO.CREATE_TS: TSrot_B_S Molecule_Azo successfully created for {self.name}')
                     if 'triplet' in ts_list:
                         ts_triplet = Molecule_azo(labels, coord)
-
-                        ts_triplet.set_total_charge(0)
                         ts_triplet.set_total_spin(2)
-
                         ts_triplet.dihedral_indices = self.dihedral_indices
                         self.add_source('TSrot_B_T', ts_triplet)
                         created_ts.append(ts_triplet)
-                        if debug > 0:   print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_T Molecule_Azo successfully created for {self.name}')
-                    if debug > 0:       print(f'AZOS.CREATE_TS.TSROT_B: TSrot_B_S Molecule_Azo successfully created for {self.name}')
+                        if debug > 0:   print(f'SYSTEM_AZO.CREATE_TS: TSrot_B_T Molecule_Azo successfully created for {self.name}')
                 else:
-                    raise Exception(f'WARNING: TSrot_B fragmented for {self.name}')
+                    raise Exception(f'SYSTEM_AZO.CREATE_TS: WARNING: TSrot_B fragmented for {self.name}')
         
-        ## TSinv Left ##
-        if 'TSinv_l' in ts_list:
-            coord = set_angle(labels, trans.coord, 179.9, at1,at2,at3)
+        ## TSinv Left (TSinv_l) ##
+        if 'TSinv' in ts_list:
+            init_coord = set_angle(labels, trans.coord, 179.9, at1,at2,at3)
             if debug > 0: 
                 angle_deg = np.degrees(get_angle(coord[at1]-coord[at2], coord[at3]-coord[at2]))
-                print(f'AZOS.CREATE_TS.TSINV_L: Angle between {at1}, {at2} and {at3} set to {angle_deg} degrees.')
+                print(f'SYSTEM_AZO.CREATE_TS: Angle between {at1}, {at2} and {at3} set to {angle_deg} degrees.')
+            
+            ## TSinv_l_a (Left adjacent dihedral angle starting at 0º) 
             angles = np.concatenate(([0],[val for i in range(1, 12) for val in (15 * i, -15 * i)]))
             for a0 in angles:
-                coord = set_dihedral(labels, coord, a0, at3,at2,at1,at0, adjmat=adjmat_ref, adjnum=adjnum_ref)
+                coord = set_dihedral(labels, init_coord, a0, at3,at2,at1,at0, adjmat=adjmat_ref, adjnum=adjnum_ref)
                 _, adjmat, adjnum = get_adjmatrix(labels,coord)
                 is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
                 if is_equal:
                     ts = Molecule_azo(labels, coord)
                     ts_isFragmented = ts.check_fragmentation()  # Check if the TSinv_l is fragmented
                     if not ts_isFragmented:
-
                         ts.set_total_charge(0)
-                        ts.set_total_spin(0)
-
                         ts.dihedral_indices = self.dihedral_indices
-                        self.add_source('TSinv_l', ts)
+                        self.add_source('TSinv_l_a', ts)
                         created_ts.append(ts)
-                        if debug > 0: print(f'AZOS.CREATE_TS.TSINV_L: TSinv_l Molecule_azo successfully created for {self.name}')
+                        if debug > 0: print(f'SYSTEM_AZO.CREATE_TS: TSinv_l_a Molecule_azo successfully created for {self.name}')
                         break
                     else:
-                        raise Exception(f'AZOS.CREATE_TS.TSINV_L: [ERROR] TSinv_l fragmented for {self.name}')
+                        raise Exception(f'SYSTEM_AZO.CREATE_TS: [ERROR] TSinv_l_a fragmented for {self.name}')
+
+            ## TSinv_l_b (Left adjacent dihedral angle starting at 180º) 
+            angles = np.insert(angles[::-1],0, 180.)
+            if debug >0: print(f'SYSTEM_AZO.CREATE_TS: Angles for TSinv_l_b: {angles}')
+            for a0 in angles:
+                coord = set_dihedral(labels, init_coord, a0, at3,at2,at1,at0, adjmat=adjmat_ref, adjnum=adjnum_ref)
+                _, adjmat, adjnum = get_adjmatrix(labels,coord)
+                is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
+                if is_equal:
+                    ts = Molecule_azo(labels, coord)
+                    ts_isFragmented = ts.check_fragmentation()  # Check if the TSinv_l is fragmented
+                    if not ts_isFragmented:
+                        ts.set_total_charge(0)
+                        ts.dihedral_indices = self.dihedral_indices
+                        self.add_source('TSinv_l_b', ts)
+                        created_ts.append(ts)
+                        if debug > 0: print(f'SYSTEM_AZO.CREATE_TS: TSinv_l_b Molecule_azo successfully created for {self.name}')
+                        break
+                    else:
+                        raise Exception(f'SYSTEM_AZO.CREATE_TS: [ERROR] TSinv_l_b fragmented for {self.name}')
         
-        ## TSinv Right ##
-        if 'TSinv_r' in ts_list:
-            coord = set_angle(labels, coord, 179.9, at2,at3,at4) ## Angle value of 179.9 instead of 180 to avoid numerical issues
+        ## TSinv Right (TSinv_r) ##
+            coord = set_angle(labels, trans.coord, 179.9, at2,at3,at4) ## Angle value of 179.9 instead of 180 to avoid numerical issues
             if debug > 0: 
                 angle_deg = np.degrees(get_angle(coord[at3]-coord[at2], coord[at4]-coord[at2]))
-                print(f'AZOS.CREATE_TS.TSINV_R: Angle between {at2}, {at3} and {at4} set to {angle_deg} degrees.')
+                print(f'SYSTEM_AZO.CREATE_TS: Angle between {at2}, {at3} and {at4} set to {angle_deg} degrees.')
+            
+            ## TSinv_r_a (Right adjacent dihedral angle starting at 0º)
             angles = np.concatenate(([0],[val for i in range(1, 12) for val in (15 * i, -15 * i)]))
+            if debug >0: print(f'SYSTEM_AZO.CREATE_TS: Angles for TSinv_r_a: {angles}')
             for a0 in angles:
                 coord = set_dihedral(labels, coord, a0, at2,at3,at4,at5, adjmat=adjmat_ref, adjnum=adjnum_ref)
                 _, adjmat, adjnum = get_adjmatrix(labels,coord)
@@ -463,17 +469,32 @@ class System_azo(System):
                     ts = Molecule_azo(labels, coord)
                     ts_isFragmented = ts.check_fragmentation()  # Check if the TSinv_l is fragmented
                     if not ts_isFragmented:
-
-                        ts.set_total_charge(0)
-                        ts.set_total_spin(0)
-
                         ts.dihedral_indices = self.dihedral_indices
-                        self.add_source('TSinv_r', ts)
+                        self.add_source('TSinv_r_a', ts)
                         created_ts.append(ts)
-                        if debug > 0: print(f'AZOS.CREATE_TS.TSINV_R: TSinv_r Molecule_azo successfully created for {self.name}')
+                        if debug > 0: print(f'SYSTEM_AZO.CREATE_TS.TSINV_R: TSinv_r Molecule_azo successfully created for {self.name}')
                         break
                     else:
-                        raise Exception(f'AZOS.CREATE_TS.TSINV_R: [ERROR] TSinv_r fragmented for {self.name}')
+                        raise Exception(f'SYSTEM_AZO.CREATE_TS.TSINV_R: [ERROR] TSinv_r fragmented for {self.name}')
+            
+            # TSinv_r_b (Right adjacent dihedral angle starting at 180º)
+            angles = np.insert(angles[::-1],0,180.)
+            if debug >0: print(f'SYSTEM_AZO.CREATE_TS: Angles for TSinv_r_b: {angles}')
+            for a0 in angles:
+                coord = set_dihedral(labels, coord, a0, at2,at3,at4,at5, adjmat=adjmat_ref, adjnum=adjnum_ref)
+                _, adjmat, adjnum = get_adjmatrix(labels,coord)
+                is_equal = np.array_equal(adjmat, adjmat_ref) and np.array_equal(adjnum, adjnum_ref)
+                if is_equal:
+                    ts = Molecule_azo(labels, coord)
+                    ts_isFragmented = ts.check_fragmentation()  # Check if the TSinv_l is fragmented
+                    if not ts_isFragmented:
+                        ts.dihedral_indices = self.dihedral_indices
+                        self.add_source('TSinv_r_b', ts)
+                        created_ts.append(ts)
+                        if debug > 0: print(f'SYSTEM_AZO.CREATE_TS.TSINV_R: TSinv_r_b Molecule_azo successfully created for {self.name}')
+                        break
+                    else:
+                        raise Exception(f'SYSTEM_AZO.CREATE_TS.TSINV_R: [ERROR] TSinv_r_b fragmented for {self.name}')
         return created_ts
 
     #######################
