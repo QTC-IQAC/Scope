@@ -132,106 +132,108 @@ def displace_coords(coords, origin_atom, new_atom_coords):
     displacement_vector = new_atom_coords - coords[origin_atom]
     return coords + displacement_vector
 
-########
+#########
+def put_atoms_on_xy(coord, atom1:int, atom2:int, atom3:int, debug=0):
+    """
+    Applies sequential X, Y, Z rotations to put atom1-atom2 bond on x-axis 
+    and atom3 on xy plane.
+    """
+    # 1. Center geometry at atom2 at (0,0,0)
+    c1 = centercoords(coord, atom2) 
+    
+    # 2. Rotate around Z-axis to eliminate the Y component of atom1
+    v1 = c1[atom1]
+    theta_z = math.atan2(v1[1], v1[0]) 
+    c2 = rot_in_z(theta_z, c1)
+    
+    # 3. Rotate around Y-axis to eliminate the Z component of atom1
+    v1_z = c2[atom1]
+    theta_y = math.atan2(-v1_z[2], v1_z[0])
+    c3 = rot_in_y(theta_y, c2)
+    
+    # 4. Rotate around X-axis to eliminate the Z component of atom3
+    v3_y = c3[atom3]
+    theta_x = math.atan2(v3_y[2], v3_y[1])
+    c4 = rot_in_x(theta_x, c3)
+
+    if debug > 0: 
+        print(f"PUT_ATOMS_ON_XY: Applied rotations (degrees) -> Z: {np.degrees(theta_z):.2f}, Y: {np.degrees(theta_y):.2f}, X: {np.degrees(theta_x):.2f}")
+    return c4
+
+#########
 def set_angle(labels, coord, target_angle: float, atom1: int, atom2: int, atom3: int, debug=0):
     '''
     Adjusts the angle formed by three specified atoms to a target angle.
-
-    Parameters
-    ----------
-    labels : list
-        List of atomic symbols corresponding to the coordinates.
-    coord : array-like
-        Array of shape (N, 3) representing the coordinates of N atoms.
-    target_angle : float
-        The desired angle in degrees between the three atoms.
-    atom1, atom2, atom3 : int
-        Indices of the three atoms forming the angle (atom2 is the vertex).
-
-    Returns
-    -------
-    coord_final : array-like
-        Array of shape (N, 3) representing the adjusted coordinates with the target angle.
-
-    Notes
-    -----
-    The function first aligns the specified atoms onto the xy-plane, then adjusts the angle
-    between atom1-atom2-atom3 to the target angle by rotating the appropriate atoms.
     '''
-
     xy_plane = put_atoms_on_xy(coord, atom1, atom2, atom3, debug)
-    isgood, adjmat, adjnum = get_adjmatrix(labels,xy_plane)
+    isgood, adjmat, adjnum = get_adjmatrix(labels, xy_plane)
+    
     if not isgood:
-        print("Adjacency matrix is not good, returning original coordinates")
+        print("SET_ANGLE: Adjacency matrix is not good, returning original coordinates")
         return coord
-    else:
-        # Remove connection between atoms 2 and 3
-        adjnum[atom2] = adjnum[atom2]-1
-        adjnum[atom3] = adjnum[atom3]-1
-        adjmat[atom2][atom3] = 0
-        adjmat[atom3][atom2] = 0
 
-        ### This below is part of split_species function in Scope
-        indices = [*range(0,len(labels),1)]
-        degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
-        lap = adjmat - degree
-        # creates block matrix
-        graph = csr_matrix(lap)
-        perm = reverse_cuthill_mckee(graph)
-        gp1 = graph[perm, :]
-        gp2 = gp1[:, perm]
-        dense = gp2.toarray()
-        # detects blocks in the block diagonal matrix called "dense"
-        startlist, endlist = get_blocks(dense)
-        nblocks = len(startlist)
+    # Remove connection between atoms 2 and 3
+    adjnum[atom2] = adjnum[atom2]-1
+    adjnum[atom3] = adjnum[atom3]-1
+    adjmat[atom2][atom3] = 0
+    adjmat[atom3][atom2] = 0
 
-        if debug > 0: print("nblocks", nblocks)
-        # keeps track of the atom movement within the matrix. Needed later
-        atomlist = np.zeros((len(dense)))
-        for b in range(0, nblocks):
-            for i in range(0, len(dense)):
-                if (i >= startlist[b]) and (i <= endlist[b]):
-                    atomlist[i] = b + 1
-        invperm = inv(perm)
-        atomlistperm = [int(atomlist[i]) for i in invperm]
+    ### Split species 
+    indices = [*range(0, len(labels), 1)]
+    degree = np.diag(adjnum)
+    lap = adjmat - degree
+    graph = csr_matrix(lap)
+    perm = reverse_cuthill_mckee(graph)
+    gp1 = graph[perm, :]
+    gp2 = gp1[:, perm]
+    dense = gp2.toarray()
+    
+    startlist, endlist = get_blocks(dense)
+    nblocks = len(startlist)
 
-        # assigns atoms to blocks
-        blocklist = []
-        for b in range(0, nblocks):
-            atlist = []    # atom indices in the original ordering
-            for i in range(0, len(atomlistperm)):
-                if atomlistperm[i] == b + 1:
-                    atlist.append(indices[i])
-            blocklist.append(atlist)
-        for b in blocklist:
-            if debug > 0: print("found block:", b, len(b))
-            # if atom3 in b and atom4 in b: atoms_to_move = deepcopy(b)
-            if atom3 in b: atoms_to_move = deepcopy(b)
+    if debug > 0: print("SET_ANGLE: nblocks: ", nblocks)
+    
+    atomlist = np.zeros((len(dense)))
+    for b in range(0, nblocks):
+        for i in range(0, len(dense)):
+            if (i >= startlist[b]) and (i <= endlist[b]):
+                atomlist[i] = b + 1
+                
+    invperm = inv(perm)
+    atomlistperm = [int(atomlist[i]) for i in invperm]
 
-        if debug > 0: print("atoms_to_move", atoms_to_move)
+    blocklist = []
+    for b in range(0, nblocks):
+        atlist = []
+        for i in range(0, len(atomlistperm)):
+            if atomlistperm[i] == b + 1:
+                atlist.append(indices[i])
+        blocklist.append(atlist)
+        
+    for b in blocklist:
+        if debug > 0: print("SET_ANGLE: found block: ", b, len(b))
+        if atom3 in b: atoms_to_move = deepcopy(b)
 
-        v4 = xy_plane[atom1] - xy_plane[atom2]  # Vector from atom1 to atom2
-        v5 = xy_plane[atom3] - xy_plane[atom2] # Vector from atom2 to atom3
-        target_angle = target_angle * (np.pi / 180)  # Convert to radians
-        a5 = get_angle(v4,v5)  # Angle between atom2 and atom3
+    if debug > 0: print("SET_ANGLE: atoms_to_move: ", atoms_to_move)
 
-        if debug > 0: print("target_angle", target_angle * (180 / np.pi))  # Target angle in degrees
+    v4 = xy_plane[atom1] - xy_plane[atom2]
+    v5 = xy_plane[atom3] - xy_plane[atom2]
+    target_angle_rad = target_angle * (np.pi / 180)
+    a5 = get_angle(v4, v5)
+    if debug > 0: print("SET_ANGLE: target_angle: ", target_angle)
 
-        theta = a5 - target_angle  # Difference between target angle and current angle
-        c4 = []
-        for idx in range(len(xy_plane)):
-            if idx in atoms_to_move:
-                # Calculate the new coordinates for the atoms to move
-                c4.append(xy_plane[idx])
+    theta = a5 - target_angle_rad
+    c4 = []
+    for idx in range(len(xy_plane)):
+        if idx in atoms_to_move:
+            c4.append(xy_plane[idx])
 
-        c5 = rot_in_z(theta, c4)
-        coord_final = deepcopy(xy_plane)  # Create a copy of the coordinates to modify
-
-        for i, idx in enumerate(atoms_to_move):
-            if idx in atoms_to_move:
-                coord_final[idx] = c5[i]  # Initialize with original coordinates
-
-        return coord_final
+    c5 = rot_in_z(theta, c4)
+    coord_final = deepcopy(xy_plane)
+    for i, idx in enumerate(atoms_to_move):
+        if idx in atoms_to_move:
+            coord_final[idx] = c5[i]
+    return coord_final
 
 #########
 def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, atom3: int, atom4: int, adjmat=None, adjnum=None,  debug: int=0):

@@ -229,7 +229,7 @@ class System_azo(System):
         adjmat_ref, adjnum_ref = trans.get_adjmatrix()
 
         # Initial dihedral angle, for info 
-        current_rad = scope.get_dihedral(coord[at1],coord[at2],coord[at3],coord[at4]) # Initial dihedral angle
+        current_rad = get_dihedral(coord[at1],coord[at2],coord[at3],coord[at4]) # Initial dihedral angle
         current_deg = np.degrees(current_rad)
         if debug > 0: print(f"AZO.CREATE_CIS: Initial dihedral angle: {current_deg} degrees")
 
@@ -239,12 +239,12 @@ class System_azo(System):
             jump_target = target_deg+1 if current_deg > 0 else -target_deg-1 
             if debug > 0: print(f"AZO.CREATE_CIS: Jumping to {jump_target} degrees")
             if debug > 0: print(f"AZO.CREATE_CIS: Selected atoms: {at1}, {at2}, {at3}, {at4}")
-            coord_next = scope.set_dihedral(labels, coord, jump_target, at1,at2,at3,at4,adjmat=adjmat_ref, adjnum=adjnum_ref)
-            angle_next = np.degrees(scope.get_dihedral(coord_next[at1],coord_next[at2],coord_next[at3],coord_next[at4]))
+            coord_next = set_dihedral(labels, coord, jump_target, at1,at2,at3,at4,adjmat=adjmat_ref, adjnum=adjnum_ref)
+            angle_next = np.degrees(get_dihedral(coord_next[at1],coord_next[at2],coord_next[at3],coord_next[at4]))
             if debug > 0:  print(f"AZO.CREATE_CIS: Changed dihedral in {self.name} from {current_deg} to {angle_next}, it should be near +-{target_deg}")
-            _, adjmat_cis, adjnum_cis = scope.get_adjmatrix(labels,coord_next)
+            _, adjmat_cis, adjnum_cis = get_adjmatrix(labels,coord_next)
         else:
-            _, adjmat_cis, adjnum_cis = scope.get_adjmatrix(labels,coord)
+            _, adjmat_cis, adjnum_cis = get_adjmatrix(labels,coord)
 
         found_geometry = False 
         matrices_match = np.array_equal(adjmat_cis, adjmat_ref) and np.array_equal(adjnum_cis, adjnum_ref)

@@ -10,7 +10,7 @@ from copy                               import deepcopy
 from scope.geometry                     import *
 from scope.connectivity                 import *
 from scope.operations.vecs_and_mats     import gaussian
-from scope.elementdata          import ElementData
+from scope.elementdata                  import ElementData
 elemdatabase = ElementData()
 
 ######
@@ -65,86 +65,6 @@ def solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref, adjn
             return worked, new_coord
     print(f'AZOS.SOLVE_DIHEDRAL: No good geometry found by rotating adjacent dihedrals. Returning original geometry.')
     return worked, coord
-
-######
-def rotation_matrix(axis: np.ndarray, angle: float):
-    """
-    Returns a rotation matrix for a given axis and angle based on Rodrigues' rotation formula.
-
-    Parameters
-    ----------
-    axis : array-like
-        A 3D vector representing the axis of rotation.
-    angle : float
-        The angle of rotation in radians.
-    
-    Returns
-    -------
-    R : array-like
-        A 3x3 rotation matrix.
-    """
-    axis = axis / np.linalg.norm(axis)  
-    x, y, z = axis
-    c, s = np.cos(angle), np.sin(angle)
-    C = 1 - c
-    R = np.array([
-        [c + x*x*C,     x*y*C - z*s,   x*z*C + y*s],
-        [y*x*C + z*s,   c + y*y*C,     y*z*C - x*s],
-        [z*x*C - y*s,   z*y*C + x*s,   c + z*z*C]])
-    return R
-
-def put_atoms_on_xy(coord, atom1:int, atom2:int, atom3:int, debug=0):
-    """
-    Applies rotations to put atom1-atom2 bond on x-axis and atom3 on xy plane.
-
-    Parameters
-    ----------
-    coord : array-like
-        Array of shape (N, 3) representing the coordinates of N atoms. 
-    atom1, atom2, atom3 : int
-        Indices of the three atoms to be aligned.
-
-    Returns
-    -------
-    rotated_coords : array-like
-        Array of shape (N, 3) representing the rotated coordinates on xy plane.
-
-    Notes
-    -----
-    The function first translates the coordinates so that central atom (atom2) is at the origin.
-    
-    """
-
-    c1 = centercoords(coord, atom2)
-
-
-    # Remove y component of atom1-atom2 bond
-    x_axis = np.array([1., 0, 0])  # X-axis vector
-    y_axis = np.array([0, 1., 0])  # Y-axis vector
-
-    v1  = c1[atom1]                     # Vector from centre to atom1
-    rot_axis1 = np.cross(v1, x_axis)    # Axis of rotation
-    a1 = get_angle(v1, x_axis)
-
-    # Check if the bond is already aligned with the x-axis
-    if np.linalg.norm(a1) < 1e-8:
-        if np.dot(v1, x_axis) < 0:
-            axis = np.array([0,1,0])
-            angle = np.pi
-        else:
-            angle = 0
-    else:
-        a1 = get_angle(v1, x_axis)
-
-    R = rotation_matrix(rot_axis1, a1)  
-    c2 = c1 @ R.T                               # Apply rotation to c1
-    v2 = c2[atom3]                              # Vector from centre to atom2
-    y_proj = np.array([0, v2[1], v2[2]])        # Projection of v2 y-axis
-    a2 = get_angle(y_proj, y_axis)               # a2(y_projected, y_axis)
-    if v2[2] < 0: a2 = -a2                      # Correct angle if z component is negative
-    c3 = rot_in_x(a2, c2)                       # Rotate c2 around the x-axis by the angle a2
-    if debug == 1: print('Angle between y_proj and y_axis',a2 * (180 / np.pi))
-    return c3
 
 ############################
 #### Thermal Properties ####
