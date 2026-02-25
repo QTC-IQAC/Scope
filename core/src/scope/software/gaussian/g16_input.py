@@ -38,12 +38,19 @@ def gen_g16_input(comp, debug: int=0):
         commandline.append(" nosymm")
         commandline.append(" scf=(maxconventionalcycles=200,xqc)")
 
+        ## 2.2 Decides Unrestricted or Restricted based on the spin multiplicity of the initial state
+        is_unrestricted = False
+        if source.spin > 0: 
+            is_unrestricted = True
+            commandline.append(" U")
+
         ## 2.2-Functional
-        if   functional == "pbe":     commandline.append(" UPBEPBE")
-        elif functional == "b3lyp":   commandline.append(" UB3LYP")
-        elif functional == "b3lyp*":  commandline.append(" UB3LYP IOp(3/76=1000002000) IOp(3/77=0720008000) IOp(3/78=0810010000)")
-        elif functional == "b3lyp**": commandline.append(" UB3LYP IOp(3/76=1000001500) IOp(3/77=0720008500) IOp(3/78=0810010000)")
-        else: print("G16_INPUT: functional", functional, "not recognized")
+        if   functional == "pbe":     commandline.append("PBEPBE")
+        elif functional == "b3lyp":   commandline.append("B3LYP")
+        elif functional == "b3lyp*":  commandline.append("B3LYP IOp(3/76=1000002000) IOp(3/77=0720008000) IOp(3/78=0810010000)")
+        elif functional == "b3lyp**": commandline.append("B3LYP IOp(3/76=1000001500) IOp(3/77=0720008500) IOp(3/78=0810010000)")
+        else: 
+            raise ValueError("G16_INPUT: functional", functional, "not recognized. Implemented are pbe, b3lyp, b3lyp* and b3lyp**")
 
         ## 2.3-Basis
         if   basis == "def2sv":    commandline.append(" def2SV")
@@ -52,7 +59,8 @@ def gen_g16_input(comp, debug: int=0):
         elif basis == "def2tzvp":  commandline.append(" def2TZVP")
         elif basis == "def2tzvpp": commandline.append(" def2TZVPP")
         elif basis == "sto-3g":    commandline.append(" STO-3G")
-        else: print("G16_INPUT: basis", basis, "not recognized")
+        else: 
+            raise ValueError("G16_INPUT: basis", basis, "not recognized. Implemented are def2sv, def2svp, def2tzv, def2tzvp, def2tzvpp and sto-3g")
 
         ## 2.4-Jobtype
         if jobtype == "opt" or jobtype == "opth" or jobtype == "opt&freq": 
@@ -60,10 +68,17 @@ def gen_g16_input(comp, debug: int=0):
             elif tight_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,VeryTight)")
             else:           commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral)")
         elif jobtype == "opt&freq" or jobtype == "freq": commandline.append(" freq(hpmodes)")
-        elif jobtype == "td":  commandline.append(f" td=({comp.qc_data.td_type},nstates={comp.qc_data.td_nstates})")
-        elif jobtype == "tda": commandline.append(f" tda=({comp.qc_data.td_type},nstates={comp.qc_data.td_nstates})")
+
+        elif jobtype == "td":  
+            if not is_unrestricted:  commandline.append(f" td=({comp.qc_data.td_type},nstates={comp.qc_data.td_nstates})")
+            else:                    commandline.append(f" td=(nstates={comp.qc_data.td_nstates})")
+        elif jobtype == "tda": 
+            if not is_unrestricted:  commandline.append(f" tda=({comp.qc_data.td_type},nstates={comp.qc_data.td_nstates})")
+            else:                    commandline.append(f" tda=(nstates={comp.qc_data.td_nstates})")
+
         elif jobtype == "scf": pass
-        else: print("G16_INPUT: jobtype", jobtype, "not recognized")
+        else: 
+            raise ValueError("G16_INPUT: jobtype", jobtype, "not recognized. Implemented are opt, opt&freq, freq, td, tda and scf")
 
         ## 2.5-Grimme
         if comp.qc_data.is_grimme: commandline.append(" EmpiricalDispersion=GD3BJ")
@@ -77,7 +92,7 @@ def gen_g16_input(comp, debug: int=0):
         ## 2.8-Other options
         if comp.qc_data.ultrafine_grid: commandline.append(" Int=Ultrafine")
 
-        ## 3-Commandline is put together
+        ## 3-Commandline is put together and file is written
         commandline = ''.join(commandline)
         print(f"{commandline}", file=inp) 
         print("", file=inp) 
