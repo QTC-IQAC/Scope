@@ -526,6 +526,7 @@ class Cell(object):
         ini_state.get_moleclist(debug=debug)
         return ini_state
         
+    ######
     def add_state(self, name: object, debug: int=0):
         """Create or return a `State` object with the given name."""
         from scope.classes_state import State
@@ -539,6 +540,21 @@ class Cell(object):
             new_state = State(self, name, debug=debug)
             self.states.append(new_state)
         return new_state
+    
+    ######
+    def remove_state(self, search_name: str, debug: int=0):
+        from scope.classes_state import State
+        if not hasattr(self,"states"): return False, None
+        if debug > 0: print(f"CELL.REMOVE_STATE: Searching {search_name} state in CELL with {list(st.name for st in self.states)} states")
+        found = False
+        for idx, st in enumerate(self.states):
+            if st.name == search_name and not found: 
+                found = True; found_idx = idx
+                if debug > 0: print(f"CELL.REMOVE_STATE: state {search_name} found. Removing it")
+        if found: 
+            del self.states[found_idx]
+        else:
+            if debug > 0: print(f"CELL.REMOVE_STATE: state {search_name} not found")
 
     ######
     def find_state(self, search_name: str, debug: int=0):
