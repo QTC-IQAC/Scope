@@ -11,8 +11,10 @@ class G16_output(object):
             elif hasattr(computation.qc_data,"jobtype"): self.jobtype        = computation.qc_data.jobtype
             self.requisites       = self.get_requisites()
         else: 
-            print(f"G16_output: output created without Computation. Please specify jobtype doing set_jobtype() among 'scf', 'opt' and 'freq'.")
-            print(f"G16_output: computations with both 'opt' and 'freq' are not yet implemented.")
+            print(f"G16_OUTPUT: output created without Computation.")
+            print(f"G16_OUTPUT: Please specify jobtype doing set_jobtype()")
+            print(f"G16_OUTPUT: Options are: 'scf', 'opt', 'freq', 'td' and 'tda'")
+            #print(f"G16_OUTPUT: Remember that computations with BOTH 'opt' and 'freq' are not yet implemented.")
             self.jobtype        = "unknown"
             self.requisites     = []            ### It is dangerous to not specify requities: get_last_complete_block depends on them
         

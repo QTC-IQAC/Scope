@@ -127,11 +127,21 @@ class Data(object):
     def __init__(self, key: str, value, units: str, function: str="Unknown", notes=None, debug: str=0):
         self.type          = "data"
         self.key           = key
+
         try: self.value    = literal_eval(value)
         except: self.value = value
+
         self.units         = units
         self.function      = function
         self.notes         = notes
+
+    def set_subtype(self):
+        energy_units = ['kj', 'au', 'ry', 'ev', 'cm']
+        time_units   = ['s', 'min', 'h', 'd', 'y']
+        if self.units in energy_units:  self.subtype = "energy"
+        elif self.units in time_units:  self.subtype = "time"
+        else:                           self.subtype = "unknown"
+        return self.subtype
 
     def add_property(self, name: str, value, overwrite: bool=False):
         if not hasattr(self, name):               setattr(self, name, value)
@@ -146,7 +156,34 @@ class Data(object):
         elif type(self.value) == str: self.formatted = str(self.key+": "+self.value+" "+self.units)
         elif self.value is None:      self.formatted = str(self.key+": None")
 
+    def get_best_time_format(self):
+        """
+        Converts seconds to a more comprehensive unit.
+        """
+        ## Only works for time Data
+        if self.subtype != "time": print("DATA.get_best_time_format: this method is only applicable to time data"); return None
+
+        units = [
+            (1e-15, "fs", 1e15),
+            (1e-12, "ps", 1e12),
+            (1e-9,  "ns", 1e9),
+            (1e-6,  "µs", 1e6),
+            (1e-3,  "ms", 1e3),
+            (1,     "s",  1),
+            (60,    "min", 1/60),
+            (3600,  "h",  1/3600),
+            (86400, "d",  1/86400),
+            (31557600, "y", 1/31557600),        # y
+            (31557600000, "ky", 1/31557600000)  # millenia
+        ]
+        for threshold, unit, factor in units:
+            if abs(self.value) < threshold * 100:
+                return f"{self.value * factor:.2f} {unit}"
+        return f"{self.value / 31557600000:.2f} ky"
+
     def convert_to_units(self, new_units: str):
+        if self.subtype != 'energy': print("DATA.convert_to_units: this method is only applicable to energy data"); return None
+
         if   self.units.lower() == 'au' and (new_units.lower() == 'kj' or new_units.lower() == 'kj/mol'):
             self.value = self.value * constants.har2kJmol
         elif self.units.lower() == 'kj' and new_units.lower() == 'au':
@@ -168,6 +205,8 @@ class Data(object):
         return self
 
     def print_in_units(self, new_units: str):
+        if self.subtype != 'energy': print("DATA.convert_to_units: this method is only applicable to energy data"); return None
+
         if new_units.lower() != self.units:
             if   self.units.lower() == 'au' and (new_units.lower() == 'kj' or new_units.lower() == 'kj/mol'):
                 return f"{self.key}: {self.value * constants.har2kJmol:12.8f} {new_units}"
