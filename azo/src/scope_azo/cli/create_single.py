@@ -22,7 +22,7 @@ def create_single_parser(subparsers):
     parser = subparsers.add_parser("create_single",help="Creates an AZO system from a smiles string",description="Creates an AZO system from a smiles string")
     parser.add_argument('-n',      '--env', type=env_exists,  help='Path to the Environment. Script will load Source data in env.sources_path')
     parser.add_argument('-s',     '--name', type=str,         help='Name of the system to be created')
-    parser.add_argument('-smi', '--smiles', type=str,         help='SMILES string of the trans_isomer of that system')
+    parser.add_argument('-smi', '--smiles', type=str,         help='SMILES string of the trans_isomer of that system. Embed smiles in quotes to avoid issues with special characters')
     parser.add_argument('-f',    '--force', action='store_true')
     parser.add_argument('-v',  '--verbose', action='store_true')
     parser.set_defaults(func=create_single)
