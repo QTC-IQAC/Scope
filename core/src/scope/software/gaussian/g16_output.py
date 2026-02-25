@@ -36,7 +36,9 @@ class G16_output(object):
         if   self.jobtype == 'scf':   self.requisites = ['scf'] 
         elif self.jobtype == 'opt':   self.requisites = ['scf','opt'] 
         elif self.jobtype == 'freq':  self.requisites = ['scf','freq'] 
+        elif self.jobtype == 'td' or self.jobtype == 'tda': self.requisites = ['scf']
         #elif self.jobtype == 'opt-freq': self.requities ??   ## Case to be implemented, when opt and freq are run in the same computation
+        else: raise ValueError(f"G16_OUTPUT: {self.jobtype=} not recognised.")
         return self.requisites
 
 ###############

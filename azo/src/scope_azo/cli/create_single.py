@@ -2,7 +2,7 @@ import os
 import sys
 from argparse import ArgumentParser
 from scope.read_write      import load_binary, clear_screen
-from scope_azo.sco_classes import System_azo
+from scope_azo.azo_classes import System_azo
   
 def path_exists(path):
     if not os.path.exists(path):
@@ -49,6 +49,7 @@ def create_single(args):
 
     system_name = args.name
     system_path = env.sources_path+args.name
+    smiles      = args.smiles
 
     exists = path_exists(system_path)
     if exists and not overwrite:
@@ -56,7 +57,7 @@ def create_single(args):
         sys.exit()
 
     print(f"\tCreating System {system_name}")
-    new_sys = System_azo(system_name)
+    new_sys = System_azo(system_name, smiles)
     new_sys.set_paths_from_environment(env)
     print(f"\tCreation TRANS isomer")
     new_sys.create_trans(debug=debug)
