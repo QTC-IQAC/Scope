@@ -10,8 +10,7 @@ dependencies = [
 
 # Where your CLI entry point lives
 [project.scripts]
-
-## scope_azo = "scope_azo.cli.blabla:main"
+scope_azo = "scope_azo.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
