@@ -500,45 +500,43 @@ class System_azo(System):
     #######################
     ## Thermal Stability ##
     #######################
-    def get_mets(self, target_state: str='opt', overwrite=False, debug=0):
+    def get_mets(self, target_state: str='opt', skip_triplets=True, overwrite=False, debug=0):
 
-        # found, ts_state = target_source.find_state(target_state)
-        # if not found:
-        #     raise Exception(f'FIND_METS: Could not find {target_state} State')
         if not hasattr(self, 'mets') or overwrite:
-            
-            candidates = [source for source in self.sources if isTS=True]
-            
-            for ts in candidates:
-                found, state = 
-
-                if not found_ts_state or not 'Gtot' in ts_state.results.keys():
-                    print(f'find: [WARNING] Optimization state or Gtot not found for {ts.name}.')
+            for source in self.sources:
+                found, state = source.find_state(target_state)
+                if not found: 
+                    if debug>0: print(f'SYSTEM_AZO.GET_METS: ')
+                    continue
+                if not hasattr(state,'isTS'):
+                    if debug>0: print(f'SYSTEM_AZO.GET_METS: The state for the source {source.name} seems not to be a TS.')
+                    continue
+                if not 'Gtot' in state.results.keys():
+                    print(f'SYSTEM_AZO.GET_METS: [WARNING] Gtot not found for {source.name}.')
                     continue
 
-                # Use only TSs with Gtot or Gtot_corr
-                if ts.spin == 2:     # Use corrected Gtot for triplets
+                if source.spin == 2:     # Use corrected Gtot for triplets
                     if not skip_triplets:
-                        if 'Gtot_eff' in ts_state.results.keys(): energy = ts_state.results['Gtot_corr'].value
+                        if 'Gtot_eff' in state.results.keys(): energy = state.results['Gtot_eff'].value
                         else: 
-                            
-                            raise ValueError(f'MOLECULE_AZO.SET_HALFLIFE_TIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
+                            energy = state.correct_tripletG(state, overwrite=overwrite, debug=debug)
+                            if not 'Gtot_eff' in state.results.keys():
+                                raise ValueError(f'SYSTEM_AZO.SET_HALFLIFE_TIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
                     else:
                         continue
-                else:   energy = ts_state.results['Gtot'].value
+                else:   energy = state.results['Gtot'].value
                 name = ts.name 
                 ts_names.append(name)
                 ts_values.append(energy)
-                if debug > 0: print(rf'MOLECULE_AZO.SET_HALFLIFE_TIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')        
+                if debug > 0: print(rf'SYSTEM_AZO.SET_HALFLIFE_TIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')        
                 
                 # Choosing Minimum Energy TS (mets)
                 min_idx = int(np.argmin(ts_values))
                 mets = ts_names[min_idx]        # Name of the METS 
-                g_cross = ts_values[min_idx]    # hartrees 
-                
-                if mets == 'trans' or mets == 'cis':
-                    print(f'AZO.FIND_MIN_TS: No TS optimizations could be found.')
-                    return None
+                # g_cross = ts_values[min_idx]    # hartrees 
+                # if mets == 'trans' or mets == 'cis':
+                #     print(f'AZO.FIND_MIN_TS: No TS optimizations could be found.')
+                #     return None
                 self.mets = self.find_source(mets)
                 return self.mets
         else:
@@ -562,35 +560,65 @@ class System_azo(System):
         return self.dE
 
     def get_trans_halflife_time(self, target_state: str = 'opt', skip_triplets: bool = False, overwrite: bool = False, debug: int = 0):
-        ## Funcio que calcula el temps de vida promig (t05). Busca TRANS i el TS mes baix en energia, i calcula eyring
-        ##
-
-        found, trans_source = self.find_source('trans')
-        if not found:
-            raise Exception('SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Trans source not found.')
-
-        found_state, state = trans_source.find_state(target_state)
-        if not found_state:
-            raise Exception(f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Provided state: {target_state} not found.')
-
-        mets_source = self.get_mets(target_state, skip_triplets, overwrite, debug)
-
-        dG_cross = (float(g_cross)- float(g_iso)) * Constants.har2kJmol * 0.24 # in Kcal/mol
+        '''
         
-        t05, k_th = compute_t(g_initial, g_excited, T)
-        units = 'seconds'
+        '''
+        found, trans_source = self.find_source('trans')
+        if not found:       raise Exception('SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Trans source not found.')
+        found_state, ground_state = trans_source.find_state(target_state)
+        if not found_state: raise Exception(f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Provided state: {target_state} not found.')
+        if not 'Gtot' in ground_state.results.keys():   raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot for the Minimum Energy Transition State not found.')
+        gtot_ground = ground_state.results['Gtot'].value    # Extract Gtot in hartrees
 
-        self.add_result(Data("trans_halflife_time",t05,units,"system.get_trans_halflife_time()"), overwrite=overwrite)
-        return self.results['trans_halflife_time']
+        # Getting METS energy value
+        mets_source = self.get_mets(target_state, skip_triplets=skip_triplets, overwrite=overwrite, debug=debug)
+        found, mets_state = mets_source.find_state(target_state)
+        if not 'Gtot' in mets_state.results.keys(): raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot for the Minimum Energy Transition State not found.')
+        if mets_source.spin == 2: gtot_mets = mets_state.results['Gtot_eff'].value
+        else: gtot_mets = mets_state.results['Gtot'].value
+        
+        #Computing t05 and k
+        t05, k_th = compute_t(gtot_ground, gtot_mets, T)
+        if debug>0: print(f'Found t05: {t05}    k_th: {k_th}') 
+        dG_cross = (float(gtot_mets)- float(gtot_ground)) * Constants.har2kJmol * Constants.kJmol2kcal # in Kcal/mol
+        if debug>0: print(f'dG_cross = {dG_cross}') 
+
+        units_time = 's'
+        units_kcal = 'kcal/mol'
+
+        ground_state.add_result(Data("trans_dG_cross",dG_cross,units_kcal,"system_azo.get_trans_halflife_time()"), overwrite=overwrite)
+        ground_state.add_result(Data("trans_halflife_time",t05,units_time,"system_azo.get_trans_halflife_time()"), overwrite=overwrite)
+        return ground_state.results['trans_halflife_time']
+        
 
     def get_cis_halflife_time(self, target_state: str = 'opt', skip_triplets: bool = False, overwrite: bool = False, debug: int = 0):
-        ## Funcio que calcula el temps de vida promig (t05). Busca CIS i el TS mes baix en energia, i calcula eyring
-        ##
-        ##
-        ## t05 =  
-        ## units = 'seconds'
-        self.add_result(Data("cis_halflife_time",t05,units,"system.get_cis_halflife_time()"), overwrite=overwrite)
-        return self.results['cis_halflife_time']
+
+        found, cis_source = self.find_source('cis')
+        if not found:       raise Exception('SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Cis source not found.')
+        found_state, ground_state = cis_source.find_state(target_state)
+        if not found_state: raise Exception(f'SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Provided state: {target_state} not found.')
+        if not 'Gtot' in ground_state.results.keys():   raise Exception (f'SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Gtot for the Minimum Energy Transition State not found.')
+        gtot_ground = ground_state.results['Gtot'].value    # Extract Gtot in hartrees
+
+        # Getting METS energy value
+        mets_source = self.get_mets(target_state, skip_triplets=skip_triplets, overwrite=overwrite, debug=debug)
+        found, mets_state = mets_source.find_state(target_state)
+        if not 'Gtot' in mets_state.results.keys(): raise Exception (f'SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Gtot for the Minimum Energy Transition State not found.')
+        if mets_source.spin == 2: gtot_mets = mets_state.results['Gtot_eff'].value
+        else: gtot_mets = mets_state.results['Gtot'].value
+        
+        #Computing t05 and k
+        t05, k_th = compute_t(gtot_ground, gtot_mets, T)
+        if debug>0: print(f'Found t05: {t05}    k_th: {k_th}') 
+        dG_cross = (float(gtot_mets)- float(gtot_ground)) * Constants.har2kJmol * Constants.kJmol2kcal # in Kcal/mol
+        if debug>0: print(f'dG_cross = {dG_cross}') 
+
+        units_time = 's'
+        units_kcal = 'kcal/mol'
+
+        ground_state.add_result(Data("cis_dG_cross",dG_cross,units_kcal,"system_azo.get_cis_halflife_time()"), overwrite=overwrite)
+        ground_state.add_result(Data("cis_halflife_time",t05,units_time,"system_azo.get_cis_halflife_time()"), overwrite=overwrite)      ### SERGI: Ho guardem a State o al System? X si fos el cas q vols treballar amb diferents workflows. 
+        return ground_state.results['cis_halflife_time']                                                                                 ###        Per si volem treballar amb diferents bases, etc. PD: Hauríem de fer dues funcions amb GET_halflife... i SET_halflife?
 
     ########################
     ## Optical Properties ##
@@ -618,7 +646,7 @@ class System_azo(System):
         if t_EZ is None:
             if not 'trans_halflife_time' in self.results.keys():
                 print('SYSTEM_AZO.get_PSS: No halflife time found for trans isomer. Computing...')
-                self.get_trans_halflife_time(skip_triplets=False, overwrite=False)               ## MANEL: les funcions son "get_" quan calculen, i "set_" quan assignen
+                self.get_trans_halflife_time(skip_triplets=False, overwrite=False)               
             assert self.results['trans_halflife_time'].units == 'seconds'
             t_EZ = self.results['trans_halflife_time'].value
         else: 
@@ -627,7 +655,7 @@ class System_azo(System):
         if t_ZE is None:
             if not 'cis_halflife_time' in self.results.keys():
                 print('SYSTEM_AZO.get_PSS: No halflife time found for cis isomer. Computing...')
-                self.get_cis_halflife_time(skip_triplets=False, overwrite=True)                  ## MANEL: xk es overwrite true i l'anterior false?
+                self.get_cis_halflife_time(skip_triplets=False, overwrite=False)                  
             assert self.results['cis_halflife_time'].units == 'seconds'
             t_ZE = self.results['cis_halflife_time'].value
         else: 
@@ -640,8 +668,7 @@ class System_azo(System):
         k_th_EZ = np.log(2) / t_EZ
         k_th_ZE = np.log(2) / t_ZE
         # Steady-state populations
-        self.PSS = (k_th_ZE + k_ph_ZE) / (k_ph_EZ + k_ph_ZE + k_th_EZ + k_th_ZE)             ## MANEL_ N_E es la fracció de trans?
-
+        self.PSS = (k_th_ZE + k_ph_ZE) / (k_ph_EZ + k_ph_ZE + k_th_EZ + k_th_ZE)        # Fraction of Trans isomer aka N_E. 
         return self.PSS 
 
     ######
@@ -722,15 +749,15 @@ class State_azo(State):
         self.subtype  = "state_azo" 
 
     ######
-    def correct_tripletG(isomer_state, triplet_state, T:float=298.15, overwrite = False, p_sh:float = 0.0002, debug: int=0):
+    def correct_tripletG(state, T:float=298.15, overwrite = False, p_sh:float = 0.0002, debug: int=0):
         '''
         Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
         Correction is done considering the increase of energy due to surface hopping between the singlet and triplet PESs. 
 
         Parameters
         ----------
-        triplet_specie : Molecule_azo
-            The triplet Molecule_azo object to correct the Gtot of.
+        state : State_azo
+            The triplet State_azo object to correct the Gtot of.
         T : float, optional
             The temperature in Kelvin. The default is 298.15 K.
         overwrite : bool, optional
@@ -740,39 +767,28 @@ class State_azo(State):
         debug : int, optional
             The debug level. The default is 0
         '''
-        from scope.classes_data import Data
-        k_b = Constants.boltz_J # J/K
-        h = Constants.planck_Js # J·s
         R = Constants.R_J       # 8.31 J/(K·mol)
 
-        triplet_source = triplet_state._source
-        triplet_system = triplet_source._sys
-
-        isomer_source = isomer_state._source
-
-        exist = 'Gtot_corr' in triplet_state.results
-
-        if not 'Gtot' in isomer_state.results or not 'Gtot' in triplet_state.results:
-            print(f'AZO.CORRECT_TRIPLETG: No Gtot found for {isomer_source.name} or {source_parent.name}.')
+        if not 'Gtot' in triplet_state.results:
+            print(f'STATE_AZO.CORRECT_TRIPLETG: No Gtot found in the {state.name} state.')
             return
-        
-        if not exist or overwrite:
-            if debug > 0: print(f'AZO.CORRECT_TRIPLETG: Found Gtot for {isomer_source.name} and {triplet_source.name}. Correcting Gtot of triplet State.')
-            G_triplet = triplet_state.results['Gtot'].value
 
-            if debug > 0: print(f'AZO.CORRECT_TRIPLETG: {triplet_source.name} Gtot: {G_triplet} hartree, iso Gtot: {G_iso} hartree')
-
-            if debug > 0: print(f'AZO.CORRECT_TRIPLETG: Adding deltax in kcal/mol: {deltax*0.24/1000}')
-            
-            x = R * T * ln(p_sh) # in J/mol
-
-            newG = (G_triplet + deltax / (1000*Constants.har2kJmol))
-            newG = float(newG)
-            newG_data = Data("Gtot_corr", newG, "au", "correct_tripletG")
-            
-            triplet_state.add_result(newG_data, overwrite=overwrite)
-            if debug > 0: print (f'AZO.CORRECT_TRIPLETG: Corrected Gtot of {triplet_source.name} triplet state by {deltax*0.24/1000:.2f} Kcal/mol.')
-            return newG_data
+        exists = 'Gtot_eff' in triplet_state.results
+        if not exists or overwrite:
+            gtot = triplet_state.results['Gtot'].value
+            if debug >0: print(f'STATE_AZO.CORRECT_TRIPLETG: Found Gtot: {gtot} . Correcting Gtot of triplet State.')            
+            dx = - R * T * ln(p_sh)     # J/mol
+            dx /= 1000                  # kJ/mol
+            if debug>0: print(f'STATE_AZO.CORRECT_TRIPLETG: Adding penalty of {dx*Constants.kJmol2kcal:.2f} kcal/mol.')
+            dx *= Constants.kJmol2har
+            gtot_eff = gtot + dx
+            new_data = Data("Gtot_eff", float(gtot_eff), "au", "state_azo.correct_tripletg()")
+            state.add_result(newG_data, overwrite=overwrite)
+            if debug > 0: print (f'STATE_AZO.CORRECT_TRIPLETG: Corrected Gtot. Data stored in state: {new_data}')
+            if debug > 0: print (f'STATE_AZO.CORRECT_TRIPLETG: Before correction: {gtot} au. After correction: {gtot_eff}')
+            return state.results['Gtot_eff'].value
+        else:
+            return state.results['Gtot_eff'].value
 
         def get_abs_spectrum(self, normalize: bool = False, units: bool = False, lmin: float=200, lmax: float=1000, debug: int=0):
             # Check if TDDFT data exists.
