@@ -200,7 +200,7 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"grimme_type"):   data._add_attr("grimme_type", "d2")
 
         if data.jobtype == "td" or data.jobtype == "tda":
-            if not hasattr(data,"td_type"):    data._add_attr("td_type", "singlets")
+            if not hasattr(data,"td_type"):    data._add_attr("td_type", "singlets")  ## Will be ignored if specie.spin > 0
             if not hasattr(data,"td_nstates"): data._add_attr("td_nstates", int(10))
 
         g16_available_jobtypes = ["opt", "freq", "scf", "td", "tda"]

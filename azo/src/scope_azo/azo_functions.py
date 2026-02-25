@@ -16,13 +16,15 @@ elemdatabase = ElementData()
 ######
 def get_3D(smiles, debug: int=0):
     # Function to generate 3D coordinates from a SMILES string using Open Babel
-    import warnings
     from scope.geometry import centercoords
 
     try:
         from openbabel import pybel as pb
     except Exception as exc:
-        warnings.warn("Open Babel is not installed. Install it with: conda install -c conda-forge openbabel", RuntimeWarning,stacklevel=2)
+        raise ImportError(
+            "AZO.GET_3D: Open Babel (pybel) is required to generate 3D coordinates from SMILES.\n"
+            "Install it with: conda install -c conda-forge openbabel\n"
+        ) from exc
 
     mol = pb.readstring('smiles', smiles) # first argument is a string format
     mol.addh() # add Hs for 3D
