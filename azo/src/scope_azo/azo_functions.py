@@ -73,7 +73,7 @@ def solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref, adjn
 ############################
 #### Thermal Properties ####
 ############################
-def compute_t(g_excited:float, g_initial:float, T:float=298.15):
+def compute_t(g_initial:float, g_excited:float,  T:float=298.15):
     '''
     Computes half-life time in seconds using Eyring equation.
     
@@ -104,92 +104,6 @@ def compute_t(g_excited:float, g_initial:float, T:float=298.15):
     t = np.log(2) / k  # Assuming a first-order reaction
     if debug>0: print(f'AZO.COMPUTE_T: t05: {t:.2f} s / k: {k:.2f}')
     return float(t), float(k)
-
-######
-def correct_tripletG(isomer_state, triplet_state, T:float=298.15, overwrite = False, p_sh:float = 0.0002, debug: int=0):
-    '''
-    Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
-    Correction is done considering the increase of energy due to surface hopping between the singlet and triplet PESs. 
-
-    Parameters
-    ----------
-    triplet_specie : Molecule_azo
-        The triplet Molecule_azo object to correct the Gtot of.
-    T : float, optional
-        The temperature in Kelvin. The default is 298.15 K.
-    overwrite : bool, optional
-        Whether to overwrite the existing Gtot_corr value. The default is False.
-    p_sh : float, optional
-        The probability of surface hopping. The default is 0.0002.
-    debug : int, optional
-        The debug level. The default is 0
-    '''
-    from scope.classes_data import Data
-    k_b = Constants.boltz_J # J/K
-    h = Constants.planck_Js # J·s
-    R = Constants.R_J       # 8.31 J/(K·mol)
-
-    triplet_source = triplet_state._source
-    triplet_system = triplet_source._sys
-
-    isomer_source = isomer_state._source
-
-    exist = 'Gtot_corr' in triplet_state.results
-
-    if not 'Gtot' in isomer_state.results or not 'Gtot' in triplet_state.results:
-        print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: No Gtot found for {isomer_source.name} or {source_parent.name}.')
-        return
-    
-    if not exist or overwrite:
-        if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Found Gtot for {isomer_source.name} and {triplet_source.name}. Correcting Gtot of triplet State.')
-        G_triplet = triplet_state.results['Gtot'].value
-        G_iso = isomer_state.results['Gtot'].value
-
-        if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: {triplet_source.name} Gtot: {G_triplet} hartree, iso Gtot: {G_iso} hartree')
-
-        dG = (G_triplet - G_iso) * Constants.har2kJmol * 1000  # in J/mol
-        t, k = compute_t(G_triplet, G_iso, T)       # Adiabatic rate
-        k_sh = k * p_sh                             # Surface hopping rate (non-adiabatic rate)
-        deltax = - (dG + R * T * np.log((h*k_sh)/(k_b*T))) # in J/mol
-
-        if debug > 0: print(f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Adding deltax in kcal/mol: {deltax*0.24/1000}')
-        newG = (G_triplet + deltax / (1000*Constants.har2kJmol))
-        newG = float(newG)
-        newG_data = Data("Gtot_corr", newG, "au", "correct_tripletG")
-        
-        triplet_state.add_result(newG_data, overwrite=overwrite)
-        if debug > 0: print (f'AZO.SPECIE_AZO.CORRECT_TRIPLETG: Corrected Gtot of {triplet_source.name} triplet state by {deltax*0.24/1000:.2f} Kcal/mol.')
-        return newG_data
-
-######
-def check_triplet(input_object, overwrite:bool = False, debug:int = 0):
-    """
-    Checks if Triplet energies from results after computations have been corrected.
-    If not, correction is applied.
-    """
-    if input_object.type == 'specie':
-        system = input_object._sys
-    elif input_object.type == 'state':
-        system = input_object._source._sys
-    else: 
-        raise Exception('CHECK_TRIPLET: Type not recognised. Please insert a Specie or System-derived object')
-    
-    source_exists, trans = system.find_source('trans')
-    state_exists, trans_state = trans.find_state("opt")
-
-
-    triplet_indices = [i for i, source in enumerate(system.sources) if source.spin==2]
-    #Check if the computation exists 
-
-    good=0
-    if source_exists and state_exists:
-        for idx in triplet_indices:
-            exist_state, triplet_state = system.sources[idx].find_state('opt')
-            if exist_state:
-                correct_tripletG(trans_state, triplet_state, overwrite=overwrite, debug=debug)
-                if "Gtot_corr" in triplet_state.results.keys(): good+=1
-    if good == len(triplet_indices): return True
-    return False
 
 ######
 def calculate_dG(t): 

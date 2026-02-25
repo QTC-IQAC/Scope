@@ -500,6 +500,50 @@ class System_azo(System):
     #######################
     ## Thermal Stability ##
     #######################
+    def get_mets(self, target_state: str='opt', overwrite=False, debug=0):
+
+        # found, ts_state = target_source.find_state(target_state)
+        # if not found:
+        #     raise Exception(f'FIND_METS: Could not find {target_state} State')
+        if not hasattr(self, 'mets') or overwrite:
+            
+            candidates = [source for source in self.sources if isTS=True]
+            
+            for ts in candidates:
+                found, state = 
+
+                if not found_ts_state or not 'Gtot' in ts_state.results.keys():
+                    print(f'find: [WARNING] Optimization state or Gtot not found for {ts.name}.')
+                    continue
+
+                # Use only TSs with Gtot or Gtot_corr
+                if ts.spin == 2:     # Use corrected Gtot for triplets
+                    if not skip_triplets:
+                        if 'Gtot_eff' in ts_state.results.keys(): energy = ts_state.results['Gtot_corr'].value
+                        else: 
+                            
+                            raise ValueError(f'MOLECULE_AZO.SET_HALFLIFE_TIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
+                    else:
+                        continue
+                else:   energy = ts_state.results['Gtot'].value
+                name = ts.name 
+                ts_names.append(name)
+                ts_values.append(energy)
+                if debug > 0: print(rf'MOLECULE_AZO.SET_HALFLIFE_TIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')        
+                
+                # Choosing Minimum Energy TS (mets)
+                min_idx = int(np.argmin(ts_values))
+                mets = ts_names[min_idx]        # Name of the METS 
+                g_cross = ts_values[min_idx]    # hartrees 
+                
+                if mets == 'trans' or mets == 'cis':
+                    print(f'AZO.FIND_MIN_TS: No TS optimizations could be found.')
+                    return None
+                self.mets = self.find_source(mets)
+                return self.mets
+        else:
+            return self.mets 
+
     def get_thermal_stability(self, target_state: str, debug: int=0):
         # Requires having the energies of Cis and Trans
         found_cis,   cis_iso   = self.find_conformer("cis")
@@ -520,9 +564,22 @@ class System_azo(System):
     def get_trans_halflife_time(self, target_state: str = 'opt', skip_triplets: bool = False, overwrite: bool = False, debug: int = 0):
         ## Funcio que calcula el temps de vida promig (t05). Busca TRANS i el TS mes baix en energia, i calcula eyring
         ##
-        ##
-        ## t05 =  
-        ## units = 'seconds'
+
+        found, trans_source = self.find_source('trans')
+        if not found:
+            raise Exception('SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Trans source not found.')
+
+        found_state, state = trans_source.find_state(target_state)
+        if not found_state:
+            raise Exception(f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Provided state: {target_state} not found.')
+
+        mets_source = self.get_mets(target_state, skip_triplets, overwrite, debug)
+
+        dG_cross = (float(g_cross)- float(g_iso)) * Constants.har2kJmol * 0.24 # in Kcal/mol
+        
+        t05, k_th = compute_t(g_initial, g_excited, T)
+        units = 'seconds'
+
         self.add_result(Data("trans_halflife_time",t05,units,"system.get_trans_halflife_time()"), overwrite=overwrite)
         return self.results['trans_halflife_time']
 
@@ -664,18 +721,72 @@ class State_azo(State):
         State.__init__(self, _source, name, debug=debug)
         self.subtype  = "state_azo" 
 
-    def get_abs_spectrum(self, normalize: bool = False, units: bool = False, lmin: float=200, lmax: float=1000, debug: int=0):
-        # Check if TDDFT data exists.
-        if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in this state')
+    ######
+    def correct_tripletG(isomer_state, triplet_state, T:float=298.15, overwrite = False, p_sh:float = 0.0002, debug: int=0):
+        '''
+        Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
+        Correction is done considering the increase of energy due to surface hopping between the singlet and triplet PESs. 
 
-        # Collects Values
-        energies = [es.energy for es in self.exc_states]
-        fosc     = [es.fosc for es in self.exc_states]
-        erange   = np.linspace(lmin, lmax, lmax-lmin)
+        Parameters
+        ----------
+        triplet_specie : Molecule_azo
+            The triplet Molecule_azo object to correct the Gtot of.
+        T : float, optional
+            The temperature in Kelvin. The default is 298.15 K.
+        overwrite : bool, optional
+            Whether to overwrite the existing Gtot_corr value. The default is False.
+        p_sh : float, optional
+            The probability of surface hopping. The default is 0.0002.
+        debug : int, optional
+            The debug level. The default is 0
+        '''
+        from scope.classes_data import Data
+        k_b = Constants.boltz_J # J/K
+        h = Constants.planck_Js # J·s
+        R = Constants.R_J       # 8.31 J/(K·mol)
 
-        # Builds the spectrum from discrete values, using Gaussian broadening
-        self.abs_spectrum = build_spectrum(erange, energies, fosc, normalize=normalize, units=units)
-        return self.abs_spectrum
+        triplet_source = triplet_state._source
+        triplet_system = triplet_source._sys
+
+        isomer_source = isomer_state._source
+
+        exist = 'Gtot_corr' in triplet_state.results
+
+        if not 'Gtot' in isomer_state.results or not 'Gtot' in triplet_state.results:
+            print(f'AZO.CORRECT_TRIPLETG: No Gtot found for {isomer_source.name} or {source_parent.name}.')
+            return
+        
+        if not exist or overwrite:
+            if debug > 0: print(f'AZO.CORRECT_TRIPLETG: Found Gtot for {isomer_source.name} and {triplet_source.name}. Correcting Gtot of triplet State.')
+            G_triplet = triplet_state.results['Gtot'].value
+
+            if debug > 0: print(f'AZO.CORRECT_TRIPLETG: {triplet_source.name} Gtot: {G_triplet} hartree, iso Gtot: {G_iso} hartree')
+
+            if debug > 0: print(f'AZO.CORRECT_TRIPLETG: Adding deltax in kcal/mol: {deltax*0.24/1000}')
+            
+            x = R * T * ln(p_sh) # in J/mol
+
+            newG = (G_triplet + deltax / (1000*Constants.har2kJmol))
+            newG = float(newG)
+            newG_data = Data("Gtot_corr", newG, "au", "correct_tripletG")
+            
+            triplet_state.add_result(newG_data, overwrite=overwrite)
+            if debug > 0: print (f'AZO.CORRECT_TRIPLETG: Corrected Gtot of {triplet_source.name} triplet state by {deltax*0.24/1000:.2f} Kcal/mol.')
+            return newG_data
+
+        def get_abs_spectrum(self, normalize: bool = False, units: bool = False, lmin: float=200, lmax: float=1000, debug: int=0):
+            # Check if TDDFT data exists.
+            if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in this state')
+
+            # Collects Values
+            energies = [es.energy for es in self.exc_states]
+            fosc     = [es.fosc for es in self.exc_states]
+            erange   = np.linspace(lmin, lmax, lmax-lmin)
+
+            # Builds the spectrum from discrete values, using Gaussian broadening
+            self.abs_spectrum = build_spectrum(erange, energies, fosc, normalize=normalize, units=units)
+            return self.abs_spectrum
+
 
 ############################################
 ##### MOLECULE Object Adapted to Azo's #####
@@ -777,64 +888,7 @@ class Molecule_azo(Molecule):
         print(f'MOLECULE_AZO.SET_HALFLIFE_TIME: Half-life time has been computed for {self.name} and was stored as a result to the corresponding State!')
         print(f'MOLECULE_AZO.SET_HALFLIFE_TIME: ---- Attributes such as dG_cross and mets can be accessed by self.dG_cross and self.mets)')
         
-
-    ## MANEL: aquestes funcions ja no son necessaries
-
-    #def link_tda_to_state(self, state: object, filepath: str, overwrite: bool=False):
-    #    '''
-    #    Parses excited states from a TDDFT Gaussian16 .log file to a ExcitedState object.
-    #    '''
-    #    if not hasattr(state,"es_list") or overwrite: 
-    #        if os.path.exists(filepath):
-    #            state.tda_filepath = filepath
-    #            state.es_list = []
-    #            lines = read_lines_file(filepath)
-    #            # state.gs_energy = parse_energy_from_step(lines)
-    #            if parse_status_finished(lines):
-    #                for st_num in range(1,11):
-    #                    if st_num < 10:    
-    #                        line_nums, found = search_string(f"Excited State   {st_num}:", lines, typ='first')
-    #                    elif st_num >= 10 and st_num < 100: 
-    #                        line_nums, found = search_string(f"Excited State  {st_num}:", lines, typ='first')
-    #                    if found:
-    #                        dummy, dummy, idx, dummy, energy, dummy, wavelength, dummy, fosc, s2 = lines[line_nums].split() 
-    #                        idx  = int(idx.replace(':',''))
-    #                        s2   = float(s2.replace('<S**2>=',''))
-    #                        fosc = float(fosc.replace('f=',''))
-    #                        wavelength = float(wavelength)
-    #                        energy = float(energy)
-    #                        if st_num == idx:
-    #                            new_es = ExcitedState(self, st_num, energy, wavelength, fosc, s2)
-    #                            state.es_list.append(new_es)
-    #                    else: print(f"Excited State {st_num} not found in {filepath}.") 
-    #        else: print(f"File {filepath} does not exists.") 
-
-    #def link_opt_to_state(self, state:object, filepath:str, overwrite: bool=False):
-    #    '''
-    #    Parses a Gaussian16 .log file to save geometry and free Gibbs energy to a state object.
-    #    '''
-    #    if not hasattr(state, 'opt') or overwrite:
-    #        if os.path.exists(filepath):
-    #            state.opt_filepath = filepath
-    #            lines = read_lines_file(filepath)
-    #            output= G16_output(lines)
-    #            opt_finished = output.get_optimization_finished()
-    #            if opt_finished:
-    #                state.energy = output.get_last_energy()
-    #                state.gtot = output.get_free_energy()
-
-    #                labels, coord = output.get_last_geometry(lines)
-    #                state.set_geometry(labels, coord)
-    #                newG = Data("Gtot", state.gtot, "au", "get_free_energy")
-    #                newH = Data("energy", state.gtot, "au", "get_last_energy")
-    #                state.add_result(newG)
-    #            else:
-    #                print('LINK_OPT_TO_STATE: WARNING: An optimization did not finished')
-    #                print(f'LINK_OPT_TO_STATE: Optimization file: {filepath}')
-    #    else:
-    #        print(f"File {filepath} does not exist.")
-
-
+        
     def get_azo_substituents(self, debug: int=0):
         self.azo_substituents = []
         azo_idx   = self.dihedral_indices[2:4]
