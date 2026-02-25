@@ -191,13 +191,14 @@ def fill_qc_data(data: object, debug: int=0):
     else:                                 data._add_attr("software", interpret_software(data.software))
 
     if data.software == "g16":
-        if not hasattr(data,"functional"):    data._add_attr("functional", "b3lyp**")
-        if not hasattr(data,"basis"):         data._add_attr("basis", "sto-3g")
-        if not hasattr(data,"jobtype"):       data._add_attr("jobtype", "scf")
-        if not hasattr(data,"loose_opt"):     data._add_attr("loose_opt", False)
-        if not hasattr(data,"tight_opt"):     data._add_attr("tight_opt", False)
-        if not hasattr(data,"is_grimme"):     data._add_attr("is_grimme", False)
-        if not hasattr(data,"grimme_type"):   data._add_attr("grimme_type", "d2")
+        if not hasattr(data,"functional"):     data._add_attr("functional", "b3lyp**")
+        if not hasattr(data,"basis"):          data._add_attr("basis", "sto-3g")
+        if not hasattr(data,"jobtype"):        data._add_attr("jobtype", "scf")
+        if not hasattr(data,"loose_opt"):      data._add_attr("loose_opt", False)
+        if not hasattr(data,"tight_opt"):      data._add_attr("tight_opt", False)
+        if not hasattr(data,"is_grimme"):      data._add_attr("is_grimme", False)
+        if not hasattr(data,"grimme_type"):    data._add_attr("grimme_type", "d2")
+        if not hasattr(data,"ultrafine_grid"): data._add_attr("ultrafine_grid", False)
 
         if data.jobtype == "td" or data.jobtype == "tda":
             if not hasattr(data,"td_type"):    data._add_attr("td_type", "singlets")
