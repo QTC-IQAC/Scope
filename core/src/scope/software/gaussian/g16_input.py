@@ -43,6 +43,8 @@ def gen_g16_input(comp, debug: int=0):
         if source.spin > 0: 
             is_unrestricted = True
             commandline.append(" U")
+        else:
+            commandline.append(" ")
 
         ## 2.2-Functional
         if   functional == "pbe":     commandline.append("PBEPBE")
