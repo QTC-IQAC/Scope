@@ -134,6 +134,7 @@ class Data(object):
         self.units         = units
         self.function      = function
         self.notes         = notes
+        self.subtype       = self.set_subtype()
 
     def set_subtype(self):
         energy_units = ['kj', 'au', 'ry', 'ev', 'cm']
