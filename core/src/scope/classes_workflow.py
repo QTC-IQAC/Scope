@@ -876,7 +876,7 @@ class Computation(object):
         if new_qc_data != old_qc_data: 
             if debug > 1:
                 print("COMP.CHECK_QC_DATA: found different qc_data:")
-                print("COMP.CHECK_QC_DATA: it may be just the addition of defaults:")
+                print("COMP.CHECK_QC_DATA: it may be just either (i) the addition of defaults or (ii) the addition of the states information")
                 print("--- OLD QC_DATA ---")
                 print(old_qc_data)
                 print("--- NEW QC_DATA ---")
