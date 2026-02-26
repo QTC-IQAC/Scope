@@ -1,16 +1,15 @@
 import numpy as np
-from    scope                               import *
-from    scope.classes_system                import *
-from    scope.classes_state                 import State
-from    scope.classes_specie                import *
-from    scope.geometry                      import *
-from    scope.connectivity                  import *
-from    scope.parse_general                 import search_string, read_lines_file
-from    scope.software.gaussian.g16_parse   import * 
-from    scope.software.gaussian.g16_output  import * 
+from    math                                import log as ln
+import  scope.constants                     as Constants
 from    scope.classes_data                  import Data
-from    scope.classes_qc                    import *
-from    scope_azo.azo_functions             import *
+from    scope.classes_system                import System
+from    scope.classes_state                 import State, find_state
+from    scope.classes_specie                import Molecule
+from    scope.elementdata                   import ElementData
+from    scope.geometry                      import centercoords, set_dihedral, get_dihedral, solve_dihedral, set_angle, get_angle
+from    scope.connectivity                  import get_adjmatrix, split_species
+from    scope.operations.dicts_and_lists    import extract_from_list
+from    scope_azo.azo_functions             import get_3D, compute_t, build_spectrum, get_photon_flux_spectrum, build_pss_spectrum
 
 ############################################
 #### SYSTEM Object adapted to System_azo ###
@@ -22,11 +21,23 @@ class System_azo(System):
         self.name             = name
         self.smiles           = smiles
         self.dihedral_indices = self.get_dihedral_indices()
+        self.results          = dict()
+
+    #################
+    #### Results ####
+    #################
+    def add_result(self, result: object, overwrite: bool=False):
+        result._object = self
+        if overwrite or result.key not in self.results.keys():  
+            self.results[result.key] = result
+
+    def remove_result(self, key: str):
+        return self.results.pop(key, None)
 
     ######
     def add_source(self, name: str, new_source: object, overwrite: bool=False, debug: int=0):
         '''
-        Same function than vanilla System class. To make sure that it calls set_initial_state() from the specific Azo-derived classes
+        Same function than vanilla System class. It is copied here to make sure that set_initial_state() calls it.
         '''
 
         ## Source names are de-capitalized and spaces replaced by underscores
@@ -138,7 +149,6 @@ class System_azo(System):
         at5 = fragments[2][1] -1 
         return list([at0, at1, at2, at3, at4, at5])
 
-
     ############################
     ## Creation of Structures ##
     ############################
@@ -197,50 +207,41 @@ class System_azo(System):
 
         # Sets charge and spin
         trans.set_total_charge(charge)
-        #trans.set_total_spin(0)      ## Not needed, it should be the default      
+        #trans.set_total_spin(0)                    ## Not needed, it should be the default      
 
         # Sets other attributes
         trans.smiles           = smiles
         trans.dihedral_indices = self.dihedral_indices
 
         # Adds to System as source. Initial State is created automatically when sourcing
-        self.add_source("trans",tran
-        s,overwrite=overwrite) 
+        self.add_source("trans",trans,overwrite=overwrite) 
         return trans
 
     ######
     def create_cis(self, target_deg: float=40.0, max_iter: int=2000, overwrite: bool=False, debug: int=0):
         '''
         Creates the cis structure of the azo compound from a SMILES string. To avoid troubles in 3D geometry creation using openbabel, 
-        the trans isomer is created using create_trans() function. It sets up the cis isomer (including the creation of Molecule_azo and 
-        its 'initial' State objects) and stores it as source of the System_azo object. 
-
-        If no System_azo is provided, it returns labels, coord and the Molecule_azo named 'cis'.  
+        The trans isomer is first created using create_trans() function. Then, it sets up the cis isomer and stores it as source of the System_azo object. 
 
         Workflow
         --------
         - Find or create trans isomer.
         - Get indices of atoms relevant to dihedral adjustment.
-        - Move the azo group dihedral angle close to the target angle.
+        - Move the azo dihedral angle close to the target angle.
         - If there is steric hindrance, tries to solve it by moving adjacent rings.
         - If steric hindrance cannot be solved, returns None.
         - If it is solved, structure is saved to a Molecule_azo object with an 'initial' State. 
 
         Parameters
         ----------
-        target_deg: float
-            Target angle of the azo dihedral in degrees. 
-        max_iter: int
-            Maximum number of iterations to solve steric hindrance.
-        overwrite: bool
-            In case the source already has a "cis" isomer, whether it should overwrite it. 
-        debug: int
-            Debug level. 0: no debug, 1: verbose debug
+        target_deg: float       Target dihedral angle (in degrees). Default is 40º 
+        max_iter: int           Maximum number of iterations to solve steric hindrance.
+        overwrite: bool         In case the System alread has a "cis" source, whether it should overwrite it. 
+        debug: int              Debug level. 0: no, 1: verbose 
 
         Returns
         -------
-        iso: Molecule_azo
-            Molecule_azo object containing the cis isomer.
+        cis: Molecule_azo       Molecule_azo object containing the cis isomer.
         '''
 
         # 1st-searching for trans isomer
@@ -259,14 +260,15 @@ class System_azo(System):
         adjmat_ref, adjnum_ref = trans.get_adjmatrix()
 
         # Initial dihedral angle, for info 
-        current_rad = get_dihedral(coord[at1],coord[at2],coord[at3],coord[at4]) # Initial dihedral angle
-        current_deg = np.degrees(current_rad)
+        current_deg = np.degrees(get_dihedral(coord[at1],coord[at2],coord[at3],coord[at4])) # Initial dihedral angle
         if debug > 0: print(f"AZO.CREATE_CIS: Initial dihedral angle: {current_deg} degrees")
 
-        # Pre-Rotation. Getting dihedral close to target
+        # Pre-Rotation. Getting dihedral close to target slowly
+        ## MANEL: m'has d'explicar perque es necessari aquest block (linies 267-278). També he definit jump_length, per evitar fixar-lo a 1. Es podria fer mes gran?
+        jump_length = 1
         if abs(current_deg - target_deg) >= 5:
             if debug > 0: print(f"AZO.CREATE_CIS: current dihedral {abs(current_deg)} is further than {target_deg+5} degrees from target. Adjusting...")
-            jump_target = target_deg+1 if current_deg > 0 else -target_deg-1 
+            jump_target = target_deg+jump_length if current_deg > 0 else -target_deg-jump_length
             if debug > 0: print(f"AZO.CREATE_CIS: Jumping to {jump_target} degrees")
             if debug > 0: print(f"AZO.CREATE_CIS: Selected atoms: {at1}, {at2}, {at3}, {at4}")
             coord_next = set_dihedral(labels, coord, jump_target, at1,at2,at3,at4,adjmat=adjmat_ref, adjnum=adjnum_ref)
@@ -276,10 +278,10 @@ class System_azo(System):
         else:
             _, adjmat_cis, adjnum_cis = get_adjmatrix(labels,coord)
 
-        found_geometry = False 
         matrices_match = np.array_equal(adjmat_cis, adjmat_ref) and np.array_equal(adjnum_cis, adjnum_ref)
- 
         if debug > 0: print(f"AZO.CREATE_CIS: Matrices match: {matrices_match}")
+
+        found_geometry = False 
         if matrices_match:
             coord = coord_next
             current_deg = angle_next
@@ -300,9 +302,9 @@ class System_azo(System):
         if not found_geometry: 
             raise Exception(f'AZO.CREATE_CIS: Target dihedral for {self.name} could not be reached. Reached max. iterations: {max_iter}.')
 
-        # Here, it found a good geometry for the cis isomer, without clashes
-        coord                = centercoords(coord, at1)
-        cis                  = Molecule_azo(labels, coord) 
+        # Here, it means it found a good geometry for the cis isomer, without clashes
+        coord = centercoords(coord, at1)
+        cis   = Molecule_azo(labels, coord) 
 
         # Checks fragmentation to verify that the 3D structure is correct (or, at least, not fragmented)
         if cis.check_fragmentation(debug=debug):
@@ -321,21 +323,12 @@ class System_azo(System):
         return cis
 
     ######
-    def create_ts(self, ts_list:list = ['TSrot', 'TSinv', 'TSinv', 'triplet'], debug: int=0):
+    def create_ts(self, ts_list:list = ['TSrot', 'TSinv', 'triplet'], debug: int=0):
         """
-        Creates a set of TS for a given System_azo. Users can select which TS to create from a list of options, 
-        it must be in ts_list (['TSrot', 'TSinv', 'triplet']). By default, TSrot_A, TSrot_B, TSinv_L, TSinv_R are created, 
-        including triplet states TSrot_A_T, TSrot_B_T. 
-        
-        If 'triplet' is selected on ts_list, rotation TS in triplet state are created.
+        Creates a set of TS for a System_azo. Users can select which TS to create from a list of options, 
+        it must be in ts_list (['TSrot', 'TSinv', 'triplet']). 
 
-        Once the TS are created, they are added to the System_azo object.
-
-        TS labels and coordinates are returned as a dictionary, containing the labels (created_ts['key'][0]) and coordinates (created_ts['key'][1]) of each TS. 
-        They can be accessed using the keys 'TSrot_A', 'TSrot_B', 'TSinv_L', 'TSinv_R', 'TSrot_A_T', 'TSrot_B_T'.
-
-        Important notes
-        ---------------
+        Once the TS are created, they are added to the System_azo object as sources.
 
         -------
         TSrot
@@ -344,10 +337,10 @@ class System_azo(System):
         If 'triplet' is selected on ts_list, rotation TS in triplet state are created.
 
         Nomenclature: 
-            - TSrot_A_S: Rotation TS in singlet state. Dihedral angle is set as +90º. Total spin is set as 1.
-            - TSrot_A_T: Rotation TS in triplet state. Dihedral angle is set as +90º. Total spin is set as 3. MULTIPLICITY
-            - TSrot_B_S: Rotation TS in singlet state. Dihedral angle is set as -90º. Total spin is set as 1.
-            - TSrot_B_T: Rotation TS in triplet state. Dihedral angle is set as -90º. Total spin is set as 3.
+            - TSrot_A_S: Rotation TS in singlet state. Dihedral angle is set as +90º. Total spin is set to 0.
+            - TSrot_A_T: Rotation TS in triplet state. Dihedral angle is set as +90º. Total spin is set as 2.
+            - TSrot_B_S: Rotation TS in singlet state. Dihedral angle is set as -90º. Total spin is set as 0.
+            - TSrot_B_T: Rotation TS in triplet state. Dihedral angle is set as -90º. Total spin is set as 2.
 
         -------
         TSinv
@@ -598,32 +591,33 @@ class System_azo(System):
         found_state, ground_state = source.find_state(target_state)
         if not found_state: raise Exception(f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Target state: {target_state} not found.')
 
+        # Getting the energy of the Trans isomer
         if not 'Gtot' in ground_state.results.keys():   raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot for the Ground State not found.')
         gtot_ground = ground_state.results['Gtot'].value    # Extract Gtot in hartrees
 
-        # Getting METS energy value
+        # Getting the energy of the METS (Minimum Energy Transition State)
         mets_source = self.get_mets(target_state, skip_triplets=skip_triplets, overwrite=overwrite, debug=debug)
         found, mets_state = mets_source.find_state(target_state)
         if mets_source.spin == 2: 
-            if not 'Gtot_eff' in mets_state.results.keys(): raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot_eff for the Minimum Energy Transition State (METS) not found.')
+            if not 'Gtot_eff' in mets_state.results.keys(): raise Exception (f'SYSTEM_AZO.GET_TRANS_T05: Gtot_eff for the Minimum Energy Transition State (METS) not found.')
             gtot_mets = mets_state.results['Gtot_eff'].value
         elif mets_source.spin == 0: 
-            if not 'Gtot' in mets_state.results.keys():     raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot for the Minimum Energy Transition State (METS) not found.')
+            if not 'Gtot' in mets_state.results.keys():     raise Exception (f'SYSTEM_AZO.GET_TRANS_T05: Gtot for the Minimum Energy Transition State (METS) not found.')
             gtot_mets = mets_state.results['Gtot'].value
         else: 
-            if not 'Gtot' in mets_state.results.keys():     raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot for the Minimum Energy Transition State (METS) not found.')
+            if not 'Gtot' in mets_state.results.keys():     raise Exception (f'SYSTEM_AZO.GET_TRANS_T05: Gtot for the Minimum Energy Transition State (METS) not found.')
             gtot_mets = mets_state.results['Gtot'].value
         
-        #Computing t05 and k
+        #Computing halflife time (t05) and kinetic constant (k)
         t05, k_th = compute_t(gtot_ground, gtot_mets, T)
-        if debug>0: print(f'Found t05: {t05}    k_th: {k_th}') 
-        dG_cross = (float(gtot_mets)- float(gtot_ground)) * Constants.har2kJmol * Constants.kJmol2kcal # in Kcal/mol
-        if debug>0: print(f'dG_cross = {dG_cross}') 
+        if debug > 0: print(f'SYSTEM_AZO.GET_TRANS_T05: Obtained t05: {t05}  k_th: {k_th}') 
+        dG_from_trans = (float(gtot_mets)- float(gtot_ground)) * Constants.har2kJmol * Constants.kJmol2kcal # in Kcal/mol
+        if debug > 0: print(f'SYSTEM_AZO.GET_TRANS_T05: dG_from_trans = {dG_from_trans}') 
 
         units_time = 's'
         units_kcal = 'kcal/mol'
 
-        self.add_result(Data("trans_dG_cross",dG_cross,units_kcal,"system_azo.get_trans_halflife_time()"), overwrite=overwrite)
+        self.add_result(Data("dG_from_trans",dG_from_trans,units_kcal,"system_azo.get_trans_halflife_time()"), overwrite=overwrite)
         self.add_result(Data("trans_halflife_time",t05,units_time,"system_azo.get_trans_halflife_time()"), overwrite=overwrite)
         return self.results['trans_halflife_time']
         
@@ -635,32 +629,33 @@ class System_azo(System):
         found_state, ground_state = source.find_state(target_state)
         if not found_state: raise Exception(f'SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Target state: {target_state} not found.')
 
-        if not 'Gtot' in ground_state.results.keys():   raise Exception (f'SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Gtot for the Ground State not found.')
+        # Getting the energy of the Cis isomer
+        if not 'Gtot' in ground_state.results.keys():   raise Exception (f'SYSTEM_AZO.GET_CIS_T05: Gtot for the Ground State not found.')
         gtot_ground = ground_state.results['Gtot'].value    # Extract Gtot in hartrees
 
-        # Getting METS energy value
+        # Getting the energy of the METS (Minimum Energy Transition State)
         mets_source = self.get_mets(target_state, skip_triplets=skip_triplets, overwrite=overwrite, debug=debug)
         found, mets_state = mets_source.find_state(target_state)
         if mets_source.spin == 2: 
-            if not 'Gtot_eff' in mets_state.results.keys(): raise Exception (f'SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Gtot_eff for the Minimum Energy Transition State (METS) not found.')
+            if not 'Gtot_eff' in mets_state.results.keys(): raise Exception (f'SYSTEM_AZO.GET_CIS_T05: Gtot_eff for the Minimum Energy Transition State (METS) not found.')
             gtot_mets = mets_state.results['Gtot_eff'].value
         elif mets_source.spin == 0: 
-            if not 'Gtot' in mets_state.results.keys():     raise Exception (f'SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Gtot for the Minimum Energy Transition State (METS) not found.')
+            if not 'Gtot' in mets_state.results.keys():     raise Exception (f'SYSTEM_AZO.GET_CIS_T05: Gtot for the Minimum Energy Transition State (METS) not found.')
             gtot_mets = mets_state.results['Gtot'].value
         else: 
-            if not 'Gtot' in mets_state.results.keys():     raise Exception (f'SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Gtot for the Minimum Energy Transition State (METS) not found.')
+            if not 'Gtot' in mets_state.results.keys():     raise Exception (f'SYSTEM_AZO.GET_CIS_T05: Gtot for the Minimum Energy Transition State (METS) not found.')
             gtot_mets = mets_state.results['Gtot'].value
         
-        #Computing t05 and k
+        #Computing halflife time (t05) and kinetic constant (k)
         t05, k_th = compute_t(gtot_ground, gtot_mets, T)
-        if debug>0: print(f'Found t05: {t05}    k_th: {k_th}') 
-        dG_cross = (float(gtot_mets)- float(gtot_ground)) * Constants.har2kJmol * Constants.kJmol2kcal # in Kcal/mol
-        if debug>0: print(f'dG_cross = {dG_cross}') 
+        if debug > 0: print(f'SYSTEM_AZO.GET_CIS_T05: Obtained t05: {t05}    k_th: {k_th}') 
+        dG_from_cis = (float(gtot_mets)- float(gtot_ground)) * Constants.har2kJmol * Constants.kJmol2kcal # in Kcal/mol
+        if debug > 0: print(f'SYSTEM_AZO.GET_CIS_T05: dG_from_cis = {dG_from_cis}') 
 
         units_time = 's'
         units_kcal = 'kcal/mol'
 
-        self.add_result(Data("cis_dG_cross",dG_cross,units_kcal,"system_azo.get_cis_halflife_time()"), overwrite=overwrite)
+        self.add_result(Data("dG_from_cis",dG_from_cis,units_kcal,"system_azo.get_cis_halflife_time()"), overwrite=overwrite)
         self.add_result(Data("cis_halflife_time",t05,units_time,"system_azo.get_cis_halflife_time()"), overwrite=overwrite)
         return self.results['cis_halflife_time']
 
@@ -668,7 +663,6 @@ class System_azo(System):
     ########################
     ## Optical Properties ##
     ########################
-    
     def get_PSS(self, target_state: str, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
         """
         Function to calculate the photostationary state (PSS) for a given System_azo, based on the photochemical and thermal rates.
@@ -835,25 +829,25 @@ class State_azo(State):
         else:
             return self.results['Gtot_eff'].value
 
-        def get_abs_spectrum(self, normalize: bool = False, units: bool = False, lmin: float=200, lmax: float=1000, debug: int=0):
-            # Check if TDDFT data exists.
-            if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in this state')
+    ######
+    def get_abs_spectrum(self, normalize: bool = False, units: bool = False, lmin: float=200, lmax: float=1000, debug: int=0):
+        # Check if TDDFT data exists.
+        if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in this state')
 
-            # Collects Values
-            energies = [es.energy for es in self.exc_states]
-            fosc     = [es.fosc for es in self.exc_states]
-            erange   = np.linspace(lmin, lmax, lmax-lmin)
+        # Collects Values
+        energies = [es.energy for es in self.exc_states]
+        fosc     = [es.fosc for es in self.exc_states]
+        erange   = np.linspace(lmin, lmax, lmax-lmin)
 
-            # Builds the spectrum from discrete values, using Gaussian broadening
-            self.abs_spectrum = build_spectrum(erange, energies, fosc, normalize=normalize, units=units)
-            return self.abs_spectrum
+        # Builds the spectrum from discrete values, using Gaussian broadening
+        self.abs_spectrum = build_spectrum(erange, energies, fosc, normalize=normalize, units=units)
+        return self.abs_spectrum
 
 
 ############################################
 ##### MOLECULE Object Adapted to Azo's #####
 ############################################
 class Molecule_azo(Molecule):
-
     def __init__(self, labels, coord):
         Molecule.__init__(self, labels, coord)
         self.subtype  = "molecule_azo"
@@ -881,99 +875,9 @@ class Molecule_azo(Molecule):
             self.states.append(new_state)
         return new_state
 
-    ###
-    def set_halflife_time(self, skip_triplets : bool = True, overwrite = False, debug: int = 0):
-        '''
-        Computes t0.5 in seconds for a given conformer/isomer stored in a Molecule_azo object e.g. cis or trans using the Eyring equation.
-        Saves the result as a data object with the key 'halflife' in the Molecule_azo object.
-        Minimum energy Transition State can be accessed using the key 'mets' in the Molecule_azo object. E. g. cis.mets
-        The argument skip_triplets is used to whether take into account triplet states, since their optimized geometry could 
-        
+    ######        
+    ## MANEL: es fa servir aquesta funcio?
 
-        Parameters
-        ----------
-        self : Molecule_azo
-            The Molecule_azo object to compute the halflife for.
-        skip_triplets : bool
-            Skip triplet conformers in halflife calculation.
-        overwrite : bool
-            Overwrite existing t0.5 values.
-
-        Notes
-        -----
-        The function will only consider Molecule_azo objects that have an opt state with a Gtot value.
-        The function will only consider TSs that have an opt state with a Gtot value, or Gtot_corr value if skip_triplets is False.
-        
-        '''
-        ts_values = []
-        ts_names = []
-
-        # Check if triplets are corrected.
-        iscorrect = check_triplet(self, overwrite=overwrite, debug=debug) 
-
-        if not iscorrect:
-            raise Exception("MOLECULE_AZO.SET_HALFLIFE_TIME: There has been an error with correcting triplet Gtot. Check if computations have finished ")
-
-        found_iso_opt, iso_state = self.find_state("opt")
-        if not found_iso_opt:
-            raise Exception(f'MOLECULE_AZO.SET_HALFLIFE_TIME: Optimization state not found for {self.name}.')
-
-        # Find Gtot from selected isomer, stored as Molecule_azo object
-        if 'Gtot' in iso_state.results.keys(): g_iso = iso_state.results['Gtot'].value
-        else: raise ValueError('MOLECULE_AZO.SET_HALFLIFE_TIME: Gtot not found for isomer')
-
-        parent = self._sys
-        candidates = [source for source in parent.sources if source.name.lower().startswith('ts')]
-        candidates_names = [source.name for source in candidates]
-
-        for ts in candidates:
-            found_ts_state, ts_state = ts.find_state("opt")
-            if not found_ts_state or not 'Gtot' in ts_state.results.keys():
-                print(f'MOLECULE_AZO.SET_HALFLIFE_TIME: [WARNING] Optimization state or Gtot not found for {ts.name}.')
-                continue
-            # Use only TSs with Gtot or Gtot_corr
-
-            if ts.spin == 2:     # Use corrected Gtot for triplets
-                if not skip_triplets:
-                    if 'Gtot_corr' in ts_state.results.keys(): energy = ts_state.results['Gtot_corr'].value
-                    else: raise ValueError(f'MOLECULE_AZO.SET_HALFLIFE_TIME: Corrected Gtot for {ts.name} Molecule_azo not found for Triplet TS, altough it was corrected with correct_tripletG() function.')
-                else:
-                    continue
-            else:   energy = ts_state.results['Gtot'].value
-
-            name = ts.name 
-            ts_names.append(name)
-            ts_values.append(energy)
-        
-        if not hasattr(self, 'halflife') or overwrite:
-            if debug > 0: print(rf'MOLECULE_AZO.SET_HALFLIFE_TIME: Collected {len(ts_values)} TSs for {self.name} : {ts_names} with energies {ts_values}.')
-            if debug > 0: print(f'MOLECULE_AZO.SET_HALFLIFE_TIME:Doing halflife for {parent.name} {self.name}')
-            
-            # Choosing Minimum Energy TS (mets)
-            min_idx = int(np.argmin(ts_values))
-            mets = ts_names[min_idx]        # Name of the METS 
-            g_cross = ts_values[min_idx]
-            dG_cross = (float(g_cross)- float(g_iso)) * Constants.har2kJmol * 0.24 # in Kcal/mol
-            
-            # Compute and store halflife
-            t,k = compute_t(float(g_cross), float(g_iso))           
-            if debug > 0: print(t, ' s for isomer ', self.name)
-            new_time = Data('halflife', float(t), 's', 'compute_t')
-            self.halflife = float(t)
-            self.mets = mets
-            iso_state.add_result(new_time, overwrite=overwrite)
-            
-            if debug > 0: print(dG_cross, 'for isomer ', self.name)
-            self.dG_cross = dG_cross        # Stored in kcal/mol
-            newdata = Data('dG_cross', float(dG_cross), 'kcal/mol', 'set_halflife_time')
-            iso_state.add_result(newdata, overwrite=overwrite)
-        else: 
-            print(f'MOLECULE_AZO.SET_HALFLIFE_TIME: State not found in {self.name}.')
-            
-        print(f'MOLECULE_AZO.SET_HALFLIFE_TIME: Half-life time has been computed for {self.name} and was stored as a result to the corresponding State!')
-        print(f'MOLECULE_AZO.SET_HALFLIFE_TIME: ---- Attributes such as dG_cross and mets can be accessed by self.dG_cross and self.mets)')
-        
-        
     def get_azo_substituents(self, debug: int=0):
         self.azo_substituents = []
         azo_idx   = self.dihedral_indices[2:4]

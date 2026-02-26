@@ -5,10 +5,7 @@
 import numpy as np
 import scope.constants as Constants
 
-from scope_azo.azo_classes              import *
-from copy                               import deepcopy
-from scope.geometry                     import *
-from scope.connectivity                 import *
+from scope.geometry                     import centercoords
 from scope.operations.vecs_and_mats     import gaussian
 from scope.elementdata                  import ElementData
 elemdatabase = ElementData()
@@ -16,13 +13,11 @@ elemdatabase = ElementData()
 ######
 def get_3D(smiles, debug: int=0):
     # Function to generate 3D coordinates from a SMILES string using Open Babel
-    from scope.geometry import centercoords
-
     try:
         from openbabel import pybel as pb
     except Exception as exc:
         raise ImportError(
-            "AZO.GET_3D: Open Babel (pybel) is required to generate 3D coordinates from SMILES.\n"
+            "AZO_FUNCTIONS GET_3D: Open Babel (pybel) is required to generate 3D coordinates from SMILES.\n"
             "Install it with: conda install -c conda-forge openbabel\n"
         ) from exc
 
@@ -36,39 +31,6 @@ def get_3D(smiles, debug: int=0):
         coord.append(list([at.coords[0], at.coords[1], at.coords[2]]))
     coord = centercoords(coord, 0) 
     return labels, coord
-
-#############################
-### Structure Preparation ###
-#############################
-def solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref, adjnum_ref, debug: int=0):
-    """
-    Finds the dihedral angles of a system to avoid steric hindrance. 
-    It does so by rotating adjacent rings dihedral angles: 
-        1 - left ring (at0-at3), 
-        2 - right ring (at2-at5)
-
-    Combinations are done in a grid of 64x64 steps, from -180 to 180 degrees.
-    The first valid combination is returned. 
-    """
-    from itertools import product
-    rot_steps = np.linspace(-180,180, 64).astype(int)
-    if debug>0: print(f'AZO.SOLVE_DIHEDRAL: Angles {rot_steps}')
-    rot_combinations = list(product(rot_steps, rot_steps))
-
-    worked = False
-    for angle1, angle2 in rot_combinations:
-        new_coord = set_dihedral(labels, coord, angle1, at0,at1,at2,at3, adjmat=adjmat_ref, adjnum=adjnum_ref)  # Coords de tsinv                        
-        new_coord = set_dihedral(labels, new_coord, angle2, at2,at3,at4,at5, adjmat=adjmat_ref, adjnum=adjnum_ref)
-
-        # Gets the adjacency matrix of the new coordinates, to check is the original connectivity is preserved (i.e., no steric clashes)
-        _, adjmat_try, adjnum_try = get_adjmatrix(labels,new_coord)
-        is_same = np.array_equal(adjmat_try, adjmat_ref) and np.array_equal(adjnum_try, adjnum_ref)
-        if is_same:
-            if debug != 0: print(f'AZOS.SOLVE_DIHEDRAL: Found good geometry by rotating adjacent dihedrals')
-            worked = True
-            return worked, new_coord
-    print(f'AZOS.SOLVE_DIHEDRAL: No good geometry found by rotating adjacent dihedrals. Returning original geometry.')
-    return worked, coord
 
 ############################
 #### Thermal Properties ####
