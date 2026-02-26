@@ -816,6 +816,28 @@ class Molecule_azo(Molecule):
         Molecule.__init__(self, labels, coord)
         self.subtype  = "molecule_azo"
 
+    #########################################
+    ### Functions to Interact with States ###
+    #########################################
+    def set_initial_state(self, name: str='initial', debug: int=0):
+        """Creates the initial state of the specie, with only the geometry"""
+        ini_state = self.add_state(name)
+        ini_state.set_geometry(self.labels, self.coord)
+        return ini_state
+
+    def add_state(self, name: str, debug: int=0):
+        if not hasattr(self,"states"): setattr(self,"states",list([]))
+        exists, new_state = self.find_state(name)
+        if exists:  
+            if debug > 0: print(f"MOLECULE_AZO.ADD_STATE. State with same {name=} found, returning it")
+            return new_state
+        else:
+            if debug > 0: print("MOLECULE_AZO.ADD_STATE. Creating new state, returning it")
+            new_state = State_azo(self, name, debug=debug)
+            self.states.append(new_state)
+        return new_state
+
+    ###
     def set_halflife_time(self, skip_triplets : bool = True, overwrite = False, debug: int = 0):
         '''
         Computes t0.5 in seconds for a given conformer/isomer stored in a Molecule_azo object e.g. cis or trans using the Eyring equation.
