@@ -191,9 +191,14 @@ def fill_qc_data(data: object, debug: int=0):
     else:                                 data._add_attr("software", interpret_software(data.software))
 
     if data.software == "g16":
+        # Adds default if needed and checks Jobtype
+        if not hasattr(data,"jobtype"):        data._add_attr("jobtype", "scf")
+        g16_available_jobtypes = ["scf", "opt", "freq", "ts", "td", "tda"] # "opt&freq" and "ts&freq" are being implemented
+        if data.jobtype not in g16_available_jobtypes: raise ValueError(f"{data.jobtype} is not implemented")
+
+        # Adds defaults
         if not hasattr(data,"functional"):     data._add_attr("functional", "b3lyp**")
         if not hasattr(data,"basis"):          data._add_attr("basis", "sto-3g")
-        if not hasattr(data,"jobtype"):        data._add_attr("jobtype", "scf")
         if not hasattr(data,"loose_opt"):      data._add_attr("loose_opt", False)
         if not hasattr(data,"tight_opt"):      data._add_attr("tight_opt", False)
         if not hasattr(data,"is_grimme"):      data._add_attr("is_grimme", False)
@@ -204,13 +209,18 @@ def fill_qc_data(data: object, debug: int=0):
             if not hasattr(data,"td_type"):    data._add_attr("td_type", "singlets")  ## Will be ignored if specie.spin > 0
             if not hasattr(data,"td_nstates"): data._add_attr("td_nstates", int(10))
 
-        g16_available_jobtypes = ["opt", "freq", "scf", "td", "tda"]
-        if data.jobtype not in g16_available_jobtypes: raise ValueError(f"{data.jobtype} is not implemented")
+        elif data.jobtype == "ts": 
+            if not hasattr(data,"recalcfc"):   data._add_attr("recalcfc", int(10))
 
     elif data.software == "qe":
+        # Adds default if needed and checks Jobtype
+        if not hasattr(data,"jobtype"):       data._add_attr("jobtype", "scf")
+        qe_available_jobtypes = ["scf", "opt", "relax", "vc-relax", "freq"]
+        if data.jobtype not in qe_available_jobtypes: raise ValueError(f"{data.jobtype} is not implemented")
+
+        # Adds defaults
         if not hasattr(data,"version"):       data._add_attr("version", float(7.0))
         if not hasattr(data,"pp_library"):    data._add_attr("pp_library", "vanderbilt")
-        if not hasattr(data,"jobtype"):       data._add_attr("jobtype", "scf")
         if not hasattr(data,"functional"):    data._add_attr("functional", "pbe")
         if not hasattr(data,"is_hubbard"):    data._add_attr("is_hubbard", False)
         if not hasattr(data,"is_grimme"):     data._add_attr("is_grimme", False)
@@ -225,8 +235,6 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"forc_conv"):     data._add_attr("forc_conv", float(1e-5))
         if not hasattr(data,"elec_conv"):     data._add_attr("elec_conv", float(1e-5))
 
-        qe_available_jobtypes = ["scf", "opt", "relax", "vc-relax", "freq"]
-        if data.jobtype not in qe_available_jobtypes: raise ValueError(f"{data.jobtype} is not implemented")
 
     return data
 

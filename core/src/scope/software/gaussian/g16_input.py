@@ -67,7 +67,12 @@ def gen_g16_input(comp, debug: int=0):
             if   loose_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,loose)")
             elif tight_opt: commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral,VeryTight)")
             else:           commandline.append(" opt=(RecalcFC=30,cartesian,skipdihedral)")
-        elif jobtype == "opt&freq" or jobtype == "freq": commandline.append(" freq(hpmodes)")
+        
+        elif jobtype == "ts":
+            commandline.append(f" opt=(TS,NoEigenTest,RecalcFC={comp.qc_data.recalcfc},Cartesian,SkipDihedral,MaxCycles=300)")
+
+        elif jobtype == "opt&freq" or jobtype == "ts&freq" or jobtype == "freq": 
+            commandline.append(" freq(hpmodes)")
 
         elif jobtype == "td":  
             if not is_unrestricted:  commandline.append(f" td=({comp.qc_data.td_type},nstates={comp.qc_data.td_nstates})")

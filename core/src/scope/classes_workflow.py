@@ -1089,7 +1089,8 @@ class Computation(object):
         worked = reg_energy(self, debug=debug)      # Stores the "last energy of a complete block" to State if it is not None
 
         ## 3-Registration of Optimization, Frequency and TD/TDA Tasks 
-        if 'opt' in self._job.keyword or 'relax' in self._job.keyword:
+        opt_keywords = ['relax', 'vc-relax', 'opt', 'ts']
+        if self._job.keyword in opt_keywords:
             worked = reg_optimization(self, debug=debug)
         elif 'freq' in self._job.keyword: 
             worked = reg_frequencies(self, witheigen=False, debug=debug)

@@ -360,6 +360,7 @@ class State(object):
 #### Connection with VNMs ####
 ##############################
     def check_minimum(self, debug: int=0):
+        ## I think this function could be removed
         if hasattr(self,"isminimum"): 
             if self.isminimum or self.almost_minimum: return True
             else:                                     return False
@@ -377,8 +378,15 @@ class State(object):
     def set_VNMs(self, VNMs):
         self.VNMs       = VNMs
         self.freqs_cm   = [vnm.freq_cm for vnm in VNMs]
+
+        ## Checks if it is a minimum energy structure: all positive frequencies 
         if all(vnm.freq_cm >= 0.0 for vnm in self.VNMs): self.isminimum = True
         else:                                            self.isminimum = False
+
+        ## Checks if it is a TS: only one very negative frequency 
+        if sum(vnm.freq_cm < 0.0 for vnm in self.VNMs) == 1 and min(self.freqs_cm) < -50: self.is_ts = True
+        else:                                                                             self.is_ts = False
+
         ## If it is not a minimum, evaluates if, at least, is close
         if not self.isminimum:
             self.num_neg_freqs = 0
