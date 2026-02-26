@@ -215,7 +215,7 @@ class System_azo(System):
 
         # 1st-searching for trans isomer
         found, trans = self.find_source('trans')
-        if not found: self.create_trans(debug=debug)
+        if not found: trans = self.create_trans(debug=debug)
         
         # Get trans isomer geometry as reference
         labels = trans.labels
@@ -508,7 +508,7 @@ class System_azo(System):
                 if not found: 
                     if debug>0: print(f'SYSTEM_AZO.GET_METS: ')
                     continue
-                if not hasattr(state,'isTS'):
+                if not hasattr(state,'is_ts'):
                     if debug>0: print(f'SYSTEM_AZO.GET_METS: The state for the source {source.name} seems not to be a TS.')
                     continue
                 if not 'Gtot' in state.results.keys():
@@ -533,11 +533,7 @@ class System_azo(System):
                 # Choosing Minimum Energy TS (mets)
                 min_idx = int(np.argmin(ts_values))
                 mets = ts_names[min_idx]        # Name of the METS 
-                # g_cross = ts_values[min_idx]    # hartrees 
-                # if mets == 'trans' or mets == 'cis':
-                #     print(f'AZO.FIND_MIN_TS: No TS optimizations could be found.')
-                #     return None
-                self.mets = self.find_source(mets)
+                self.mets = self.find_source(mets)[1]
                 return self.mets
         else:
             return self.mets 
