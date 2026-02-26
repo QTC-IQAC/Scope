@@ -25,7 +25,9 @@ class System_azo(System):
 
     ######
     def add_source(self, name: str, new_source: object, overwrite: bool=False, debug: int=0):
-        ## Same function than vanilla System class. To make sure that it calls set_initial_state() from the specific Azo-derived classes
+        '''
+        Same function than vanilla System class. To make sure that it calls set_initial_state() from the specific Azo-derived classes
+        '''
 
         ## Source names are de-capitalized and spaces replaced by underscores
         name = name.lower()
