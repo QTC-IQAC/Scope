@@ -8,7 +8,7 @@ from    scope.connectivity                  import *
 from    scope.parse_general                 import search_string, read_lines_file
 from    scope.software.gaussian.g16_parse   import * 
 from    scope.software.gaussian.g16_output  import * 
-from    scope.classes_data                  import *
+from    scope.classes_data                  import Data
 from    scope.classes_qc                    import *
 from    scope_azo.azo_functions             import *
 
@@ -566,16 +566,23 @@ class System_azo(System):
         found, trans_source = self.find_source('trans')
         if not found:       raise Exception('SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Trans source not found.')
         found_state, ground_state = trans_source.find_state(target_state)
-        if not found_state: raise Exception(f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Provided state: {target_state} not found.')
-        if not 'Gtot' in ground_state.results.keys():   raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot for the Minimum Energy Transition State not found.')
+        if not found_state: raise Exception(f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Target state: {target_state} not found.')
+
+        if not 'Gtot' in ground_state.results.keys():   raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot for the Ground State not found.')
         gtot_ground = ground_state.results['Gtot'].value    # Extract Gtot in hartrees
 
         # Getting METS energy value
         mets_source = self.get_mets(target_state, skip_triplets=skip_triplets, overwrite=overwrite, debug=debug)
         found, mets_state = mets_source.find_state(target_state)
-        if not 'Gtot' in mets_state.results.keys(): raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot for the Minimum Energy Transition State not found.')
-        if mets_source.spin == 2: gtot_mets = mets_state.results['Gtot_eff'].value
-        else: gtot_mets = mets_state.results['Gtot'].value
+        if mets_source.spin == 2: 
+            if not 'Gtot_eff' in mets_state.results.keys(): raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot_eff for the Minimum Energy Transition State (METS) not found.')
+            gtot_mets = mets_state.results['Gtot_eff'].value
+        elif mets_source.spin == 0: 
+            if not 'Gtot' in mets_state.results.keys():     raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot for the Minimum Energy Transition State (METS) not found.')
+            gtot_mets = mets_state.results['Gtot'].value
+        else: 
+            if not 'Gtot' in mets_state.results.keys():     raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot for the Minimum Energy Transition State (METS) not found.')
+            gtot_mets = mets_state.results['Gtot'].value
         
         #Computing t05 and k
         t05, k_th = compute_t(gtot_ground, gtot_mets, T)
