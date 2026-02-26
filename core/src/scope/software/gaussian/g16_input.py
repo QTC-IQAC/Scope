@@ -43,6 +43,8 @@ def gen_g16_input(comp, debug: int=0):
         if source.spin > 0: 
             is_unrestricted = True
             commandline.append(" U")
+        else:
+            commandline.append(" ")
 
         ## 2.2-Functional
         if   functional == "pbe":     commandline.append("PBEPBE")
@@ -51,7 +53,7 @@ def gen_g16_input(comp, debug: int=0):
         elif functional == "b3lyp**": commandline.append("B3LYP IOp(3/76=1000001500) IOp(3/77=0720008500) IOp(3/78=0810010000)")
         elif functional == "wb97xd":  commandline.append("wB97XD")
         else: 
-            raise ValueError("G16_INPUT: functional", functional, "not recognized. Implemented are pbe, b3lyp, b3lyp* and b3lyp**")
+            raise ValueError("G16_INPUT: functional", functional, "not recognized. Implemented are pbe, wb97xd, b3lyp, b3lyp* and b3lyp**")
 
         ## 2.3-Basis
         if   basis == "def2sv":    commandline.append(" def2SV")

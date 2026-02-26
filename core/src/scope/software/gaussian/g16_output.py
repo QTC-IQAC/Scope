@@ -37,6 +37,7 @@ class G16_output(object):
     def get_requisites(self):
         if   self.jobtype == 'scf':   self.requisites = ['scf'] 
         elif self.jobtype == 'opt':   self.requisites = ['scf','opt'] 
+        elif self.jobtype == 'ts':    self.requisites = ['scf','opt'] 
         elif self.jobtype == 'freq':  self.requisites = ['scf','freq'] 
         elif self.jobtype == 'td' or self.jobtype == 'tda': self.requisites = ['scf']
         #elif self.jobtype == 'opt-freq': self.requities ??   ## Case to be implemented, when opt and freq are run in the same computation
