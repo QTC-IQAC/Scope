@@ -73,7 +73,7 @@ def solve_dihedral(labels, coord, at0, at1, at2, at3, at4, at5, adjmat_ref, adjn
 ############################
 #### Thermal Properties ####
 ############################
-def compute_t(g_initial:float, g_excited:float,  T:float=298.15):
+def compute_t(g_initial:float, g_excited:float,  T:float=298.15, debug: int=0):
     '''
     Computes half-life time in seconds using Eyring equation.
     
