@@ -545,6 +545,9 @@ class State(object):
         if overwrite or result.key not in self.results.keys():  
             self.results[result.key] = result
 
+    def remove_result(self, key: str):
+        return self.results.pop(key, None)
+
     def set_energy(self, energy, units, overwrite: bool=True):
         self.add_result(Data("energy",energy,units,"state.set_energy()"), overwrite=overwrite)
 

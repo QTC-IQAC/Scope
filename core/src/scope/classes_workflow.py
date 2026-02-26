@@ -37,6 +37,9 @@ class Branch(object):
         result._object = self
         if overwrite or result.key not in self.results.keys():  self.results[result.key] = result
 
+    def remove_result(self, key: str):
+        return self.results.pop(key, None)
+
     #################
     ### Workflows ###
     #################
@@ -177,6 +180,9 @@ class Workflow(object):
     def add_result(self, result: object, overwrite: bool=False):
         result._object = self
         if overwrite or result.key not in self.results.keys():  self.results[result.key] = result
+
+    def remove_result(self, key: str):
+        return self.results.pop(key, None)
 
     ############
     ### JOBS ### 

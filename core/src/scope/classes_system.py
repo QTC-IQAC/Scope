@@ -15,9 +15,9 @@ class System(object):
         self.sources              = []
 
         ## Connection with Computational Workflokw
-        self.results              = dict()
         self.branches             = []
-        self.states               = []
+        ## Results dictionary. Normally, results should be stored in Branch.results
+        self.results              = dict()
 
     ########################################
     #### Results associated with System ####
@@ -26,6 +26,9 @@ class System(object):
         result._object = self
         if overwrite or result.key not in self.results.keys():  
             self.results[result.key] = result
+
+    def remove_result(self, key: str):
+        return self.results.pop(key, None)
 
     ######
     def __repr__(self, indirect: bool=False):
@@ -317,18 +320,6 @@ class System(object):
                                 for idx, comp in enumerate(job.computations):
                                     if comp.run_number == comp_run_number and comp.step == comp_step and comp.keyword.lower() == comp_keyword.lower(): return True, comp
         return False, None
-
-    #########################################
-    ### Functions to Interact with States ###
-    #########################################
-    def add_state(self, state: object, debug: int=0):
-        ## Verifies that a state with the same name does not exist already. If not, appends it
-        for my_state in self.states:
-            if my_state.name == state.name: 
-                found = True
-                print("SYSTEM.ADD_STATE: you're trying to create a state that already exists in _source.")
-                print("SYSTEM.ADD_STATE: use function called 'find_state' instead to retrieve existing state")
-        if not found: self.states.append(state)
 
     ############################################
     ### Functions to Load Simple XYZ Sources ###
