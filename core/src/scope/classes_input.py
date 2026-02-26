@@ -197,7 +197,7 @@ def fill_qc_data(data: object, debug: int=0):
         if data.jobtype not in g16_available_jobtypes: raise ValueError(f"{data.jobtype} is not implemented")
 
         # Adds defaults
-        if not hasattr(data,"functional"):     data._add_attr("functional", "b3lyp**")
+        if not hasattr(data,"functional"):     data._add_attr("functional", "pbe")
         if not hasattr(data,"basis"):          data._add_attr("basis", "sto-3g")
         if not hasattr(data,"loose_opt"):      data._add_attr("loose_opt", False)
         if not hasattr(data,"tight_opt"):      data._add_attr("tight_opt", False)

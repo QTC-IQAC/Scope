@@ -49,6 +49,7 @@ def gen_g16_input(comp, debug: int=0):
         elif functional == "b3lyp":   commandline.append("B3LYP")
         elif functional == "b3lyp*":  commandline.append("B3LYP IOp(3/76=1000002000) IOp(3/77=0720008000) IOp(3/78=0810010000)")
         elif functional == "b3lyp**": commandline.append("B3LYP IOp(3/76=1000001500) IOp(3/77=0720008500) IOp(3/78=0810010000)")
+        elif functional == "wb97xd":  commandline.append("wB97XD")
         else: 
             raise ValueError("G16_INPUT: functional", functional, "not recognized. Implemented are pbe, b3lyp, b3lyp* and b3lyp**")
 
@@ -86,6 +87,7 @@ def gen_g16_input(comp, debug: int=0):
             raise ValueError("G16_INPUT: jobtype", jobtype, "not recognized. Implemented are opt, opt&freq, freq, td, tda and scf")
 
         ## 2.5-Grimme
+        if functional == "wb97xd": comp.qc_data._mod_attr("is_grimme", False)       ## Grimme Disperson Corrections are already implemented in wb97xd
         if comp.qc_data.is_grimme: commandline.append(" EmpiricalDispersion=GD3BJ")
 
         ## 2.6-Integral Grid
