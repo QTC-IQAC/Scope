@@ -2,12 +2,36 @@ import numpy as np
 import math
 from scope.operations.vecs_and_mats import normalize, determinant
 
-######
+#################
+## Translation ##
+#################
+def centercoords(coords: list, atom_idx: int):
+    '''
+    Takes the original coordinates (coords) and applies translation to center the coordinates in a given atom (atom_idx) 
+    '''
+    coords = np.array(coords)
+    origin = coords[atom_idx]
+    return coords - origin
+
+def displace_coords(coords: list, atom_idx: int, point: list=[0,0,0]):
+    '''
+    Takes the original coordinates (coords) and applies translation to move selected atom (atom_idx) to a given point (point)
+    '''
+    coords = np.array(coords)
+    point  = np.array(point)
+    disp   = point - coords[atom_idx] # Displacement vector
+    return coords + disp
+
+##############
+## Distance ##
+##############
 def get_dist(coord1: list, coord2: list) -> float:
     dist = np.linalg.norm(np.array(coord1) - np.array(coord2))
     return float(dist)
 
-#########
+###########
+## Angle ##
+###########
 def get_angle(v1, v2, eps: float=1e-8) -> float:
     """
     Calculates the angle in radians between two vectors.
@@ -27,138 +51,6 @@ def get_angle(v1, v2, eps: float=1e-8) -> float:
     ## To avoid numerical instabilities after normalization
     if np.linalg.norm(v1) < eps or np.linalg.norm(v2) < eps: return 0.0 
     return float(np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0)))
-
-#########
-def get_dihedral(P1, P2, P3, P4, eps: float=1e-8) -> float:
-    """
-    Calculate the dihedral angle (torsion angle) defined by four points in 3D space.
-
-    Given four points P1, P2, P3, and P4, this function computes the signed dihedral angle
-    between the planes formed by (P1, P2, P3) and (P2, P3, P4). The angle is returned in radians,
-    ranging from -π to π.
-
-    Parameters
-    ----------
-    P1, P2, P3, P4 : array-like
-        The coordinates of the four points, each as a 1D array-like of length 3.
-
-    Returns
-    -------
-    angle : float
-        The signed dihedral angle in radians.
-
-    Notes
-    -----
-        The sign of the angle follows the right-hand rule and is determined using the atan2 function.
-        In contrast with get_angle, this function receives points instead of vectors. Be careful
-    """
-    P1, P2, P3, P4 = map(np.asarray, (P1, P2, P3, P4))
-    # Bond vectors
-    b1 = P2 - P1
-    b2 = P3 - P2
-    b3 = P4 - P3
-    # Normalize b2 for projection
-    b2_norm = normalize(b2) 
-    # Normals to the planes
-    n1 = np.cross(b1, b2)
-    n2 = np.cross(b2, b3)
-    # Normalize normals
-    n1 = normalize(n1)
-    n2 = normalize(n2)
-    ## To avoid numerical instabilities after normalization, or cases of collinearity:
-    if np.linalg.norm(n1) < eps or np.linalg.norm(n2) < eps or np.linalg.norm(b2_norm) < eps: return 0.0 
-    # Orthogonal vector to n1 in the plane of rotation
-    m1 = np.cross(n1, b2_norm)
-    # Compute angle using atan2 to get the sign
-    x = np.dot(n1, n2)
-    y = np.dot(m1, n2)
-    angle = float(np.arctan2(y, x))
-    return angle
-
-#########
-def get_planar_distortion(theta: float) -> float:
-    """
-    Calculates the minimum angular distance in radians between the given angle 
-    and the horizontal axis (0 or pi).
-
-    Parameters
-    ----------
-    theta : float or array-like
-        Input angle(s) in radians.
-
-    Returns
-    -------
-    float or ndarray
-        The absolute smallest difference between the input angle and 
-        the nearest horizontal orientation.
-    """
-    mod_theta = np.mod(theta, np.pi)
-    return float(np.minimum(mod_theta, np.pi - mod_theta))
-
-#########
-# Rotation Matrices
-#########
-# 3D rotation matrix along x-axis
-def rot_in_x(theta:float,input_geom:np.ndarray):
-    c, s = math.cos(theta), math.sin(theta)
-    rotx = np.array([[1.0, 0, 0], [0, c, -s], [0, s, c]])
-    output_geom = np.round(np.dot(input_geom, rotx),8)
-    return output_geom
-
-# 3D rotation matrix along y-axis
-def rot_in_y(theta:float,input_geom:np.ndarray):
-    c, s = math.cos(theta), math.sin(theta)
-    roty = np.array([[c, 0, s], [0, 1.0, 0], [-s, 0, c]])
-    output_geom = np.round(np.dot(input_geom,roty),8)
-    return output_geom
-
-# 3D rotation matrix along z-axis
-def rot_in_z(theta:float,input_geom:np.ndarray):
-    c, s = math.cos(theta), math.sin(theta)
-    rotz = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1.0]])
-    output_geom = np.round(np.dot(input_geom, rotz),8)
-    return output_geom
-
-#########
-def centercoords(coords, origin_atom):
-    coords = np.array(coords)
-    origin = coords[origin_atom]
-    return coords - origin
-
-#########
-def displace_coords(coords, origin_atom, new_atom_coords):
-    coords = np.array(coords)
-    new_atom_coords = np.array(new_atom_coords)
-    displacement_vector = new_atom_coords - coords[origin_atom]
-    return coords + displacement_vector
-
-#########
-def put_atoms_on_xy(coord, atom1:int, atom2:int, atom3:int, debug=0):
-    """
-    Applies sequential X, Y, Z rotations to put atom1-atom2 bond on x-axis 
-    and atom3 on xy plane.
-    """
-    # 1. Center geometry at atom2 at (0,0,0)
-    c1 = centercoords(coord, atom2) 
-    
-    # 2. Rotate around Z-axis to eliminate the Y component of atom1
-    v1 = c1[atom1]
-    theta_z = math.atan2(v1[1], v1[0]) 
-    c2 = rot_in_z(theta_z, c1)
-    
-    # 3. Rotate around Y-axis to eliminate the Z component of atom1
-    v1_z = c2[atom1]
-    theta_y = math.atan2(-v1_z[2], v1_z[0])
-    c3 = rot_in_y(theta_y, c2)
-    
-    # 4. Rotate around X-axis to eliminate the Z component of atom3
-    v3_y = c3[atom3]
-    theta_x = math.atan2(v3_y[2], v3_y[1])
-    c4 = rot_in_x(theta_x, c3)
-
-    if debug > 0: 
-        print(f"PUT_ATOMS_ON_XY: Applied rotations (degrees) -> Z: {np.degrees(theta_z):.2f}, Y: {np.degrees(theta_y):.2f}, X: {np.degrees(theta_x):.2f}")
-    return c4
 
 #########
 def set_angle(labels, coord, target_angle: float, atom1: int, atom2: int, atom3: int, debug=0):
@@ -239,6 +131,55 @@ def set_angle(labels, coord, target_angle: float, atom1: int, atom2: int, atom3:
         if idx in atoms_to_move:
             coord_final[idx] = c5[i]
     return coord_final
+
+####################
+## Dihedral Angle ##
+####################
+def get_dihedral(P1, P2, P3, P4, eps: float=1e-8) -> float:
+    """
+    Calculate the dihedral angle (torsion angle) defined by four points in 3D space.
+
+    Given four points P1, P2, P3, and P4, this function computes the signed dihedral angle
+    between the planes formed by (P1, P2, P3) and (P2, P3, P4). The angle is returned in radians,
+    ranging from -π to π.
+
+    Parameters
+    ----------
+    P1, P2, P3, P4 : array-like
+        The coordinates of the four points, each as a 1D array-like of length 3.
+
+    Returns
+    -------
+    angle : float
+        The signed dihedral angle in radians.
+
+    Notes
+    -----
+        The sign of the angle follows the right-hand rule and is determined using the atan2 function.
+        In contrast with get_angle, this function receives points instead of vectors. Be careful
+    """
+    P1, P2, P3, P4 = map(np.asarray, (P1, P2, P3, P4))
+    # Bond vectors
+    b1 = P2 - P1
+    b2 = P3 - P2
+    b3 = P4 - P3
+    # Normalize b2 for projection
+    b2_norm = normalize(b2) 
+    # Normals to the planes
+    n1 = np.cross(b1, b2)
+    n2 = np.cross(b2, b3)
+    # Normalize normals
+    n1 = normalize(n1)
+    n2 = normalize(n2)
+    ## To avoid numerical instabilities after normalization, or cases of collinearity:
+    if np.linalg.norm(n1) < eps or np.linalg.norm(n2) < eps or np.linalg.norm(b2_norm) < eps: return 0.0 
+    # Orthogonal vector to n1 in the plane of rotation
+    m1 = np.cross(n1, b2_norm)
+    # Compute angle using atan2 to get the sign
+    x = np.dot(n1, n2)
+    y = np.dot(m1, n2)
+    angle = float(np.arctan2(y, x))
+    return angle       # In radians
 
 #########
 def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, atom3: int, atom4: int, adjmat=None, adjnum=None,  debug: int=0):
@@ -354,10 +295,126 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
     c6 = displace_coords(c5, atom2, coord[atom2])
     return c6
 
-##############################
-### Former Unit Cell Tools ###
-##############################
-def get_unit_cell_volume(a, b, c, alpha, beta, gamma):
+######
+def solve_dihedral(labels: list, coord: list, at0: int, at1: int, at2: int, at3: int, at4: int, at5: int, adjmat_ref, adjnum_ref, debug: int=0):
+    ## MANEL: He intentat que la funció sigui general:
+    ##        ara calcula el 2 dihedres adjacents al principi i adapta rot_steps i rot_combinations.
+    ##        voldria enviar aquesta funció a CORE, dintre de geometry.py
+    """
+    Sometimes, when modifying the dihedral angle (A) of a molecule, steric clashes appear
+    This function modifies the adjacent dihedral angles of (A) to find a geometry that does not suffer from steric hindrance. 
+    Adjacent dihedral angles are made by atoms:
+        1 - left: (at0-at3)
+        2 - right: (at2-at5)
+
+    Combinations are done in a grid of 64x64 steps, from -180 to 180 degrees.
+    The first valid combination is returned. 
+    """
+    from itertools import product
+    ## Creates list of values that will be evaluated
+    rot_steps               = np.linspace(-180,180, 64).astype(int)           
+
+    ## Computes left and right dihedral angles 
+    left_dih  = np.degrees(get_dihedral(coord[at0],coord[at1],coord[at2],coord[at3]))
+    right_dih = np.degrees(get_dihedral(coord[at2],coord[at3],coord[at4],coord[at5]))
+    if debug>0: print(f'SOLVE_DIHEDRAL: Original adjacent dihedral angles {left_dih=}, {right_dih=}')
+
+    rot_steps_ordered_left  = rot_steps[np.argsort(np.abs(rot_steps - left_dih))]
+    rot_steps_ordered_right = rot_steps[np.argsort(np.abs(rot_steps - right_dih))]
+    rot_combinations = list(product(rot_steps_ordered_left, rot_steps_ordered_right))
+
+    worked = False
+    for angle1, angle2 in rot_combinations:
+        if debug>0: print(f'SOLVE_DIHEDRAL: Trying {angle1=} {angle2=}')
+        new_coord = set_dihedral(labels, coord, angle1, at0,at1,at2,at3, adjmat=adjmat_ref, adjnum=adjnum_ref)      # Sending original coords
+        new_coord = set_dihedral(labels, new_coord, angle2, at2,at3,at4,at5, adjmat=adjmat_ref, adjnum=adjnum_ref)  # Sending coords after first modification above
+
+        # Gets the adjacency matrix of the new coordinates, to check wether the original connectivity is preserved (i.e., no steric clashes)
+        _, adjmat_try, adjnum_try = get_adjmatrix(labels,new_coord)
+        is_same = np.array_equal(adjmat_try, adjmat_ref) and np.array_equal(adjnum_try, adjnum_ref)
+        if is_same:
+            if debug != 0: print(f'SOLVE_DIHEDRAL: Found good geometry by rotating adjacent dihedrals to {angle1=} {angle2=}')
+            worked = True
+            return worked, new_coord
+    print(f"SOLVE_DIHEDRAL: Couldn't find good geometry. Returning original coordinates.")
+    return worked, coord
+
+#########
+def get_planar_distortion(theta: float) -> float:
+    """
+    Calculates the minimum angular distance in radians between the given angle 
+    and the horizontal axis (0 or pi).
+
+    Parameters
+    ----------
+    theta : float or array-like
+        Input angle(s) in radians.
+
+    Returns
+    -------
+    float or ndarray
+        The absolute smallest difference between the input angle and 
+        the nearest horizontal orientation.
+    """
+    mod_theta = np.mod(theta, np.pi)
+    return float(np.minimum(mod_theta, np.pi - mod_theta))
+
+#######################
+## Rotation Matrices ##
+#######################
+# 3D rotation matrix along x-axis
+def rot_in_x(theta:float,input_geom:np.ndarray):
+    c, s = math.cos(theta), math.sin(theta)
+    rotx = np.array([[1.0, 0, 0], [0, c, -s], [0, s, c]])
+    output_geom = np.round(np.dot(input_geom, rotx),8)
+    return output_geom
+
+# 3D rotation matrix along y-axis
+def rot_in_y(theta:float,input_geom:np.ndarray):
+    c, s = math.cos(theta), math.sin(theta)
+    roty = np.array([[c, 0, s], [0, 1.0, 0], [-s, 0, c]])
+    output_geom = np.round(np.dot(input_geom,roty),8)
+    return output_geom
+
+# 3D rotation matrix along z-axis
+def rot_in_z(theta:float,input_geom:np.ndarray):
+    c, s = math.cos(theta), math.sin(theta)
+    rotz = np.array([[c, -s, 0], [s, c, 0], [0, 0, 1.0]])
+    output_geom = np.round(np.dot(input_geom, rotz),8)
+    return output_geom
+
+#########
+def put_atoms_on_xy(coord: list, at1: int, at2: int, at3: int, debug=0):
+    """
+    Applies sequential X, Y, Z rotations to put at1-at2 bond on x-axis 
+    and at3 on xy plane.
+    """
+    # 1. Center geometry at at2 at (0,0,0)
+    c1 = centercoords(coord, at2) 
+    
+    # 2. Rotate around Z-axis to eliminate the Y component of at1
+    v1 = c1[at1]
+    theta_z = math.atan2(v1[1], v1[0]) 
+    c2 = rot_in_z(theta_z, c1)
+    
+    # 3. Rotate around Y-axis to eliminate the Z component of at1
+    v1_z = c2[at1]
+    theta_y = math.atan2(-v1_z[2], v1_z[0])
+    c3 = rot_in_y(theta_y, c2)
+    
+    # 4. Rotate around X-axis to eliminate the Z component of at3
+    v3_y = c3[at3]
+    theta_x = math.atan2(v3_y[2], v3_y[1])
+    c4 = rot_in_x(theta_x, c3)
+
+    if debug > 0: 
+        print(f"PUT_ATOMS_ON_XY: Applied rotations (degrees) -> Z: {np.degrees(theta_z):.2f}, Y: {np.degrees(theta_y):.2f}, X: {np.degrees(theta_x):.2f}")
+    return c4
+
+###############
+## Unit Cell ##
+###############
+def get_unit_cell_volume(a: float, b: float, c: float, alpha: float, beta: float, gamma: float):
     # I know alpha and gamma are not used, but that way it is just simpler to execute as:
     # get_unit_cell_volume(*cell_parameters)
     return float(a*b*c*np.sin(np.deg2rad(beta)))
@@ -396,6 +453,7 @@ def cellparam_2_cellvec(*args) -> list:
     v3 = np.array([cx, cy, cz])
     return list([v1, v2, v3])
 
+######
 def cellvec_2_cellparam(cellvec):
     a = np.linalg.norm(cellvec[0])
     b = np.linalg.norm(cellvec[1])
