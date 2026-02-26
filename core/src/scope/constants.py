@@ -30,7 +30,6 @@ angs2bohr       = 1/bohr2angs
 
 # Energy
 har2kJmol       = 2625.5002
-kJmol2har       = 1/har2kJmol
 har2cm          = 219474.6
 har2eV          = 27.211399
 eV2har          = 0.03674930495
@@ -38,6 +37,9 @@ cm2har          = 0.000004556335281
 ry2har          = 0.5
 amu2au          = 1822.888486  # 1 amu in atomic units
 kcal2kJmol      = 4.184
+
+# Energy Inverse
+kJmol2har       = 1/har2kJmol
 kJmol2kcal      = 1/kcal2kJmol
 
 ### Derived Factors. Always to be applied as multiplications
