@@ -599,8 +599,8 @@ class Job(object):
             new_comp.qc_data = deepcopy(comp.qc_data)
             new_comp.set_name()
             new_comp.set_paths()
-            new_comp.qc_data._mod_attr("recalcfc","calcall") 
-            print("JOB.SET_CONTINUATION_COMP: recalcFC set to", new_comp.qc_data.recalcfc)
+            new_comp.qc_data._mod_attr("fctype","calcall")
+            print("JOB.SET_CONTINUATION_COMP: recalcFC changed to calcAll")
             update_fstate = False ## In TS searches, it is preferable to retry from istate, rather than continuing from fstate
 
         elif typ == "scf":

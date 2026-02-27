@@ -67,12 +67,26 @@ def gen_g16_input(comp, debug: int=0):
 
         ## 2.4-Jobtype
         if jobtype == "opt" or jobtype == "opth" or jobtype == "opt&freq": 
-            if   loose_opt: commandline.append(f" opt=(RecalcFC={comp.qc_data.recalcfc},cartesian,skipdihedral,loose)")
-            elif tight_opt: commandline.append(f" opt=(RecalcFC={comp.qc_data.recalcfc},cartesian,skipdihedral,VeryTight)")
-            else:           commandline.append(f" opt=(RecalcFC={comp.qc_data.recalcfc},cartesian,skipdihedral)")
+            if comp.qc_data.fctype == 'recalcfc':
+                if   loose_opt: commandline.append(f" opt=(RecalcFC={comp.qc_data.recalcfc},cartesian,skipdihedral,loose)")
+                elif tight_opt: commandline.append(f" opt=(RecalcFC={comp.qc_data.recalcfc},cartesian,skipdihedral,VeryTight)")
+                else:           commandline.append(f" opt=(RecalcFC={comp.qc_data.recalcfc},cartesian,skipdihedral)")
+            elif comp.qc_data.fctype == 'calcall':
+                if   loose_opt: commandline.append(f" opt=(CalcAll,cartesian,skipdihedral,loose)")
+                elif tight_opt: commandline.append(f" opt=(CalcAll,cartesian,skipdihedral,VeryTight)")
+                else:           commandline.append(f" opt=(CalcAll,cartesian,skipdihedral)")
+            elif comp.qc_data.fctype == 'calcfc':
+                if   loose_opt: commandline.append(f" opt=(CalcFC,cartesian,skipdihedral,loose)")
+                elif tight_opt: commandline.append(f" opt=(CalcFC,cartesian,skipdihedral,VeryTight)")
+                else:           commandline.append(f" opt=(CalcFC,cartesian,skipdihedral)")
         
         elif jobtype == "ts":
-            commandline.append(f" opt=(TS,NoEigenTest,RecalcFC={comp.qc_data.recalcfc},Cartesian,SkipDihedral,MaxCycles=300)")
+            if comp.qc_data.fctype == 'recalcfc':
+                commandline.append(f" opt=(TS,NoEigenTest,RecalcFC={comp.qc_data.recalcfc},Cartesian,SkipDihedral,MaxCycles=300)")
+            elif comp.qc_data.fctype == 'calcall':
+                commandline.append(f" opt=(TS,NoEigenTest,CalcAll,Cartesian,SkipDihedral,MaxCycles=300)")
+            elif comp.qc_data.fctype == 'calcfc':
+                commandline.append(f" opt=(TS,NoEigenTest,CalcFC,Cartesian,SkipDihedral,MaxCycles=300)")
 
         elif jobtype == "opt&freq" or jobtype == "ts&freq" or jobtype == "freq": 
             commandline.append(" freq(hpmodes)")
