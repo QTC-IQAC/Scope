@@ -176,17 +176,13 @@ class System_azo(System):
 
         Parameters
         ----------
-            self: System_azo object
-                System_azo object where the trans isomer will be stored.
-            overwrite: bool
-                In case the source already has a "trans" isomer, whether it should overwrite it. 
-            debug: int
-                Debug level. 0: no debug, 1: verbose debug
+            self: System_azo        System_azo object where the trans isomer will be stored.
+            overwrite: bool         In case the source already has a "trans" isomer, whether it should overwrite it. 
+            debug: int              Debug level. 0: no debug, 1: verbose debug
 
         Returns
         -------
-            trans: Molecule_azo
-                Molecule_azo object containing the trans isomer.
+            trans: Molecule_azo     Molecule_azo object containing the trans isomer.
         '''
 
         if debug > 0: print(f"AZO.CREATE_TRANS: Creating trans isomer for {self.name}")
@@ -218,7 +214,7 @@ class System_azo(System):
         return trans
 
     ######
-    def create_cis(self, target_deg: float=40.0, max_iter: int=2000, overwrite: bool=False, debug: int=0):
+    def create_cis(self, target_deg: float=40.0, overwrite: bool=False, debug: int=0):
         '''
         Creates the cis structure of the azo compound from a SMILES string. To avoid troubles in 3D geometry creation using openbabel, 
         The trans isomer is first created using create_trans() function. Then, it sets up the cis isomer and stores it as source of the System_azo object. 
@@ -227,7 +223,7 @@ class System_azo(System):
         --------
         - Find or create trans isomer.
         - Get indices of atoms relevant to dihedral adjustment.
-        - Move the azo dihedral angle close to the target angle.
+        - Move the azo dihedral angle to the target angle.
         - If there is steric hindrance, tries to solve it by moving adjacent rings.
         - If steric hindrance cannot be solved, returns None.
         - If it is solved, structure is saved to a Molecule_azo object with an 'initial' State. 
@@ -235,13 +231,13 @@ class System_azo(System):
         Parameters
         ----------
         target_deg: float       Target dihedral angle (in degrees). Default is 40º 
-        max_iter: int           Maximum number of iterations to solve steric hindrance.
-        overwrite: bool         In case the System alread has a "cis" source, whether it should overwrite it. 
+        overwrite: bool         In case the System already has a "cis" source, whether it should overwrite it. 
         debug: int              Debug level. 0: no, 1: verbose 
 
         Returns
         -------
         cis: Molecule_azo       Molecule_azo object containing the cis isomer.
+
         '''
 
         # 1st-searching for trans isomer
@@ -263,44 +259,34 @@ class System_azo(System):
         current_deg = np.degrees(get_dihedral(coord[at1],coord[at2],coord[at3],coord[at4])) # Initial dihedral angle
         if debug > 0: print(f"AZO.CREATE_CIS: Initial dihedral angle: {current_deg} degrees")
 
-        # Pre-Rotation. Getting dihedral close to target slowly
-        ## MANEL: m'has d'explicar perque es necessari aquest block (linies 267-278). També he definit jump_length, per evitar fixar-lo a 1. Es podria fer mes gran?
-        jump_length = 1
-        if abs(current_deg - target_deg) >= 5:
-            if debug > 0: print(f"AZO.CREATE_CIS: current dihedral {abs(current_deg)} is further than {target_deg+5} degrees from target. Adjusting...")
-            jump_target = target_deg+jump_length if current_deg > 0 else -target_deg-jump_length
-            if debug > 0: print(f"AZO.CREATE_CIS: Jumping to {jump_target} degrees")
-            if debug > 0: print(f"AZO.CREATE_CIS: Selected atoms: {at1}, {at2}, {at3}, {at4}")
-            coord_next = set_dihedral(labels, coord, jump_target, at1,at2,at3,at4,adjmat=adjmat_ref, adjnum=adjnum_ref)
-            angle_next = np.degrees(get_dihedral(coord_next[at1],coord_next[at2],coord_next[at3],coord_next[at4]))
-            if debug > 0:  print(f"AZO.CREATE_CIS: Changed dihedral in {self.name} from {current_deg} to {angle_next}, it should be near +-{target_deg}")
-            _, adjmat_cis, adjnum_cis = get_adjmatrix(labels,coord_next)
-        else:
-            _, adjmat_cis, adjnum_cis = get_adjmatrix(labels,coord)
+        # Pre-Rotation. Setting dihedral to target
+        if debug > 0: print(f"AZO.CREATE_CIS: Jumping to {target_deg} degrees. Selected atoms: {at1}, {at2}, {at3}, {at4}")
+        coord_next = set_dihedral(labels, coord, target_deg, at1,at2,at3,at4,adjmat=adjmat_ref, adjnum=adjnum_ref)
+        angle_next = np.degrees(get_dihedral(coord_next[at1],coord_next[at2],coord_next[at3],coord_next[at4]))
+        if debug > 0:  print(f"AZO.CREATE_CIS: Changed dihedral in {self.name} from {current_deg} to {angle_next}, it should be near +-{target_deg}")
 
+        # Get the adjacency matrix after rotating dihedral for comparison.
+        _, adjmat_cis, adjnum_cis = get_adjmatrix(labels,coord_next)
+
+        # Ensure atomic connectivity remains intact after dihedral modification. 
         matrices_match = np.array_equal(adjmat_cis, adjmat_ref) and np.array_equal(adjnum_cis, adjnum_ref)
         if debug > 0: print(f"AZO.CREATE_CIS: Matrices match: {matrices_match}")
-
-        found_geometry = False 
         if matrices_match:
             coord = coord_next
             current_deg = angle_next
-            if debug > 0: print(f"AZO.CREATE_CIS: Angle {current_deg:.2f} (OK)")
-            if abs(current_deg) <= (target_deg + 5):
-                found_geometry = True
+            if debug > 0: print(f"AZO.CREATE_CIS: Angle {current_deg:.2f} (OK). Saving it as source")
+
+        # Connectivity change indicates steric clashes. Attempt to resolve by rotating adjacent rings.
         else:
             fixed_collision, coord = solve_dihedral(labels, coord_next, at0, at1, at2, at3, at4, at5, adjmat_ref=adjmat_ref, adjnum_ref=adjnum_ref,debug=debug)
             current_deg = np.degrees(get_dihedral(coord[at1],coord[at2],coord[at3],coord[at4]))
             if debug > 0: print(f"AZO.CREATE_CIS: Fixed collision: {fixed_collision}")
+            # If the collision is fixed by rotating adjacent rings and the target dihedral remains almost the same 
             if abs(current_deg) <= (target_deg + 5) and fixed_collision:
-                if debug > 0: print(f"AZO.CREATE_CIS: Angle {current_deg:.2f} (OK)")
-                found_geometry = True
-                if debug > 0: print(f'AZO.CREATE_CIS: Found good geometry for {self.name} by rotating adjacent dihedrals')
+                if debug > 0: print(f'AZO.CREATE_CIS: Found good geometry for {self.name} with angle {current_deg:.2f} by rotating adjacent dihedrals')
             else: 
-                if debug > 0: print(f'AZO.CREATE_CIS: Failed to find good geometry for {self.name} by rotating adjacent dihedrals')
-        
-        if not found_geometry: 
-            raise Exception(f'AZO.CREATE_CIS: Target dihedral for {self.name} could not be reached. Reached max. iterations: {max_iter}.')
+                if debug > 0: print(f'AZO.CREATE_CIS: Failed to find good geometry for {self.name}.')
+                return None
 
         # Here, it means it found a good geometry for the cis isomer, without clashes
         coord = centercoords(coord, at1)

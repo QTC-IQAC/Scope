@@ -297,9 +297,6 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
 
 ######
 def solve_dihedral(labels: list, coord: list, at0: int, at1: int, at2: int, at3: int, at4: int, at5: int, adjmat_ref, adjnum_ref, debug: int=0):
-    ## MANEL: He intentat que la funció sigui general:
-    ##        ara calcula el 2 dihedres adjacents al principi i adapta rot_steps i rot_combinations.
-    ##        voldria enviar aquesta funció a CORE, dintre de geometry.py
     """
     Sometimes, when modifying the dihedral angle (A) of a molecule, steric clashes appear
     This function modifies the adjacent dihedral angles of (A) to find a geometry that does not suffer from steric hindrance. 
