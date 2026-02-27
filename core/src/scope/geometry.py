@@ -311,6 +311,8 @@ def solve_dihedral(labels: list, coord: list, at0: int, at1: int, at2: int, at3:
     The first valid combination is returned. 
     """
     from itertools import product
+    from scope.connectivity   import get_adjmatrix
+    
     ## Creates list of values that will be evaluated
     rot_steps               = np.linspace(-180,180, 64).astype(int)           
 
