@@ -68,9 +68,9 @@ def gen_g16_input(comp, debug: int=0):
         ## 2.4-Jobtype
         if jobtype == "opt" or jobtype == "opth" or jobtype == "opt&freq": 
             if comp.qc_data.fctype == 'recalcfc':
-                if   loose_opt: commandline.append(f" opt=(RecalcFC={comp.qc_data.recalcfc},cartesian,skipdihedral,loose)")
-                elif tight_opt: commandline.append(f" opt=(RecalcFC={comp.qc_data.recalcfc},cartesian,skipdihedral,VeryTight)")
-                else:           commandline.append(f" opt=(RecalcFC={comp.qc_data.recalcfc},cartesian,skipdihedral)")
+                if   loose_opt: commandline.append(f" opt=(RecalcFC={comp.qc_data.recalc_steps},cartesian,skipdihedral,loose)")
+                elif tight_opt: commandline.append(f" opt=(RecalcFC={comp.qc_data.recalc_steps},cartesian,skipdihedral,VeryTight)")
+                else:           commandline.append(f" opt=(RecalcFC={comp.qc_data.recalc_steps},cartesian,skipdihedral)")
             elif comp.qc_data.fctype == 'calcall':
                 if   loose_opt: commandline.append(f" opt=(CalcAll,cartesian,skipdihedral,loose)")
                 elif tight_opt: commandline.append(f" opt=(CalcAll,cartesian,skipdihedral,VeryTight)")
@@ -82,7 +82,7 @@ def gen_g16_input(comp, debug: int=0):
         
         elif jobtype == "ts":
             if comp.qc_data.fctype == 'recalcfc':
-                commandline.append(f" opt=(TS,NoEigenTest,RecalcFC={comp.qc_data.recalcfc},Cartesian,SkipDihedral,MaxCycles=300)")
+                commandline.append(f" opt=(TS,NoEigenTest,RecalcFC={comp.qc_data.recalc_steps},Cartesian,SkipDihedral,MaxCycles=300)")
             elif comp.qc_data.fctype == 'calcall':
                 commandline.append(f" opt=(TS,NoEigenTest,CalcAll,Cartesian,SkipDihedral,MaxCycles=300)")
             elif comp.qc_data.fctype == 'calcfc':

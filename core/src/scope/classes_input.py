@@ -210,9 +210,10 @@ def fill_qc_data(data: object, debug: int=0):
             if not hasattr(data,"td_nstates"): data._add_attr("td_nstates", int(10))
 
         elif data.jobtype == "ts" or data.jobtype == "opt": 
+            ## Default is recalcFC=30
             if not hasattr(data,"fctype"):     
                 data._add_attr("fctype","recalcfc")
-                if not hasattr(data,"recalcfc"): data._add_attr("recalcfc", int(30))
+                if not hasattr(data,"recalc_steps"): data._add_attr("recalc_steps", int(30))
 
     elif data.software == "qe":
         # Adds default if needed and checks Jobtype
