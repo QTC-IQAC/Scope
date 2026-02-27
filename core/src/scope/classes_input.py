@@ -210,7 +210,9 @@ def fill_qc_data(data: object, debug: int=0):
             if not hasattr(data,"td_nstates"): data._add_attr("td_nstates", int(10))
 
         elif data.jobtype == "ts": 
-            if not hasattr(data,"recalcfc"):   data._add_attr("recalcfc", int(10))
+            if not hasattr(data,"recalcfc"):   data._add_attr("recalcfc", int(30))
+            else:
+                if data.recalcfc == int(0):    data._mod_attr("recalcfc", "calcall")
 
     elif data.software == "qe":
         # Adds default if needed and checks Jobtype

@@ -3,7 +3,7 @@ from copy import deepcopy
 from datetime import datetime
 from scope.classes_environment        import * 
 from scope.classes_state              import State, find_state
-from scope.operations.dicts_and_lists import where_in_array, extract_from_list
+from scope.operations.dicts_and_lists import where_in_array
 from scope.register_data              import reg_general, reg_optimization, reg_frequencies, reg_energy, reg_excited_states
 from scope.parse_general              import read_lines_file
 
@@ -579,25 +579,36 @@ class Job(object):
         comp.has_update = True
         if debug > 1: print("Set_Continuation_Comp: Creating new computation to continue job. Type:", typ, "Path:", comp.path)
     
+        # 0-We make sure that the new_run does not exist. If so, we return it directly:
+        exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step, run_number=comp.run_number+1)
+        if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
+
         ###############################
         ## Operates Depending on typ ##
         ###############################
         if typ == "opt":
-            # 0-We make sure that the new_run does not exist. If so, we return it directly:
-            exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step, run_number=comp.run_number+1)
-            if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
             new_comp = self.add_computation(comp.qc_data, comp.step, comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
             new_comp.qc_data = deepcopy(comp.qc_data)
             new_comp.set_name()
             new_comp.set_paths()
+            update_fstate = True
+
+        elif typ == "ts":
+            ## In TS searches, if it doesn't work the first time, we go for calcAll
+            new_comp = self.add_computation(comp.qc_data, comp.step, comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
+            new_comp.qc_data = deepcopy(comp.qc_data)
+            new_comp.set_name()
+            new_comp.set_paths()
+            new_comp.qc_data._mod_attr("recalcfc","calcall") 
+            print("JOB.SET_CONTINUATION_COMP: recalcFC set to", new_comp.qc_data.recalcfc)
+            update_fstate = False ## In TS searches, it is preferable to retry from istate, rather than continuing from fstate
 
         elif typ == "scf":
-            exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step, run_number=comp.run_number+1)
-            if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
             new_comp = self.add_computation(comp.qc_data, comp.step, comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
             new_comp.qc_data = deepcopy(comp.qc_data)
             new_comp.set_name()
             new_comp.set_paths()
+            update_fstate = True
             # If scf has failed with quantum espresso, it is worth trying a different mixing_beta value 
             if new_comp.qc_data.software == "qe":
                 import random
@@ -607,49 +618,46 @@ class Job(object):
                     new_value = round(random.uniform(0.2,0.8), 2)
                     if new_value != old_value: updated = True
                 new_comp.qc_data._mod_attr("mix_beta",new_value)
-                print("Set_Continuation_Comp: Mixing Beta changed to:", new_comp.qc_data.mix_beta)
+                print("JOB.SET_CONTINUATION_COMP: Mixing Beta changed to:", new_comp.qc_data.mix_beta)
 
         elif typ == "rep_opt":
-            exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step+1, run_number=1)
-            if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
-            new_comp = self.add_computation(comp.qc_data, comp.step+1, comp.path, comp_keyword=comp.keyword, is_update=False, debug=debug)
+            new_comp            = self.add_computation(comp.qc_data, comp.step+1, comp.path, comp_keyword=comp.keyword, is_update=False, debug=debug)
             new_comp.qc_data    = deepcopy(comp.qc_data)
-            #new_comp.filename   = deepcopy(comp.filename)   # Filename contains how the file must be named (e.g. refcode+suffix+step+run_number...)
             new_comp.step       = comp.step + 1
             new_comp.set_name()
             new_comp.set_paths()
-            print(f"Set_Continuation_Comp: Repetitive Optimization Created with {new_comp.name=}")
+            update_fstate = True
+            print(f"JOB.SET_CONTINUATION_COMP: Repetitive Optimization Created with {new_comp.name=}")
 
-        else:
-            print(f"Set_Continuation_Comp: received unknown type of continuation computation: {typ=}"); return None
+        else: raise ValueError(f"JOB.SET_CONTINUATION_COMP: received unknown type of continuation computation: {typ=}")
 
-        print(f"Set_Continuation_Comp: set new computation with {new_comp.run_number=} and {new_comp.step=}")
+        print(f"JOB.SET_CONTINUATION_COMP: set new computation with {new_comp.run_number=} and {new_comp.step=}")
     
         ######
         ## Irrespectively of typ, the new computation will continue from the fstate, which should contain the latest available geometry and properties
         #####
         if  hasattr(comp.qc_data,"fstate"):
             iscorrect = comp.verify_state(comp.qc_data.fstate, target='opt')
-            if iscorrect:
+            if iscorrect and update_fstate:
                 new_comp.qc_data._add_attr("istate",comp.qc_data.fstate)
                 new_comp.qc_data._add_attr("fstate",comp.qc_data.fstate)
-                print("Set_Continuation_Comp: istate of new computation is modified to", new_comp.qc_data.istate)
-                print("Set_Continuation_Comp: fstate of new computation is modified to", new_comp.qc_data.fstate)
+                print("JOB.SET_CONTINUATION_COMP: istate of new computation is modified to", new_comp.qc_data.istate)
+                print("JOB.SET_CONTINUATION_COMP: fstate of new computation is modified to", new_comp.qc_data.fstate)
             else: 
-                print("Set_Continuation_Comp: istate of new computation remains as:", new_comp.qc_data.istate)
-                print("Set_Continuation_Comp: fstate of new computation remains as:", new_comp.qc_data.fstate)
+                print("JOB.SET_CONTINUATION_COMP: istate of new computation remains as:", new_comp.qc_data.istate)
+                print("JOB.SET_CONTINUATION_COMP: fstate of new computation remains as:", new_comp.qc_data.fstate)
 
-        ## In theory, this elif block could be removed
-        elif hasattr(self,"fstate"):
-            iscorrect = comp.verify_state(self.fstate, target='opt')
-            if iscorrect:
-                new_comp.qc_data._add_attr("istate",self.fstate)
-                new_comp.qc_data._add_attr("fstate",self.fstate)
-                print("Set_Continuation_Comp: istate of new computation is modified to", new_comp.qc_data.istate)
-                print("Set_Continuation_Comp: fstate of new computation is modified to", new_comp.qc_data.fstate)
-            else:
-                print("Set_Continuation_Comp: istate of new computation remains as:", new_comp.qc_data.istate)
-                print("Set_Continuation_Comp: fstate of new computation remains as:", new_comp.qc_data.fstate)
+        ### In theory, this elif block could be removed
+        #elif hasattr(self,"fstate"):
+        #    iscorrect = comp.verify_state(self.fstate, target='opt')
+        #    if iscorrect:
+        #        new_comp.qc_data._add_attr("istate",self.fstate)
+        #        new_comp.qc_data._add_attr("fstate",self.fstate)
+        #        print("Set_Continuation_Comp: istate of new computation is modified to", new_comp.qc_data.istate)
+        #        print("Set_Continuation_Comp: fstate of new computation is modified to", new_comp.qc_data.fstate)
+        #    else:
+        #        print("Set_Continuation_Comp: istate of new computation remains as:", new_comp.qc_data.istate)
+        #        print("Set_Continuation_Comp: fstate of new computation remains as:", new_comp.qc_data.fstate)
     
         return new_comp
 
