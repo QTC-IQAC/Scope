@@ -690,11 +690,13 @@ class State(object):
         if hasattr(self,"labels"):         to_print += f' Labels                = {self.labels[0]}...\n'
         if hasattr(self,"coord"):          to_print += f' Coord                 = {self.coord[0]}...\n'
         if hasattr(self,"z"):              to_print += f' Number of Units (Z)   = {self.z}\n' 
-
+        to_print += f'\n' 
         if hasattr(self,"VNMs"):           to_print += f' Has VNMs              = YES\n'
         if hasattr(self,"isminimum"):      to_print += f' Is Minimum            = {self.isminimum}\n'
-        if hasattr(self,"almost_minimum"): to_print += f' Almost a Minimum      = {self.almost_minimum}\n'
-        if hasattr(self,"freqs_cm"):       to_print += f' First Frequency (cm-1)= {self.freqs_cm[0]}...\n'
+        if hasattr(self,"almost_minimum"): to_print += f' Is Almost a Minimum   = {self.almost_minimum}\n'
+        if hasattr(self,"is_ts"):          to_print += f' Is a Transition State = {self.is_ts}\n'
+        if hasattr(self,"freqs_cm"):       to_print += f' First Frequency (cm-1)= {self.freqs_cm[0]}\n'
+        to_print += f'\n' 
 
         if hasattr(self,"exc_states"):     to_print += f' Has Excited States    = YES\n'
 
