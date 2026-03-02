@@ -1,7 +1,7 @@
 import numpy as np
 from    math                                import log as ln
 import  scope.constants                     as Constants
-from    scope.classes_data                  import Data
+from    scope.classes_data                  import Data, Collection
 from    scope.classes_system                import System
 from    scope.classes_state                 import State, find_state
 from    scope.classes_specie                import Molecule
@@ -509,7 +509,7 @@ class System_azo(System):
     #######################
     ## Thermal Stability ##
     #######################
-    def get_mets(self, temp: float=298, target_state: str='opt', skip_triplets: bool=False, debug: int=0):
+    def get_mets(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, debug: int=0):
 
         ts_names    = []
         ts_energies = []
@@ -533,17 +533,17 @@ class System_azo(System):
                 if debug > 0: print(f'SYSTEM_AZO.GET_METS: Found Triplet Minimum: {sou.name}, spin: {sou.spin}')
                 if not 'Gtot_eff' in state.results.keys(): 
                     print(f'SYSTEM_AZO.GET_METS: [WARNING] Gtot not found for State={state.name} of source={sou.name}. Computing')
-                    state.correct_tripletG(temp=temp, debug=debug).convert_to_units("au").value  
+                    state.correct_tripletG(temp=temp, debug=debug)
                 # Searches specific Gtot(T) entry
-                energy = state.results['Gtot_eff'].value
+                energy = state.results['Gtot_eff'].find_value_with_property("temperature", temp)             
                 if energy is None: 
                     state.correct_tripletG(temp=temp, debug=debug)
                 # Now it should exists for sure
-                energy = state.results['Gtot_eff'].value
+                energy = state.results['Gtot_eff'].find_value_with_property("temperature", temp)             
                 if energy is None: 
                     raise Exception (f'SYSTEM_AZO.GET_METS: Could not fint Gtot_eff({temp}) for {sou.name}.')
                 # Gets Value (energy) is a Data class
-                energy = state.results['Gtot_eff'].convert_to_units("au").value                              
+                energy = state.results['Gtot_eff'].find_value_with_property("temperature", temp).convert_to_units("au").value              
                 ts_names.append(sou.name)
                 ts_energies.append(energy)
 
@@ -560,11 +560,11 @@ class System_azo(System):
                 # Searches Gtot entry
                 if debug > 0: print(f'SYSTEM_AZO.GET_METS: Found Singlet TS: {sou.name}, spin: {sou.spin}')
                 if not 'Gtot' in state.results.keys(): 
-                    state.get_thermal_data(Trange=range(temp-5,temp+5,1))     
+                    state.get_thermal_data(temp=temp)
                 # Searches specific Gtot(T) entry
                 energy = state.results['Gtot'].find_value_with_property("temperature", temp)             
                 if energy is None: 
-                    state.get_thermal_data(Trange=range(temp-5,temp+5,1))     
+                    state.get_thermal_data(temp=temp)
                 # Now it should exists for sure
                 energy = state.results['Gtot'].find_value_with_property("temperature", temp)             
                 if energy is None: 
@@ -605,7 +605,7 @@ class System_azo(System):
             print(self.name, self.dE, "kJ/mol. Negative means trans is more stable")
         return self.dE
 
-    def get_trans_halflife_time(self, target_state: str='opt', skip_triplets: bool=False, temp: float=298, debug: int=0):
+    def get_trans_halflife_time(self, target_state: str='opt', skip_triplets: bool=False, temp: float=298.15, debug: int=0):
         '''
         
         '''
@@ -616,11 +616,11 @@ class System_azo(System):
 
         # Getting the energy of the Trans isomer
         if not 'Gtot' in ground_state.results.keys(): 
-            ground_state.get_thermal_data(Trange=range(temp-5,temp+5,1)) ## If not available, computes it
+            ground_state.get_thermal_data(temp=temp) ## If not available, computes it
         # Searches specific Gtot(T) entry
         Gtot_T = ground_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
         if Gtot_T is None: 
-            ground_state.get_thermal_data(Trange=range(temp-5,temp+5,1)) ## If not available, computes it
+            ground_state.get_thermal_data(temp=temp) ## If not available, computes it
         # Now it should exists for sure
         Gtot_T = ground_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
         if Gtot_T is None: 
@@ -653,7 +653,7 @@ class System_azo(System):
         return self.results['trans_halflife_time']
         
     ######
-    def get_cis_halflife_time(self, target_state: str='opt', skip_triplets: bool=False, temp: float=298, debug: int=0):
+    def get_cis_halflife_time(self, target_state: str='opt', skip_triplets: bool=False, temp: float=298.15, debug: int=0):
         '''
         
         '''
@@ -664,11 +664,11 @@ class System_azo(System):
 
         # Getting the energy of the cis isomer
         if not 'Gtot' in ground_state.results.keys(): 
-            ground_state.get_thermal_data(Trange=range(temp-5,temp+5,1)) ## If not available, computes it
+            ground_state.get_thermal_data(temp=temp) ## If not available, computes it
         # Searches specific Gtot(T) entry
         Gtot_T = ground_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
         if Gtot_T is None: 
-            ground_state.get_thermal_data(Trange=range(temp-5,temp+5,1)) ## If not available, computes it
+            ground_state.get_thermal_data(temp=temp) ## If not available, computes it
         # Now it should exists for sure
         Gtot_T = ground_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
         if Gtot_T is None: 
@@ -842,11 +842,11 @@ class State_azo(State):
         '''
         # Searches Gtot entry
         if not 'Gtot' in self.results:
-            self.get_thermal_data(Trange=range(temp-5,temp+5,1))                                         
+            self.get_thermal_data(temp=temp)
         # Searches specific Gtot(T) entry
         gtot = self.results['Gtot'].find_value_with_property("temperature", temp)
         if gtot is None: 
-            self.get_thermal_data(Trange=range(temp-5,temp+5,1))                                         
+            self.get_thermal_data(temp=temp)
         # Now it should exists for sure
         gtot = self.results['Gtot'].find_value_with_property("temperature", temp)
         if gtot is None: 
@@ -854,16 +854,24 @@ class State_azo(State):
         # Gets Value (energy) is a Data class
         gtot = self.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au")
 
+        # Compute the Penalty, based on Surface Hopping Probability (p_sh)
         dx = - Constants.R_J * temp * ln(p_sh)     # J/mol
         dx /= 1000                                 # kJ/mol
         if debug>0: print(f'STATE_AZO.CORRECT_TRIPLETG: Adding penalty of {dx*Constants.kJmol2kcal:.2f} kcal/mol.')
         dx *= Constants.kJmol2har
-        gtot_eff = Data("Gtot_eff", float(gtot.value + dx), "au", "state_azo.correct_tripletg()")
-        gtot_eff.add_property("temperature", temp, overwrite=True)
-        self.add_result(gtot_eff, overwrite=True)
-        if debug > 0: print (f'STATE_AZO.CORRECT_TRIPLETG: Corrected Gtot. Data stored in state: {gtot_eff.value:12.8f}')
-        if debug > 0: print (f'STATE_AZO.CORRECT_TRIPLETG: Before correction: {gtot.value:12.8f} au. After correction: {gtot_eff.value:12.8f}')
-        return gtot_eff
+
+        # Create a Collection, with a single data entry, that of Gtot_eff at the requested temperature
+        gtot_eff_col  = Collection("Gtot_eff", "temperature")
+        gtot_eff_data = Data("Gtot_eff", float(gtot.value + dx), "au", "state_azo.correct_tripletg()") 
+        gtot_eff_data.add_property("temperature", temp, overwrite=True)
+        gtot_eff_col.add_data(gtot_eff_data)
+
+        # Add the Gtot_eff Collection as a result
+        self.add_result(gtot_eff_col, overwrite=True)
+
+        if debug > 0: print (f'STATE_AZO.CORRECT_TRIPLETG: Corrected Gtot. Data stored in state: {gtot_eff_data.value:12.8f}')
+        if debug > 0: print (f'STATE_AZO.CORRECT_TRIPLETG: Before correction: {gtot.value:12.8f} au. After correction: {gtot_eff_data.value:12.8f}')
+        return gtot_eff_col
 
     ######
     def get_abs_spectrum(self, normalize: bool = False, units: bool = False, lmin: float=200, lmax: float=1000, debug: int=0):

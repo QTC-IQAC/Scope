@@ -559,14 +559,30 @@ class State(object):
 ################################
 #### Get Thermodynamic Data ####
 ################################
-    def get_thermal_data(self, Trange: range=range(10,501,1), Helec=None, Selec=None, Hvib=None, Svib=None, Gtot=None, overwrite: bool=False, debug: int=0):
+    def get_thermal_data(self, temp: float=298.15, Helec=None, Selec=None, Hvib=None, Svib=None, Gtot=None, overwrite: bool=False, debug: int=0):
         from scope.thermal_corrections import get_Selec, get_Hvib, get_Svib, get_Gibbs
+        ## Computes and Stores Helec, Selec as Data in self.results
+        ## Computes and Stores Hvib, Svib and Gtot as Collection in self.results. These will always be collections even with only one data point
 
         if not hasattr(self,"z"): self.get_z(debug=debug)
         if debug > 0:           print(f"STATE.GET_THERMAL_DATA: found {self.z} stoichiometric units")
 
+        # temp can a single number, range, list, or any iterable of numeric temperatures.
+        if isinstance(temp, (int, float)):       temperatures = [temp]
+        elif isinstance(temp, range):            temperatures = list(temp)
+        else:
+            try:
+                temperatures = list(temp)
+            except TypeError:
+                raise TypeError("STATE.GET_THERMAL_DATA: temp must be a number, range, list, or iterable of temperatures")
+        if len(temperatures) == 0:
+            raise ValueError("STATE.GET_THERMAL_DATA: temp cannot be empty")
+        if not all(isinstance(t, (int, float)) for t in temperatures):
+            raise TypeError("STATE.GET_THERMAL_DATA: all entries in temp must be numeric")
+
         if Hvib is None and Svib is None:
-            assert hasattr(self,"isminimum"), f"I can't compute thermal data on this state. Missing VNMs"
+            if not hasattr(self,"VNMs"):
+                raise ValueError(f"I can't compute thermal data on this state. Missing VNMs")
         if not self.results["energy"]:
             raise ValueError(f"STATE.GET_THERMAL_DATA: missing State energy value")
     
@@ -598,7 +614,7 @@ class State(object):
         if Hvib is None:
             if overwrite or not "Hvib" in self.results.keys():
                 Hvib = Collection("Hvib", "Temperature")
-                for temp in Trange:
+                for temp in temperatures:
                     Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
                 self.add_result(Hvib, overwrite=overwrite)
         else: 
@@ -613,7 +629,7 @@ class State(object):
         if Svib is None:
             if overwrite or not "Svib" in self.results.keys():
                 Svib = Collection("Svib", "Temperature")
-                for temp in Trange:
+                for temp in temperatures:
                     Svib.add_data(get_Svib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
                 self.add_result(Svib, overwrite=overwrite)
         else: 
@@ -628,7 +644,7 @@ class State(object):
         if Gtot is None:
             if overwrite or not "Gtot" in self.results.keys():
                 Gtot = Collection("Gtot", "Temperature")
-                for temp in Trange:
+                for temp in temperatures:
                     # Retrieve data (not value)
                     Helec = self.results["Helec"]
                     Selec = self.results["Selec"]
