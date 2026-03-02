@@ -201,7 +201,7 @@ class ExcitedState(object):
         to_print +=  '   Electronic Excited State  \n'
         to_print += f'-----------------------------\n'
         to_print += f' Index                  = {self.index}\n'
-        to_print += f' Energy (eV)            = {self.energy:6.2f} eV\n'
-        to_print += f' Wavelength (nm)        = {self.wavelength:6f} nm\n'
-        to_print += f' Oscillator Strength    = {self.fosc:6f}\n'
+        to_print += f' Energy (eV)            = {self.energy} eV\n'
+        to_print += f' Wavelength (nm)        = {self.wavelength} nm\n'
+        to_print += f' Oscillator Strength    = {self.fosc}\n'
         return to_print

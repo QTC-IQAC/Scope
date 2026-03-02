@@ -30,6 +30,7 @@ class Collection(object):
             if hasattr(data, condition_name.lower()):
                 value = getattr(data, condition_name.lower())
                 if value == condition_value: return data
+        return None
 
     def find_min(self):
         return self.datas[np.argmin(self.get_values())]
