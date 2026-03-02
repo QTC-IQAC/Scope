@@ -516,49 +516,64 @@ class System_azo(System):
         for sou in self.sources:
             found, state = sou.find_state(target_state)
             if not found: 
-                if debug > 0: print(f'SYSTEM_AZO.GET_METS: Target state not found in source={sou.name}, spin={sou.spin}.')
+                if debug > 0: print(f'SYSTEM_AZO.GET_METS: Target state not found in source={sou.name}, spin={sou.spin}')
                 continue
-            if not hasattr(state,'is_ts'):
-                if debug>0: print(f'SYSTEM_AZO.GET_METS: The target state in source {sou.name} is not a TS.')
-                continue
-            if debug > 0: print(f'SYSTEM_AZO.GET_METS: Found TS: {sou.name}, spin: {sou.spin}, is_ts: {state.is_ts}')
 
-            if state.is_ts:
-                # Collects Energy of TSs
-                if sou.spin == 2:     # Use corrected Gtot for triplets
-                    if not skip_triplets:
-                        # Searches Gtot entry
-                        if not 'Gtot_eff' in state.results.keys(): 
-                            print(f'SYSTEM_AZO.GET_METS: [WARNING] Gtot not found for State={state.name} of source={sou.name}. Computing')
-                            state.correct_tripletG(temp=temp, debug=debug).convert_to_units("au").value  
-                        # Searches specific Gtot(T) entry
-                        energy = state.results['Gtot_eff'].value
-                        if energy is None: 
-                            state.correct_tripletG(temp=temp, debug=debug)
-                        # Now it should exists for sure
-                        energy = state.results['Gtot_eff'].value
-                        if energy is None: 
-                            raise Exception (f'SYSTEM_AZO.GET_METS: Could not fint Gtot_eff({temp}) for {sou.name}.')
-                        # Gets Value (energy) is a Data class
-                        energy = state.results['Gtot_eff'].convert_to_units("au").value                              
-
-                elif sou.spin == 0:   
-                    # Searches Gtot entry
-                    if not 'Gtot' in state.results.keys(): 
-                        state.get_thermal_data(Trange=range(temp-5,temp+5,1))     
-                    # Searches specific Gtot(T) entry
-                    energy = state.results['Gtot'].find_value_with_property("temperature", temp)             
-                    if energy is None: 
-                        state.get_thermal_data(Trange=range(temp-5,temp+5,1))     
-                    # Now it should exists for sure
-                    energy = state.results['Gtot'].find_value_with_property("temperature", temp)             
-                    if energy is None: 
-                        raise Exception (f'SYSTEM_AZO.GET_METS: Could not fint Gtot({temp}) for {sou.name}.')
-                    # Gets Value (energy) is a Data class
-                    energy = state.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value                              
-
+            # Collects Energy of Sources that behave as TS in the thermal Cis-to-trans relaxation. 
+            # This includes Triplet minima. So, technically, these are not actual TS. 
+            if sou.spin == 2 and not skip_triplets:     # Use corrected Gtot for triplets
+                if hasattr(state,"isminimum"): 
+                    if not state.isminimum:
+                        if debug > 0: print(f'SYSTEM_AZO.GET_METS: The target state in source {sou.name} is NOT a minimum in the Triplet PES. Skipping')
+                        continue
+                else: 
+                    if debug > 0: print(f'SYSTEM_AZO.GET_METS: The target state in source {sou.name} has no VNMs. Skipping')
+                    continue
+                # Searches Gtot entry
+                if debug > 0: print(f'SYSTEM_AZO.GET_METS: Found Triplet Minimum: {sou.name}, spin: {sou.spin}')
+                if not 'Gtot_eff' in state.results.keys(): 
+                    print(f'SYSTEM_AZO.GET_METS: [WARNING] Gtot not found for State={state.name} of source={sou.name}. Computing')
+                    state.correct_tripletG(temp=temp, debug=debug).convert_to_units("au").value  
+                # Searches specific Gtot(T) entry
+                energy = state.results['Gtot_eff'].value
+                if energy is None: 
+                    state.correct_tripletG(temp=temp, debug=debug)
+                # Now it should exists for sure
+                energy = state.results['Gtot_eff'].value
+                if energy is None: 
+                    raise Exception (f'SYSTEM_AZO.GET_METS: Could not fint Gtot_eff({temp}) for {sou.name}.')
+                # Gets Value (energy) is a Data class
+                energy = state.results['Gtot_eff'].convert_to_units("au").value                              
                 ts_names.append(sou.name)
                 ts_energies.append(energy)
+
+            elif sou.spin == 0:   
+                ## Skips Sources for which we didn't find a TS.
+                if hasattr(state,"is_ts"): 
+                    if not state.is_ts:
+                        if debug > 0: print(f'SYSTEM_AZO.GET_METS: The target state in source {sou.name} is not a TS. Skipping')
+                        continue
+                else: 
+                    if debug > 0: print(f'SYSTEM_AZO.GET_METS: The target state in source {sou.name} has no VNMs. Skipping')
+                    continue
+
+                # Searches Gtot entry
+                if debug > 0: print(f'SYSTEM_AZO.GET_METS: Found Singlet TS: {sou.name}, spin: {sou.spin}')
+                if not 'Gtot' in state.results.keys(): 
+                    state.get_thermal_data(Trange=range(temp-5,temp+5,1))     
+                # Searches specific Gtot(T) entry
+                energy = state.results['Gtot'].find_value_with_property("temperature", temp)             
+                if energy is None: 
+                    state.get_thermal_data(Trange=range(temp-5,temp+5,1))     
+                # Now it should exists for sure
+                energy = state.results['Gtot'].find_value_with_property("temperature", temp)             
+                if energy is None: 
+                    raise Exception (f'SYSTEM_AZO.GET_METS: Could not fint Gtot({temp}) for {sou.name}.')
+                # Gets Value (energy) is a Data class
+                energy = state.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value                              
+                ts_names.append(sou.name)
+                ts_energies.append(energy)
+
         if debug == 1: print(f'SYSTEM_AZO.GET_METS: Collected {len(ts_energies)} TSs for {self.name}')
         if debug >= 2: 
             print(f'SYSTEM_AZO.GET_METS: Collected {len(ts_energies)} TSs for {self.name}. Printing entries:')
@@ -837,17 +852,17 @@ class State_azo(State):
         if gtot is None: 
             raise Exception (f'STATE_AZO.CORRECT_TRIPLETG: Gtot for State {self.name} at {temp=} not found.')
         # Gets Value (energy) is a Data class
-        gtot = self.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value   
+        gtot = self.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au")
 
         dx = - Constants.R_J * temp * ln(p_sh)     # J/mol
         dx /= 1000                                 # kJ/mol
         if debug>0: print(f'STATE_AZO.CORRECT_TRIPLETG: Adding penalty of {dx*Constants.kJmol2kcal:.2f} kcal/mol.')
         dx *= Constants.kJmol2har
-        gtot_eff = Data("Gtot_eff", float(gtot + dx), "au", "state_azo.correct_tripletg()")
+        gtot_eff = Data("Gtot_eff", float(gtot.value + dx), "au", "state_azo.correct_tripletg()")
         gtot_eff.add_property("temperature", temp, overwrite=True)
         self.add_result(gtot_eff, overwrite=True)
-        if debug > 0: print (f'STATE_AZO.CORRECT_TRIPLETG: Corrected Gtot. Data stored in state: {gtot_eff}')
-        if debug > 0: print (f'STATE_AZO.CORRECT_TRIPLETG: Before correction: {gtot} au. After correction: {gtot_eff}')
+        if debug > 0: print (f'STATE_AZO.CORRECT_TRIPLETG: Corrected Gtot. Data stored in state: {gtot_eff.value:12.8f}')
+        if debug > 0: print (f'STATE_AZO.CORRECT_TRIPLETG: Before correction: {gtot.value:12.8f} au. After correction: {gtot_eff.value:12.8f}')
         return gtot_eff
 
     ######
