@@ -44,11 +44,11 @@ def gcd_list(numbers):
         result = gcd(result, n)
     return result
 
-def gaussian(range, center, sigma=0.2, normalize=True):
+def gaussian(grid, center, sigma=0.2, normalize=True):
     """
     Parameters
     ----------
-    E : array_like              Grid/range where the Gaussian is evaluated (any units).
+    grid : array_like           Grid/range where the Gaussian is evaluated (any units).
     center : float              Center of the Gaussian in the same units as E.
     sigma : float, optional     Standard deviation (width) in the same units as E. Default is 0.2.
     normalize : bool, optional  Whether to normalize the Gaussian to unit area. Default is True.
@@ -59,6 +59,6 @@ def gaussian(range, center, sigma=0.2, normalize=True):
     """
     if sigma <= 0: raise ValueError("sigma must be > 0")
 
-    g = np.exp(-(range - center) ** 2 / (2 * sigma ** 2))
+    g = np.exp(-(grid - center) ** 2 / (2 * sigma ** 2))
     if normalize: g /= sigma * np.sqrt(2 * np.pi)
     return g
