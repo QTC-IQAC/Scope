@@ -881,8 +881,8 @@ class State_azo(State):
         # Collects Values
         energies = [es.energy for es in self.exc_states]
         fosc     = [es.fosc for es in self.exc_states]
-        erange   = np.linspace(lmin, lmax, lmax-lmin)
-        erange   = 1240/erange[::-1]  # Change to energy space, in eV                ## MANEL: Clarificar el 1240
+        wlrange   = np.linspace(lmin, lmax, lmax-lmin)
+        erange   = 1240/wlrange[::-1]  # Change to energy space, in eV                ## MANEL: Clarificar el 1240
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: energies {energies}')
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: osc. strengths {fosc}')
         
