@@ -882,10 +882,10 @@ class State_azo(State):
         energies = [es.energy for es in self.exc_states]
         fosc     = [es.fosc for es in self.exc_states]
         erange   = np.linspace(lmin, lmax, lmax-lmin)
-        erange   = 1240/erange[::-1]  # Change to wavelength                ## MANEL: Clarificar el 1240
-        # return energies, fosc, erange
+        erange   = 1240/erange[::-1]  # Change to energy space, in eV                ## MANEL: Clarificar el 1240
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: energies {energies}')
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: osc. strengths {fosc}')
+        
         # Builds the spectrum from discrete values, using Gaussian broadening
         self.abs_spectrum = build_spectrum(erange, energies, fosc, normalize=normalize, units=units)
         return self.abs_spectrum

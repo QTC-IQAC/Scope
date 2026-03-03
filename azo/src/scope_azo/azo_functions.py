@@ -128,7 +128,7 @@ def build_spectrum(erange, energies, fosc, sigma=0.2, normalize=False, units=Tru
     
     spec = np.zeros_like(erange)
     for E0, f in zip(energies, fosc):
-        print(f'AZO.BUILD_SPECTRUM: E0: {E0} f {f}')
+        if debug>0: print(f'AZO.BUILD_SPECTRUM: E0: {E0} f {f}')
         spec += f * gaussian(erange, E0, sigma=sigma, normalize=normalize)
 
     if units: 
