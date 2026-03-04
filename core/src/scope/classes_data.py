@@ -114,7 +114,7 @@ class Collection(object):
         to_print += f'   COLLECTION OF DATA   = {self.key}                \n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' Variable              = {self.variable}\n'
-        to_print += f' #Entries              = {len(self.datas)}\n'
+        to_print += f' Num of Entries        = {len(self.datas)}\n'
         if len(self.datas) > 0:      to_print += f' First                 = {self.datas[0].value}\n'
         if len(self.datas) > 0:      to_print += f' Last                  = {self.datas[-1].value}\n'
         if hasattr(self,"units"):    to_print += f' Units                 = {self.units}\n'
