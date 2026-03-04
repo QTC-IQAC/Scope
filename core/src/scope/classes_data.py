@@ -161,7 +161,7 @@ class Data(object):
         elif self.value is None:      self.formatted = str(self.key+": None")
 
         for prop in self.properties:
-            self.formatted += f' at {prop}={getattr(self,prop)}'
+            self.formatted += f' (at {prop}={getattr(self,prop)})'
 
     def get_best_time_format(self):
         """

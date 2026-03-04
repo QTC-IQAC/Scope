@@ -588,23 +588,60 @@ class System_azo(System):
         if debug > 0: print(f'SYSTEM_AZO.GET_METS: Selected {self.mets.name}')
         return self.mets
 
-    def get_thermal_stability(self, target_state: str, debug: int=0):
-        # Requires having the energies of Cis and Trans
-        found_cis,   cis_iso   = self.find_conformer("cis")
-        found_trans, trans_iso = self.find_conformer("trans")
-        if found_cis: 
-            found_state_cis, state_cis = find_state(cis_iso, target_state)
-            if found_state_cis:
-                if "energy" in state_cis.results: cis_E = state_cis.results["gs_energy"]
-        if found_trans:
-            found_state_trans, state_trans = find_state(trans_iso, target_state)
-            if found_state_trans:
-                if "energy" in state_trans.results: trans_E = state_trans.results["gs_energy"]
-        if found_cis and found_trans:
-            self.dE = np.round((trans_E - cis_E) * Constants.har2kJmol/Constants.kcal2kJmol,4)
-            print(self.name, self.dE, "kJ/mol. Negative means trans is more stable")
-        return self.dE
+    ######
+    def get_thermal_stability(self, target_state: str, temp: float=298.15, debug: int=0):
+        # Finds Trans and Target State
+        found, trans = self.find_source('trans')
+        if not found:       raise Exception('SYSTEM_AZO.get_thermal_stability: Trans source not found.')
+        found_state, trans_state = trans.find_state(target_state)
+        if not found_state: raise Exception(f'SYSTEM_AZO.get_thermal_stability: Target state: {target_state} not found.')
 
+        # Finds Cis and Target State
+        found, cis = self.find_source('cis')
+        if not found:       raise Exception('SYSTEM_AZO.get_thermal_stability: cis source not found.')
+        found_state, cis_state = cis.find_state(target_state)
+        if not found_state: raise Exception(f'SYSTEM_AZO.get_thermal_stability: Target state: {target_state} not found.')
+
+        ######
+        # Getting the energy of the Trans isomer
+        ######
+        if not 'Gtot' in trans_state.results.keys(): 
+            trans_state.get_thermal_data(temp=temp) ## If not available, computes it
+        # Searches specific Gtot(T) entry
+        Gtot_T = trans_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
+        if Gtot_T is None: 
+            trans_state.get_thermal_data(temp=temp) ## If not available, computes it
+        # Now it should exists for sure
+        Gtot_T = trans_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
+        if Gtot_T is None: 
+            raise Exception (f'SYSTEM_AZO.get_thermal_stability: Gtot at {temp=} for the Trans State not found.')
+        # Gets Value (energy) is a Data class
+        gtot_trans = trans_state.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value
+        if debug > 0: print(f"SYSTEM_AZO.get_thermal_stability: {gtot_trans=}")
+
+        ######
+        # Getting the energy of the cis isomer
+        ######
+        if not 'Gtot' in cis_state.results.keys(): 
+            cis_state.get_thermal_data(temp=temp) ## If not available, computes it
+        # Searches specific Gtot(T) entry
+        Gtot_T = cis_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
+        if Gtot_T is None: 
+            cis_state.get_thermal_data(temp=temp) ## If not available, computes it
+        # Now it should exists for sure
+        Gtot_T = cis_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
+        if Gtot_T is None: 
+            raise Exception (f'SYSTEM_AZO.get_thermal_stability: Gtot at {temp=} for the Cis State not found.')
+        # Gets Value (energy) is a Data class
+        gtot_cis = cis_state.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value
+        if debug > 0: print(f"SYSTEM_AZO.get_thermal_stability: {gtot_cis=}")
+
+        dE = (gtot_cis - gtot_trans) * Constants.har2kJmol/Constants.kcal2kJmol ## Returns value in Kcal/mol
+        dE_data = Data("dG_cis-trans",dE,'kcal/mol',"system_azo.get_thermal_stability()")
+        self.add_result(dE_data, overwrite=True)
+        return dE_data
+
+    ######
     def get_trans_halflife_time(self, target_state: str='opt', skip_triplets: bool=False, temp: float=298.15, debug: int=0):
         '''
         

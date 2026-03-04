@@ -564,30 +564,6 @@ class State(object):
         ## Computes and Stores Helec, Selec as Data in self.results
         ## Computes and Stores Hvib, Svib and Gtot as Collection in self.results. These will always be collections even with only one data point
 
-
-        ############### Hvib ##############
-        #if Hvib is None:
-        #    if overwrite or "Hvib" not in self.results.keys():
-        #        Hvib = Collection("Hvib", "temperature")
-        #        for temp in temperatures:
-        #            result = self.results["Hvib"].find_value_with_property('temperature', temp)
-        #            if result is None or overwrite:
-        #                Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
-        #        self.add_result(Hvib, overwrite=overwrite)
-        #        if debug > 0: print(f"STATE.GET_THERMAL_DATA. Hvib computed: {self.results['Hvib']}")
-        #    else:
-        #        if debug > 0: print(f"STATE.GET_THERMAL_DATA. Using Existing Hvib: {self.results['Hvib']}")
-        #else: 
-        #    if not isinstance(Hvib, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Hvib should be a Collection class object. It is {type(Hvib)}")
-        #    if not Hvib.variable.lower() == "temperature": raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Hvib Collection has {Hvib.variable}, while it should be 'temperature'")
-        #    for temp in temperatures:
-        #        result = Hvib.find_value_with_property('temperature', temp)
-        #        if result is None:
-        #            Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
-        #    if overwrite or not "Hvib" in self.results.keys():
-        #        self.add_result(Hvib, overwrite=overwrite)
-        #        if debug > 0: print(f"STATE.GET_THERMAL_DATA. Hvib set: {self.results['Hvib']}")
-
         if not hasattr(self,"z"): self.get_z(debug=debug)
         if debug > 0:           print(f"STATE.GET_THERMAL_DATA: found {self.z} stoichiometric units")
 
@@ -631,13 +607,24 @@ class State(object):
         ############## Hvib ##############
         if Hvib is None:
             if overwrite or not "Hvib" in self.results.keys():
-                Hvib = Collection("Hvib", "Temperature")
+                Hvib = Collection("Hvib", "temperature")
                 for temp in temperatures:
                     Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
                 self.add_result(Hvib, overwrite=overwrite)
+            elif not overwrite and "Hvib" in self.results.keys():  ## Checks that all temperatures requested exist in Hvib
+                Hvib = self.results["Hvib"]
+                missing_data = False
+                for temp in temperatures:
+                    result = Hvib.find_value_with_property('temperature', temp)
+                    if result is None:
+                        missing_data = True
+                        Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
+                if missing_data: self.add_result(Hvib, overwrite=True)
         else: 
             if not isinstance(Hvib, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Hvib should be a Collection class object. It is {type(Hvib)}")
             if not Hvib.variable.lower() == "temperature": raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Hvib Collection has {Hvib.variable}, while it should be 'temperature'")
+            for temp in temperatures:
+                if not Hvib.find_value_with_property('temperature', temp): raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Hvib Collection lacks value for the requested temperature {temp}")
             if overwrite or not "Hvib" in self.results.keys():
                 self.add_result(Hvib, overwrite=overwrite)
         if debug > 0: print(f"Hvib is {self.results['Hvib']}")
@@ -645,13 +632,24 @@ class State(object):
         ############## Svib ##############
         if Svib is None:
             if overwrite or not "Svib" in self.results.keys():
-                Svib = Collection("Svib", "Temperature")
+                Svib = Collection("Svib", "temperature")
                 for temp in temperatures:
                     Svib.add_data(get_Svib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
                 self.add_result(Svib, overwrite=overwrite)
+            elif not overwrite and "Svib" in self.results.keys():  ## Checks that all temperatures requested exist in Svib
+                Svib = self.results["Svib"]
+                missing_data = False
+                for temp in temperatures:
+                    result = Svib.find_value_with_property('temperature', temp)
+                    if result is None:
+                        missing_data = True
+                        Svib.add_data(get_Svib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
+                if missing_data: self.add_result(Svib, overwrite=True)
         else: 
             if not isinstance(Svib, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Svib should be a Collection class object. It is {type(Svib)}")
             if not Svib.variable.lower() == "temperature": raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Svib Collection has {Svib.variable}, while it should be 'temperature'")
+            for temp in temperatures:
+                if not Svib.find_value_with_property('temperature', temp): raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Svib Collection lacks value for the requested temperature {temp}")
             if overwrite or not "Svib" in self.results.keys():
                 self.add_result(Svib, overwrite=overwrite)
         if debug > 0: print(f"Svib is {self.results['Svib']}")
@@ -659,7 +657,7 @@ class State(object):
         ############## Gtot ##############
         if Gtot is None:
             if overwrite or not "Gtot" in self.results.keys():
-                Gtot = Collection("Gtot", "Temperature")
+                Gtot = Collection("Gtot", "temperature")
                 for temp in temperatures:
                     # Retrieve data (not value)
                     Helec = self.results["Helec"]
@@ -675,9 +673,31 @@ class State(object):
                     new_data.add_property("temperature", temp, overwrite=overwrite)
                     Gtot.add_data(new_data)
                 self.add_result(Gtot, overwrite=overwrite)
+            elif not overwrite and "Gtot" in self.results.keys():  ## Checks that all temperatures requested exist in Gtot. And Computes it if not
+                Gtot = self.results["Gtot"]
+                missing_data = False
+                for temp in temperatures:
+                    result = Gtot.find_value_with_property('temperature', temp)
+                    if result is None: 
+                        missing_data = True
+                        Helec = self.results["Helec"]
+                        Selec = self.results["Selec"]
+                        Hvib_i = Hvib.find_value_with_property("temperature", temp)
+                        Svib_i = Svib.find_value_with_property("temperature", temp)
+                        assert Helec.units == Selec.units == Hvib_i.units == Svib_i.units, f"{Helec.units=}, {Selec.units=}, {Hvib_i.units=}, {Svib_i.units=}"
+                        key = "Gtot"
+                        value = get_Gibbs(Helec.value, Hvib_i.value, Selec.value, Svib_i.value, temp)
+                        units = Helec.units
+                        function = "state.get_thermal_data()"
+                        new_data = Data(key, value, units, function)
+                        new_data.add_property("temperature", temp, overwrite=overwrite)
+                        Gtot.add_data(new_data)
+                if missing_data: self.add_result(Gtot, overwrite=True)  # Notice overwrite=true
         else: 
             if not isinstance(Gtot, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Gtot should be a Collection class object. It is {type(Gtot)}")
             if not Gtot.variable.lower() == "temperature": raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Gtot Collection has {Gtot.variable}, while it should be 'temperature'")
+            for temp in temperatures:
+                if not Gtot.find_value_with_property('temperature', temp): raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Gtot Collection lacks value for the requested temperature {temp}")
             if overwrite or not "Gtot" in self.results.keys():
                 self.add_result(Gtot, overwrite=overwrite)
         if debug > 0: print(f"Gtot is {self.results['Gtot']}")
