@@ -136,6 +136,7 @@ class Data(object):
         self.function      = function
         self.notes         = notes
         self.subtype       = self.set_subtype()
+        self.properties    = [] # List of variable names
 
     def set_subtype(self):
         energy_units = ['kj', 'au', 'ry', 'ev', 'cm']
@@ -146,6 +147,7 @@ class Data(object):
         return self.subtype
 
     def add_property(self, name: str, value, overwrite: bool=False):
+        self.properties.append(name)
         if not hasattr(self, name):               setattr(self, name, value)
         elif   hasattr(self, name) and overwrite: setattr(self, name, value)
         else:  print("DATA.add_property: property already exists")
@@ -157,6 +159,9 @@ class Data(object):
         elif type(self.value) == int: self.formatted = str(self.key+": "+str(self.value)+" "+self.units)
         elif type(self.value) == str: self.formatted = str(self.key+": "+self.value+" "+self.units)
         elif self.value is None:      self.formatted = str(self.key+": None")
+
+        for prop in self.properties:
+            self.formatted += f' at {prop}={getattr(self,prop)}'
 
     def get_best_time_format(self):
         """
@@ -173,15 +178,14 @@ class Data(object):
             (1e-3,  "ms", 1e3),
             (1,     "s",  1),
             (60,    "min", 1/60),
-            (3600,  "h",  1/3600),
-            (86400, "d",  1/86400),
-            (31557600, "y", 1/31557600),        # y
-            (31557600000, "ky", 1/31557600000)  # millenia
+            (3600,  "hours",  1/3600),
+            (86400, "days",  1/86400),
+            (31557600, "years", 1/31557600)
         ]
         for threshold, unit, factor in units:
             if abs(self.value) < threshold * 100:
                 return f"{self.value * factor:.2f} {unit}"
-        return f"{self.value / 31557600000:.2f} ky"
+        return f"{self.value / 31557600:.2f} years"
 
     def convert_to_units(self, new_units: str):
         if self.subtype != 'energy': print("DATA.convert_to_units: this method is only applicable to energy data"); return None
