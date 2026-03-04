@@ -740,7 +740,7 @@ class System_azo(System):
     ########################
     ## Optical Properties ##
     ########################
-    def get_PSS(self, target_state: str = 'opt', lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, lmin=200, lmax=1000, debug=0):
+    def get_PSS(self, lamp : "Lamp", target_state: str = 'opt', phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, lmin=200, lmax=1000, debug=0):
         """
         Function to calculate the photostationary state (PSS) for a given System_azo, based on the photochemical and thermal rates.
         Returns the fraction of the Trans isomer at the PSS.
@@ -764,7 +764,7 @@ class System_azo(System):
         power      = None 
 
         # Photon flux from Lamp
-        photon_flux = get_photon_flux_spectrum(wavelength=wavelength, lamp.fwhm, wl_grid, Itot, debug=debug)
+        photon_flux = get_photon_flux_spectrum(wavelength, lamp.fwhm, wl_grid, Itot, debug=debug)
 
         # Gets Half-life times (in seconds). If not provided, it computes them using the corresponding functions.
         if t_EZ is None:
