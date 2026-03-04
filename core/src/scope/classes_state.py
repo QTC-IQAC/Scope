@@ -564,6 +564,30 @@ class State(object):
         ## Computes and Stores Helec, Selec as Data in self.results
         ## Computes and Stores Hvib, Svib and Gtot as Collection in self.results. These will always be collections even with only one data point
 
+
+        ############### Hvib ##############
+        #if Hvib is None:
+        #    if overwrite or "Hvib" not in self.results.keys():
+        #        Hvib = Collection("Hvib", "temperature")
+        #        for temp in temperatures:
+        #            result = self.results["Hvib"].find_value_with_property('temperature', temp)
+        #            if result is None or overwrite:
+        #                Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
+        #        self.add_result(Hvib, overwrite=overwrite)
+        #        if debug > 0: print(f"STATE.GET_THERMAL_DATA. Hvib computed: {self.results['Hvib']}")
+        #    else:
+        #        if debug > 0: print(f"STATE.GET_THERMAL_DATA. Using Existing Hvib: {self.results['Hvib']}")
+        #else: 
+        #    if not isinstance(Hvib, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Hvib should be a Collection class object. It is {type(Hvib)}")
+        #    if not Hvib.variable.lower() == "temperature": raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Hvib Collection has {Hvib.variable}, while it should be 'temperature'")
+        #    for temp in temperatures:
+        #        result = Hvib.find_value_with_property('temperature', temp)
+        #        if result is None:
+        #            Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
+        #    if overwrite or not "Hvib" in self.results.keys():
+        #        self.add_result(Hvib, overwrite=overwrite)
+        #        if debug > 0: print(f"STATE.GET_THERMAL_DATA. Hvib set: {self.results['Hvib']}")
+
         if not hasattr(self,"z"): self.get_z(debug=debug)
         if debug > 0:           print(f"STATE.GET_THERMAL_DATA: found {self.z} stoichiometric units")
 
@@ -581,21 +605,17 @@ class State(object):
             raise TypeError("STATE.GET_THERMAL_DATA: all entries in temp must be numeric")
 
         if Hvib is None and Svib is None:
-            if not hasattr(self,"VNMs"):
-                raise ValueError(f"I can't compute thermal data on this state. Missing VNMs")
-        if not self.results["energy"]:
-            raise ValueError(f"STATE.GET_THERMAL_DATA: missing State energy value")
+            if not hasattr(self,"VNMs"): raise ValueError(f"STATE.GET_THERMAL_DATA: I can't compute thermal data on this state. Missing VNMs")
+        if not self.results["energy"]:   raise ValueError(f"STATE.GET_THERMAL_DATA: missing State energy value")
     
         ############## Helec ##############
         if Helec is None:   ### One can provide specific values for Helec, Selec, Hvib, Svib and Gtot 
             if overwrite or not "Helec" in self.results.keys():
                 self.add_result(Data("Helec",self.results["energy"].value/self.z,self.results["energy"].units,"state.get_thermal_data()"), overwrite=overwrite)
         else: 
-            if isinstance(Helec, Data):
-                if overwrite or not "Helec" in self.results.keys():
-                    self.add_result(Data("Helec",Helec.value,Helec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
-            else:
-                print("Get_Thermal_Data: wrong type of data provided when enforcing Helec. It must be a DATA-class object")
+            if not isinstance(Helec, Data):                raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Helec should be a Data class object. It is {type(Helec)}")
+            if overwrite or not "Helec" in self.results.keys():
+                self.add_result(Data("Helec",Helec.value,Helec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
         if debug > 0: print(f"Helec is {self.results['Helec']}")
 
         ############## Selec ##############
@@ -603,11 +623,9 @@ class State(object):
             if overwrite or not "Selec" in self.results.keys():
                 self.add_result(get_Selec(self.spin_multiplicity, outunits='au', nmol=self.z), overwrite=overwrite)
         else: 
-            if isinstance(Selec, Data):
-                if overwrite or not "Selec" in self.results.keys():
-                    self.add_result(Data("Selec",Selec.value,Selec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
-            else:
-                print("Get_Thermal_Data: wrong type of data provided when enforcing Selec. It must be a DATA-class object")
+            if not isinstance(Selec, Data):                raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Selec should be a Data class object. It is {type(Selec)}")
+            if overwrite or not "Selec" in self.results.keys():
+                self.add_result(Data("Selec",Selec.value,Selec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
         if debug > 0: print(f"Selec is {self.results['Selec']}")
 
         ############## Hvib ##############
@@ -618,11 +636,10 @@ class State(object):
                     Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
                 self.add_result(Hvib, overwrite=overwrite)
         else: 
-            if isinstance(Hvib, Collection):
-                if overwrite or not "Hvib" in self.results.keys():
-                    self.add_result(Hvib, overwrite=overwrite)
-            else:
-                print("Get_Thermal_Data: wrong type of data provided when enforcing Hvib. It must be a COLLECTION-class object")
+            if not isinstance(Hvib, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Hvib should be a Collection class object. It is {type(Hvib)}")
+            if not Hvib.variable.lower() == "temperature": raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Hvib Collection has {Hvib.variable}, while it should be 'temperature'")
+            if overwrite or not "Hvib" in self.results.keys():
+                self.add_result(Hvib, overwrite=overwrite)
         if debug > 0: print(f"Hvib is {self.results['Hvib']}")
 
         ############## Svib ##############
@@ -633,11 +650,10 @@ class State(object):
                     Svib.add_data(get_Svib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
                 self.add_result(Svib, overwrite=overwrite)
         else: 
-            if isinstance(Svib, Collection):
-                if overwrite or not "Svib" in self.results.keys():
-                    self.add_result(Svib, overwrite=overwrite)
-            else:
-                print("Get_Thermal_Data: wrong type of data provided when enforcing Svib. It must be a COLLECTION-class object")
+            if not isinstance(Svib, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Svib should be a Collection class object. It is {type(Svib)}")
+            if not Svib.variable.lower() == "temperature": raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Svib Collection has {Svib.variable}, while it should be 'temperature'")
+            if overwrite or not "Svib" in self.results.keys():
+                self.add_result(Svib, overwrite=overwrite)
         if debug > 0: print(f"Svib is {self.results['Svib']}")
 
         ############## Gtot ##############
@@ -660,11 +676,10 @@ class State(object):
                     Gtot.add_data(new_data)
                 self.add_result(Gtot, overwrite=overwrite)
         else: 
-            if isinstance(Gtot, Collection):
-                if overwrite or not "Gtot" in self.results.keys():
-                    self.add_result(Gtot, overwrite=overwrite)
-            else:
-                print("Get_Thermal_Data: wrong type of data provided when enforcing Gtot. It must be a COLLECTION")
+            if not isinstance(Gtot, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Gtot should be a Collection class object. It is {type(Gtot)}")
+            if not Gtot.variable.lower() == "temperature": raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Gtot Collection has {Gtot.variable}, while it should be 'temperature'")
+            if overwrite or not "Gtot" in self.results.keys():
+                self.add_result(Gtot, overwrite=overwrite)
         if debug > 0: print(f"Gtot is {self.results['Gtot']}")
 
     ######
@@ -711,7 +726,7 @@ class State(object):
         if hasattr(self,"isminimum"):      to_print += f' Is Minimum            = {self.isminimum}\n'
         if hasattr(self,"almost_minimum"): to_print += f' Is Almost a Minimum   = {self.almost_minimum}\n'
         if hasattr(self,"is_ts"):          to_print += f' Is a Transition State = {self.is_ts}\n'
-        if hasattr(self,"freqs_cm"):       to_print += f' First Frequency (cm-1)= {self.freqs_cm[0]}\n'
+        if hasattr(self,"freqs_cm"):       to_print += f' First Freq (cm-1)     = {self.freqs_cm[0]}\n'
         to_print += f'\n' 
 
         if hasattr(self,"exc_states"):     to_print += f' Has Excited States    = YES\n'
