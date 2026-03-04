@@ -740,10 +740,10 @@ class System_azo(System):
     ########################
     ## Optical Properties ##
     ########################
-    def get_PSS(self, target_state: str, lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, debug=0):
+    def get_PSS(self, target_state: str = 'opt', lamp : "Lamp", phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, lmin=200, lmax=1000, debug=0):
         """
         Function to calculate the photostationary state (PSS) for a given System_azo, based on the photochemical and thermal rates.
-        Returns the PSS value, which is the fraction of the Trans isomer at the PSS.
+        Returns the fraction of the Trans isomer at the PSS.
         """
 
         # Search for cis and trans sources and states.
@@ -752,11 +752,19 @@ class System_azo(System):
         found_trans_state, trans_state = self.find_source('trans')[1].find_state(target_state)
         if not found_trans_state: raise Exception('SYSTEM_AZO.GET_PSS: The target state for the TRANS isomer was not found.')
 
+        # Extract absorption spectra from two isomers. 
         trans_abs_spectrum = trans_state.get_abs_spectrum(normalize=False, units=True, debug=debug) # Need units to compute PSS
         cis_abs_spectrum   = cis_state.get_abs_spectrum(normalize=False, units=True, debug=debug)   # Need units to compute PSS
+        wl_grid = np.linspace(lmin,lmax,lmax-lmin)
 
-        # Photon flux from lamp
-        photon_flux = get_photon_flux_spectrum(lamp.wavelength, lamp.fwhm, lambda_grid, Itot=lamp.irradiance)
+        # Lamp parameters
+        wavelength = lamp.wavelength 
+        fwhm       = lamp.fwhm
+        itot       = lamp.irradiance
+        power      = None 
+
+        # Photon flux from Lamp
+        photon_flux = get_photon_flux_spectrum(wavelength=wavelength, lamp.fwhm, wl_grid, Itot, debug=debug)
 
         # Gets Half-life times (in seconds). If not provided, it computes them using the corresponding functions.
         if t_EZ is None:

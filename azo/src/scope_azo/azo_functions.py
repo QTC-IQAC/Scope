@@ -138,7 +138,7 @@ def build_spectrum(erange, energies, fosc, sigma=0.2, normalize=False, units=Tru
     return spec[::-1]
 
 ######
-def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug=0):
+def get_photon_flux_spectrum(lam0_nm, fwhm_nm, wlgrid, Itot, power=None, debug=0):
     """
     Returns the photon flux spectrum from a given wavelength grid and intensity.
     
@@ -146,7 +146,7 @@ def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug
     ----------
     lam0_nm : float             Central wavelength, in nm.
     fwhm_nm : float             Full width at half maximum, in nm.
-    lam_grid : array_like       Wavelength grid, in nm.
+    wlgrid : array_like         Wavelength grid, in nm.
     Itot : float                Total intensity, in W/m2/nm.
     power : float, optional     Power, in W. Default is None.
     debug : int, optional       Debug level. Default is 0.
@@ -157,18 +157,22 @@ def get_photon_flux_spectrum(lam0_nm, fwhm_nm, lam_grid, Itot, power=None, debug
     """
 
     sigma = fwhm_nm / (2 * np.sqrt(2 * np.log(2)))
-    profile = gaussian(lam_grid, lam0_nm, sigma=sigma)
+    profile = gaussian(wlgrid, lam0_nm, sigma=sigma)
 
-    if power is not None:
+    # Find Intensity along the wavelength space. 
+    if power is not None:       
         if debug>0: print(f'AZO.GET_PHOTON_FLUX_SPECTRUM: Power: {power} W')
-        area = np.pi * (4.605e-3)**2  # in m2, area of a circle with diameter 0.92 cm
+        area = np.pi * (4.605e-3)**2        # Area of a circle with diameter 0.92 cm, in m2
         I_lambda = power * profile / area   # W/m2/nm
     else:
         I_lambda = Itot * 1e-3 / 1e-6 * profile  # mW/mm2 to W/m2/nm
-    # I_lambda = Itot * profile  # W/m2/nm
-    wavelength_m = np.ones_like(lam_grid) * lam_grid * 1e-9  # in m
-    photonic_energy = Constants.planck_Js * Constants.speed_light / wavelength_m  # in J   
-    return I_lambda / photonic_energy # phi: photons m-2 s-1 nm-1  
+    
+    # Convert grid to SI units
+    wlgrid *= 1e-9  # in m
+    
+    # Compute photonic energy as E = h*c/lambda
+    photonic_energy = Constants.planck_Js * Constants.speed_light / wlgrid # in J   
+    return I_lambda / photonic_energy # phi: photons * m-2 s-1 nm-1  
 
 ######
 def build_pss_spectrum(initial_fraction, initial_spectrum, final_spectrum, debug=0):
