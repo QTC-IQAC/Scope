@@ -160,8 +160,9 @@ class Data(object):
         elif type(self.value) == str: self.formatted = str(self.key+": "+self.value+" "+self.units)
         elif self.value is None:      self.formatted = str(self.key+": None")
 
-        for prop in self.properties:
-            self.formatted += f' (at {prop}={getattr(self,prop)})'
+        if hasattr(self,"properties"):
+            for prop in self.properties:
+                self.formatted += f' (at {prop}={getattr(self,prop)})'
 
     def get_best_time_format(self):
         """

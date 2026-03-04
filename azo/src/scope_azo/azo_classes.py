@@ -740,7 +740,7 @@ class System_azo(System):
     ########################
     ## Optical Properties ##
     ########################
-    def get_PSS(self, lamp : "Lamp", target_state: str = 'opt', phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, lmin=200, lmax=1000, debug=0):
+    def get_PSS(self, lamp : "Lamp", target_state: str = 'opt', temp: float=298.15, phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, lmin: float=200, lmax: float=1000, debug=0):
         """
         Function to calculate the photostationary state (PSS) for a given System_azo, based on the photochemical and thermal rates.
         Returns the fraction of the Trans isomer at the PSS.
@@ -753,24 +753,49 @@ class System_azo(System):
         if not found_trans_state: raise Exception('SYSTEM_AZO.GET_PSS: The target state for the TRANS isomer was not found.')
 
         # Extract absorption spectra from two isomers. 
-        trans_abs_spectrum = trans_state.get_abs_spectrum(normalize=False, units=True, debug=debug) # Need units to compute PSS
-        cis_abs_spectrum   = cis_state.get_abs_spectrum(normalize=False, units=True, debug=debug)   # Need units to compute PSS
-        wl_grid = np.linspace(lmin,lmax,lmax-lmin)
+        trans_x, trans_y = trans_state.get_abs_spectrum(normalize=False, units=True, lmin=lmin, lmax=lmax, debug=debug) # Need units to compute PSS
+        cis_x, cis_y     = cis_state.get_abs_spectrum(normalize=False, units=True, lmin=lmin, lmax=lmax, debug=debug)   # Need units to compute PSS
+        assert trans_x == cis_x
+
+        new_pss = PSS(trans_x, trans_y, cis_y)
+        new_pss.set_lamp(lamp)
+        new_pss.get_photon_flux_spectrum()
+        new_pss.get_photo_rates()
+        new_pss.get_thermal_rates()
+        new_pss.get_ratio()
+
+        self.PSS = new_pss
+        return self.PSS
+
+    ######
+    def __repr__(self):
+        to_print = ""
+        to_print += f'------------- SCOPE System_azo Object -------\n'
+        to_print += f' Name                  = {self.name}\n'
+        to_print += f' Dihedral Indices:     = {self.dihedral_indices}\n'
+        to_print += System.__repr__(self, indirect=True)
+        if hasattr(self,"dE"): to_print += f' Thermal Stability     = {self.dE} kJ/mol (- means trans is more stable)\n'
+        to_print += '---------------------------------------------\n'
+        to_print += '\n'
+        return to_print
+
+################
+##### PSS Object 
+#################
+class PSS(object):
+    def __init__(self,..) 
 
         # Lamp parameters
-        wavelength = lamp.wavelength 
-        fwhm       = lamp.fwhm
-        itot       = lamp.irradiance
         power      = None 
 
         # Photon flux from Lamp
-        photon_flux = get_photon_flux_spectrum(wavelength, lamp.fwhm, wl_grid, Itot, debug=debug)
+        photon_flux = get_photon_flux_spectrum(trans_x, lamp.wavelength, lamp.fwhm, lamp.irradiance, debug=debug)
 
         # Gets Half-life times (in seconds). If not provided, it computes them using the corresponding functions.
         if t_EZ is None:
             if not 'trans_halflife_time' in self.results.keys():
                 print('SYSTEM_AZO.get_PSS: No halflife time found for trans isomer. Computing...')
-                self.get_trans_halflife_time(skip_triplets=False, overwrite=False)               
+                self.get_trans_halflife_time(target_state, skip_triplets=False, temp=temp, debug=debug)               
             assert self.results['trans_halflife_time'].units == 'seconds'
             t_EZ = self.results['trans_halflife_time'].value
         else: 
@@ -779,19 +804,23 @@ class System_azo(System):
         if t_ZE is None:
             if not 'cis_halflife_time' in self.results.keys():
                 print('SYSTEM_AZO.get_PSS: No halflife time found for cis isomer. Computing...')
-                self.get_cis_halflife_time(skip_triplets=False, overwrite=False)                  
+                self.get_cis_halflife_time(target_state, skip_triplets=False, temp=temp, debug=debug)               
             assert self.results['cis_halflife_time'].units == 'seconds'
             t_ZE = self.results['cis_halflife_time'].value
         else: 
             assert t_ZE > 0, "SYSTEM_AZO.get_PSS: t_ZE must be a positive value in seconds."
 
         # Photochemical rates
-        k_ph_EZ = phi_EZ * np.trapezoid(trans_abs_spectrum * photon_flux, lambda_grid)      ## MANEL: ojo, ara trans_abs_spectrum es un array de 2 columnes, (x, y). Adapta-ho com calgui
-        k_ph_ZE = phi_ZE * np.trapezoid(cis_abs_spectrum   * photon_flux, lambda_grid)      ##      per altra banda, lambda grid no se d'on surt. Pot ser que sigui trans_abs_spectrum[:,0]? 
+        k_ph_EZ = phi_EZ * np.trapezoid(trans_y * photon_flux, trans_x)  ## MANEL: ojo, ara trans_abs_spectrum es un array de 2 columnes, (x, y). Adapta-ho com calgui
+        k_ph_ZE = phi_ZE * np.trapezoid(cis_y * photon_flux, cis_x)      ##      per altra banda, lambda grid no se d'on surt. Pot ser que sigui trans_abs_spectrum[:,0]? 
+
         # Thermal rates
         k_th_EZ = np.log(2) / t_EZ
         k_th_ZE = np.log(2) / t_ZE
+
+        ratio = (k_th_ZE + k_ph_ZE) / (k_ph_EZ + k_ph_ZE + k_th_EZ + k_th_ZE)
         # Steady-state populations
+
         self.PSS = (k_th_ZE + k_ph_ZE) / (k_ph_EZ + k_ph_ZE + k_th_EZ + k_th_ZE)        # Fraction of Trans isomer aka N_E. 
         return self.PSS 
 
@@ -851,17 +880,7 @@ class System_azo(System):
         }
         print(f"PSS data for {name_trans}/{name_cis} successfully computed!")
 
-    ######
-    def __repr__(self):
-        to_print = ""
-        to_print += f'------------- SCOPE System_azo Object -------\n'
-        to_print += f' Name                  = {self.name}\n'
-        to_print += f' Dihedral Indices:     = {self.dihedral_indices}\n'
-        to_print += System.__repr__(self, indirect=True)
-        if hasattr(self,"dE"): to_print += f' Thermal Stability     = {self.dE} kJ/mol (- means trans is more stable)\n'
-        to_print += '---------------------------------------------\n'
-        to_print += '\n'
-        return to_print
+
 
 
 #########################################
@@ -920,21 +939,37 @@ class State_azo(State):
 
     ######
     def get_abs_spectrum(self, normalize: bool = False, units: bool = False, lmin: float=200, lmax: float=1000, debug: int=0):
+        '''
+        Using the stored TD-DFT data, computes the spectrum in the energy range, and returns it as an [x,y] array
+        '''
+
         # Check if TDDFT data exists.
         if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in this state')
 
         # Collects Values
         energies = [es.energy for es in self.exc_states]
         fosc     = [es.fosc for es in self.exc_states]
-        wlrange   = np.linspace(lmin, lmax, lmax-lmin)
-        erange   = 1240/wlrange[::-1]  # Change to energy space, in eV                ## MANEL: Clarificar el 1240
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: energies {energies}')
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: osc. strengths {fosc}')
-        
-        # Builds the spectrum from discrete values, using Gaussian broadening
-        self.abs_spectrum = build_spectrum(erange, energies, fosc, normalize=normalize, units=units)
-        return self.abs_spectrum
 
+        ## Passem erange a wlrange
+        lrange = np.linspace(lmin, lmax, lmax-lmin)
+        erange = 1240/lrange[::-1] 
+
+        # Builds the spectrum from discrete values, using Gaussian broadening
+        x, y = build_spectrum(erange, energies, fosc, normalize=normalize, units=units)
+
+        self.abs_spec_x = x
+        if units: 
+            # Conversion to m^2 / molecule
+            K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
+            self.abs_spec_y = y * K
+            #self.abs_spec_y = y[::-1] * K
+        else:
+            self.abs_spec_y = y
+            #self.abs_spec_y = y[::-1]              ## MANEL: revisar
+
+        return self.abs_spec_x, self.abs_spec_y
 
 ############################################
 ##### MOLECULE Object Adapted to Azo's #####

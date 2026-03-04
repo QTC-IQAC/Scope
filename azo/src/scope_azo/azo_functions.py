@@ -106,7 +106,7 @@ def show_thermal_data(systems):                                                 
 ############################
 #### Optical Properties ####
 ############################
-def build_spectrum(erange, energies, fosc, sigma=0.2, normalize=False, units=True, debug: int=0):
+def build_spectrum(xrange, energies, fosc, function: str='gaussian', sigma=0.2, units=True, debug: int=0):
     """
     Build the absorption spectrum from a list of transitions.
     
@@ -129,13 +129,10 @@ def build_spectrum(erange, energies, fosc, sigma=0.2, normalize=False, units=Tru
     spec = np.zeros_like(erange)
     for E0, f in zip(energies, fosc):
         if debug>0: print(f'AZO.BUILD_SPECTRUM: E0: {E0} f {f}')
-        spec += f * gaussian(erange, E0, sigma=sigma, normalize=normalize)
+        if   function == 'gaussian':  spec += f * gaussian(xrange, E0, sigma=sigma, normalize=False)
+        elif function == 'laplacian': spec += ...
 
-    if units: 
-        # Conversion to m^2 / molecule
-        K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
-        return spec[::-1] * K 
-    return spec[::-1]
+    return xvalues, yvalues
 
 ######
 def get_photon_flux_spectrum(lam0_nm, fwhm_nm, wlgrid, Itot, power=None, debug=0):
