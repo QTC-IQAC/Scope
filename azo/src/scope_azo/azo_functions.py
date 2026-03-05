@@ -6,7 +6,6 @@ import numpy as np
 import scope.constants as Constants
 
 from scope.geometry                     import centercoords
-from scope.operations.vecs_and_mats     import gaussian
 from scope.elementdata                  import ElementData
 elemdatabase = ElementData()
 
@@ -106,35 +105,6 @@ def show_thermal_data(systems):                                                 
 ############################
 #### Optical Properties ####
 ############################
-def build_spectrum(xrange, energies, fosc, function: str='gaussian', sigma=0.2, units=True, debug: int=0):
-    """
-    Build the absorption spectrum from a list of transitions.
-    
-    Parameters
-    ----------
-    erange: array_like             Desired energy range for the spectrum, in eV.
-    energies : list of floats      List of excitation energies, in eV.
-    fosc : list of floats          List of oscillator strengths for each transition.
-    sigma : float, optional        Standard deviation of the Gaussian, in eV. Default is 0.2 eV.
-    normalize : bool, optional     Whether to normalize the Gaussian. Default is False.
-    units : bool, optional         Whether to return the spectrum in units of m^2 / molecule. Default is True.
-    
-    Returns
-    -------
-    spec : array_like
-        Spectrum, in m^2 / molecule if units is True, otherwise in arbitrary units.
-    """
-    assert len(energies) == len(fosc), "Energies and oscillator strengths must have the same length."
-    
-    spec = np.zeros_like(erange)
-    for E0, f in zip(energies, fosc):
-        if debug>0: print(f'AZO.BUILD_SPECTRUM: E0: {E0} f {f}')
-        if   function == 'gaussian':  spec += f * gaussian(xrange, E0, sigma=sigma, normalize=False)
-        elif function == 'laplacian': spec += ...
-
-    return xvalues, yvalues
-
-######
 def get_photon_flux_spectrum(lam0_nm, fwhm_nm, wlgrid, Itot, power=None, debug=0):
     """
     Returns the photon flux spectrum from a given wavelength grid and intensity.
