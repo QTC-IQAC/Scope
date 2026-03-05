@@ -34,47 +34,36 @@ def get_3D(smiles, debug: int=0):
 ############################
 #### Thermal Properties ####
 ############################
-def compute_t(g_initial:float, g_excited:float,  T:float=298.15, debug: int=0):
+def eyring_halflife(g_initial: float, g_excited: float, temp: float=298.15, debug: int=0):
     '''
     Computes half-life time in seconds using Eyring equation.
     
     Parameters
     ----------
-    g_excited : float
-        Free Gibbs energy of transition state in Hartree
-    g_initial : float
-        Free Gibbs energy of isomer/conformer in Hartree
-    T : float
-        Temperature in Kelvin
+    g_excited : float       Free Gibbs energy of transition state (in Hartree)
+    g_initial : float       Free Gibbs energy of the ground state (in Hartree)
+    temp : float            Temperature in Kelvin
     
     Returns
     -------
-    t : float
-        half-life time in seconds
-    k : float
-        rate constant in s^-1
+    t : float               half-life time in seconds
+    k : float               rate constant in s^-1
     '''
-    k_b = Constants.boltz_J # J/K
-    h = Constants.planck_Js # J·s
-    R = Constants.R_J       # 8.31 J/(K·mol)
-    if debug>0: print(f'AZO.COMPUTE_T: dG: {dG} kJ/mol / {dG*Constants.kJmol2kcal} kcal/mol')
-    dG = (g_excited - g_initial)* Constants.har2kJmol  # in kJ/mol
-    if debug>0: print(f'AZO.COMPUTE_T: dG: {dG} kJ/mol / {dG*Constants.kJmol2kcal} kcal/mol')
-    dG *= 1000  # J/mol
-    k = ((k_b * T) / h)* np.exp(-dG / (R * T))  
+    dG = (g_excited - g_initial) * Constants.har2kJmol   # in kJ/mol
+    if debug > 0: print(f'AZO.COMPUTE_T: dG: {dG} kJ/mol / {dG*Constants.kJmol2kcal} kcal/mol')
+    dG *= 1000                                           # J/mol
+    k = ((Constants.boltz_J * temp) / Constants.planck_Js) * np.exp(-dG / (Constants.R_J * temp))  
     t = np.log(2) / k  # Assuming a first-order reaction
-    if debug>0: print(f'AZO.COMPUTE_T: t05: {t:.2f} s / k: {k:.2f}')
+    if debug > 0: print(f'AZO.COMPUTE_T: t05: {t:.2f} s / k: {k:.2f}')
     return float(t), float(k)
 
 ######
-def calculate_dG(t): 
-    k_b = Constants.boltz_J # J/K
-    T = 298.15              # K    
-    h = Constants.planck_Js # J·s
-    R = 8.31446             # J/(K·mol)
-
-    k = np.log(2) / t          # Assuming a first-order reaction
-    dG = -R * T * np.log((k * h) / (k_b * T))  # in J/mol
+def calculate_dG(time: float, temp: float=298.15, debug: int=0): 
+    '''
+    Reverse of the Eyring equation. Gets dG (in kcal/mol) from t (in seconds)
+    '''
+    k = np.log(2) / time          # Assuming a first-order reaction
+    dG = -Constants.R_JR * temp * np.log((k * Constants.planck_Js) / (Constants.boltz_J * temp))  # in J/mol
     dG /= 1000  # in kJ/mol
     dG *= 0.24  # in kcal/mol
     return dG
@@ -105,41 +94,7 @@ def show_thermal_data(systems):                                                 
 ############################
 #### Optical Properties ####
 ############################
-def get_photon_flux_spectrum(lam0_nm, fwhm_nm, wlgrid, Itot, power=None, debug=0):
-    """
-    Returns the photon flux spectrum from a given wavelength grid and intensity.
-    
-    Parameters
-    ----------
-    lam0_nm : float             Central wavelength, in nm.
-    fwhm_nm : float             Full width at half maximum, in nm.
-    wlgrid : array_like         Wavelength grid, in nm.
-    Itot : float                Total intensity, in W/m2/nm.
-    power : float, optional     Power, in W. Default is None.
-    debug : int, optional       Debug level. Default is 0.
-    
-    Returns
-    -------
-    phi : array_like       Photon flux spectrum, in photons m-2 s-1 nm-1.
-    """
-
-    sigma = fwhm_nm / (2 * np.sqrt(2 * np.log(2)))
-    profile = gaussian(wlgrid, lam0_nm, sigma=sigma)
-
-    # Find Intensity along the wavelength space. 
-    if power is not None:       
-        if debug>0: print(f'AZO.GET_PHOTON_FLUX_SPECTRUM: Power: {power} W')
-        area = np.pi * (4.605e-3)**2        # Area of a circle with diameter 0.92 cm, in m2
-        I_lambda = power * profile / area   # W/m2/nm
-    else:
-        I_lambda = Itot * 1e-3 / 1e-6 * profile  # mW/mm2 to W/m2/nm
-    
-    # Convert grid to SI units
-    wlgrid *= 1e-9  # in m
-    
-    # Compute photonic energy as E = h*c/lambda
-    photonic_energy = Constants.planck_Js * Constants.speed_light / wlgrid # in J   
-    return I_lambda / photonic_energy # phi: photons * m-2 s-1 nm-1  
+ 
 
 ######
 def build_pss_spectrum(initial_fraction, initial_spectrum, final_spectrum, debug=0):

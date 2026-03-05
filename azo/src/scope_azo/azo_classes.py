@@ -1,14 +1,13 @@
 import  numpy as np
+import  json
 import  scope.constants                     as Constants
+from    pathlib                             import Path
 from    scope.classes_data                  import Data, Collection
 from    scope.classes_system                import System
 from    scope.classes_state                 import State, find_state
 from    scope.classes_specie                import Molecule
 from    scope.elementdata                   import ElementData
 from    scope.geometry                      import centercoords, set_dihedral, get_dihedral, solve_dihedral, set_angle, get_angle
-from    scope.connectivity                  import get_adjmatrix, split_species
-from    scope.operations.vecs_and_mats      import build_spectrum
-from    scope_azo.azo_functions             import get_3D, compute_t, get_photon_flux_spectrum, build_pss_spectrum
 
 ############################################
 #### SYSTEM Object adapted to System_azo ###
@@ -183,6 +182,7 @@ class System_azo(System):
         -------
             trans: Molecule_azo     Molecule_azo object containing the trans isomer.
         '''
+        from scope_azo.azo_functions import get_3D
 
         if debug > 0: print(f"AZO.CREATE_TRANS: Creating trans isomer for {self.name}")
         smiles = self.smiles
@@ -238,6 +238,7 @@ class System_azo(System):
         cis: Molecule_azo       Molecule_azo object containing the cis isomer.
 
         '''
+        from scope.connectivity import get_adjmatrix
 
         # 1st-searching for trans isomer
         found, trans = self.find_source('trans')
@@ -339,6 +340,8 @@ class System_azo(System):
         They are added as sources of the System_azo. They can be accessed by using System_azo.find_source('TSrot_A_T') or system_azo.find_source('TSinv_R_a'). 
         
         """
+        from scope.connectivity import get_adjmatrix
+
         created_ts = []
         # 1st-searching for trans isomer
         trans_found, trans = self.find_source('trans')
@@ -641,7 +644,8 @@ class System_azo(System):
         return dE_data
 
     ######
-    def get_trans_halflife_time(self, target_state: str='opt', skip_triplets: bool=False, temp: float=298.15, debug: int=0):
+    def get_trans_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, debug: int=0):
+        from scope_azo.azo_functions import eyring_halflife
         '''
         
         '''
@@ -676,7 +680,7 @@ class System_azo(System):
             raise ValueError(f"SYSTEM_AZO.GET_TRANS_T05: Gtot_eff only implemented for triplet states. Current State has spin={mets_state.spin}")
         
         #Computing halflife time (t05) and kinetic constant (k)
-        t05, k_th = compute_t(gtot_ground, gtot_mets, temp)
+        t05, k_th = eyring_halflife(gtot_ground, gtot_mets, temp)
         if debug > 0: print(f'SYSTEM_AZO.GET_TRANS_T05: Obtained t05: {t05}  k_th: {k_th}') 
         dG_from_trans = (float(gtot_mets)- float(gtot_ground)) * Constants.har2kJmol * Constants.kJmol2kcal # in Kcal/mol
         if debug > 0: print(f'SYSTEM_AZO.GET_TRANS_T05: dG_from_trans = {dG_from_trans}') 
@@ -684,12 +688,18 @@ class System_azo(System):
         units_time = 's'
         units_kcal = 'kcal/mol'
 
-        self.add_result(Data("dG_from_trans",dG_from_trans,units_kcal,"system_azo.get_trans_halflife_time()"), overwrite=True)
-        self.add_result(Data("trans_halflife_time",t05,units_time,"system_azo.get_trans_halflife_time()"), overwrite=True)
+        # Creates Data-class objects to store results, and sets temperature as property
+        dG_data  = Data("dG_from_trans",dG_from_trans,units_kcal,"system_azo.get_trans_halflife_time()")
+        dG_data.add_property("temperature", temp)
+        t05_data = Data("trans_halflife_time",t05,units_time,"system_azo.get_trans_halflife_time()")
+        t05_data.add_property("temperature", temp)
+        self.add_result(dG_data, overwrite=True)
+        self.add_result(t05_data, overwrite=True)
         return self.results['trans_halflife_time']
         
     ######
-    def get_cis_halflife_time(self, target_state: str='opt', skip_triplets: bool=False, temp: float=298.15, debug: int=0):
+    def get_cis_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, debug: int=0):
+        from scope_azo.azo_functions import eyring_halflife
         '''
         
         '''
@@ -724,7 +734,7 @@ class System_azo(System):
             raise ValueError(f"SYSTEM_AZO.GET_CIS_T05: Gtot_eff only implemented for triplet states. Current State has spin={mets_state.spin}")
         
         #Computing halflife time (t05) and kinetic constant (k)
-        t05, k_th = compute_t(gtot_ground, gtot_mets, temp)
+        t05, k_th = eyring_halflife(gtot_ground, gtot_mets, temp)
         if debug > 0: print(f'SYSTEM_AZO.GET_CIS_T05: Obtained t05: {t05}  k_th: {k_th}') 
         dG_from_cis = (float(gtot_mets)- float(gtot_ground)) * Constants.har2kJmol * Constants.kJmol2kcal # in Kcal/mol
         if debug > 0: print(f'SYSTEM_AZO.GET_CIS_T05: dG_from_cis = {dG_from_cis}') 
@@ -732,17 +742,21 @@ class System_azo(System):
         units_time = 's'
         units_kcal = 'kcal/mol'
 
-        self.add_result(Data("dG_from_cis",dG_from_cis,units_kcal,"system_azo.get_cis_halflife_time()"), overwrite=True)
-        self.add_result(Data("cis_halflife_time",t05,units_time,"system_azo.get_cis_halflife_time()"), overwrite=True)
+        # Creates Data-class objects to store results, and sets temperature as property
+        dG_data  = Data("dG_from_cis",dG_from_cis,units_kcal,"system_azo.get_cis_halflife_time()")
+        dG_data.add_property("temperature", temp)
+        t05_data = Data("cis_halflife_time",t05,units_time,"system_azo.get_cis_halflife_time()")
+        t05_data.add_property("temperature", temp)
+        self.add_result(dG_data, overwrite=True)
+        self.add_result(t05_data, overwrite=True)
         return self.results['cis_halflife_time']
 
     ########################
     ## Optical Properties ##
     ########################
-    def get_PSS(self, lamp : "Lamp", target_state: str = 'opt', temp: float=298.15, phi_EZ = 0.3, phi_ZE = 0.5, t_EZ=None, t_ZE=None, lmin: float=200, lmax: float=1000, debug=0):
+    def get_PSS(self, lamp_name: str="default", target_state: str = 'opt', temp: float=298.15, phi_EZ = 0.3, phi_ZE = 0.5, trans_t05=None, cis_t05=None, lmin: float=200, lmax: float=1000, debug=0):
         """
-        Function to calculate the photostationary state (PSS) for a given System_azo, based on the photochemical and thermal rates.
-        Returns the fraction of the Trans isomer at the PSS.
+        Function to get a PSS object with all relevant data to compute the Photo-stationary state upon irradiation, using photochemical and thermal rates.
         """
 
         # Search for cis and trans sources and states.
@@ -752,28 +766,108 @@ class System_azo(System):
         if not found_trans_state: raise Exception('SYSTEM_AZO.GET_PSS: The target state for the TRANS isomer was not found.')
 
         # Extract absorption spectra from two isomers. 
-        trans_x, trans_y = trans_state.get_abs_spectrum(normalize=False, units=True, lmin=lmin, lmax=lmax, debug=debug) # Need units to compute PSS
-        cis_x, cis_y     = cis_state.get_abs_spectrum(normalize=False, units=True, lmin=lmin, lmax=lmax, debug=debug)   # Need units to compute PSS
-        assert trans_x == cis_x
+        trans_x, trans_y = trans_state.get_abs_spectrum(lmin=lmin, lmax=lmax, units=True, debug=debug) # Need units to compute PSS
+        cis_x, cis_y     = cis_state.get_abs_spectrum(lmin=lmin, lmax=lmax, units=True, debug=debug)   # Need units to compute PSS
+        assert all(trans_x == cis_x)
+        if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Spectra of cis and trans computed") 
 
-        new_pss = PSS(trans_x, trans_y, cis_y)
-        new_pss.set_lamp(lamp)
-        new_pss.get_photon_flux_spectrum()
-        new_pss.get_photo_rates()
-        new_pss.get_thermal_rates()
-        new_pss.get_ratio()
 
-        self.PSS = new_pss
+        # Thermal rates are normally extracted, but can be provided as well
+        if trans_t05 is None: 
+            if not 'trans_halflife_time' in self.results: self.get_trans_halflife_time(temp=temp, target_state=target_state, debug=debug) # Computed if not exists 
+            trans_t05 = self.results['trans_halflife_time'].value
+        else:
+            if self.results['trans_halflife_time'].temperature == temp:
+                trans_t05 = float(trans_t05)
+            else:
+                trans_t05 = self.get_trans_halflife_time(temp=temp, target_state=target_state, debug=debug).value  # Computed if exists, but wrong temperature
+
+        if cis_t05 is None: 
+            if not 'cis_halflife_time'   in self.results: self.get_cis_halflife_time(temp=temp, target_state=target_state, debug=debug) # Computed if not exists 
+            cis_t05   = self.results['cis_halflife_time'].value
+        else:
+            if self.results['cis_halflife_time'].temperature == temp:
+                cis_t05 = float(cis_t05)
+            else:
+                cis_t05 = self.get_cis_halflife_time(temp=temp, target_state=target_state, debug=debug).value # Computed if exists, but wrong temperature 
+
+        if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Obtained Cis and Trans halflife times")
+        if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Creating PSS-Class object")
+
+        # Initializes PSS and computes it for all wl
+        self.PSS = PSS(self, trans_x, trans_y, cis_y)
+        self.PSS.set_lamp(lamp_name)
+        self.PSS.set_thermal_rates(trans_t05, cis_t05)
+        for wl in self.PSS.lamp.wavelengths:
+            if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Evaluating PSS for wavelength: {wl}") 
+            self.PSS.get_pss_ratio(wl, phi_EZ=phi_EZ, phi_ZE=phi_ZE, debug=debug) # get_pss_ratio computes the photo_rates already with the same parameters (wl and phi's)
         return self.PSS
+
+#    ######
+#    def compute_pss(self, wl_list, state_trans=None, state_cis=None, phi_EZ=0.3, phi_ZE=0.5, t_EZ=None, t_ZE=None, shift_nm=None, debug =0): 
+#        """
+#        Calculates the photostationary state for a A <--> B photo-interconversion.
+#        """
+#       
+#        if state_trans is None: 
+#            state_trans = self.find_source('trans')[1].find_state('opt')[1]
+#        if state_cis is None: 
+#            state_cis = self.find_source('cis')[1].find_state('opt')[1]
+#
+#        if debug>0: print(f'SYSTEM_AZO.COMPUTE_PSS: Trans results: {state_trans.results}')
+#        if debug>0: print(f'SYSTEM_AZO.COMPUTE_PSS: Cis results: {state_cis.results}')
+#        name_trans = state_trans._source.name # Trans
+#        name_cis = state_cis._source.name # Cis
+#
+#        frac_list = []
+#        pss_list = []
+#
+#        # 1. Initial dark condition
+#        lamp = Lamp(name='DARK', wavelength=365)
+#        
+#        lambda_grid, sigma_cis, sigma_trans, pss_B = self.get_PSS(lamp, phi_EZ=0, phi_ZE=0, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug) 
+#        
+#        sigma_cis *= Constants.avogadro / (1000 * np.log(10)) * 1e4
+#        sigma_trans *= Constants.avogadro / (1000 * np.log(10)) * 1e4
+#
+#        sigma_pss = build_pss_spectrum(pss_B, sigma_trans, sigma_cis, debug=debug) 
+#        frac_list.append(pss_B)     
+#        pss_list.append(sigma_pss)  
+#
+#        # 2. Iterate through irradiations
+#        for irr_wl in wl_list:
+#            lamp = Lamp(name='COOLLED', wavelength=irr_wl, shift_nm=shift_nm)
+#            _, _, _, pss_B = self.get_PSS(lamp, phi_EZ=phi_EZ, phi_ZE=phi_ZE, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug) 
+#            sigma_pss = build_pss_spectrum(pss_B, sigma_trans, sigma_cis, debug=debug)
+#            frac_list.append(pss_B)
+#            pss_list.append(sigma_pss)
+#
+#        # 3. Store the extracted names AND the extracted half-lives!
+#        # This saves the plotting function from having to look them up again.
+#        self.pss_data = {
+#            "name_trans": name_trans,
+#            "name_cis": name_cis,
+#            "lambda_grid": lambda_grid,
+#            "wl_list": wl_list,
+#            "sigma_cis": sigma_cis,
+#            "sigma_trans": sigma_trans,
+#            "frac_list": frac_list,      
+#            "pss_list": pss_list,
+#            # Safely grab the halflife from the State object's results dictionary
+#            "t_EZ": t_EZ if t_EZ is not None else state_trans.results['halflife'].value, 
+#            "t_ZE": t_ZE if t_ZE is not None else state_cis.results['halflife'].value   
+#        }
+#        print(f"PSS data for {name_trans}/{name_cis} successfully computed!")
 
     ######
     def __repr__(self):
         to_print = ""
-        to_print += f'------------- SCOPE System_azo Object -------\n'
+        to_print += '-------------------------------------\n'
+        to_print += '   >>> SCOPE System_azo Object >>>   \n'
+        to_print += '-------------------------------------\n'
         to_print += f' Name                  = {self.name}\n'
         to_print += f' Dihedral Indices:     = {self.dihedral_indices}\n'
         to_print += System.__repr__(self, indirect=True)
-        if hasattr(self,"dE"): to_print += f' Thermal Stability     = {self.dE} kJ/mol (- means trans is more stable)\n'
         to_print += '---------------------------------------------\n'
         to_print += '\n'
         return to_print
@@ -782,103 +876,124 @@ class System_azo(System):
 ##### PSS Object 
 #################
 class PSS(object):
-    def __init__(self,..) 
+    def __init__(self, system, wl_range, trans_spectrum, cis_spectrum): 
+        self.system         = system
+        self.wl_range       = wl_range
+        self.trans_spectrum = trans_spectrum
+        self.cis_spectrum   = cis_spectrum
+        self.pss_results    = dict()
 
-        # Lamp parameters
-        power      = None 
-
-        # Photon flux from Lamp
-        photon_flux = get_photon_flux_spectrum(trans_x, lamp.wavelength, lamp.fwhm, lamp.irradiance, debug=debug)
-
-        # Gets Half-life times (in seconds). If not provided, it computes them using the corresponding functions.
-        if t_EZ is None:
-            if not 'trans_halflife_time' in self.results.keys():
-                print('SYSTEM_AZO.get_PSS: No halflife time found for trans isomer. Computing...')
-                self.get_trans_halflife_time(target_state, skip_triplets=False, temp=temp, debug=debug)               
-            assert self.results['trans_halflife_time'].units == 'seconds'
-            t_EZ = self.results['trans_halflife_time'].value
-        else: 
-            assert t_EZ > 0, "SYSTEM_AZO.get_PSS: t_EZ must be a positive value in seconds."
-        
-        if t_ZE is None:
-            if not 'cis_halflife_time' in self.results.keys():
-                print('SYSTEM_AZO.get_PSS: No halflife time found for cis isomer. Computing...')
-                self.get_cis_halflife_time(target_state, skip_triplets=False, temp=temp, debug=debug)               
-            assert self.results['cis_halflife_time'].units == 'seconds'
-            t_ZE = self.results['cis_halflife_time'].value
-        else: 
-            assert t_ZE > 0, "SYSTEM_AZO.get_PSS: t_ZE must be a positive value in seconds."
-
-        # Photochemical rates
-        k_ph_EZ = phi_EZ * np.trapezoid(trans_y * photon_flux, trans_x)  ## MANEL: ojo, ara trans_abs_spectrum es un array de 2 columnes, (x, y). Adapta-ho com calgui
-        k_ph_ZE = phi_ZE * np.trapezoid(cis_y * photon_flux, cis_x)      ##      per altra banda, lambda grid no se d'on surt. Pot ser que sigui trans_abs_spectrum[:,0]? 
-
+    def set_thermal_rates(self, trans_t05: float, cis_t05: float, debug: int=0):
         # Thermal rates
-        k_th_EZ = np.log(2) / t_EZ
-        k_th_ZE = np.log(2) / t_ZE
+        self.rate_thermal_trans2cis = np.log(2) / trans_t05
+        self.rate_thermal_cis2trans = np.log(2) / cis_t05
 
-        ratio = (k_th_ZE + k_ph_ZE) / (k_ph_EZ + k_ph_ZE + k_th_EZ + k_th_ZE)
-        # Steady-state populations
-
-        self.PSS = (k_th_ZE + k_ph_ZE) / (k_ph_EZ + k_ph_ZE + k_th_EZ + k_th_ZE)        # Fraction of Trans isomer aka N_E. 
-        return self.PSS 
-
-    ######
-    def compute_pss(self, wl_list, state_trans=None, state_cis=None, phi_EZ=0.3, phi_ZE=0.5, t_EZ=None, t_ZE=None, shift_nm=None, debug =0): 
-        """
-        Calculates the photostationary state for a A <--> B photo-interconversion.
-        """
-       
-        if state_trans is None: 
-            state_trans = self.find_source('trans')[1].find_state('opt')[1]
-        if state_cis is None: 
-            state_cis = self.find_source('cis')[1].find_state('opt')[1]
-
-        if debug>0: print(f'SYSTEM_AZO.COMPUTE_PSS: Trans results: {state_trans.results}')
-        if debug>0: print(f'SYSTEM_AZO.COMPUTE_PSS: Cis results: {state_cis.results}')
-        name_trans = state_trans._source.name # Trans
-        name_cis = state_cis._source.name # Cis
-
-        frac_list = []
-        pss_list = []
-
-        # 1. Initial dark condition
-        lamp = Lamp(name='DARK', wavelength=365)
+    def set_lamp(self, name: str="dark", debug: int=0):
+        self.lamp = Lamp(name)
+        return self.lamp
         
-        lambda_grid, sigma_cis, sigma_trans, pss_B = self.get_PSS(lamp, phi_EZ=0, phi_ZE=0, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug) 
-        
-        sigma_cis *= Constants.avogadro / (1000 * np.log(10)) * 1e4
-        sigma_trans *= Constants.avogadro / (1000 * np.log(10)) * 1e4
+    def set_diameter(self, diameter: float=100):  
+        # Relevant to calculate the illuminated area 
+        self.diameter = diameter
+    
+    def set_area(self, area=None):                          
+        # This is to set the illuminated area, relevant to know the amount of light received by the samples
+        if area is None: 
+            if not hasattr(self,"diameter"): self.set_diameter()
+            self.area = np.pi * (self.diameter/2)**2        # diameter in mm 
+        else:
+            self.area = area                                # value in square milimeters (mm2)
+        return self.area
 
-        sigma_pss = build_pss_spectrum(pss_B, sigma_trans, sigma_cis, debug=debug) 
-        frac_list.append(pss_B)     
-        pss_list.append(sigma_pss)  
+    #def get_irradiance(self):
+    #    # Evaluates irradiance (I) as: I = self.lamp.power / self.area
+    #    if not hasattr(self,"area"):        self.set_area()
+    #    if not hasattr(self.lamp, "power"): self.lamp.set_power()
+    #    self.irradiance = self.lamp.power / self.area 
+    #    return self.irradiance
 
-        # 2. Iterate through irradiations
-        for irr_wl in wl_list:
-            lamp = Lamp(name='COOLLED', wavelength=irr_wl, shift_nm=shift_nm)
-            _, _, _, pss_B = self.get_PSS(lamp, phi_EZ=phi_EZ, phi_ZE=phi_ZE, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug) 
-            sigma_pss = build_pss_spectrum(pss_B, sigma_trans, sigma_cis, debug=debug)
-            frac_list.append(pss_B)
-            pss_list.append(sigma_pss)
+    def get_photo_rates(self, wl: float, phi_EZ: float=0.3, phi_ZE: float=0.5, debug: int=0):
+        # phi_EZ is the quantum yield for the CIS-to-TRANS photoisomerization
+        # phi_ZE is the quantum yield for the TRANS-to-CIS photoisomerization
+        photon_flux          = self.get_photon_flux_spectrum(wl, debug=debug)
+        rate_photo_trans2cis = phi_EZ * np.trapezoid(self.trans_spectrum * photon_flux, self.wl_range)
+        rate_photo_cis2trans = phi_ZE * np.trapezoid(self.cis_spectrum   * photon_flux, self.wl_range) 
+        return rate_photo_trans2cis, rate_photo_cis2trans 
 
-        # 3. Store the extracted names AND the extracted half-lives!
-        # This saves the plotting function from having to look them up again.
-        self.pss_data = {
-            "name_trans": name_trans,
-            "name_cis": name_cis,
-            "lambda_grid": lambda_grid,
-            "wl_list": wl_list,
-            "sigma_cis": sigma_cis,
-            "sigma_trans": sigma_trans,
-            "frac_list": frac_list,      
-            "pss_list": pss_list,
-            # Safely grab the halflife from the State object's results dictionary
-            "t_EZ": t_EZ if t_EZ is not None else state_trans.results['halflife'].value, 
-            "t_ZE": t_ZE if t_ZE is not None else state_cis.results['halflife'].value   
-        }
-        print(f"PSS data for {name_trans}/{name_cis} successfully computed!")
+    def get_pss_ratio(self, wl: float, phi_EZ: float=0.3, phi_ZE: float=0.5, debug: int=0):
+        # Returns relative population of trans isomer
+        if not hasattr(self,"rate_thermal_trans2cis"): raise ValueError("PSS.GET_RATIO: Thermal reaction constants missing, set them first with self.set_thermal_rates() before proceeding") 
+        # Computes photo rates at this wl and quantum yields (phi_EZ, phi_ZE)
+        rate_photo_trans2cis, rate_photo_cis2trans = self.get_photo_rates(wl, phi_EZ, phi_ZE, debug=debug) 
+        pss = (self.rate_thermal_cis2trans + rate_photo_cis2trans) / (rate_photo_trans2cis + rate_photo_cis2trans + self.rate_thermal_trans2cis + self.rate_thermal_cis2trans)
+        assert pss >= 0.0 and pss <= 1.0
 
+        # Creates a dictionary with results
+        results = {
+            "wavelength": wl, 
+            "pss_trans_ratio": pss,
+            "rate_photo_trans2cis": rate_photo_trans2cis, 
+            "rate_photo_cis2trans": rate_photo_cis2trans,
+            "rate_thermal_trans2cis": self.rate_thermal_trans2cis,
+            "rate_thermal_cis2trans": self.rate_thermal_cis2trans, 
+            "QY_trans2cis": phi_EZ,
+            "QY_cis2trans": phi_ZE,
+        } 
+        self.pss_results.update({wl: results})
+        return pss
+
+    def get_photon_flux_spectrum(self, wl: float, debug: int=0):
+        '''
+        Returns the photon flux spectrum at a given wavelength grid and intensity.
+        '''
+        from scope.operations.dicts_and_lists import where_in_array
+        from scope.operations.vecs_and_mats   import gaussian
+
+        if not hasattr(self,"area"):        self.set_area()
+        if not hasattr(self,"lamp"):        self.set_lamp(debug=debug)
+        if not hasattr(self.lamp, "power"): self.lamp.set_power()
+        if not wl in self.lamp.wavelengths: raise ValueError(f"PSS.GET_PHOTON_FLUX: requested {wl=} is not available in lamp") 
+
+        idx      = where_in_array(self.lamp.wavelengths, wl)[0]
+        fwhm     = self.lamp.fwhm[idx]
+        sigma    = fwhm / (2 * np.sqrt(2 * np.log(2)))            ## Manel, això xk?
+        profile  = gaussian(self.wl_range, wl, sigma=sigma)
+        ## Find Intensity along the wavelength space. 
+        irr_spec = self.lamp.power * profile / self.area   # in W/m2/nm
+
+    ## MANEL. en el calcul de irr_spec, anteriorment hi havia el que veus aqui a sota:
+
+            #if power is not None:
+            #    if debug>0: print(f'AZO.GET_PHOTON_FLUX_SPECTRUM: Power: {power} W')
+            #    area = np.pi * (4.605e-3)**2  # in m2, area of a circle with diameter 0.92 cm
+            #    I_lambda = power * profile / area   # W/m2/nm
+            #else:
+            #    I_lambda = Itot * 1e-3 / 1e-6 * profile  # mW/mm2 to W/m2/nm
+
+    ## MANEL(continua): I_lambda es calculava en funció de si hi havia 'power' o no. Si no hi havia, llavors utilitzava Itot, que si no m'equivoco es la irradiancia
+    ## Crec que aquest es l'unic lloc on s'utilitza la puta irradiancia. Com que ara utilitza power sí o sí, crec que ja no cal calcular irradiancia. 
+
+        ## Convert wavelength to meters
+        wl_meters = self.wl_range * 1e-9
+        # Compute photonic energy as E = h*c/lambda
+        photonic_energy = Constants.planck_Js * Constants.speed_light / wl_meters   # in J   
+        return irr_spec / photonic_energy                               # phi: photons * m-2 s-1 nm-1
+
+    def __repr__(self):
+        to_print = ""
+        to_print += '------------------------------\n'
+        to_print += '   >>> SCOPE PSS Object >>>   \n'
+        to_print += '------------------------------\n'
+        to_print += f' System           = {self.system.name}\n'
+        to_print += f' Lamp Name        = {self.lamp.name}\n'
+        to_print += f' Lamp Wavelengths = {self.lamp.wavelengths} (nm)\n'
+        if hasattr(self,"area"): to_print += f' Area             = {self.area} (mm2)\n' 
+        if hasattr(self,"rate_thermal_trans2cis"): to_print += f' k_th_EZ          = {self.rate_thermal_trans2cis} (s)\n' 
+        if hasattr(self,"rate_thermal_cis2trans"): to_print += f' k_th_ZE          = {self.rate_thermal_cis2trans} (s)\n' 
+        if len(self.pss_results) > 0:              to_print += f' Num of Results   = {len(self.pss_results)}\n'
+        to_print += '\n'
+        return to_print
+            
 
 
 
@@ -938,10 +1053,11 @@ class State_azo(State):
         return gtot_eff_col
 
     ######
-    def get_abs_spectrum(self, normalize: bool = False, units: bool = False, lmin: float=200, lmax: float=1000, debug: int=0):
+    def get_abs_spectrum(self, lmin: float=200, lmax: float=1000, sigma: float=0.2, units: bool=True, debug: int=0):
         '''
         Using the stored TD-DFT data, computes the spectrum in the energy range, and returns it as an [x,y] array
         '''
+        from scope.operations.vecs_and_mats import build_spectrum
 
         # Check if TDDFT data exists.
         if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in this state')
@@ -952,15 +1068,21 @@ class State_azo(State):
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: energies {energies}')
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: osc. strengths {fosc}')
 
-        ## Passem erange a wlrange
+        ## Convert desired range in nm (lrange) to energies (erange)
         lrange = np.linspace(lmin, lmax, lmax-lmin)
         erange = 1240/lrange[::-1] 
 
         # Builds the spectrum from discrete values, using Gaussian broadening
-        x, y = build_spectrum(erange, energies, fosc, normalize=normalize, units=units)
+        x, y = build_spectrum(erange, energies, fosc, function='gaussian', sigma=sigma, normalize=False, debug=debug)
 
-        self.abs_spec_x = x
-        self.abs_spec_y = y
+        self.abs_spec_x = 1240/x  # Converts the result to a range of nm values
+
+        ## MANEL: checkeja lo de les unitats a sota
+        if units: 
+            K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
+            self.abs_spec_y = y * K 
+        else:     
+            self.abs_spec_y = y  
 
         return self.abs_spec_x, self.abs_spec_y
 
@@ -995,123 +1117,68 @@ class Molecule_azo(Molecule):
             self.states.append(new_state)
         return new_state
 
-    ######        
-    ## MANEL: es fa servir aquesta funcio?
-
-    def get_azo_substituents(self, debug: int=0):
-        from scope.operations.dicts_and_lists    import extract_from_list
-        self.azo_substituents = []
-        azo_idx   = self.dihedral_indices[2:4]
-        rest_idx  = list(idx for idx in self.indices if idx not in azo_idx)
-        rest_indices = extract_from_list(rest_idx, self.indices, dimension=1)
-        rest_labels  = extract_from_list(rest_idx, self.labels, dimension=1)
-        rest_coord   = extract_from_list(rest_idx, self.coord, dimension=1)
-        rest_radii   = extract_from_list(rest_idx, self.radii, dimension=1)
-        rest_atoms   = extract_from_list(rest_idx, self.atoms, dimension=1)
-        blocklist = split_species(rest_labels, rest_coord)
-        for b in blocklist:
-            if debug > 0: print(f"GET_AZO_SUBSTITUENTS. PREPARING BLOCK: {b}")
-            sub_indices      = extract_from_list(b, rest_indices, dimension=1)
-            sub_labels       = extract_from_list(b, rest_labels, dimension=1)
-            sub_coord        = extract_from_list(b, rest_coord, dimension=1)
-            sub_radii        = extract_from_list(b, rest_radii, dimension=1)
-            sub_atoms        = extract_from_list(b, rest_atoms, dimension=1)
-            new_substituent  = Molecule(sub_labels, sub_coord, radii=sub_radii)
-            new_substituent.origin = "get_azo_substituents"
-            new_substituent.add_parent(self, indices=sub_indices)
-            new_substituent.set_atoms(atomlist=sub_atoms)
-            self.azo_substituents.append(new_substituent)
-        return self.azo_substituents
-
     def __repr__(self):
         to_print = ""
         to_print += f'---------- SCOPE Molecule_azo Object ------------\n'
         to_print += Molecule.__repr__(self, indirect=True)
-        # if hasattr(self,"halflife"): to_print += f'     Half-life (t1/2):{self.halflife}                         \n'
         to_print +=  '-------------------------------------------------\n'
         return to_print
 
-#######################################
-#####     General Lamp Class      #####
-#######################################
+################
+## Lamp Class ##
+################
 class Lamp:
-    def __init__(self, name : str, wavelength : float, fwhm_nm : float = None, power : float = None, shift_nm : float = 0):
+    _LAMP_DATA_DIR = Path(__file__).resolve().parent / "lamp_data" ## Path of where lamp-data files are stored
+
+    def __init__(self, name : str):
         '''
         Parameters
         ----------
-            name: string 
-                Name of the lamp.
-            wavelength: float
-                Irradiation wavelength in nm. 
-            fwhm_nm: float
-                Full Width at Half Maximum in nm (if None, FWHM=1nm).
-            power: float, 
-                Power of the lamp in W. If None, power is taken from literature data.
-
+            name: string             Name of the lamp.
         '''
-        power_data = {      # Power data (W) from https://doi.org/10.1016/j.bcp.2025.117065
-            365: 0.10,
-            385: 0.16,
-            405: 0.10,
-            435: 0.025,
-            460: 0.125,
-            470: 0.35,
-            500: 0.025
-            }        
-        irr_data = {        # Irradiance at 50% intensity (mW/mm2)
-            365: 1.04,
-            385: 2.6,
-            405: 2.10,
-            435: 0.72,
-            460: 2.17,
-            470: 1.02,
-            490: 0.95,
-            500: 0.3,
-            525: 0.36,
-            550: 1.57
-            }
-        
-        fwhm_list = {       # Fwhm data (nm) from COOLLED light source
-            365: 12.54,
-            385: 11.38,
-            405: 16.08,
-            435: 13.02,
-            460: 17.61,
-            470: 23.26,
-            500: 24.72,
-            525: 28.32,
-            550: 82.79
-        }
-        
-        self.name = name
-        self.wavelength = float(wavelength) # in nm
+        self.name   = str(name).lower()
+        self.data   = self._load_lamp_data(name)
 
-        if fwhm_nm is None:
-            if wavelength not in fwhm_list.keys():
-                raise ValueError(f'Wavelength {wavelength} nm not available for lamp {name}. Choose from {list(fwhm_list.keys())} nm.')
-            else:
-                self.fwhm = fwhm_list.get(int(round(wavelength)))
-        else:
-            self.fwhm = float(fwhm_nm)
+        ## Loads data from JSON
+        self.wavelengths   = np.array(list(self._coerce_wavelength_dict(self.data.get("fwhm_data_nm")).keys()))
+        self.fwhm          = np.array(list(self._coerce_wavelength_dict(self.data.get("fwhm_data_nm")).values()))
 
-        if wavelength not in irr_data.keys():   raise ValueError(f'Wavelength {wavelength} nm not available for lamp {name}. Choose from {list(irr_data.keys())} nm.')
-        else:   self.irradiance = irr_data.get(int(wavelength)) # in mW/mm2   
+    def set_power(self, eff_power=None):
+        if eff_power is None: self.power         = float(self.data.get("default_power")) # in mW
+        else:                 self.power         = float(eff_power)
+        return self.power
 
-        if shift_nm != float(0.0):  self.eff_wavelength = self.wavelength - shift_nm
-        else:   self.eff_wavelength = self.wavelength
+    def apply_wl_shift(self, shift: float, debug: int=0):
+        # Shift in nanometers
+        self.wavelengths = self.wavelengths - shift
+        return self.wavelengths
 
-        if name=='DARK':
-            self.wavelength = 365
-            self.irradiance = 0 
-            self.power = 0
+    def _load_lamp_data(self, name: str) -> dict:
+        from scope.read_write import load_json
+        lamp_name = str(name).strip().lower()
+        file_path = self._LAMP_DATA_DIR / f"{lamp_name}.json"
+        if not file_path.exists():
+            available = ", ".join(self.available_lamps())
+            raise FileNotFoundError(f"LAMP: No data file found for lamp '{name}'. Expected '{file_path.name}' in '{self._LAMP_DATA_DIR}'. Available lamps: {available}")
+        return load_json(file_path)
 
+    def available_lamps(self):
+        if not self._LAMP_DATA_DIR.exists():
+            return []
+        return sorted(path.stem.upper() for path in self._LAMP_DATA_DIR.glob("*.json"))
+
+    @staticmethod
+    def _coerce_wavelength_dict(raw_data):
+        if raw_data is None: return {}
+        converted = {}
+        for key, value in raw_data.items():
+            converted[int(round(float(key)))] = float(value)
+        return converted
 
     def __repr__(self):
         to_print = f'--------- Scope Lamp Object -----------\n'
         to_print += f' Name                     = {self.name}\n'
-        to_print += f' Wavelength               = {self.wavelength} nm\n'
+        to_print += f' Wavelengths              = {self.wavelengths} nm\n'
         to_print += f' FWHM                     = {self.fwhm} nm\n'
-        if hasattr(self, "eff_wavelength"): to_print += f' Wavelength (after shift) = {self.eff_wavelength} nm\n'
-        if hasattr(self, "power"):          to_print += f' Power                    = {self.power} W\n'
         to_print += f'---------------------------------------\n'
         return to_print

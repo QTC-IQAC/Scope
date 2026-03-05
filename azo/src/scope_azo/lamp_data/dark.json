@@ -1,0 +1,8 @@
+{
+  "name": "DARK",
+  "source": "",
+  "default_power": 0.0,
+  "fwhm_data_nm": {
+    "365": 0.00
+  }
+}

@@ -133,7 +133,7 @@ def build_spectrum(xrange, xvalues, yvalues, function: str='gaussian', sigma=0.2
     if debug > 0 and (sigma is None or (isinstance(sigma, str) and sigma.lower() == "auto")):
         print(f'BUILD_SPECTRUM: auto sigma = {sigma_resolved}')
 
-    if debug > 0: print(f"BUILD_SPECTRUM: Using {sigma_resolved=}")
+    if debug > 0: print(f"BUILD_SPECTRUM: Using sigma={sigma_resolved}")
     func = function.lower()
     spec = np.zeros_like(xrange, dtype=float)
     for x0, y0 in zip(xvalues, yvalues):
