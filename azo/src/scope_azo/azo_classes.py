@@ -1,5 +1,4 @@
-import numpy as np
-from    math                                import log as ln
+import  numpy as np
 import  scope.constants                     as Constants
 from    scope.classes_data                  import Data, Collection
 from    scope.classes_system                import System
@@ -8,8 +7,8 @@ from    scope.classes_specie                import Molecule
 from    scope.elementdata                   import ElementData
 from    scope.geometry                      import centercoords, set_dihedral, get_dihedral, solve_dihedral, set_angle, get_angle
 from    scope.connectivity                  import get_adjmatrix, split_species
-from    scope.operations.dicts_and_lists    import extract_from_list
-from    scope_azo.azo_functions             import get_3D, compute_t, build_spectrum, get_photon_flux_spectrum, build_pss_spectrum
+from    scope.operations.vecs_and_mats      import build_spectrum
+from    scope_azo.azo_functions             import get_3D, compute_t, get_photon_flux_spectrum, build_pss_spectrum
 
 ############################################
 #### SYSTEM Object adapted to System_azo ###
@@ -893,6 +892,7 @@ class State_azo(State):
 
     ######
     def correct_tripletG(self, temp: float=298.15, p_sh: float=0.0002, debug: int=0):
+        from math import log as ln
         '''
         Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
         Correction is done considering the increase of energy due to surface hopping between the singlet and triplet PESs. 
@@ -960,14 +960,7 @@ class State_azo(State):
         x, y = build_spectrum(erange, energies, fosc, normalize=normalize, units=units)
 
         self.abs_spec_x = x
-        if units: 
-            # Conversion to m^2 / molecule
-            K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
-            self.abs_spec_y = y * K
-            #self.abs_spec_y = y[::-1] * K
-        else:
-            self.abs_spec_y = y
-            #self.abs_spec_y = y[::-1]              ## MANEL: revisar
+        self.abs_spec_y = y
 
         return self.abs_spec_x, self.abs_spec_y
 
@@ -1006,6 +999,7 @@ class Molecule_azo(Molecule):
     ## MANEL: es fa servir aquesta funcio?
 
     def get_azo_substituents(self, debug: int=0):
+        from scope.operations.dicts_and_lists    import extract_from_list
         self.azo_substituents = []
         azo_idx   = self.dihedral_indices[2:4]
         rest_idx  = list(idx for idx in self.indices if idx not in azo_idx)
