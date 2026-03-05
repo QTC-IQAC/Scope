@@ -916,8 +916,11 @@ class PSS(object):
         # phi_EZ is the quantum yield for the CIS-to-TRANS photoisomerization
         # phi_ZE is the quantum yield for the TRANS-to-CIS photoisomerization
         photon_flux          = self.get_photon_flux_spectrum(wl, debug=debug)
-        rate_photo_trans2cis = phi_EZ * np.trapezoid(self.trans_spectrum * photon_flux, self.wl_range)
-        rate_photo_cis2trans = phi_ZE * np.trapezoid(self.cis_spectrum   * photon_flux, self.wl_range) 
+
+        # Apply proper units to both spectra 
+        K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
+        rate_photo_trans2cis = phi_EZ * np.trapezoid((self.trans_spectrum * K) * photon_flux, self.wl_range)
+        rate_photo_cis2trans = phi_ZE * np.trapezoid((self.cis_spectrum * K) * photon_flux, self.wl_range) 
         return rate_photo_trans2cis, rate_photo_cis2trans 
 
     def get_pss_ratio(self, wl: float, phi_EZ: float=0.3, phi_ZE: float=0.5, debug: int=0):
@@ -957,6 +960,7 @@ class PSS(object):
         idx      = where_in_array(self.lamp.wavelengths, wl)[0]
         fwhm     = self.lamp.fwhm[idx]
         sigma    = fwhm / (2 * np.sqrt(2 * np.log(2)))            ## Manel, això xk?
+                                                                ## SERGI: no és el mateix el FWHM que la sigma, que és la desviació estàndard
         profile  = gaussian(self.wl_range, wl, sigma=sigma)
         ## Find Intensity along the wavelength space. 
         irr_spec = self.lamp.power * profile / self.area   # in W/m2/nm
@@ -1053,7 +1057,7 @@ class State_azo(State):
         return gtot_eff_col
 
     ######
-    def get_abs_spectrum(self, lmin: float=200, lmax: float=1000, sigma: float=0.2, units: bool=True, debug: int=0):
+    def get_abs_spectrum(self, lmin: float=200, lmax: float=1000, sigma: float=0.2, debug: int=0):
         '''
         Using the stored TD-DFT data, computes the spectrum in the energy range, and returns it as an [x,y] array
         '''
@@ -1070,20 +1074,15 @@ class State_azo(State):
 
         ## Convert desired range in nm (lrange) to energies (erange)
         lrange = np.linspace(lmin, lmax, lmax-lmin)
-        erange = 1240/lrange[::-1] 
-
+        hc = Constants.planck_Js * Constants.speed_light * 1e09 / Constants.elem_charge      ### h·c in eV · nm
+        erange = hc/lrange[::-1]
+        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: hc {hc}')
+        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: erange {erange}')
         # Builds the spectrum from discrete values, using Gaussian broadening
         x, y = build_spectrum(erange, energies, fosc, function='gaussian', sigma=sigma, normalize=False, debug=debug)
 
-        self.abs_spec_x = 1240/x  # Converts the result to a range of nm values
-
-        ## MANEL: checkeja lo de les unitats a sota
-        if units: 
-            K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
-            self.abs_spec_y = y * K 
-        else:     
-            self.abs_spec_y = y  
-
+        self.abs_spec_x = hc/x[::-1]  # Converts the result to a range of nm values   
+        self.abs_spec_y = y[::-1]
         return self.abs_spec_x, self.abs_spec_y
 
 ############################################
