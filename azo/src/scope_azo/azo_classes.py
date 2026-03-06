@@ -766,8 +766,8 @@ class System_azo(System):
         if not found_trans_state: raise Exception('SYSTEM_AZO.GET_PSS: The target state for the TRANS isomer was not found.')
 
         # Extract absorption spectra from two isomers. 
-        trans_x, trans_y = trans_state.get_abs_spectrum(lmin=lmin, lmax=lmax, units=True, debug=debug) # Need units to compute PSS
-        cis_x, cis_y     = cis_state.get_abs_spectrum(lmin=lmin, lmax=lmax, units=True, debug=debug)   # Need units to compute PSS
+        trans_x, trans_y = trans_state.get_abs_spectrum(lmin=lmin, lmax=lmax, debug=debug) # Need units to compute PSS
+        cis_x, cis_y     = cis_state.get_abs_spectrum(lmin=lmin, lmax=lmax, debug=debug)   # Need units to compute PSS
         assert all(trans_x == cis_x)
         if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Spectra of cis and trans computed") 
 
@@ -959,8 +959,7 @@ class PSS(object):
 
         idx      = where_in_array(self.lamp.wavelengths, wl)[0]
         fwhm     = self.lamp.fwhm[idx]
-        sigma    = fwhm / (2 * np.sqrt(2 * np.log(2)))            ## Manel, això xk?
-                                                                ## SERGI: no és el mateix el FWHM que la sigma, que és la desviació estàndard
+        sigma    = fwhm / (2 * np.sqrt(2 * np.log(2))) 
         profile  = gaussian(self.wl_range, wl, sigma=sigma)
         ## Find Intensity along the wavelength space. 
         irr_spec = self.lamp.power * profile / self.area   # in W/m2/nm
@@ -1076,7 +1075,6 @@ class State_azo(State):
         lrange = np.linspace(lmin, lmax, lmax-lmin)
         hc = Constants.planck_Js * Constants.speed_light * 1e09 / Constants.elem_charge      ### h·c in eV · nm
         erange = hc/lrange[::-1]
-        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: hc {hc}')
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: erange {erange}')
         # Builds the spectrum from discrete values, using Gaussian broadening
         x, y = build_spectrum(erange, energies, fosc, function='gaussian', sigma=sigma, normalize=False, debug=debug)
