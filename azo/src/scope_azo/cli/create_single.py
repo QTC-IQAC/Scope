@@ -49,10 +49,10 @@ def create_single(args):
     if debug > 0: print(f"\tArguments_parsed: {args}")
 
     system_name = args.name
-    system_path = env.sources_path+args.name
+    system_path = env.systems_path+args.name
     smiles      = args.smiles
 
-    exists = path_exists(system_path)
+    exists = os.path.exists(system_path) 
     if exists and not overwrite:
         print(f"\tSystem {system_name} already exists. Use -f or --force to overwrite it.")
         sys.exit()
