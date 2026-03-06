@@ -401,6 +401,16 @@ class State(object):
     def set_exc_states(self, exc_states, debug: int=0):
         self.exc_states = exc_states
         return self.exc_states
+    
+    def shift_exc_states_wl(self, shift: float, debug: int=0):
+        # Shifts the wavelength of the Excited states, applied in nm
+        for es in self.exc_states:
+            es.shift_wavelength(shift, debug=debug)
+
+    def shift_exc_states_energy(self, shift: float, debug: int=0):
+        # Shifts the wavelength of the Excited states, applied in eV
+        for es in self.exc_states:
+            es.shift_energy(shift, debug=debug)
 
 ##################################
 #### Connection with Workflow ####

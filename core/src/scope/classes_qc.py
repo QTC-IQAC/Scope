@@ -189,12 +189,28 @@ def plot_ir_spectrum(vnms, xmin=None, xmax=None, broadening=10.0, points=2000, k
 ##############################
 class ExcitedState(object):
     def __init__(self, index: int, energy: float, wavelength: float, fosc: float, s2: float, debug: int=0) -> None:
-        self.type          = "excited_state"
-        self.index         = index
-        self.energy        = energy
-        self.wavelength    = wavelength
-        self.fosc          = fosc
-        self.s2            = s2
+        self.type              = "excited_state"
+        self.index             = index
+        self.energy            = energy
+        self.wavelength        = wavelength
+        self.fosc              = fosc
+        self.s2                = s2
+
+    def shift_wavelength(self, shift: float, debug: int=0):
+        self.original_wl      = self.wavelength
+        self.wavelength       = self.wavelength + shift
+        self.original_energy  = self.energy
+        self.energy           = constants.hc/self.wavelength
+        if debug > 0: print(f"EXC_STATE.SHIFT_WAVELENGTH: wavelength shifted to {self.wavelength} from {self.original_wl}, and energy adapted to {self.energy}")
+        return self.wavelength
+
+    def shift_energy(self, shift: float, debug: int=0):
+        self.original_energy  = self.energy
+        self.energy           = self.energy + shift
+        self.original_wl      = self.wavelength
+        self.wavelength       = constants.hc/self.energy
+        if debug > 0: print(f"EXC_STATE.SHIFT_ENERGY: energy shifted to {self.energy} from {self.original_energy}, and wavelength adapted to {self.wavelength}")
+        return self.energy
 
     def __repr__(self):
         to_print  = f'-----------------------------\n'

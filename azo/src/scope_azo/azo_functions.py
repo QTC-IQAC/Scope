@@ -107,8 +107,6 @@ def build_pss_spectrum(initial_fraction, initial_spectrum, final_spectrum, debug
 def wavelength_to_rgb(nm: float):
     """Approximate the RGB color perceived for a wavelength in nm."""
     gamma = 0.8
-    # intensity = 1.0
-    nm +=30
     if nm < 360 or nm > 780:
         return (0.5, 0.5, 0.5)  # gray for non-visible (e.g., 350 nm)
 

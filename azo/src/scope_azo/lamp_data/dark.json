@@ -2,6 +2,7 @@
   "name": "DARK",
   "source": "",
   "default_power": 0.0,
+  "default_power_intensity": 1.0,
   "fwhm_data_nm": {
     "365": 0.00
   }

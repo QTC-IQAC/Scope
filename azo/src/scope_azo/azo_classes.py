@@ -1,13 +1,12 @@
-import  numpy as np
-import  json
-import  scope.constants                     as Constants
-from    pathlib                             import Path
-from    scope.classes_data                  import Data, Collection
-from    scope.classes_system                import System
-from    scope.classes_state                 import State, find_state
-from    scope.classes_specie                import Molecule
-from    scope.elementdata                   import ElementData
-from    scope.geometry                      import centercoords, set_dihedral, get_dihedral, solve_dihedral, set_angle, get_angle
+import numpy as np
+from scope import constants                    
+from scope.classes_data                  import Data, Collection
+from scope.classes_system                import System
+from scope.classes_state                 import State, find_state
+from scope.classes_specie                import Molecule
+from scope.elementdata                   import ElementData
+from scope.geometry                      import centercoords, set_dihedral, get_dihedral, solve_dihedral, set_angle, get_angle
+from scope_azo.azo_functions import * 
 
 ############################################
 #### SYSTEM Object adapted to System_azo ###
@@ -311,16 +310,13 @@ class System_azo(System):
     ######
     def create_ts(self, ts_list:list = ['TSrot', 'TSinv', 'triplet'], debug: int=0):
         """
-        Creates a set of TS for a System_azo. Users can select which TS to create from a list of options, 
-        it must be in ts_list (['TSrot', 'TSinv', 'triplet']). 
-
+        Creates a set of TS for a System_azo. Users can select which TS must be created from a list of options (['TSrot', 'TSinv', 'triplet']). 
         Once the TS are created, they are added to the System_azo object as sources.
 
         -------
         TSrot
         -------
         TSrot is created by rotating the trans isomer by +/-90 degrees around the azo dihedral. 
-        If 'triplet' is selected on ts_list, rotation TS in triplet state are created.
 
         Nomenclature: 
             - TSrot_A_S: Rotation TS in singlet state. Dihedral angle is set as +90º. Total spin is set to 0.
@@ -331,14 +327,18 @@ class System_azo(System):
         -------
         TSinv
         -------
-        TSinv is created by inverting the trans isomer around the azo dihedral (setting N=N-ring angle to 180º).
+        TSinv are created by rotating the azo N=N-ring angles to 180º.
         By default, total spin is set as 0. It can be changed using the function for Molecule objects as Molecule.set_total_spin(value).
-        4 versions are created:
+        2 versions are created:
             - tsinv_l: Inversion TS involving inversion of left ring (at0 - at1 = at2).
             - tsinv_r: Inversion TS involving inversion of right ring (at1 = at2 - at3).
 
-        They are added as sources of the System_azo. They can be accessed by using System_azo.find_source('TSrot_A_T') or system_azo.find_source('TSinv_R_a'). 
-        
+        -------
+        Triplets
+        -------
+        Similar to the TSrot, but setting the molecule in a triplet state. Technically, the final structures won't be a TS, but a triplet minimum in the PES. 
+        However, it becomes a sort of 'TS' during the cis-trans thermal relaxation involving the Triplet manifold, hence the nomenclature.
+
         """
         from scope.connectivity import get_adjmatrix
 
@@ -511,7 +511,10 @@ class System_azo(System):
     #######################
     ## Thermal Stability ##
     #######################
-    def get_mets(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, debug: int=0):
+    def get_mets(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, force: bool=False, debug: int=0):
+        '''
+        '''
+        if hasattr(self,"mets") and not force: return self.mets
 
         ts_names    = []
         ts_energies = []
@@ -638,7 +641,7 @@ class System_azo(System):
         gtot_cis = cis_state.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value
         if debug > 0: print(f"SYSTEM_AZO.get_thermal_stability: {gtot_cis=}")
 
-        dE = (gtot_cis - gtot_trans) * Constants.har2kJmol/Constants.kcal2kJmol ## Returns value in Kcal/mol
+        dE = (gtot_cis - gtot_trans) * constants.har2kJmol/constants.kcal2kJmol ## Returns value in Kcal/mol
         dE_data = Data("dG_cis-trans",dE,'kcal/mol',"system_azo.get_thermal_stability()")
         self.add_result(dE_data, overwrite=True)
         return dE_data
@@ -682,17 +685,20 @@ class System_azo(System):
         #Computing halflife time (t05) and kinetic constant (k)
         t05, k_th = eyring_halflife(gtot_ground, gtot_mets, temp)
         if debug > 0: print(f'SYSTEM_AZO.GET_TRANS_T05: Obtained t05: {t05}  k_th: {k_th}') 
-        dG_from_trans = (float(gtot_mets)- float(gtot_ground)) * Constants.har2kJmol * Constants.kJmol2kcal # in Kcal/mol
+        dG_from_trans = (float(gtot_mets)- float(gtot_ground)) * constants.har2kJmol * constants.kJmol2kcal # in Kcal/mol
         if debug > 0: print(f'SYSTEM_AZO.GET_TRANS_T05: dG_from_trans = {dG_from_trans}') 
 
         units_time = 's'
         units_kcal = 'kcal/mol'
 
         # Creates Data-class objects to store results, and sets temperature as property
+        k_data   = Data("rate_thermal_trans2cis", k_th, units_time, "system_azo.get_trans_halflife_time()")
+        k_data.add_property("temperature", temp)
         dG_data  = Data("dG_from_trans",dG_from_trans,units_kcal,"system_azo.get_trans_halflife_time()")
         dG_data.add_property("temperature", temp)
         t05_data = Data("trans_halflife_time",t05,units_time,"system_azo.get_trans_halflife_time()")
         t05_data.add_property("temperature", temp)
+        self.add_result(k_data, overwrite=True)
         self.add_result(dG_data, overwrite=True)
         self.add_result(t05_data, overwrite=True)
         return self.results['trans_halflife_time']
@@ -736,17 +742,20 @@ class System_azo(System):
         #Computing halflife time (t05) and kinetic constant (k)
         t05, k_th = eyring_halflife(gtot_ground, gtot_mets, temp)
         if debug > 0: print(f'SYSTEM_AZO.GET_CIS_T05: Obtained t05: {t05}  k_th: {k_th}') 
-        dG_from_cis = (float(gtot_mets)- float(gtot_ground)) * Constants.har2kJmol * Constants.kJmol2kcal # in Kcal/mol
+        dG_from_cis = (float(gtot_mets)- float(gtot_ground)) * constants.har2kJmol * constants.kJmol2kcal # in Kcal/mol
         if debug > 0: print(f'SYSTEM_AZO.GET_CIS_T05: dG_from_cis = {dG_from_cis}') 
 
         units_time = 's'
         units_kcal = 'kcal/mol'
 
         # Creates Data-class objects to store results, and sets temperature as property
+        k_data   = Data("rate_thermal_cis2trans", k_th, units_time, "system_azo.get_cis_halflife_time()")
+        k_data.add_property("temperature", temp)
         dG_data  = Data("dG_from_cis",dG_from_cis,units_kcal,"system_azo.get_cis_halflife_time()")
         dG_data.add_property("temperature", temp)
         t05_data = Data("cis_halflife_time",t05,units_time,"system_azo.get_cis_halflife_time()")
         t05_data.add_property("temperature", temp)
+        self.add_result(k_data, overwrite=True)
         self.add_result(dG_data, overwrite=True)
         self.add_result(t05_data, overwrite=True)
         return self.results['cis_halflife_time']
@@ -754,9 +763,60 @@ class System_azo(System):
     ########################
     ## Optical Properties ##
     ########################
-    def get_PSS(self, lamp_name: str="default", target_state: str = 'opt', temp: float=298.15, phi_EZ = 0.3, phi_ZE = 0.5, trans_t05=None, cis_t05=None, lmin: float=200, lmax: float=1000, debug=0):
+    def get_PSS(self, lamp_name: str="default", target_state: str = 'opt', temp: float=298.15, phi_EZ: float=0.3, phi_ZE: float=0.5, pw_int: float=1.0, trans_k=None, cis_k=None, lmin: float=200, lmax: float=1000, debug=0):
         """
-        Function to get a PSS object with all relevant data to compute the Photo-stationary state upon irradiation, using photochemical and thermal rates.
+        Creates and initializes a PSS object for this azo system using thermal and
+        photochemical rates.
+
+        The method extracts cis/trans absorption spectra from the selected electronic
+        state, resolves thermal rates (provided or computed), configures the lamp,
+        and evaluates the photostationary-state spectrum at each wavelength available
+        in that lamp profile.
+
+        Workflow
+        --------
+        - Finds cis/trans sources and the requested target state in each source.
+        - Computes absorption spectra for both isomers in the same wavelength range.
+        - Resolves thermal rates:
+          - Uses `trans_k` / `cis_k` if provided and consistent with `temp`.
+          - Otherwise computes/retrieves them from system results.
+        - Builds a `PSS` object and attaches the selected lamp profile.
+        - Applies lamp power/intensity scaling with `pw_int`.
+        - Computes and stores PSS spectra for all lamp wavelengths.
+
+        Parameters
+        ----------
+        lamp_name : str, optional
+            Name of the lamp profile (e.g. `"COOLLED"`, `"DARK"`). Default is `"default"`.
+        target_state : str, optional
+            State label to use in cis/trans sources (e.g. `"opt"`). Default is `"opt"`.
+        temp : float, optional
+            Temperature in Kelvin used for thermal-rate handling. Default is 298.15 K.
+        phi_EZ : float, optional
+            Quantum yield for trans -> cis photoisomerization. Default is 0.3.
+        phi_ZE : float, optional
+            Quantum yield for cis -> trans photoisomerization. Default is 0.5.
+        pw_int : float, optional
+            Lamp power/intensity scaling factor passed to `lamp.set_power_intensity()`.
+            Default is 1.0.
+        trans_k : float, optional
+            Thermal rate constant for trans -> cis (s^-1). If `None`, it is computed
+            or retrieved from stored results.
+        cis_k : float, optional
+            Thermal rate constant for cis -> trans (s^-1). If `None`, it is computed
+            or retrieved from stored results.
+        lmin : float, optional
+            Minimum wavelength (nm) for absorption spectra. Default is 200.
+        lmax : float, optional
+            Maximum wavelength (nm) for absorption spectra. Default is 1000.
+        debug : int, optional
+            Debug level. 0: silent, >0: verbose.
+
+        Returns
+        -------
+        PSS
+            Initialized PSS object containing spectra, lamp settings, thermal rates,
+            and computed PSS results across lamp wavelengths.
         """
 
         # Search for cis and trans sources and states.
@@ -771,25 +831,24 @@ class System_azo(System):
         assert all(trans_x == cis_x)
         if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Spectra of cis and trans computed") 
 
-
         # Thermal rates are normally extracted, but can be provided as well
-        if trans_t05 is None: 
-            if not 'trans_halflife_time' in self.results: self.get_trans_halflife_time(temp=temp, target_state=target_state, debug=debug) # Computed if not exists 
-            trans_t05 = self.results['trans_halflife_time'].value
+        if trans_k is None: 
+            if not 'rate_thermal_trans2cis' in self.results: self.get_trans_halflife_time(temp=temp, target_state=target_state, debug=debug) # Computed if not exists 
+            trans_k = self.results['rate_thermal_trans2cis'].value
         else:
-            if self.results['trans_halflife_time'].temperature == temp:
-                trans_t05 = float(trans_t05)
+            if self.results['rate_thermal_trans2cis'].temperature == temp:
+                trans_k = float(trans_k)
             else:
-                trans_t05 = self.get_trans_halflife_time(temp=temp, target_state=target_state, debug=debug).value  # Computed if exists, but wrong temperature
+                trans_k = self.get_trans_halflife_time(temp=temp, target_state=target_state, debug=debug).value  # Computed if exists, but wrong temperature
 
-        if cis_t05 is None: 
-            if not 'cis_halflife_time'   in self.results: self.get_cis_halflife_time(temp=temp, target_state=target_state, debug=debug) # Computed if not exists 
-            cis_t05   = self.results['cis_halflife_time'].value
+        if cis_k is None: 
+            if not 'rate_thermal_cis2trans'   in self.results: self.get_cis_halflife_time(temp=temp, target_state=target_state, debug=debug) # Computed if not exists 
+            cis_k   = self.results['rate_thermal_cis2trans'].value
         else:
-            if self.results['cis_halflife_time'].temperature == temp:
-                cis_t05 = float(cis_t05)
+            if self.results['rate_thermal_cis2trans'].temperature == temp:
+                cis_k = float(cis_k)
             else:
-                cis_t05 = self.get_cis_halflife_time(temp=temp, target_state=target_state, debug=debug).value # Computed if exists, but wrong temperature 
+                cis_k = self.get_cis_halflife_time(temp=temp, target_state=target_state, debug=debug).value # Computed if exists, but wrong temperature 
 
         if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Obtained Cis and Trans halflife times")
         if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Creating PSS-Class object")
@@ -797,10 +856,11 @@ class System_azo(System):
         # Initializes PSS and computes it for all wl
         self.PSS = PSS(self, trans_x, trans_y, cis_y)
         self.PSS.set_lamp(lamp_name)
-        self.PSS.set_thermal_rates(trans_t05, cis_t05)
+        self.PSS.lamp.set_power_intensity(pw_int=pw_int)
+        self.PSS.set_thermal_rates(trans_k, cis_k)
         for wl in self.PSS.lamp.wavelengths:
             if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Evaluating PSS for wavelength: {wl}") 
-            self.PSS.get_pss_ratio(wl, phi_EZ=phi_EZ, phi_ZE=phi_ZE, debug=debug) # get_pss_ratio computes the photo_rates already with the same parameters (wl and phi's)
+            self.PSS.get_pss_spectrum(wl, phi_EZ=phi_EZ, phi_ZE=phi_ZE, debug=debug) # get_pss_ratio computes the photo_rates already with the same parameters (wl and phi's)
         return self.PSS
 
 #    ######
@@ -827,8 +887,8 @@ class System_azo(System):
 #        
 #        lambda_grid, sigma_cis, sigma_trans, pss_B = self.get_PSS(lamp, phi_EZ=0, phi_ZE=0, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug) 
 #        
-#        sigma_cis *= Constants.avogadro / (1000 * np.log(10)) * 1e4
-#        sigma_trans *= Constants.avogadro / (1000 * np.log(10)) * 1e4
+#        sigma_cis *= constants.avogadro / (1000 * np.log(10)) * 1e4
+#        sigma_trans *= constants.avogadro / (1000 * np.log(10)) * 1e4
 #
 #        sigma_pss = build_pss_spectrum(pss_B, sigma_trans, sigma_cis, debug=debug) 
 #        frac_list.append(pss_B)     
@@ -885,19 +945,20 @@ class PSS(object):
 
     def set_thermal_rates(self, trans_t05: float, cis_t05: float, debug: int=0):
         # Thermal rates
-        self.rate_thermal_trans2cis = np.log(2) / trans_t05
-        self.rate_thermal_cis2trans = np.log(2) / cis_t05
+        self.rate_thermal_trans2cis = trans_t05
+        self.rate_thermal_cis2trans = cis_t05
 
     def set_lamp(self, name: str="dark", debug: int=0):
         self.lamp = Lamp(name)
         return self.lamp
         
-    def set_diameter(self, diameter: float=100):  
-        # Relevant to calculate the illuminated area 
+    def set_diameter(self, diameter: float=10):  
+        # Relevant to calculate the illuminated area. Provided in mm.
         self.diameter = diameter
     
     def set_area(self, area=None):                          
         # This is to set the illuminated area, relevant to know the amount of light received by the samples
+        # Typically, it is a circular beam with diameter=d, so we use the area of a circle
         if area is None: 
             if not hasattr(self,"diameter"): self.set_diameter()
             self.area = np.pi * (self.diameter/2)**2        # diameter in mm 
@@ -905,12 +966,11 @@ class PSS(object):
             self.area = area                                # value in square milimeters (mm2)
         return self.area
 
-    #def get_irradiance(self):
-    #    # Evaluates irradiance (I) as: I = self.lamp.power / self.area
-    #    if not hasattr(self,"area"):        self.set_area()
-    #    if not hasattr(self.lamp, "power"): self.lamp.set_power()
-    #    self.irradiance = self.lamp.power / self.area 
-    #    return self.irradiance
+    def get_irradiance(self):
+        # Evaluates irradiance (I) as: I = self.lamp.power / self.area
+        if not hasattr(self,"area"):        self.set_area()
+        self.irradiance = self.lamp.power * self.lamp.power_intensity / self.area 
+        return self.irradiance
 
     def get_photo_rates(self, wl: float, phi_EZ: float=0.3, phi_ZE: float=0.5, debug: int=0):
         # phi_EZ is the quantum yield for the CIS-to-TRANS photoisomerization
@@ -918,32 +978,46 @@ class PSS(object):
         photon_flux          = self.get_photon_flux_spectrum(wl, debug=debug)
 
         # Apply proper units to both spectra 
-        K = (np.pi * Constants.planck_Js * Constants.elem_charge) / (Constants.epsilon_0 * Constants.speed_light * Constants.electron_mass)
+        K = (np.pi * constants.planck_Js * constants.elem_charge) / (constants.epsilon_0 * constants.speed_light * constants.electron_mass)
         rate_photo_trans2cis = phi_EZ * np.trapezoid((self.trans_spectrum * K) * photon_flux, self.wl_range)
         rate_photo_cis2trans = phi_ZE * np.trapezoid((self.cis_spectrum * K) * photon_flux, self.wl_range) 
         return rate_photo_trans2cis, rate_photo_cis2trans 
 
-    def get_pss_ratio(self, wl: float, phi_EZ: float=0.3, phi_ZE: float=0.5, debug: int=0):
+    def get_pss_ratio(self, wl: float, phi_EZ: float=0.3, phi_ZE: float=0.5, overwrite: bool=True, debug: int=0):
         # Returns relative population of trans isomer
         if not hasattr(self,"rate_thermal_trans2cis"): raise ValueError("PSS.GET_RATIO: Thermal reaction constants missing, set them first with self.set_thermal_rates() before proceeding") 
-        # Computes photo rates at this wl and quantum yields (phi_EZ, phi_ZE)
-        rate_photo_trans2cis, rate_photo_cis2trans = self.get_photo_rates(wl, phi_EZ, phi_ZE, debug=debug) 
-        pss = (self.rate_thermal_cis2trans + rate_photo_cis2trans) / (rate_photo_trans2cis + rate_photo_cis2trans + self.rate_thermal_trans2cis + self.rate_thermal_cis2trans)
-        assert pss >= 0.0 and pss <= 1.0
+        if wl not in self.pss_results.keys() or overwrite: 
+            # Computes photo rates at this wl and quantum yields (phi_EZ, phi_ZE)
+            rate_photo_trans2cis, rate_photo_cis2trans = self.get_photo_rates(wl, phi_EZ, phi_ZE, debug=debug) 
+            pss = (self.rate_thermal_cis2trans + rate_photo_cis2trans) / (rate_photo_trans2cis + rate_photo_cis2trans + self.rate_thermal_trans2cis + self.rate_thermal_cis2trans)
+            assert pss >= 0.0 and pss <= 1.0
 
-        # Creates a dictionary with results
-        results = {
-            "wavelength": wl, 
-            "pss_trans_ratio": pss,
-            "rate_photo_trans2cis": rate_photo_trans2cis, 
-            "rate_photo_cis2trans": rate_photo_cis2trans,
-            "rate_thermal_trans2cis": self.rate_thermal_trans2cis,
-            "rate_thermal_cis2trans": self.rate_thermal_cis2trans, 
-            "QY_trans2cis": phi_EZ,
-            "QY_cis2trans": phi_ZE,
-        } 
-        self.pss_results.update({wl: results})
+            # Creates a dictionary with results
+            results = {
+                "wavelength": wl, 
+                "pss_trans_ratio": pss,
+                "rate_photo_trans2cis": rate_photo_trans2cis, 
+                "rate_photo_cis2trans": rate_photo_cis2trans,
+                "rate_thermal_trans2cis": self.rate_thermal_trans2cis,
+                "rate_thermal_cis2trans": self.rate_thermal_cis2trans, 
+                "QY_trans2cis": phi_EZ,
+                "QY_cis2trans": phi_ZE,
+            } 
+            self.pss_results.update({wl: results})
         return pss
+
+    def get_pss_spectrum(self, wl: float, phi_EZ: float=0.3, phi_ZE: float=0.5, overwrite: bool=True, debug: int=0):
+        if wl not in self.pss_results.keys() or overwrite: 
+            self.get_pss_ratio(wl, phi_EZ, phi_ZE, debug=debug)
+        result = self.pss_results[wl]
+        pss_spectrum = result['pss_trans_ratio'] * self.trans_spectrum + (1 - result['pss_trans_ratio']) * self.cis_spectrum
+        result.update({'pss_spectrum': pss_spectrum})
+        return pss_spectrum
+
+    def build_pss_spectrum(self, pss_trans_ratio: float, debug: int=0):
+        assert pss_trans_ratio <= 1.0 and pss_trans_ratio >= 0.0
+        pss_spectrum = pss_trans_ratio * self.trans_spectrum + (1 - pss_trans_ratio) * self.cis_spectrum
+        return pss_spectrum
 
     def get_photon_flux_spectrum(self, wl: float, debug: int=0):
         '''
@@ -959,28 +1033,45 @@ class PSS(object):
 
         idx      = where_in_array(self.lamp.wavelengths, wl)[0]
         fwhm     = self.lamp.fwhm[idx]
-        sigma    = fwhm / (2 * np.sqrt(2 * np.log(2))) 
+        # Power Intensity Controls the intensity of the power source. In practice, it acts as a multiplier of self.power
+        power    = self.lamp.power[idx] * self.lamp.power_intensity 
+        sigma    = fwhm / (2 * np.sqrt(2 * np.log(2)))     # Conversion from FWHM to sigma 
         profile  = gaussian(self.wl_range, wl, sigma=sigma)
         ## Find Intensity along the wavelength space. 
-        irr_spec = self.lamp.power * profile / self.area   # in W/m2/nm
-
-    ## MANEL. en el calcul de irr_spec, anteriorment hi havia el que veus aqui a sota:
-
-            #if power is not None:
-            #    if debug>0: print(f'AZO.GET_PHOTON_FLUX_SPECTRUM: Power: {power} W')
-            #    area = np.pi * (4.605e-3)**2  # in m2, area of a circle with diameter 0.92 cm
-            #    I_lambda = power * profile / area   # W/m2/nm
-            #else:
-            #    I_lambda = Itot * 1e-3 / 1e-6 * profile  # mW/mm2 to W/m2/nm
-
-    ## MANEL(continua): I_lambda es calculava en funció de si hi havia 'power' o no. Si no hi havia, llavors utilitzava Itot, que si no m'equivoco es la irradiancia
-    ## Crec que aquest es l'unic lloc on s'utilitza la puta irradiancia. Com que ara utilitza power sí o sí, crec que ja no cal calcular irradiancia. 
+        ## Irradiances are also computed as self.get_irradiance(), but in discrete points, not the spectrum as we do here.  
+        irr_spec = power * profile / self.area   # in W/m2/nm
 
         ## Convert wavelength to meters
         wl_meters = self.wl_range * 1e-9
         # Compute photonic energy as E = h*c/lambda
-        photonic_energy = Constants.planck_Js * Constants.speed_light / wl_meters   # in J   
+        photonic_energy = constants.planck_Js * constants.speed_light / wl_meters   # in J   
         return irr_spec / photonic_energy                               # phi: photons * m-2 s-1 nm-1
+
+    #############################
+    ## Plots and Visualization ##
+    #############################
+    def plot_spectra(self, typ: str='all'):
+        import matplotlib.pyplot as plt
+
+        for wl, result in self.pss_results.items():
+            color = wavelength_to_rgb(float(wl))
+            pss_spectrum = result['pss_spectrum']
+            pss_ratio = result['pss_trans_ratio']
+
+            # Plots all spectra, irrespectively of the pss_trans_ratio
+            plot = False
+            if typ == 'all':
+                plot = True
+            if typ == 'mixed':  
+                if pss_ratio != 0.0 and pss_ratio != 1.0:
+                    plot = True 
+            if plot == True: 
+                plt.plot(self.wl_range,pss_spectrum,color=color,label=f"{wl} nm pss: {100 * pss_ratio:.1f}% E")
+
+        plt.plot(self.wl_range, self.trans_spectrum, color='black', label='trans')
+        plt.plot(self.wl_range, self.cis_spectrum, color='black',  linestyle='dashed', label='cis')
+        plt.legend()
+        plt.show()
 
     def __repr__(self):
         to_print = ""
@@ -990,6 +1081,8 @@ class PSS(object):
         to_print += f' System           = {self.system.name}\n'
         to_print += f' Lamp Name        = {self.lamp.name}\n'
         to_print += f' Lamp Wavelengths = {self.lamp.wavelengths} (nm)\n'
+        to_print += f' Lamp FWHM        = {self.lamp.fwhm} (nm)\n'
+        to_print += f' Lamp Powers      = {self.lamp.power} (mW)\n'
         if hasattr(self,"area"): to_print += f' Area             = {self.area} (mm2)\n' 
         if hasattr(self,"rate_thermal_trans2cis"): to_print += f' k_th_EZ          = {self.rate_thermal_trans2cis} (s)\n' 
         if hasattr(self,"rate_thermal_cis2trans"): to_print += f' k_th_ZE          = {self.rate_thermal_cis2trans} (s)\n' 
@@ -997,9 +1090,6 @@ class PSS(object):
         to_print += '\n'
         return to_print
             
-
-
-
 #########################################
 ##### STATE Object Adapted to Azo's #####
 #########################################
@@ -1037,10 +1127,10 @@ class State_azo(State):
         gtot = self.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au")
 
         # Compute the Penalty, based on Surface Hopping Probability (p_sh)
-        dx = - Constants.R_J * temp * ln(p_sh)     # J/mol
+        dx = - constants.R_J * temp * ln(p_sh)     # J/mol
         dx /= 1000                                 # kJ/mol
-        if debug>0: print(f'STATE_AZO.CORRECT_TRIPLETG: Adding penalty of {dx*Constants.kJmol2kcal:.2f} kcal/mol.')
-        dx *= Constants.kJmol2har
+        if debug>0: print(f'STATE_AZO.CORRECT_TRIPLETG: Adding penalty of {dx*constants.kJmol2kcal:.2f} kcal/mol.')
+        dx *= constants.kJmol2har
 
         # Create a Collection, with a single data entry, that of Gtot_eff at the requested temperature
         gtot_eff_col  = Collection("Gtot_eff", "temperature")
@@ -1073,13 +1163,12 @@ class State_azo(State):
 
         ## Convert desired range in nm (lrange) to energies (erange)
         lrange = np.linspace(lmin, lmax, lmax-lmin)
-        hc = Constants.planck_Js * Constants.speed_light * 1e09 / Constants.elem_charge      ### h·c in eV · nm
-        erange = hc/lrange[::-1]
-        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: erange {erange}')
+        erange = constants.hc/lrange[::-1]
+        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: erange {np.min(erange):6.4f}-{np.max(erange):6.4f}')
         # Builds the spectrum from discrete values, using Gaussian broadening
         x, y = build_spectrum(erange, energies, fosc, function='gaussian', sigma=sigma, normalize=False, debug=debug)
 
-        self.abs_spec_x = hc/x[::-1]  # Converts the result to a range of nm values   
+        self.abs_spec_x = constants.hc/x[::-1]  # Converts the result to a range of nm values   
         self.abs_spec_y = y[::-1]
         return self.abs_spec_x, self.abs_spec_y
 
@@ -1125,30 +1214,47 @@ class Molecule_azo(Molecule):
 ## Lamp Class ##
 ################
 class Lamp:
+    from pathlib import Path
     _LAMP_DATA_DIR = Path(__file__).resolve().parent / "lamp_data" ## Path of where lamp-data files are stored
-
-    def __init__(self, name : str):
-        '''
-        Parameters
-        ----------
-            name: string             Name of the lamp.
-        '''
+    def __init__(self, name: str, debug: int=0):
         self.name   = str(name).lower()
         self.data   = self._load_lamp_data(name)
+        self.read_wl(debug=debug)
+        self.read_fwhm(debug=debug)
+        self.read_power(debug=debug)
+        self.read_power_intensity(debug=debug)
 
-        ## Loads data from JSON
-        self.wavelengths   = np.array(list(self._coerce_wavelength_dict(self.data.get("fwhm_data_nm")).keys()))
-        self.fwhm          = np.array(list(self._coerce_wavelength_dict(self.data.get("fwhm_data_nm")).values()))
+    ####################
+    ## Read from JSON ##
+    ####################
+    def read_wl(self, debug: int=0):
+        if "fwhm_data_nm" in self.data: self.wavelengths   = np.array(list(self._coerce_wavelength_dict(self.data.get("fwhm_data_nm")).keys()))
+        else:                           raise ValueError(f"LAMP: No 'fwhm_data_nm' found for lamp '{self.name}'. I can't read the wavelengths")
+        return self.wavelengths
 
-    def set_power(self, eff_power=None):
-        if eff_power is None: self.power         = float(self.data.get("default_power")) # in mW
-        else:                 self.power         = float(eff_power)
+    def read_fwhm(self, debug: int=0):
+        ## Loads data from JSON.
+        if "fwhm_data_nm" in self.data:
+            self.fwhm          = np.array(list(self._coerce_wavelength_dict(self.data.get("fwhm_data_nm")).values()))
+        elif "default_fwhm_nm" in self.data: 
+            self.fwhm          = np.full(len(self.wavelengths), float(self.data.get("default_fwhm_nm"))) # in nm
+        else:
+            raise ValueError(f"LAMP: No 'fwhm_data_nm' nor default value found for lamp '{self.name}'")
+        return self.fwhm
+
+    def read_power(self, debug: int=0):
+        if "power_data_mW" in self.data:
+            self.power         = np.array(list(self._coerce_wavelength_dict(self.data.get("power_data_mW")).values()))
+        elif "default_power_mW" in self.data: 
+            self.power         = np.full(len(self.wavelengths), float(self.data.get("default_power_mW"))) # in mW
+        else:
+            raise ValueError(f"LAMP: Neither 'power_data_mW' nor default value found for lamp '{self.name}'")
         return self.power
 
-    def apply_wl_shift(self, shift: float, debug: int=0):
-        # Shift in nanometers
-        self.wavelengths = self.wavelengths - shift
-        return self.wavelengths
+    def read_power_intensity(self, debug: int=0):
+        if "default_power_intensity" in self.data: 
+            self.power_intensity = float(self.data.get("default_power_intensity")) # in mW
+            assert self.power_intensity >= 0.0 and self.power_intensity <= 1.0 
 
     def _load_lamp_data(self, name: str) -> dict:
         from scope.read_write import load_json
@@ -1156,13 +1262,22 @@ class Lamp:
         file_path = self._LAMP_DATA_DIR / f"{lamp_name}.json"
         if not file_path.exists():
             available = ", ".join(self.available_lamps())
-            raise FileNotFoundError(f"LAMP: No data file found for lamp '{name}'. Expected '{file_path.name}' in '{self._LAMP_DATA_DIR}'. Available lamps: {available}")
+            raise FileNotFoundError(f"LAMP: No data file found for lamp '{name}'.\n Expected '{file_path.name}' file in '{self._LAMP_DATA_DIR}'. \n Available lamps are: {available}")
         return load_json(file_path)
 
     def available_lamps(self):
         if not self._LAMP_DATA_DIR.exists():
             return []
-        return sorted(path.stem.upper() for path in self._LAMP_DATA_DIR.glob("*.json"))
+        return sorted(path.stem for path in self._LAMP_DATA_DIR.glob("*.json"))
+
+    ###########
+    ## Other ##
+    ###########
+    def set_power_intensity(self, pw_int: float, debug: int=0):
+        # Controls the intensity of the power source. In practice, it acts as a multiplier of self.power
+        assert pw_int >= 0.0 and pw_int <= 1.0 
+        self.power_intensity = pw_int
+        return self.power_intensity
 
     @staticmethod
     def _coerce_wavelength_dict(raw_data):
@@ -1172,10 +1287,15 @@ class Lamp:
             converted[int(round(float(key)))] = float(value)
         return converted
 
+    ##########
+    ## repr ##
+    ##########
     def __repr__(self):
         to_print = f'--------- Scope Lamp Object -----------\n'
-        to_print += f' Name                     = {self.name}\n'
-        to_print += f' Wavelengths              = {self.wavelengths} nm\n'
-        to_print += f' FWHM                     = {self.fwhm} nm\n'
+        to_print += f' Name             = {self.name}\n'
+        to_print += f' Wavelengths      = {self.wavelengths} nm\n'
+        to_print += f' FWHM             = {self.fwhm} nm\n'
+        to_print += f' Power            = {self.power} mW\n'
+        to_print += f' Power Intensity  = {self.power_intensity}\n'
         to_print += f'---------------------------------------\n'
         return to_print

@@ -49,3 +49,6 @@ har2s_1         = har2cm * cm2s_1
 
 ### Pressure
 atm2kpa         = 101.325
+
+### Energy to wavelength
+hc      = planck_Js * speed_light * 1e09 / elem_charge   ### in eV · nm = 1240
