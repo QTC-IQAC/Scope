@@ -63,9 +63,9 @@ class Collection(object):
         plt.tight_layout()
         plt.show()
 
-####################
-## Dunder Methods ##
-####################
+    ####################
+    ## Dunder Methods ##
+    ####################
     def __len__(self):
         return int(len(self.datas))
 
@@ -82,7 +82,7 @@ class Collection(object):
                     key   = f"sum_{self.key}"
                     value = data1.value + data2.value
                     units = data1.units
-                    function = "collection.__sub__()"
+                    function = "collection.__add__()"
                     new_data = Data(key, value, units, function)
                     new_data.add_property(self.variable, prop1, overwrite=True)
                     new_col.add_data(new_data)
@@ -195,6 +195,10 @@ class Data(object):
             self.value = self.value * constants.har2kJmol
         elif self.units.lower() == 'kj' and new_units.lower() == 'au':
             self.value = self.value / constants.har2kJmol
+        elif self.units.lower() == 'au' and (new_units.lower() == 'kcal' or new_units.lower() == 'kcal/mol'):
+            self.value = self.value * constants.har2kJmol * constants.kJmol2kcal
+        elif self.units.lower() == 'kcal' and new_units.lower() == 'au':
+            self.value = self.value * constants.kcal2kJmol * constants.kJmol2har
         elif self.units.lower() == 'ry' and new_units.lower() == 'au':
             self.value = self.value * constants.ry2har
         elif self.units.lower() == 'au' and new_units.lower() == 'ry':
@@ -219,6 +223,14 @@ class Data(object):
                 return f"{self.key}: {self.value * constants.har2kJmol:12.8f} {new_units}"
             elif self.units.lower() == 'kj' and new_units.lower() == 'au':
                 return f"{self.key}: {self.value / constants.har2kJmol:12.8f} {new_units}"
+            elif self.units.lower() == 'au' and (new_units.lower() == 'kcal' or new_units.lower() == 'kcal/mol'):
+                return f"{self.key}: {self.value * constants.har2kJmol * constants.kJmol2kcal:12.8f} {new_units}"
+            elif self.units.lower() == 'kcal' and new_units.lower() == 'au':
+                return f"{self.key}: {self.value * constants.kcal2kJmol * constants.kJmol2har:12.8f} {new_units}"
+            elif self.units.lower() == 'kj' and new_units.lower() == 'kcal':
+                return f"{self.key}: {self.value * constants.kJmol2kcal:12.8f} {new_units}"
+            elif self.units.lower() == 'kcal' and new_units.lower() == 'kj':
+                return f"{self.key}: {self.value / constants.kJmol2kcal:12.8f} {new_units}"
             elif self.units.lower() == 'ry' and new_units.lower() == 'au':
                 return f"{self.key}: {self.value * constants.r2har:12.8f} {new_units}"
             elif self.units.lower() == 'au' and new_units.lower() == 'ry':
@@ -234,32 +246,56 @@ class Data(object):
         else:
             return str(self)
          
+    ####################
+    ## Dunder Methods ##
+    ####################
     def __repr__(self) -> None:
         if not hasattr(self,"formatted"): self.format()
         to_print =  f'{self.formatted}'
         return to_print
 
-##################
-### OPERATIONS ###
-##################
-def substract_collections(name: str, col1: object, col2: object, prop=None):
-    ## Another substraction function, complementary of the dunder method
-    assert col1.variable.lower() == col2.variable.lower()
-    new_col = Collection(name, col1.variable)
-    for idx, data1 in enumerate(col1.datas):
-        for jdx, data2 in enumerate(col2.datas):
-            if prop is not None: 
-                if type(prop) != str: print("Substract_Collections: prop must be a string if not None"); return None
-                prop1 = getattr(data1,prop)
-                prop2 = getattr(data2,prop)
-                if data1.units == data2.units and prop1 == prop2:
-                    key = name
-                    value = data1.value - data2.value
-                    units = data1.units
-                    function = "scope.Classes_Data.substract_collections()" 
-                    new_data = Data(key, value, units, function)
-                    new_data.add_property(prop, prop1, overwrite=True)
-                    new_col.add_data(new_data)
-    return new_col                
-  
+    def __add__(self, other):
+        assert isinstance(other, type(self))
+        assert self.units == other.units         
+        key   = f"sum_{self.key}"
+        value = self.value + other.value
+        units = self.units
+        function = "data.__add__()"
+        new_data = Data(key, value, units, function)
+        return new_data
 
+    def __sub__(self, other):
+        assert isinstance(other, type(self))
+        assert self.units == other.units         
+        key   = f"sum_{self.key}"
+        value = self.value - other.value
+        units = self.units
+        function = "data.__sub__()"
+        new_data = Data(key, value, units, function)
+        return new_data
+
+###################
+#### OPERATIONS ###
+###################
+#def substract_collections(name: str, col1: object, col2: object, prop=None):
+#    ## Another substraction function, complementary of the dunder method
+#    assert col1.variable.lower() == col2.variable.lower()
+#    new_col = Collection(name, col1.variable)
+#    for idx, data1 in enumerate(col1.datas):
+#        for jdx, data2 in enumerate(col2.datas):
+#            if prop is not None: 
+#                if type(prop) != str: print("Substract_Collections: prop must be a string if not None"); return None
+#                prop1 = getattr(data1,prop)
+#                prop2 = getattr(data2,prop)
+#                if data1.units == data2.units and prop1 == prop2:
+#                    key = name
+#                    value = data1.value - data2.value
+#                    units = data1.units
+#                    function = "scope.Classes_Data.substract_collections()" 
+#                    new_data = Data(key, value, units, function)
+#                    new_data.add_property(prop, prop1, overwrite=True)
+#                    new_col.add_data(new_data)
+#    return new_col                
+#  
+#
+#
