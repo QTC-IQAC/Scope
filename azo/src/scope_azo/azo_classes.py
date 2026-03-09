@@ -5,7 +5,7 @@ from scope.classes_system                import System
 from scope.classes_state                 import State, find_state
 from scope.classes_specie                import Molecule
 from scope.elementdata                   import ElementData
-from scope.geometry                      import centercoords, set_dihedral, get_dihedral, solve_dihedral, set_angle, get_angle
+from scope.geometry                      import *
 from scope_azo.azo_functions import * 
 
 ############################################
@@ -421,7 +421,7 @@ class System_azo(System):
         if 'TSinv' in ts_list:
             init_coord = set_angle(labels, trans.coord, 179.9, at1,at2,at3)
             if debug > 0: 
-                angle_deg = np.degrees(get_angle(coord[at1]-coord[at2], coord[at3]-coord[at2]))
+                angle_deg = np.degrees(get_angle_points(coord[at1], coord[at2], coord[at3]))
                 print(f'SYSTEM_AZO.CREATE_TS: Angle between {at1}, {at2} and {at3} set to {angle_deg} degrees.')
             
             ## TSinv_l_a (Left adjacent dihedral angle starting at 0º) 
@@ -466,7 +466,7 @@ class System_azo(System):
         ## TSinv Right (TSinv_r) ##
             coord = set_angle(labels, trans.coord, 179.9, at2,at3,at4) ## Angle value of 179.9 instead of 180 to avoid numerical issues
             if debug > 0: 
-                angle_deg = np.degrees(get_angle(coord[at3]-coord[at2], coord[at4]-coord[at2]))
+                angle_deg = np.degrees(get_angle_points(coord[at2], coord[at3], coord[at4]))
                 print(f'SYSTEM_AZO.CREATE_TS: Angle between {at2}, {at3} and {at4} set to {angle_deg} degrees.')
             
             ## TSinv_r_a (Right adjacent dihedral angle starting at 0º)
@@ -511,8 +511,44 @@ class System_azo(System):
     #######################
     ## Thermal Stability ##
     #######################
-    def get_mets(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, force: bool=False, debug: int=0):
+    def get_mets(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, force: bool=False, p_sh: float=0.0002, debug: int=0):
         '''
+        Find the minimum-energy transition structure (METS) for thermal isomerization.
+
+        This method scans the available sources in the system and builds a list of
+        candidate "barrier" structures at the requested temperature:
+        - Singlet (`spin == 0`): source is considered only if the selected
+          `target_state` is identified as a transition state (`state.is_ts`).
+        - Triplet (`spin == 2`): source is considered only if the selected
+          `target_state` is a minimum on the triplet PES (`state.isminimum`) and
+          `skip_triplets` is `False`.
+
+        Energies are compared in atomic units (au):
+        - Singlets use `Gtot(T)`.
+        - Triplets use the corrected free energy `Gtot_eff(T)`.
+
+        The source with the lowest collected energy is stored in `self.mets` and
+        returned.
+
+        Parameters
+        ----------
+        temp : float, default=298.15           Temperature in Kelvin used to retrieve/compute thermal free energies.
+        target_state : str, default='opt'      Name of the state to inspect in each source (for example, `'opt'`).
+        skip_triplets : bool, default=False    If `True`, triplet minima are ignored and only singlet TS candidates are used.
+        force : bool, default=False            If `False` and `self.mets` already exists, the cached value is returned.
+                                               If `True`, candidates are recomputed from current sources/results.         
+        debug : int, default=0                 Verbosity level for diagnostic prints.
+
+        Returns
+        -------
+        Molecule_azo                           The source selected as minimum-energy transition structure.
+
+        Raises
+        ------
+        Exception
+            If a required thermal free energy (`Gtot` / `Gtot_eff`) cannot be obtained for a candidate at the requested temperature.
+        ValueError
+            If no valid candidates are found (for example, empty candidate list).
         '''
         if hasattr(self,"mets") and not force: return self.mets
 
@@ -534,24 +570,6 @@ class System_azo(System):
                 else: 
                     if debug > 0: print(f'SYSTEM_AZO.GET_METS: The target state in source {sou.name} has no VNMs. Skipping')
                     continue
-                # Searches Gtot entry
-                if debug > 0: print(f'SYSTEM_AZO.GET_METS: Found Triplet Minimum: {sou.name}, spin: {sou.spin}')
-                if not 'Gtot_eff' in state.results.keys(): 
-                    print(f'SYSTEM_AZO.GET_METS: [WARNING] Gtot not found for State={state.name} of source={sou.name}. Computing')
-                    state.correct_tripletG(temp=temp, debug=debug)
-                # Searches specific Gtot(T) entry
-                energy = state.results['Gtot_eff'].find_value_with_property("temperature", temp)             
-                if energy is None: 
-                    state.correct_tripletG(temp=temp, debug=debug)
-                # Now it should exists for sure
-                energy = state.results['Gtot_eff'].find_value_with_property("temperature", temp)             
-                if energy is None: 
-                    raise Exception (f'SYSTEM_AZO.GET_METS: Could not fint Gtot_eff({temp}) for {sou.name}.')
-                # Gets Value (energy) is a Data class
-                energy = state.results['Gtot_eff'].find_value_with_property("temperature", temp).convert_to_units("au").value              
-                ts_names.append(sou.name)
-                ts_energies.append(energy)
-
             elif sou.spin == 0:   
                 ## Skips Sources for which we didn't find a TS.
                 if hasattr(state,"is_ts"): 
@@ -562,25 +580,15 @@ class System_azo(System):
                     if debug > 0: print(f'SYSTEM_AZO.GET_METS: The target state in source {sou.name} has no VNMs. Skipping')
                     continue
 
-                # Searches Gtot entry
-                if debug > 0: print(f'SYSTEM_AZO.GET_METS: Found Singlet TS: {sou.name}, spin: {sou.spin}')
-                if not 'Gtot' in state.results.keys(): 
-                    state.get_thermal_data(temp=temp)
-                # Searches specific Gtot(T) entry
-                energy = state.results['Gtot'].find_value_with_property("temperature", temp)             
-                if energy is None: 
-                    state.get_thermal_data(temp=temp)
-                # Now it should exists for sure
-                energy = state.results['Gtot'].find_value_with_property("temperature", temp)             
-                if energy is None: 
-                    raise Exception (f'SYSTEM_AZO.GET_METS: Could not fint Gtot({temp}) for {sou.name}.')
-                # Gets Value (energy) is a Data class
-                energy = state.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value                              
-                ts_names.append(sou.name)
-                ts_energies.append(energy)
+            # Searches Gtot entry
+            energy = state.get_gtot_eff(temp, p_sh=p_sh, debug=debug).convert_to_units('au').value
+            if energy is None: 
+                raise Exception (f'SYSTEM_AZO.GET_METS: Could not fint Gtot_eff({temp}) for {sou.name}.')
+            ts_names.append(sou.name)
+            ts_energies.append(energy)
 
-        if debug == 1: print(f'SYSTEM_AZO.GET_METS: Collected {len(ts_energies)} TSs for {self.name}')
-        if debug >= 2: 
+        #if debug == 1: print(f'SYSTEM_AZO.GET_METS: Collected {len(ts_energies)} TSs for {self.name}')
+        if debug >= 1: 
             print(f'SYSTEM_AZO.GET_METS: Collected {len(ts_energies)} TSs for {self.name}. Printing entries:')
             print(f'\tName, Energy:')
             for idx in range(len(ts_energies)):
@@ -607,39 +615,9 @@ class System_azo(System):
         found_state, cis_state = cis.find_state(target_state)
         if not found_state: raise Exception(f'SYSTEM_AZO.get_thermal_stability: Target state: {target_state} not found.')
 
-        ######
-        # Getting the energy of the Trans isomer
-        ######
-        if not 'Gtot' in trans_state.results.keys(): 
-            trans_state.get_thermal_data(temp=temp) ## If not available, computes it
-        # Searches specific Gtot(T) entry
-        Gtot_T = trans_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
-        if Gtot_T is None: 
-            trans_state.get_thermal_data(temp=temp) ## If not available, computes it
-        # Now it should exists for sure
-        Gtot_T = trans_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
-        if Gtot_T is None: 
-            raise Exception (f'SYSTEM_AZO.get_thermal_stability: Gtot at {temp=} for the Trans State not found.')
-        # Gets Value (energy) is a Data class
-        gtot_trans = trans_state.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value
-        if debug > 0: print(f"SYSTEM_AZO.get_thermal_stability: {gtot_trans=}")
-
-        ######
-        # Getting the energy of the cis isomer
-        ######
-        if not 'Gtot' in cis_state.results.keys(): 
-            cis_state.get_thermal_data(temp=temp) ## If not available, computes it
-        # Searches specific Gtot(T) entry
-        Gtot_T = cis_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
-        if Gtot_T is None: 
-            cis_state.get_thermal_data(temp=temp) ## If not available, computes it
-        # Now it should exists for sure
-        Gtot_T = cis_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
-        if Gtot_T is None: 
-            raise Exception (f'SYSTEM_AZO.get_thermal_stability: Gtot at {temp=} for the Cis State not found.')
-        # Gets Value (energy) is a Data class
-        gtot_cis = cis_state.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value
-        if debug > 0: print(f"SYSTEM_AZO.get_thermal_stability: {gtot_cis=}")
+        # Getting the energy of the Trans and Cis isomers
+        gtot_trans = trans_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
+        gtot_cis   = cis_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
 
         dE = (gtot_cis - gtot_trans) * constants.har2kJmol/constants.kcal2kJmol ## Returns value in Kcal/mol
         dE_data = Data("dG_cis-trans",dE,'kcal/mol',"system_azo.get_thermal_stability()")
@@ -647,7 +625,7 @@ class System_azo(System):
         return dE_data
 
     ######
-    def get_trans_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, debug: int=0):
+    def get_trans_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, p_sh: float=0.0002, debug: int=0):
         from scope_azo.azo_functions import eyring_halflife
         '''
         
@@ -657,35 +635,18 @@ class System_azo(System):
         found_state, ground_state = source.find_state(target_state)
         if not found_state: raise Exception(f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Target state: {target_state} not found.')
 
-        # Getting the energy of the Trans isomer
-        if not 'Gtot' in ground_state.results.keys(): 
-            ground_state.get_thermal_data(temp=temp) ## If not available, computes it
-        # Searches specific Gtot(T) entry
-        Gtot_T = ground_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
-        if Gtot_T is None: 
-            ground_state.get_thermal_data(temp=temp) ## If not available, computes it
-        # Now it should exists for sure
-        Gtot_T = ground_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
-        if Gtot_T is None: 
-            raise Exception (f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Gtot for the Ground State not found.')
-        # Gets Value (energy) is a Data class
-        gtot_ground = ground_state.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value
+        # Getting the energy of the Trans and Cis isomers
+        gtot_trans = ground_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
 
         # Getting the energy of the METS (Minimum Energy Transition State)
-        mets = self.get_mets(temp=temp, target_state=target_state, skip_triplets=skip_triplets, debug=debug)
+        mets = self.get_mets(temp=temp, target_state=target_state, skip_triplets=skip_triplets, p_sh=p_sh, debug=debug)
         found, mets_state = mets.find_state(target_state)
-
-        if mets.spin == 0:     # Singlets
-            gtot_mets = mets_state.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value     ## Gtot is a collection. We get the value for temp=T 
-        elif mets.spin == 2:   # Triplets 
-            gtot_mets = mets_state.results['Gtot_eff'].find_value_with_property("temperature", temp).convert_to_units("au").value ## Gtot is a collection. We get the value for temp=T 
-        else:                  # Other 
-            raise ValueError(f"SYSTEM_AZO.GET_TRANS_T05: Gtot_eff only implemented for triplet states. Current State has spin={mets_state.spin}")
+        gtot_mets = mets_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
         
         #Computing halflife time (t05) and kinetic constant (k)
-        t05, k_th = eyring_halflife(gtot_ground, gtot_mets, temp)
+        t05, k_th = eyring_halflife(gtot_trans, gtot_mets, temp)
         if debug > 0: print(f'SYSTEM_AZO.GET_TRANS_T05: Obtained t05: {t05}  k_th: {k_th}') 
-        dG_from_trans = (float(gtot_mets)- float(gtot_ground)) * constants.har2kJmol * constants.kJmol2kcal # in Kcal/mol
+        dG_from_trans = (float(gtot_mets)- float(gtot_trans)) * constants.har2kJmol * constants.kJmol2kcal # in Kcal/mol
         if debug > 0: print(f'SYSTEM_AZO.GET_TRANS_T05: dG_from_trans = {dG_from_trans}') 
 
         units_time = 's'
@@ -704,7 +665,7 @@ class System_azo(System):
         return self.results['trans_halflife_time']
         
     ######
-    def get_cis_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, debug: int=0):
+    def get_cis_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, p_sh: float=0.0002, debug: int=0):
         from scope_azo.azo_functions import eyring_halflife
         '''
         
@@ -714,35 +675,18 @@ class System_azo(System):
         found_state, ground_state = source.find_state(target_state)
         if not found_state: raise Exception(f'SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Target state: {target_state} not found.')
 
-        # Getting the energy of the cis isomer
-        if not 'Gtot' in ground_state.results.keys(): 
-            ground_state.get_thermal_data(temp=temp) ## If not available, computes it
-        # Searches specific Gtot(T) entry
-        Gtot_T = ground_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
-        if Gtot_T is None: 
-            ground_state.get_thermal_data(temp=temp) ## If not available, computes it
-        # Now it should exists for sure
-        Gtot_T = ground_state.results['Gtot'].find_value_with_property("temperature", temp)                     ## Gtot is a collection. We get the value for temp=T 
-        if Gtot_T is None: 
-            raise Exception (f'SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Gtot for the Ground State not found.')
-        # Gets Value (energy) is a Data class
-        gtot_ground = ground_state.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value
+        # Getting the energy of the Trans and Cis isomers
+        gtot_cis = ground_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
 
         # Getting the energy of the METS (Minimum Energy Transition State)
-        mets = self.get_mets(temp=temp, target_state=target_state, skip_triplets=skip_triplets, debug=debug)
+        mets = self.get_mets(temp=temp, target_state=target_state, skip_triplets=skip_triplets, p_sh=p_sh, debug=debug)
         found, mets_state = mets.find_state(target_state)
-
-        if mets.spin == 0:     # Singlets
-            gtot_mets = mets_state.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au").value     ## Gtot is a collection. We get the value for temp=T 
-        elif mets.spin == 2:   # Triplets 
-            gtot_mets = mets_state.results['Gtot_eff'].find_value_with_property("temperature", temp).convert_to_units("au").value ## Gtot is a collection. We get the value for temp=T 
-        else:                  # Other 
-            raise ValueError(f"SYSTEM_AZO.GET_CIS_T05: Gtot_eff only implemented for triplet states. Current State has spin={mets_state.spin}")
+        gtot_mets = mets_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
         
         #Computing halflife time (t05) and kinetic constant (k)
-        t05, k_th = eyring_halflife(gtot_ground, gtot_mets, temp)
+        t05, k_th = eyring_halflife(gtot_cis, gtot_mets, temp)
         if debug > 0: print(f'SYSTEM_AZO.GET_CIS_T05: Obtained t05: {t05}  k_th: {k_th}') 
-        dG_from_cis = (float(gtot_mets)- float(gtot_ground)) * constants.har2kJmol * constants.kJmol2kcal # in Kcal/mol
+        dG_from_cis = (float(gtot_mets)- float(gtot_cis)) * constants.har2kJmol * constants.kJmol2kcal # in Kcal/mol
         if debug > 0: print(f'SYSTEM_AZO.GET_CIS_T05: dG_from_cis = {dG_from_cis}') 
 
         units_time = 's'
@@ -1089,88 +1033,6 @@ class PSS(object):
         if len(self.pss_results) > 0:              to_print += f' Num of Results   = {len(self.pss_results)}\n'
         to_print += '\n'
         return to_print
-            
-#########################################
-##### STATE Object Adapted to Azo's #####
-#########################################
-class State_azo(State):
-    def __init__(self, _source: object, name: str, debug: int=0):
-        State.__init__(self, _source, name, debug=debug)
-        self.subtype  = "state_azo" 
-
-    ######
-    def correct_tripletG(self, temp: float=298.15, p_sh: float=0.0002, debug: int=0):
-        from math import log as ln
-        '''
-        Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
-        Correction is done considering the increase of energy due to surface hopping between the singlet and triplet PESs. 
-
-        Parameters
-        ----------
-        temp : float, optional         The temperature in Kelvin. The default is 298.15 K.
-        overwrite : bool, optional     Whether to overwrite the existing Gtot_corr value. The default is False.
-        p_sh : float, optional         The probability of surface hopping. The default is 0.0002.
-        debug : int, optional          The debug level. The default is 0
-        '''
-        # Searches Gtot entry
-        if not 'Gtot' in self.results:
-            self.get_thermal_data(temp=temp)
-        # Searches specific Gtot(T) entry
-        gtot = self.results['Gtot'].find_value_with_property("temperature", temp)
-        if gtot is None: 
-            self.get_thermal_data(temp=temp)
-        # Now it should exists for sure
-        gtot = self.results['Gtot'].find_value_with_property("temperature", temp)
-        if gtot is None: 
-            raise Exception (f'STATE_AZO.CORRECT_TRIPLETG: Gtot for State {self.name} at {temp=} not found.')
-        # Gets Value (energy) is a Data class
-        gtot = self.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au")
-
-        # Compute the Penalty, based on Surface Hopping Probability (p_sh)
-        dx = - constants.R_J * temp * ln(p_sh)     # J/mol
-        dx /= 1000                                 # kJ/mol
-        if debug>0: print(f'STATE_AZO.CORRECT_TRIPLETG: Adding penalty of {dx*constants.kJmol2kcal:.2f} kcal/mol.')
-        dx *= constants.kJmol2har
-
-        # Create a Collection, with a single data entry, that of Gtot_eff at the requested temperature
-        gtot_eff_col  = Collection("Gtot_eff", "temperature")
-        gtot_eff_data = Data("Gtot_eff", float(gtot.value + dx), "au", "state_azo.correct_tripletg()") 
-        gtot_eff_data.add_property("temperature", temp, overwrite=True)
-        gtot_eff_col.add_data(gtot_eff_data)
-
-        # Add the Gtot_eff Collection as a result
-        self.add_result(gtot_eff_col, overwrite=True)
-
-        if debug > 0: print (f'STATE_AZO.CORRECT_TRIPLETG: Corrected Gtot. Data stored in state: {gtot_eff_data.value:12.8f}')
-        if debug > 0: print (f'STATE_AZO.CORRECT_TRIPLETG: Before correction: {gtot.value:12.8f} au. After correction: {gtot_eff_data.value:12.8f}')
-        return gtot_eff_col
-
-    ######
-    def get_abs_spectrum(self, lmin: float=200, lmax: float=1000, sigma: float=0.2, debug: int=0):
-        '''
-        Using the stored TD-DFT data, computes the spectrum in the energy range, and returns it as an [x,y] array
-        '''
-        from scope.operations.vecs_and_mats import build_spectrum
-
-        # Check if TDDFT data exists.
-        if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in this state')
-
-        # Collects Values
-        energies = [es.energy for es in self.exc_states]
-        fosc     = [es.fosc for es in self.exc_states]
-        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: energies {energies}')
-        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: osc. strengths {fosc}')
-
-        ## Convert desired range in nm (lrange) to energies (erange)
-        lrange = np.linspace(lmin, lmax, lmax-lmin)
-        erange = constants.hc/lrange[::-1]
-        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: erange {np.min(erange):6.4f}-{np.max(erange):6.4f}')
-        # Builds the spectrum from discrete values, using Gaussian broadening
-        x, y = build_spectrum(erange, energies, fosc, function='gaussian', sigma=sigma, normalize=False, debug=debug)
-
-        self.abs_spec_x = constants.hc/x[::-1]  # Converts the result to a range of nm values   
-        self.abs_spec_y = y[::-1]
-        return self.abs_spec_x, self.abs_spec_y
 
 ############################################
 ##### MOLECULE Object Adapted to Azo's #####
@@ -1179,6 +1041,64 @@ class Molecule_azo(Molecule):
     def __init__(self, labels, coord):
         Molecule.__init__(self, labels, coord)
         self.subtype  = "molecule_azo"
+
+    def set_dihedral_indices(self, dih: list):
+        self.dihedral_indices = dih
+        return self.dihedral_indices
+
+    ##############
+    ## Geometry ##
+    ##############
+    def get_NN_distance(self):
+        if not hasattr(self, "dihedral_indices"): 
+            raise ValueError(f"MOLECULE_AZO: Please set the dihedral indices with self.set_dihedral_indices()") 
+        at0, at1, at2, at3, at4, at5 = self.dihedral_indices
+        return get_dist(self.coord[at2], self.coord[at3])
+
+    def get_inv_angle_left(self):
+        if not hasattr(self, "dihedral_indices"): 
+            raise ValueError(f"MOLECULE_AZO: Please set the dihedral indices with self.set_dihedral_indices()") 
+        at0, at1, at2, at3, at4, at5 = self.dihedral_indices
+        return get_angle_points(self.coord[at1], self.coord[at2], self.coord[at3]) 
+
+    def get_inv_angle_right(self):
+        if not hasattr(self, "dihedral_indices"): 
+            raise ValueError(f"MOLECULE_AZO: Please set the dihedral indices with self.set_dihedral_indices()") 
+        at0, at1, at2, at3, at4, at5 = self.dihedral_indices
+        return get_angle_points(self.coord[at2], self.coord[at3], self.coord[at4]) 
+
+    def get_main_dihedral(self):
+        if not hasattr(self, "dihedral_indices"): 
+            raise ValueError(f"MOLECULE_AZO: Please set the dihedral indices with self.set_dihedral_indices()") 
+        at0, at1, at2, at3, at4, at5 = self.dihedral_indices
+        return get_dihedral(self.coord[at1], self.coord[at2], self.coord[at3], self.coord[at4]) 
+
+    def get_adj_dihedral_left(self):
+        if not hasattr(self, "dihedral_indices"): 
+            raise ValueError(f"MOLECULE_AZO: Please set the dihedral indices with self.set_dihedral_indices()") 
+        at0, at1, at2, at3, at4, at5 = self.dihedral_indices
+        return get_dihedral(self.coord[at0], self.coord[at1], self.coord[at2], self.coord[at3]) 
+
+    def get_adj_dihedral_right(self):
+        if not hasattr(self, "dihedral_indices"): 
+            raise ValueError(f"MOLECULE_AZO: Please set the dihedral indices with self.set_dihedral_indices()") 
+        at0, at1, at2, at3, at4, at5 = self.dihedral_indices
+        return get_dihedral(self.coord[at2], self.coord[at3], self.coord[at4], self.coord[at5]) 
+        
+    def get_geometry_summary(self, do_print: bool=True):
+        if not hasattr(self, "dihedral_indices"): 
+            raise ValueError(f"MOLECULE_AZO: Please set the dihedral indices with self.set_dihedral_indices()") 
+        to_print =  '-------------------------------------------------\n'
+        to_print += ' Main Geometry Features of the Azo group:        \n'
+        to_print += '-------------------------------------------------\n'
+        to_print += f" NN distance (dNN):         {np.round(self.get_NN_distance(),4)} \n"
+        to_print += f" Left Inv. Angle (CNN):     {np.round(np.degrees(self.get_inv_angle_left()),4)} \n"
+        to_print += f" Right Inv. Angle (NNC):    {np.round(np.degrees(self.get_inv_angle_right()),4)} \n"
+        to_print += f" Main Dihedral (CNNC):      {np.round(np.degrees(self.get_main_dihedral()),4)} \n"
+        to_print += f" Adj Dihedral Left (CCNN):  {np.round(np.degrees(self.get_adj_dihedral_left()),4)} \n"
+        to_print += f" Adj Dihedral Right (NNCC): {np.round(np.degrees(self.get_adj_dihedral_right()),4)} \n"
+        if do_print: print(to_print); return None
+        else:        return to_print
 
     #########################################
     ### Functions to Interact with States ###
@@ -1207,9 +1127,166 @@ class Molecule_azo(Molecule):
         to_print = ""
         to_print += f'---------- SCOPE Molecule_azo Object ------------\n'
         to_print += Molecule.__repr__(self, indirect=True)
-        to_print +=  '-------------------------------------------------\n'
+        to_print += f"{self.get_geometry_summary(do_print=False)}" 
+        return to_print
+  
+#########################################
+##### STATE Object Adapted to Azo's #####
+#########################################
+class State_azo(State):
+    def __init__(self, _source: object, name: str, debug: int=0):
+        State.__init__(self, _source, name, debug=debug)
+        self.subtype  = "state_azo" 
+
+    ##############
+    ## Geometry ##  # Same as in Molecule_azo, but adapted to read dihedral indices from source. Coordinates are read from self
+    ##############
+    def get_NN_distance(self):
+        if not hasattr(self._source, "dihedral_indices"): 
+            raise ValueError(f"STATE_AZO: Please set the dihedral indices of the source with source.set_dihedral_indices()") 
+        at0, at1, at2, at3, at4, at5 = self._source.dihedral_indices
+        return get_dist(self.coord[at2], self.coord[at3])
+
+    def get_inv_angle_left(self):
+        if not hasattr(self._source, "dihedral_indices"): 
+            raise ValueError(f"STATE_AZO: Please set the dihedral indices of the source with source.set_dihedral_indices()") 
+        at0, at1, at2, at3, at4, at5 = self._source.dihedral_indices
+        return get_angle_points(self.coord[at1], self.coord[at2], self.coord[at3]) 
+
+    def get_inv_angle_right(self):
+        if not hasattr(self._source, "dihedral_indices"): 
+            raise ValueError(f"STATE_AZO: Please set the dihedral indices of the source with source.set_dihedral_indices()") 
+        at0, at1, at2, at3, at4, at5 = self._source.dihedral_indices
+        return get_angle_points(self.coord[at2], self.coord[at3], self.coord[at4]) 
+
+    def get_main_dihedral(self):
+        if not hasattr(self._source, "dihedral_indices"): 
+            raise ValueError(f"STATE_AZO: Please set the dihedral indices of the source with source.set_dihedral_indices()") 
+        at0, at1, at2, at3, at4, at5 = self._source.dihedral_indices
+        return get_dihedral(self.coord[at1], self.coord[at2], self.coord[at3], self.coord[at4]) 
+
+    def get_adj_dihedral_left(self):
+        if not hasattr(self._source, "dihedral_indices"): 
+            raise ValueError(f"STATE_AZO: Please set the dihedral indices of the source with source.set_dihedral_indices()") 
+        at0, at1, at2, at3, at4, at5 = self._source.dihedral_indices
+        return get_dihedral(self.coord[at0], self.coord[at1], self.coord[at2], self.coord[at3]) 
+
+    def get_adj_dihedral_right(self):
+        if not hasattr(self._source, "dihedral_indices"): 
+            raise ValueError(f"STATE_AZO: Please set the dihedral indices of the source with source.set_dihedral_indices()") 
+        at0, at1, at2, at3, at4, at5 = self._source.dihedral_indices
+        return get_dihedral(self.coord[at2], self.coord[at3], self.coord[at4], self.coord[at5]) 
+
+    def get_geometry_summary(self, do_print: bool=True):
+        if not hasattr(self._source, "dihedral_indices"): 
+            raise ValueError(f"STATE_AZO: Please set the dihedral indices of the source with source.set_dihedral_indices()") 
+        to_print =  '-------------------------------------------------\n'
+        to_print += ' Main Geometry Features of the Azo group:        \n'
+        to_print += '-------------------------------------------------\n'
+        to_print += f" NN distance (dNN):         {np.round(self.get_NN_distance(),4)} \n"
+        to_print += f" Left Inv. Angle (CNN):     {np.round(np.degrees(self.get_inv_angle_left()),4)} \n"
+        to_print += f" Right Inv. Angle (NNC):    {np.round(np.degrees(self.get_inv_angle_right()),4)} \n"
+        to_print += f" Main Dihedral (CNNC):      {np.round(np.degrees(self.get_main_dihedral()),4)} \n"
+        to_print += f" Adj Dihedral Left (CCNN):  {np.round(np.degrees(self.get_adj_dihedral_left()),4)} \n"
+        to_print += f" Adj Dihedral Right (NNCC): {np.round(np.degrees(self.get_adj_dihedral_right()),4)} \n"
+        if do_print: print(to_print); return None
+        else:        return to_print
+
+    ######
+    def get_gtot_eff(self, temp: float=298.15, p_sh: float=0.0002, debug: int=0):
+        from math import log as ln
+        '''
+        Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
+        Correction is done considering the increase of energy due to surface hopping between the singlet and triplet PESs. 
+
+        Parameters
+        ----------
+        temp : float, optional         The temperature in Kelvin. The default is 298.15 K.
+        overwrite : bool, optional     Whether to overwrite the existing Gtot_corr value. The default is False.
+        p_sh : float, optional         The probability of surface hopping. The default is 0.0002.
+        debug : int, optional          The debug level. The default is 0
+        '''
+        # Searches Gtot_eff entry,  in case it already exists
+        if 'Gtot_eff' in self.results:
+            gtot_eff_col = self.results['Gtot_eff']
+            if isinstance(gtot_eff_col, Collection):
+                gtot_eff_data = gtot_eff_col.find_value_with_property("temperature", temp)
+                if gtot_eff_data is not None: return gtot_eff_data
+            else:
+                gtot_eff_col = Collection("Gtot_eff", "temperature")
+        else:
+            gtot_eff_col = Collection("Gtot_eff", "temperature")
+
+        if not 'Gtot' in self.results:
+            self.get_thermal_data(temp=temp)
+        # Searches specific Gtot(T) entry
+        gtot = self.results['Gtot'].find_value_with_property("temperature", temp)
+        if gtot is None: 
+            self.get_thermal_data(temp=temp)
+        # Now it should exists for sure
+        gtot = self.results['Gtot'].find_value_with_property("temperature", temp)
+        if gtot is None: 
+            raise Exception (f'STATE_AZO.GET_Gtot_EFF: Gtot for State {self.name} at {temp=} not found.')
+        # Gets Value (energy) is a Data class
+        gtot = self.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au")
+
+        if self._source.spin == 2:
+            # Compute the Penalty, based on Surface Hopping Probability (p_sh)
+            dx = - constants.R_J * temp * ln(p_sh)     # J/mol
+            dx /= 1000                                 # kJ/mol
+            if debug>0: print(f'STATE_AZO.GET_Gtot_EFF: Adding penalty of {dx*constants.kJmol2kcal:.2f} kcal/mol.')
+            dx *= constants.kJmol2har
+        else: 
+            dx = 0
+
+        # Create a Collection, with a single data entry, that of Gtot_eff at the requested temperature
+#        gtot_eff_col  = Collection("Gtot_eff", "temperature")
+        gtot_eff_data = Data("Gtot_eff", float(gtot.value + dx), "au", "state_azo.get_gtot_eff()") 
+        gtot_eff_data.add_property("temperature", temp, overwrite=True)
+        gtot_eff_col.add_data(gtot_eff_data)
+
+        # Add the Gtot_eff Collection as a result
+        self.add_result(gtot_eff_col, overwrite=True)
+
+        if debug > 0: print (f'STATE_AZO.GET_Gtot_EFF: Corrected Gtot. Data stored in state: {gtot_eff_data.value:12.8f}')
+        if debug > 0: print (f'STATE_AZO.GET_Gtot_EFF: Before correction: {gtot.value:12.8f} au. After correction: {gtot_eff_data.value:12.8f}')
+        return gtot_eff_data
+
+    ######
+    def get_abs_spectrum(self, lmin: float=200, lmax: float=1000, sigma: float=0.2, debug: int=0):
+        '''
+        Using the stored TD-DFT data, computes the spectrum in the energy range, and returns it as an [x,y] array
+        '''
+        from scope.operations.vecs_and_mats import build_spectrum
+
+        # Check if TDDFT data exists.
+        if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in this state')
+
+        # Collects Values
+        energies = [es.energy for es in self.exc_states]
+        fosc     = [es.fosc for es in self.exc_states]
+        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: energies {energies}')
+        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: osc. strengths {fosc}')
+
+        ## Convert desired range in nm (lrange) to energies (erange)
+        lrange = np.linspace(lmin, lmax, lmax-lmin)
+        erange = constants.hc/lrange[::-1]
+        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: erange {np.min(erange):6.4f}-{np.max(erange):6.4f}')
+        # Builds the spectrum from discrete values, using Gaussian broadening
+        x, y = build_spectrum(erange, energies, fosc, function='gaussian', sigma=sigma, normalize=False, debug=debug)
+
+        self.abs_spec_x = constants.hc/x[::-1]  # Converts the result to a range of nm values   
+        self.abs_spec_y = y[::-1]
+        return self.abs_spec_x, self.abs_spec_y
+
+    def __repr__(self):
+        to_print = ""
+        to_print += f'---------- SCOPE State_azo Object ------------\n'
+        to_print += State.__repr__(self, indirect=True)
+        to_print += f"{self.get_geometry_summary(do_print=False)}" 
         return to_print
 
+#
 ################
 ## Lamp Class ##
 ################
