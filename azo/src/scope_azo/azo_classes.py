@@ -1006,9 +1006,10 @@ class PSS(object):
             plot = False
             if typ == 'all':
                 plot = True
-            if typ == 'mixed':  
-                if pss_ratio != 0.0 and pss_ratio != 1.0:
+            elif typ == 'mixed':  
+                if pss_ratio >= 0.01 and pss_ratio <= 0.99:
                     plot = True 
+
             if plot == True: 
                 plt.plot(self.wl_range,pss_spectrum,color=color,label=f"{wl} nm pss: {100 * pss_ratio:.1f}% E")
 
@@ -1027,9 +1028,9 @@ class PSS(object):
         to_print += f' Lamp Wavelengths = {self.lamp.wavelengths} (nm)\n'
         to_print += f' Lamp FWHM        = {self.lamp.fwhm} (nm)\n'
         to_print += f' Lamp Powers      = {self.lamp.power} (mW)\n'
-        if hasattr(self,"area"): to_print += f' Area             = {self.area} (mm2)\n' 
-        if hasattr(self,"rate_thermal_trans2cis"): to_print += f' k_th_EZ          = {self.rate_thermal_trans2cis} (s)\n' 
-        if hasattr(self,"rate_thermal_cis2trans"): to_print += f' k_th_ZE          = {self.rate_thermal_cis2trans} (s)\n' 
+        if hasattr(self,"area"): to_print += f' Area             = {self.area:8.6f} (mm2)\n' 
+        if hasattr(self,"rate_thermal_trans2cis"): to_print += f' k_th_EZ          = {self.rate_thermal_trans2cis:8.6e} (s)\n' 
+        if hasattr(self,"rate_thermal_cis2trans"): to_print += f' k_th_ZE          = {self.rate_thermal_cis2trans:8.6e} (s)\n' 
         if len(self.pss_results) > 0:              to_print += f' Num of Results   = {len(self.pss_results)}\n'
         to_print += '\n'
         return to_print
@@ -1192,7 +1193,9 @@ class State_azo(State):
         if do_print: print(to_print); return None
         else:        return to_print
 
-    ######
+    ################################
+    ## Thermal Properties for Azo ##
+    ################################
     def get_gtot_eff(self, temp: float=298.15, p_sh: float=0.0002, debug: int=0):
         from math import log as ln
         '''
@@ -1253,32 +1256,6 @@ class State_azo(State):
         return gtot_eff_data
 
     ######
-    def get_abs_spectrum(self, lmin: float=200, lmax: float=1000, sigma: float=0.2, debug: int=0):
-        '''
-        Using the stored TD-DFT data, computes the spectrum in the energy range, and returns it as an [x,y] array
-        '''
-        from scope.operations.vecs_and_mats import build_spectrum
-
-        # Check if TDDFT data exists.
-        if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in this state')
-
-        # Collects Values
-        energies = [es.energy for es in self.exc_states]
-        fosc     = [es.fosc for es in self.exc_states]
-        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: energies {energies}')
-        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: osc. strengths {fosc}')
-
-        ## Convert desired range in nm (lrange) to energies (erange)
-        lrange = np.linspace(lmin, lmax, lmax-lmin)
-        erange = constants.hc/lrange[::-1]
-        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: erange {np.min(erange):6.4f}-{np.max(erange):6.4f}')
-        # Builds the spectrum from discrete values, using Gaussian broadening
-        x, y = build_spectrum(erange, energies, fosc, function='gaussian', sigma=sigma, normalize=False, debug=debug)
-
-        self.abs_spec_x = constants.hc/x[::-1]  # Converts the result to a range of nm values   
-        self.abs_spec_y = y[::-1]
-        return self.abs_spec_x, self.abs_spec_y
-
     def __repr__(self):
         to_print = ""
         to_print += f'---------- SCOPE State_azo Object ------------\n'
@@ -1286,7 +1263,6 @@ class State_azo(State):
         to_print += f"{self.get_geometry_summary(do_print=False)}" 
         return to_print
 
-#
 ################
 ## Lamp Class ##
 ################
