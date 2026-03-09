@@ -412,6 +412,42 @@ class State(object):
         for es in self.exc_states:
             es.shift_energy(shift, debug=debug)
 
+    def get_abs_spectrum(self, lmin: float=200, lmax: float=1000, function: str='gaussian', sigma: float=0.2, debug: int=0):
+        '''
+        Using the stored TD-DFT data, computes the spectrum in the energy range, and returns it as an [x,y] array
+        '''
+        from scope.operations.vecs_and_mats import build_spectrum
+        from scope import constants
+
+        # Check if TDDFT data exists.
+        if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in this state')
+
+        # Collects Values
+        energies = [es.energy for es in self.exc_states]
+        fosc     = [es.fosc for es in self.exc_states]
+        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: energies {energies}')
+        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: osc. strengths {fosc}')
+
+        ## Convert desired range in nm (lrange) to energies (erange)
+        lrange = np.linspace(lmin, lmax, lmax-lmin)
+        erange = constants.hc/lrange[::-1]
+        if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: erange {np.min(erange):6.4f}-{np.max(erange):6.4f}')
+        # Builds the spectrum from discrete values, using Gaussian broadening
+        x, y = build_spectrum(erange, energies, fosc, function=function, sigma=sigma, normalize=False, debug=debug)
+
+        self.abs_spec_x = constants.hc/x[::-1]  # Converts the result to a range of nm values   
+        self.abs_spec_y = y[::-1]
+        return self.abs_spec_x, self.abs_spec_y
+
+    def plot_abs_spectrum(self, lmin: float=200, lmax: float=1000, function: str='gaussian', sigma: float=0.2, debug: int=0):
+        import matplotlib.pyplot as plt
+        x, y = self.get_abs_spectrum(lmin=lmin, lmax=lmax, function=function, sigma=sigma, debug=debug)
+        fig, ax = plt.subplots(figsize=(4, 2), dpi=200)
+        ax.plot(x, y, color='black')
+        ax.set_xlabel('Wavelength (nm)')
+        ax.set_ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
+
+    
 ##################################
 #### Connection with Workflow ####
 ##################################
