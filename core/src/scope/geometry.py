@@ -32,7 +32,7 @@ def get_dist(coord1: list, coord2: list) -> float:
 ###########
 ## Angle ##
 ###########
-def get_angle(v1, v2, eps: float=1e-8) -> float:
+def get_angle_vectors(v1, v2, eps: float=1e-8) -> float:
     """
     Calculates the angle in radians between two vectors.
 
@@ -51,6 +51,35 @@ def get_angle(v1, v2, eps: float=1e-8) -> float:
     ## To avoid numerical instabilities after normalization
     if np.linalg.norm(v1) < eps or np.linalg.norm(v2) < eps: return 0.0 
     return float(np.arccos(np.clip(np.dot(v1, v2), -1.0, 1.0)))
+
+def get_angle_points(P1, P2, P3, eps: float=1e-8) -> float:
+    """
+    Calculates the angle in radians defined by three points in 3D space.
+
+    Parameters:
+        P1 (array-like): First point.
+        P2 (array-like): Vertex point.
+        P3 (array-like): Third point.
+
+    Returns:
+        float: The angle in radians for P1-P2-P3.
+    """
+    P1, P2, P3 = map(np.asarray, (P1, P2, P3))
+    v1 = P1 - P2
+    v2 = P3 - P2
+    return get_angle_vectors(v1, v2, eps=eps)
+
+def get_angle(a1, a2, a3=None, eps: float=1e-8) -> float:
+    """
+    Backwards-compatible angle helper.
+
+    - If called with two arguments, they are interpreted as vectors.
+    - If called with three arguments, they are interpreted as points, with
+      the middle argument as the vertex.
+    """
+    if a3 is None:
+        return get_angle_vectors(a1, a2, eps=eps)
+    return get_angle_points(a1, a2, a3, eps=eps)
 
 #########
 def set_angle(labels, coord, target_angle: float, atom1: int, atom2: int, atom3: int, debug=0):
