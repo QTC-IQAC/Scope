@@ -724,7 +724,7 @@ class System_azo(System):
         - Finds cis/trans sources and the requested target state in each source.
         - Computes absorption spectra for both isomers in the same wavelength range.
         - Resolves thermal rates:
-          - Uses `trans_k` / `cis_k` if provided and consistent with `temp`.
+          - Uses existing 'trans_k'/'cis_k' rates if provided and consistent with 'temp'.
           - Otherwise computes/retrieves them from system results.
         - Builds a `PSS` object and attaches the selected lamp profile.
         - Applies lamp power/intensity scaling with `pw_int`.
@@ -732,37 +732,21 @@ class System_azo(System):
 
         Parameters
         ----------
-        lamp_name : str, optional
-            Name of the lamp profile (e.g. `"COOLLED"`, `"DARK"`). Default is `"default"`.
-        target_state : str, optional
-            State label to use in cis/trans sources (e.g. `"opt"`). Default is `"opt"`.
-        temp : float, optional
-            Temperature in Kelvin used for thermal-rate handling. Default is 298.15 K.
-        phi_EZ : float, optional
-            Quantum yield for trans -> cis photoisomerization. Default is 0.3.
-        phi_ZE : float, optional
-            Quantum yield for cis -> trans photoisomerization. Default is 0.5.
-        pw_int : float, optional
-            Lamp power/intensity scaling factor passed to `lamp.set_power_intensity()`.
-            Default is 1.0.
-        trans_k : float, optional
-            Thermal rate constant for trans -> cis (s^-1). If `None`, it is computed
-            or retrieved from stored results.
-        cis_k : float, optional
-            Thermal rate constant for cis -> trans (s^-1). If `None`, it is computed
-            or retrieved from stored results.
-        lmin : float, optional
-            Minimum wavelength (nm) for absorption spectra. Default is 200.
-        lmax : float, optional
-            Maximum wavelength (nm) for absorption spectra. Default is 1000.
-        debug : int, optional
-            Debug level. 0: silent, >0: verbose.
+        lamp_name    : str, optional     Name of the lamp profile (e.g. `"COOLLED"`, `"DARK"`). Default is `"default"`.
+        target_state : str, optional     State label to use in cis/trans sources (e.g. `"opt"`). Default is `"opt"`.
+        temp         : float, optional   Temperature in Kelvin used for thermal-rate handling. Default is 298.15 K.
+        phi_EZ       : float, optional   Quantum yield for trans -> cis photoisomerization. Default is 0.3.
+        phi_ZE       : float, optional   Quantum yield for cis -> trans photoisomerization. Default is 0.5.
+        pw_int       : float, optional   Lamp power/intensity scaling factor passed to `lamp.set_power_intensity()`. Default is 1.0.        
+        trans_k      : float, optional   Thermal rate constant for trans -> cis (s^-1). If `None`, it is computed or retrieved from stored results.
+        cis_k        : float, optional   Thermal rate constant for cis -> trans (s^-1). If `None`, it is computed or retrieved from stored results.
+        lmin         : float, optional   Minimum wavelength (nm) for absorption spectra. Default is 200.
+        lmax         : float, optional   Maximum wavelength (nm) for absorption spectra. Default is 1000.
+        debug        : int, optional     Debug level. 0: silent, >0: verbose.
 
         Returns
         -------
-        PSS
-            Initialized PSS object containing spectra, lamp settings, thermal rates,
-            and computed PSS results across lamp wavelengths.
+        PSS             Initialized PSS object containing spectra, lamp settings, thermal rates, and computed PSS results across lamp wavelengths.
         """
 
         # Search for cis and trans sources and states.
@@ -808,62 +792,6 @@ class System_azo(System):
             if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Evaluating PSS for wavelength: {wl}") 
             self.PSS.get_pss_spectrum(wl, phi_EZ=phi_EZ, phi_ZE=phi_ZE, debug=debug) # get_pss_ratio computes the photo_rates already with the same parameters (wl and phi's)
         return self.PSS
-
-#    ######
-#    def compute_pss(self, wl_list, state_trans=None, state_cis=None, phi_EZ=0.3, phi_ZE=0.5, t_EZ=None, t_ZE=None, shift_nm=None, debug =0): 
-#        """
-#        Calculates the photostationary state for a A <--> B photo-interconversion.
-#        """
-#       
-#        if state_trans is None: 
-#            state_trans = self.find_source('trans')[1].find_state('opt')[1]
-#        if state_cis is None: 
-#            state_cis = self.find_source('cis')[1].find_state('opt')[1]
-#
-#        if debug>0: print(f'SYSTEM_AZO.COMPUTE_PSS: Trans results: {state_trans.results}')
-#        if debug>0: print(f'SYSTEM_AZO.COMPUTE_PSS: Cis results: {state_cis.results}')
-#        name_trans = state_trans._source.name # Trans
-#        name_cis = state_cis._source.name # Cis
-#
-#        frac_list = []
-#        pss_list = []
-#
-#        # 1. Initial dark condition
-#        lamp = Lamp(name='DARK', wavelength=365)
-#        
-#        lambda_grid, sigma_cis, sigma_trans, pss_B = self.get_PSS(lamp, phi_EZ=0, phi_ZE=0, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug) 
-#        
-#        sigma_cis *= constants.avogadro / (1000 * np.log(10)) * 1e4
-#        sigma_trans *= constants.avogadro / (1000 * np.log(10)) * 1e4
-#
-#        sigma_pss = build_pss_spectrum(pss_B, sigma_trans, sigma_cis, debug=debug) 
-#        frac_list.append(pss_B)     
-#        pss_list.append(sigma_pss)  
-#
-#        # 2. Iterate through irradiations
-#        for irr_wl in wl_list:
-#            lamp = Lamp(name='COOLLED', wavelength=irr_wl, shift_nm=shift_nm)
-#            _, _, _, pss_B = self.get_PSS(lamp, phi_EZ=phi_EZ, phi_ZE=phi_ZE, t_EZ=t_EZ, t_ZE=t_ZE, debug=debug) 
-#            sigma_pss = build_pss_spectrum(pss_B, sigma_trans, sigma_cis, debug=debug)
-#            frac_list.append(pss_B)
-#            pss_list.append(sigma_pss)
-#
-#        # 3. Store the extracted names AND the extracted half-lives!
-#        # This saves the plotting function from having to look them up again.
-#        self.pss_data = {
-#            "name_trans": name_trans,
-#            "name_cis": name_cis,
-#            "lambda_grid": lambda_grid,
-#            "wl_list": wl_list,
-#            "sigma_cis": sigma_cis,
-#            "sigma_trans": sigma_trans,
-#            "frac_list": frac_list,      
-#            "pss_list": pss_list,
-#            # Safely grab the halflife from the State object's results dictionary
-#            "t_EZ": t_EZ if t_EZ is not None else state_trans.results['halflife'].value, 
-#            "t_ZE": t_ZE if t_ZE is not None else state_cis.results['halflife'].value   
-#        }
-#        print(f"PSS data for {name_trans}/{name_cis} successfully computed!")
 
     ######
     def __repr__(self):
@@ -1025,15 +953,15 @@ class PSS(object):
         to_print += '------------------------------\n'
         to_print += '   >>> SCOPE PSS Object >>>   \n'
         to_print += '------------------------------\n'
-        to_print += f' System           = {self.system.name}\n'
-        to_print += f' Lamp Name        = {self.lamp.name}\n'
-        to_print += f' Lamp Wavelengths = {self.lamp.wavelengths} (nm)\n'
-        to_print += f' Lamp FWHM        = {self.lamp.fwhm} (nm)\n'
-        to_print += f' Lamp Powers      = {self.lamp.power} (mW)\n'
-        if hasattr(self,"area"): to_print += f' Area             = {self.area:8.6f} (mm2)\n' 
-        if hasattr(self,"rate_thermal_trans2cis"): to_print += f' k_th_EZ          = {self.rate_thermal_trans2cis:8.6e} (s^-1)\n' 
-        if hasattr(self,"rate_thermal_cis2trans"): to_print += f' k_th_ZE          = {self.rate_thermal_cis2trans:8.6e} (s^-1)\n' 
-        if len(self.pss_results) > 0:              to_print += f' Num of Results   = {len(self.pss_results)}\n'
+        to_print += f' System             = {self.system.name}\n'
+        to_print += f' Lamp Name          = {self.lamp.name}\n'
+        to_print += f' Lamp Wavelengths   = {self.lamp.wavelengths} (nm)\n'
+        to_print += f' Lamp FWHM          = {self.lamp.fwhm} (nm)\n'
+        to_print += f' Lamp Powers        = {self.lamp.power} (mW)\n'
+        if hasattr(self,"area"): to_print += f' Illuminated Area   = {self.area:8.6f} (mm2)\n' 
+        if hasattr(self,"rate_thermal_trans2cis"): to_print += f' Rate Thermal E->Z  = {self.rate_thermal_trans2cis:8.6e} (s^-1)\n' 
+        if hasattr(self,"rate_thermal_cis2trans"): to_print += f' Rate Thermal Z->E  = {self.rate_thermal_cis2trans:8.6e} (s^-1)\n' 
+        if len(self.pss_results) > 0:              to_print += f' Num of Results     = {len(self.pss_results)}\n'
         to_print += '\n'
         return to_print
 
