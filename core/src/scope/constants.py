@@ -36,11 +36,11 @@ eV2har          = 0.03674930495
 cm2har          = 0.000004556335281
 ry2har          = 0.5
 amu2au          = 1822.888486  # 1 amu in atomic units
-kcal2kJmol      = 4.184
+kcalmol2kJmol   = 4.184
 
 # Energy Inverse
 kJmol2har       = 1/har2kJmol
-kJmol2kcal      = 1/kcal2kJmol
+kJmol2kcalmol   = 1/kcalmol2kJmol
 
 ### Derived Factors. Always to be applied as multiplications
 cm2s_1          = 100 * speed_light
