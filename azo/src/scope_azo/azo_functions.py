@@ -40,8 +40,8 @@ def eyring_halflife(g_initial: float, g_excited: float, temp: float=298.15, debu
     
     Parameters
     ----------
-    g_excited : float       Free Gibbs energy of transition state (in Hartree)
     g_initial : float       Free Gibbs energy of the ground state (in Hartree)
+    g_excited : float       Free Gibbs energy of transition state (in Hartree)
     temp : float            Temperature in Kelvin
     
     Returns
@@ -50,7 +50,7 @@ def eyring_halflife(g_initial: float, g_excited: float, temp: float=298.15, debu
     k : float               rate constant in s^-1
     '''
     dG = (g_excited - g_initial) * Constants.har2kJmol   # in kJ/mol
-    if debug > 0: print(f'AZO.COMPUTE_T: dG: {dG} kJ/mol / {dG*Constants.kJmol2kcal} kcal/mol')
+    if debug > 0: print(f'AZO.COMPUTE_T: dG: {dG} kJ/mol / {dG*Constants.kJmol2kcalmol} kcal/mol')
     dG *= 1000                                           # J/mol
     k = ((Constants.boltz_J * temp) / Constants.planck_Js) * np.exp(-dG / (Constants.R_J * temp))  
     t = np.log(2) / k  # Assuming a first-order reaction
@@ -100,12 +100,32 @@ def show_thermal_data(systems):                                                 
 def build_pss_spectrum(initial_fraction, initial_spectrum, final_spectrum, debug=0):
     """
     Builds the PSS spectrum using the fraction of trans isomer. 
+
+    Parameters
+    ----------
+    initial_fraction : float    Fraction of the initial isomer.
+    initial_spectrum : array    Spectrum of the initial isomer.
+    final_spectrum : array      Spectrum of the final isomer.
+    debug : int, optional       Verbose level.
+
+    Returns
+    -------
+    array   PSS spectrum.
     """
     return initial_fraction * initial_spectrum + (1 - initial_fraction) * final_spectrum
 
 ######
 def wavelength_to_rgb(nm: float):
-    """Approximate the RGB color perceived for a wavelength in nm."""
+    """Approximate the RGB color perceived for a wavelength in nm
+
+    Parameters
+    ----------
+    nm : float    Wavelength in nanometers.
+    
+    Returns
+    -------
+    tuple   RGB color.
+    """
     gamma = 0.8
     if nm < 360 or nm > 780:
         return (0.5, 0.5, 0.5)  # gray for non-visible (e.g., 350 nm)
