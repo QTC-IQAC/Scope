@@ -619,7 +619,7 @@ class System_azo(System):
         gtot_trans = trans_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
         gtot_cis   = cis_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
 
-        dE = (gtot_cis - gtot_trans) * constants.har2kJmol/constants.kcal2kJmol ## Returns value in Kcal/mol
+        dE = (gtot_cis - gtot_trans) * constants.har2kJmol/constants.kcalmol2kJmol ## Returns value in Kcal/mol
         dE_data = Data("dG_cis-trans",dE,'kcal/mol',"system_azo.get_thermal_stability()")
         self.add_result(dE_data, overwrite=True)
         return dE_data
@@ -646,14 +646,15 @@ class System_azo(System):
         #Computing halflife time (t05) and kinetic constant (k)
         t05, k_th = eyring_equation(gtot_trans, gtot_mets, temp)
         if debug > 0: print(f'SYSTEM_AZO.GET_TRANS_T05: Obtained t05: {t05}  k_th: {k_th}') 
-        dG_from_trans = (float(gtot_mets)- float(gtot_trans)) * constants.har2kJmol * constants.kJmol2kcal # in Kcal/mol
+        dG_from_trans = (float(gtot_mets)- float(gtot_trans)) * constants.har2kJmol * constants.kJmol2kcalmol # in Kcal/mol
         if debug > 0: print(f'SYSTEM_AZO.GET_TRANS_T05: dG_from_trans = {dG_from_trans}') 
 
         units_time = 's'
+        units_rate = 's^-1'
         units_kcal = 'kcal/mol'
 
         # Creates Data-class objects to store results, and sets temperature as property
-        k_data   = Data("rate_thermal_trans2cis", k_th, units_time, "system_azo.get_trans_halflife_time()")
+        k_data   = Data("rate_thermal_trans2cis", k_th, units_rate, "system_azo.get_trans_halflife_time()")
         k_data.add_property("temperature", temp)
         dG_data  = Data("dG_from_trans",dG_from_trans,units_kcal,"system_azo.get_trans_halflife_time()")
         dG_data.add_property("temperature", temp)
@@ -686,14 +687,15 @@ class System_azo(System):
         #Computing halflife time (t05) and kinetic constant (k)
         t05, k_th = eyring_equation(gtot_cis, gtot_mets, temp)
         if debug > 0: print(f'SYSTEM_AZO.GET_CIS_T05: Obtained t05: {t05}  k_th: {k_th}') 
-        dG_from_cis = (float(gtot_mets)- float(gtot_cis)) * constants.har2kJmol * constants.kJmol2kcal # in Kcal/mol
+        dG_from_cis = (float(gtot_mets)- float(gtot_cis)) * constants.har2kJmol * constants.kJmol2kcalmol # in Kcal/mol
         if debug > 0: print(f'SYSTEM_AZO.GET_CIS_T05: dG_from_cis = {dG_from_cis}') 
 
         units_time = 's'
+        units_rate = 's^-1'
         units_kcal = 'kcal/mol'
 
         # Creates Data-class objects to store results, and sets temperature as property
-        k_data   = Data("rate_thermal_cis2trans", k_th, units_time, "system_azo.get_cis_halflife_time()")
+        k_data   = Data("rate_thermal_cis2trans", k_th, units_rate, "system_azo.get_cis_halflife_time()")
         k_data.add_property("temperature", temp)
         dG_data  = Data("dG_from_cis",dG_from_cis,units_kcal,"system_azo.get_cis_halflife_time()")
         dG_data.add_property("temperature", temp)
@@ -957,8 +959,8 @@ class PSS(object):
         to_print += f' Lamp FWHM          = {self.lamp.fwhm} (nm)\n'
         to_print += f' Lamp Powers        = {self.lamp.power} (mW)\n'
         if hasattr(self,"area"): to_print += f' Illuminated Area   = {self.area:8.6f} (mm2)\n' 
-        if hasattr(self,"rate_thermal_trans2cis"): to_print += f' Rate Thermal E->Z  = {self.rate_thermal_trans2cis:8.6e} (s)\n' 
-        if hasattr(self,"rate_thermal_cis2trans"): to_print += f' Rate Thermal Z->E  = {self.rate_thermal_cis2trans:8.6e} (s)\n' 
+        if hasattr(self,"rate_thermal_trans2cis"): to_print += f' Rate Thermal E->Z  = {self.rate_thermal_trans2cis:8.6e} (s^-1)\n' 
+        if hasattr(self,"rate_thermal_cis2trans"): to_print += f' Rate Thermal Z->E  = {self.rate_thermal_cis2trans:8.6e} (s^-1)\n' 
         if len(self.pss_results) > 0:              to_print += f' Num of Results     = {len(self.pss_results)}\n'
         to_print += '\n'
         return to_print
@@ -1165,7 +1167,7 @@ class State_azo(State):
             # Compute the Penalty, based on Surface Hopping Probability (p_sh)
             dx = - constants.R_J * temp * ln(p_sh)     # J/mol
             dx /= 1000                                 # kJ/mol
-            if debug>0: print(f'STATE_AZO.GET_Gtot_EFF: Adding penalty of {dx*constants.kJmol2kcal:.2f} kcal/mol.')
+            if debug>0: print(f'STATE_AZO.GET_Gtot_EFF: Adding penalty of {dx*constants.kJmol2kcalmol:.2f} kcal/mol.')
             dx *= constants.kJmol2har
         else: 
             dx = 0

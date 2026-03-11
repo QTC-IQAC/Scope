@@ -196,9 +196,9 @@ class Data(object):
         elif self.units.lower() == 'kj' and new_units.lower() == 'au':
             self.value = self.value / constants.har2kJmol
         elif self.units.lower() == 'au' and (new_units.lower() == 'kcal' or new_units.lower() == 'kcal/mol'):
-            self.value = self.value * constants.har2kJmol * constants.kJmol2kcal
+            self.value = self.value * constants.har2kJmol * constants.kJmol2kcalmol
         elif self.units.lower() == 'kcal' and new_units.lower() == 'au':
-            self.value = self.value * constants.kcal2kJmol * constants.kJmol2har
+            self.value = self.value * constants.kcalmol2kJmol * constants.kJmol2har
         elif self.units.lower() == 'ry' and new_units.lower() == 'au':
             self.value = self.value * constants.ry2har
         elif self.units.lower() == 'au' and new_units.lower() == 'ry':
@@ -224,13 +224,13 @@ class Data(object):
             elif self.units.lower() == 'kj' and new_units.lower() == 'au':
                 return f"{self.key}: {self.value / constants.har2kJmol:12.8f} {new_units}"
             elif self.units.lower() == 'au' and (new_units.lower() == 'kcal' or new_units.lower() == 'kcal/mol'):
-                return f"{self.key}: {self.value * constants.har2kJmol * constants.kJmol2kcal:12.8f} {new_units}"
+                return f"{self.key}: {self.value * constants.har2kJmol * constants.kJmol2kcalmol:12.8f} {new_units}"
             elif self.units.lower() == 'kcal' and new_units.lower() == 'au':
-                return f"{self.key}: {self.value * constants.kcal2kJmol * constants.kJmol2har:12.8f} {new_units}"
+                return f"{self.key}: {self.value * constants.kcalmol2kJmol * constants.kJmol2har:12.8f} {new_units}"
             elif self.units.lower() == 'kj' and new_units.lower() == 'kcal':
-                return f"{self.key}: {self.value * constants.kJmol2kcal:12.8f} {new_units}"
+                return f"{self.key}: {self.value * constants.kJmol2kcalmol:12.8f} {new_units}"
             elif self.units.lower() == 'kcal' and new_units.lower() == 'kj':
-                return f"{self.key}: {self.value / constants.kJmol2kcal:12.8f} {new_units}"
+                return f"{self.key}: {self.value / constants.kJmol2kcalmol:12.8f} {new_units}"
             elif self.units.lower() == 'ry' and new_units.lower() == 'au':
                 return f"{self.key}: {self.value * constants.r2har:12.8f} {new_units}"
             elif self.units.lower() == 'au' and new_units.lower() == 'ry':

@@ -445,7 +445,11 @@ class State(object):
         fig, ax = plt.subplots(figsize=(4, 2), dpi=200)
         ax.plot(x, y, color='black')
         ax.set_xlabel('Wavelength (nm)')
-        ax.set_ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
+        ax.set_ylabel(r'osc. strength (a.u.)')  
+        ax.set_xlim(lmin, lmax)
+        plt.show()
+        
+
     
 ##################################
 #### Connection with Workflow ####
