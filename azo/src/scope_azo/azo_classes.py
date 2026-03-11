@@ -190,9 +190,9 @@ class System_azo(System):
             if debug > 0: print(f"AZO.CREATE_TRANS: Received SMILES of CIS isomer, replacing '\\' with '/' for {self.name}")
             smiles = smiles.replace('/N=N\\', '/N=N/')
 
-        labels, coord          = get_3D(smiles)
-        coord                  = centercoords(coord, 0)
-        trans                  = Molecule_azo(labels, coord)
+        labels, coord = get_3D(smiles)
+        coord         = centercoords(coord, 0)
+        trans         = Molecule_azo(labels, coord)
 
         # Checks fragmentation to verify that the 3D structure is correct (or, at least, not fragmented)
         if trans.check_fragmentation():
@@ -794,6 +794,83 @@ class System_azo(System):
         return self.PSS
 
     ######
+    def plot_energy_profile(self, target_state: str='opt', temperature: float=298.15):
+        import matplotlib.pyplot as plt
+
+        #####################
+        # Data is Collected #
+        #####################
+        # Takes Trans and Cis
+        found_trans, trans = self.find_source('trans')
+        if not found_trans: raise Exception("SYSTEM_AZO.PLOT_ENERGY_PROFILE: 'trans' source not found.")
+        found_cis, cis = self.find_source('cis')
+        if not found_cis: raise Exception("SYSTEM_AZO.PLOT_ENERGY_PROFILE: 'cis' source not found.")
+        found_trans_state, trans_state = trans.find_state(target_state)
+        if not found_trans_state: raise Exception(f"SYSTEM_AZO.PLOT_ENERGY_PROFILE: target_state='{target_state}' not found in trans.")
+        found_cis_state, cis_state = cis.find_state(target_state)
+        if not found_cis_state: raise Exception(f"SYSTEM_AZO.PLOT_ENERGY_PROFILE: target_state='{target_state}' not found in cis.")
+
+        g_trans = trans_state.get_gtot_eff(temp=temperature)
+        if g_trans is None:
+            raise ValueError(f"SYSTEM_AZO.PLOT_ENERGY_PROFILE: Gibbs Free Energy cannot be computed for the target_state='{target_state}' of {trans_state._source.name}.")
+        g_cis   = cis_state.get_gtot_eff(temp=temperature)
+        if g_cis is None:
+            raise ValueError(f"SYSTEM_AZO.PLOT_ENERGY_PROFILE: Gibbs Free Energy cannot be computed for the target_state='{target_state}' of {cis_state._source.name}.")
+        g_trans = g_trans.convert_to_units('au').value
+        g_cis   = g_cis.convert_to_units('au').value
+
+        # Takes the TS 
+        ts_names = []
+        ts_energies = []
+        for source in self.sources:
+            if source.name == trans.name or source.name == cis.name: continue
+            found_state, state = source.find_state(target_state)
+            if not found_state: continue
+
+            include_as_ts = False
+            if source.spin == 2:     include_as_ts = hasattr(state, "isminimum") and state.isminimum
+            elif source.spin == 0:   include_as_ts = hasattr(state, "is_ts") and state.is_ts
+            if not include_as_ts: continue
+
+            energy = state.get_gtot_eff(temp=temperature)
+            if energy is not None:
+                ts_names.append(source.name)
+                ts_energies.append(energy.convert_to_units('au').value)
+
+        if len(ts_energies) == 0: raise ValueError("SYSTEM_AZO.PLOT_ENERGY_PROFILE: No TS-like sources found for the requested target_state.")
+        mets = self.get_mets(temp=temperature, target_state=target_state)
+        mets_name = mets.name
+
+        conv = constants.har2kJmol * constants.kJmol2kcalmol
+        y_trans = 0.0
+        y_cis = (g_cis - g_trans) * conv
+        y_ts = [(e - g_trans) * conv for e in ts_energies]
+
+        ################
+        # Plot is made #
+        ################
+        fig, ax = plt.subplots(figsize=(2, 3), dpi=200)
+        base_color = 'black'
+        mets_color = 'red'
+        ax.plot(1.0, y_trans, marker='_', markersize=16, markeredgewidth=1.6, color=base_color)
+        ax.plot(3.0, y_cis, marker='_', markersize=16, markeredgewidth=1.6, color=base_color)
+        x_ts = np.linspace(1.9, 2.1, len(y_ts)) if len(y_ts) > 1 else np.array([2.0])
+        for x, name, y in zip(x_ts, ts_names, y_ts):
+            is_mets = (name.lower() == mets_name.lower())
+            color = mets_color if is_mets else base_color
+            label = f"{name} (METS)" if is_mets else None
+            ax.plot(x, y, marker='_', markersize=16, markeredgewidth=1.6, color=color)
+            ax.text(x, y - 1.00, label, ha='center', va='top', color=color, fontsize=8)
+
+        ax.set_xticks([1, 2, 3])
+        ax.set_xticklabels(["Trans", "TS", "Cis"])
+        ax.set_xlim(0.5, 3.5)
+        ax.set_ylabel(r"$\Delta G$ (kcal mol$^{-1}$)")
+        ax.set_title(f"{self.name} ({target_state} state, {temperature:.2f} K)", fontsize=8)
+        plt.tight_layout()
+        plt.show()
+
+    ######
     def __repr__(self):
         to_print = ""
         to_print += '-------------------------------------\n'
@@ -1139,6 +1216,11 @@ class State_azo(State):
         p_sh : float, optional         The probability of surface hopping. The default is 0.0002.
         debug : int, optional          The debug level. The default is 0
         '''
+        # Verifies it has VNMs
+        if not hasattr(self,"VNMs"): 
+            print(f'STATE_AZO.GET_Gtot_EFF: State {self.name} does not have VNMs, returning None.')
+            return None 
+
         # Searches Gtot_eff entry,  in case it already exists
         if 'Gtot_eff' in self.results:
             gtot_eff_col = self.results['Gtot_eff']
@@ -1150,16 +1232,13 @@ class State_azo(State):
         else:
             gtot_eff_col = Collection("Gtot_eff", "temperature")
 
-        if not 'Gtot' in self.results:
-            self.get_thermal_data(temp=temp)
+        if not 'Gtot' in self.results: self.get_thermal_data(temp=temp)
         # Searches specific Gtot(T) entry
         gtot = self.results['Gtot'].find_value_with_property("temperature", temp)
-        if gtot is None: 
-            self.get_thermal_data(temp=temp)
+        if gtot is None: self.get_thermal_data(temp=temp)
         # Now it should exists for sure
         gtot = self.results['Gtot'].find_value_with_property("temperature", temp)
-        if gtot is None: 
-            raise Exception (f'STATE_AZO.GET_Gtot_EFF: Gtot for State {self.name} at {temp=} not found.')
+        if gtot is None: raise Exception (f'STATE_AZO.GET_Gtot_EFF: Gtot for State {self.name} at {temp=} not found.')
         # Gets Value (energy) is a Data class
         gtot = self.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au")
 

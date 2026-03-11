@@ -442,14 +442,12 @@ class State(object):
     def plot_abs_spectrum(self, lmin: float=200, lmax: float=1000, function: str='gaussian', sigma: float=0.2, debug: int=0):
         import matplotlib.pyplot as plt
         x, y = self.get_abs_spectrum(lmin=lmin, lmax=lmax, function=function, sigma=sigma, debug=debug)
-        fig, ax = plt.subplots(figsize=(4, 2), dpi=200)
+        fig, ax = plt.subplots(figsize=(3, 2), dpi=200)
         ax.plot(x, y, color='black')
         ax.set_xlabel('Wavelength (nm)')
         ax.set_ylabel(r'osc. strength (a.u.)')  
         ax.set_xlim(lmin, lmax)
         plt.show()
-        
-
     
 ##################################
 #### Connection with Workflow ####
