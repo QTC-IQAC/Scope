@@ -446,7 +446,6 @@ class State(object):
         ax.plot(x, y, color='black')
         ax.set_xlabel('Wavelength (nm)')
         ax.set_ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
-
     
 ##################################
 #### Connection with Workflow ####
@@ -606,7 +605,7 @@ class State(object):
 #### Get Thermodynamic Data ####
 ################################
     def get_thermal_data(self, temp: float=298.15, Helec=None, Selec=None, Hvib=None, Svib=None, Gtot=None, overwrite: bool=False, debug: int=0):
-        from scope.thermal_corrections import get_Selec, get_Hvib, get_Svib, get_Gibbs
+        from scope.thermodynamics import get_Selec, get_Hvib, get_Svib, get_Gibbs
         ## Computes and Stores Helec, Selec as Data in self.results
         ## Computes and Stores Hvib, Svib and Gtot as Collection in self.results. These will always be collections even with only one data point
 

@@ -2,7 +2,7 @@
 #### Function that are Specific to Spin Crossover ####
 ######################################################
 from scope.classes_data import *
-from scope.thermal_corrections import *
+from scope.thermodynamics import *
 
 ######
 def get_sco_geom(state: object, debug: int=0):

@@ -626,7 +626,7 @@ class System_azo(System):
 
     ######
     def get_trans_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, p_sh: float=0.0002, debug: int=0):
-        from scope_azo.azo_functions import eyring_halflife
+        from scope.thermodynamics import eyring_equation
         '''
         
         '''
@@ -644,7 +644,7 @@ class System_azo(System):
         gtot_mets = mets_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
         
         #Computing halflife time (t05) and kinetic constant (k)
-        t05, k_th = eyring_halflife(gtot_trans, gtot_mets, temp)
+        t05, k_th = eyring_equation(gtot_trans, gtot_mets, temp)
         if debug > 0: print(f'SYSTEM_AZO.GET_TRANS_T05: Obtained t05: {t05}  k_th: {k_th}') 
         dG_from_trans = (float(gtot_mets)- float(gtot_trans)) * constants.har2kJmol * constants.kJmol2kcal # in Kcal/mol
         if debug > 0: print(f'SYSTEM_AZO.GET_TRANS_T05: dG_from_trans = {dG_from_trans}') 
@@ -666,7 +666,7 @@ class System_azo(System):
         
     ######
     def get_cis_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, p_sh: float=0.0002, debug: int=0):
-        from scope_azo.azo_functions import eyring_halflife
+        from scope.thermodynamics import eyring_equation
         '''
         
         '''
@@ -684,7 +684,7 @@ class System_azo(System):
         gtot_mets = mets_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
         
         #Computing halflife time (t05) and kinetic constant (k)
-        t05, k_th = eyring_halflife(gtot_cis, gtot_mets, temp)
+        t05, k_th = eyring_equation(gtot_cis, gtot_mets, temp)
         if debug > 0: print(f'SYSTEM_AZO.GET_CIS_T05: Obtained t05: {t05}  k_th: {k_th}') 
         dG_from_cis = (float(gtot_mets)- float(gtot_cis)) * constants.har2kJmol * constants.kJmol2kcal # in Kcal/mol
         if debug > 0: print(f'SYSTEM_AZO.GET_CIS_T05: dG_from_cis = {dG_from_cis}') 

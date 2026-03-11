@@ -3,7 +3,7 @@ from scope                            import constants
 from scope.classes_data               import *
 from scope.operations.dicts_and_lists import range2list
 
-###########
+######
 def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', typ: str='default', FR_cutoff: int=100, FR_alpha: int=4, nmol: int=1, debug: int=0):
     ## Temperature must be provided in K
 
@@ -76,12 +76,12 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     else: raise ValueError(f"GET_Svib: can't understand desired output units: {outunits}")
 
     ## Creates data-class object
-    new_data = Data("Svib", float(total), outunits.lower(), "scope.thermal_corrections.get_Svib()")
+    new_data = Data("Svib", float(total), outunits.lower(), "scope.thermodynamics.get_Svib()")
     new_data.add_property("temperature", temp, overwrite=True)
 
     return new_data
 
-###########
+######
 def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', nmol: int=1, debug: int=0):
     # temperature in K
     # function works with freqs in au, so we adapt if needed
@@ -108,21 +108,48 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     if outunits.lower() == 'kj':  total = total*constants.har2kJmol    # kJ/mol
 
     ## Creates data-class object
-    new_data = Data("Hvib", float(total), outunits, "scope.thermal_corrections.get_Hvib()")
+    new_data = Data("Hvib", float(total), outunits, "scope.thermodynamics.get_Hvib()")
     new_data.add_property("temperature", temp, overwrite=True)
     return new_data
 
+######
 def get_Selec(spin_multiplicity, outunits: str='au', nmol: int=1):
     if outunits.lower()     == 'kj': value = float(8.314*np.log(spin_multiplicity)/1000/nmol)
     elif outunits.lower()   == 'au': value = float(8.314*np.log(spin_multiplicity)/constants.har2kJmol/1000/nmol)
-    return Data("Selec", value, outunits,  'scope.thermal_corrections.get_Selec()') 
+    return Data("Selec", value, outunits,  'scope.thermodynamics.get_Selec()') 
 
+######
 def get_Gibbs(Helec: float, Hvib: float, Selec: float, Svib: float, temp: float):
     return Helec + Hvib - temp*(Svib + Selec)
 
+######
 def find_t12(templist, dGlist: list):
     if type(templist) == range: templist = range2list(templist) 
     if dGlist[0] < 0.0: return None 
     else:
         for idx, g in enumerate(dGlist):
             if g < 0.0: return float(templist[idx])
+
+######
+def eyring_equation(e_ground: float, e_barrier: float, temp: float=298.15, debug: int=0):
+    '''
+    Computes half-life time in seconds using Eyring equation.
+    
+    Parameters
+    ----------
+    g_excited : float       Energy of transition state (in Hartree)
+    g_initial : float       Energy of the ground state (in Hartree)
+    temp : float            Temperature in Kelvin
+    
+    Returns
+    -------
+    t : float               half-life time in seconds
+    k : float               rate constant in s^-1
+    '''
+    dG = (e_barrier - e_ground) * constants.har2kJmol   # in kJ/mol
+    if debug > 0: print(f'AZO.COMPUTE_T: dG: {dG} kJ/mol / {dG*constants.kJmol2kcal} kcal/mol')
+    dG *= 1000                                           # J/mol
+    k = ((constants.boltz_J * temp) / constants.planck_Js) * np.exp(-dG / (constants.R_J * temp))  
+    t = np.log(2) / k  # Assuming a first-order reaction
+    if debug > 0: print(f'AZO.COMPUTE_T: t05: {t:.2f} s / k: {k:.2f}')
+    return float(t), float(k)
