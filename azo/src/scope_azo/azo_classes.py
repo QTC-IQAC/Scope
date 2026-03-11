@@ -926,38 +926,64 @@ class PSS(object):
     #############################
     ## Plots and Visualization ##
     #############################
-    def plot_spectra(self, typ: str='all',lmin: float=200,lmax: float=800):
+    def plot_spectra(self, typ: str = 'all', lmin: float = 200, lmax: float = 1000):
+        """
+        Plots the available PSS (Photostationary State) results stored in `pss_results`. 
+        Cis (Z), trans (E), and Dark spectra are also plotted as references.
+
+        Parameters
+        ----------
+        typ  : str, optional        Determines which PSS spectra to plot based on their trans ratio. Default is "all".
+                                     Accepts:
+                                        - "all" (plots every available spectrum) or 
+                                        - "mixed" (plots only spectra with a PSS ratio strictly between 0.01 and 0.99). 
+        lmin : float, optional      Minimum wavelength (in nm) for the x-axis limit. Default is 200.
+        lmax : float, optional      Maximum wavelength (in nm) for the x-axis limit. Default is 1000.
+            
+        """
         import matplotlib.pyplot as plt
 
-        for wl, result in self.pss_results.items():
-            if wl==0.: color='black'
-            else: color = wavelength_to_rgb(float(wl))
-            
-            pss_spectrum = result['pss_spectrum']
-            pss_ratio = result['pss_trans_ratio']
-
-            # Plots all spectra, irrespectively of the pss_trans_ratio
-            plot = False
-            if typ == 'all':
-                plot = True
-            elif typ == 'mixed':  
-                if pss_ratio >= 0.01 and pss_ratio <= 0.99:
-                    plot = True 
-            if plot == True: 
-                if wl==0.: plt.plot(self.wl_range,pss_spectrum,color=color,label=f"DARK pss: {100 * pss_ratio:.1f}% E", linewidth=1.5)
-                else: plt.plot(self.wl_range,pss_spectrum,color=color,label=f"{wl} nm pss: {100 * pss_ratio:.1f}% E", linewidth=1)
-
+        # Retrieve half-life times for trans (E) and cis (Z) isomers to display in the legend.
         trans_time = Data('time_thermal_trans2cis', self.time_thermal_trans2cis, 's').get_best_time_format()
         cis_time = Data('time_thermal_cis2trans', self.time_thermal_cis2trans, 's').get_best_time_format()
 
-        plt.plot(self.wl_range, self.trans_spectrum, color='blue',  linestyle='dashed', label=f'trans  t0.5 = {trans_time}', linewidth=1)
-        plt.plot(self.wl_range, self.cis_spectrum  , color='black', linestyle='dashed', label=f'cis    t0.5 = {cis_time}',   linewidth=1)
+        plt.subplots(figsize=(7, 5), dpi=300)
+        
+        # Plot E (trans) and Z (cis) spectra first with a high zorder so they stay on top.
+        plt.plot(self.wl_range, self.trans_spectrum, color='black',  linestyle='dashed', label=f'E          $t_{{1/2}}$ = {trans_time}', linewidth=1, zorder=10)
+        plt.plot(self.wl_range, self.cis_spectrum  , color='blue', linestyle='dashed', label=f'Z          $t_{{1/2}}$ = {cis_time}',   linewidth=1, zorder=10)
+        
+        # Iterate through the stored PSS results to plot the remaining curves.
+        for wl, result in self.pss_results.items():
+            # Convert wavelength to a RGB color for the plot line according to visible spectrum.
+            color = wavelength_to_rgb(float(wl))
+
+            pss_spectrum = result['pss_spectrum']
+            pss_ratio = result['pss_trans_ratio']
+
+            # Filter spectra based on the 'typ' parameter.
+            plot = False
+            if typ == 'all':    plot = True
+            elif typ == 'mixed':  
+                if 0.01 <= pss_ratio <= 0.99:
+                    plot = True 
+                    
+            if plot: 
+                # Wavelength set to 0.0 represents the DARK spectrum. 
+                if wl == 0.: 
+                    plt.plot(self.wl_range, pss_spectrum, color='black', label=f"Dark            $N_E$ = {pss_ratio:.2f}", linewidth=1.5, zorder=10)
+                else: 
+                    plt.plot(self.wl_range, pss_spectrum, color=color,   label=f"{wl} nm       $N_E$ = {pss_ratio:.2f}",   linewidth=1)
+
+        # Apply axis labels and limits.
         plt.xlabel('Wavelength (nm)')
         plt.ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
-        plt.xlim(lmin,lmax)
-        plt.legend()
-        plt.show()
+        plt.xlim(lmin, lmax)
         
+        # Display the legend in a single column.
+        plt.legend(ncol=1)
+        plt.show()
+
     def __repr__(self):
         to_print = ""
         to_print += '------------------------------\n'
