@@ -181,13 +181,16 @@ class Specie(object):
     ###########
     def get_graph(self, debug: int=0):
         import networkx as nx
-        if not hasattr(self,"adjmat"): self.get_adjmatrix(debug=debug)
-        if not hasattr(self,"bonds"):  self.set_bonds(debug=debug)
+        if not hasattr(self,"adjmat"):  self.get_adjmatrix(debug=debug)
+        if not hasattr(self,"madjmat"): self.get_metal_adjmatrix(debug=debug)
+        if not hasattr(self,"bonds"):   self.set_bonds(debug=debug)
+        if not hasattr(self,"atoms"):   self.set_atoms(create_adjacencies=True)
         # Create Empty Graph
         self.mol_graph = nx.Graph()
         # Add nodes
         for at in self.atoms:
             idx = at.get_parent_index(self.subtype)
+            if not hasattr(at,"adjnum"):  at.set_adjacencies(self.adjmat[idx], self.madjmat[idx], self.adjnum[idx], self.madjnum[idx])
             self.mol_graph.add_node(idx, label=at.label, connec=at.adjnum, mconnec=at.madjnum)
             if debug > 0: print(f"SPECIE.GET_GRAPH: node created for {idx}:{at.label}") 
         # Add edges
