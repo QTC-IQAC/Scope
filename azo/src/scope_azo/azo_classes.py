@@ -817,10 +817,12 @@ class PSS(object):
         self.cis_spectrum   = cis_spectrum
         self.pss_results    = dict()
 
-    def set_thermal_rates(self, trans_t05: float, cis_t05: float, debug: int=0):
+    def set_thermal_rates(self, trans_k: float, cis_k: float, debug: int=0):
         # Thermal rates
-        self.rate_thermal_trans2cis = trans_t05
-        self.rate_thermal_cis2trans = cis_t05
+        self.rate_thermal_trans2cis = trans_k
+        self.time_thermal_trans2cis = np.log(2)/trans_k
+        self.rate_thermal_cis2trans = cis_k
+        self.time_thermal_cis2trans = np.log(2)/cis_k
 
     def set_lamp(self, name: str="dark", debug: int=0):
         self.lamp = Lamp(name)
@@ -924,11 +926,13 @@ class PSS(object):
     #############################
     ## Plots and Visualization ##
     #############################
-    def plot_spectra(self, typ: str='all'):
+    def plot_spectra(self, typ: str='all',lmin: float=200,lmax: float=800):
         import matplotlib.pyplot as plt
 
         for wl, result in self.pss_results.items():
-            color = wavelength_to_rgb(float(wl))
+            if wl==0.: color='black'
+            else: color = wavelength_to_rgb(float(wl))
+            
             pss_spectrum = result['pss_spectrum']
             pss_ratio = result['pss_trans_ratio']
 
@@ -939,15 +943,21 @@ class PSS(object):
             elif typ == 'mixed':  
                 if pss_ratio >= 0.01 and pss_ratio <= 0.99:
                     plot = True 
-
             if plot == True: 
-                plt.plot(self.wl_range,pss_spectrum,color=color,label=f"{wl} nm pss: {100 * pss_ratio:.1f}% E")
+                if wl==0.: plt.plot(self.wl_range,pss_spectrum,color=color,label=f"DARK pss: {100 * pss_ratio:.1f}% E", linewidth=1.5)
+                else: plt.plot(self.wl_range,pss_spectrum,color=color,label=f"{wl} nm pss: {100 * pss_ratio:.1f}% E", linewidth=1)
 
-        plt.plot(self.wl_range, self.trans_spectrum, color='black', label='trans')
-        plt.plot(self.wl_range, self.cis_spectrum, color='black',  linestyle='dashed', label='cis')
+        trans_time = Data('time_thermal_trans2cis', self.time_thermal_trans2cis, 's').get_best_time_format()
+        cis_time = Data('time_thermal_cis2trans', self.time_thermal_cis2trans, 's').get_best_time_format()
+
+        plt.plot(self.wl_range, self.trans_spectrum, color='blue',  linestyle='dashed', label=f'trans  t0.5 = {trans_time}', linewidth=1)
+        plt.plot(self.wl_range, self.cis_spectrum  , color='black', linestyle='dashed', label=f'cis    t0.5 = {cis_time}',   linewidth=1)
+        plt.xlabel('Wavelength (nm)')
+        plt.ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
+        plt.xlim(lmin,lmax)
         plt.legend()
         plt.show()
-
+        
     def __repr__(self):
         to_print = ""
         to_print += '------------------------------\n'
