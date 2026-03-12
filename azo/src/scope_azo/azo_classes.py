@@ -755,9 +755,12 @@ class System_azo(System):
         found_trans_state, trans_state = self.find_source('trans')[1].find_state(target_state)
         if not found_trans_state: raise Exception('SYSTEM_AZO.GET_PSS: The target state for the TRANS isomer was not found.')
 
-        # Extract absorption spectra from two isomers. 
-        trans_x, trans_y = trans_state.get_abs_spectrum(lmin=lmin, lmax=lmax, debug=debug) # Need units to compute PSS
-        cis_x, cis_y     = cis_state.get_abs_spectrum(lmin=lmin, lmax=lmax, debug=debug)   # Need units to compute PSS
+        # Extract absorption spectra from two isomers. NORMALIZED?
+        trans_x, trans_y = trans_state.get_abs_spectrum(lmin=lmin, lmax=lmax, as_cross_section=True, debug=debug) 
+        cis_x, cis_y     = cis_state.get_abs_spectrum(lmin=lmin,   lmax=lmax, as_cross_section=True, debug=debug) 
+        
+        K = (constants.planck_Js * constants.elem_charge) / (4 * constants.epsilon_0 * constants.speed_light * constants.electron_mass)
+
         assert all(trans_x == cis_x)
         if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Spectra of cis and trans computed") 
 
@@ -784,7 +787,7 @@ class System_azo(System):
         if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Creating PSS-Class object")
 
         # Initializes PSS and computes it for all wl
-        self.PSS = PSS(self, trans_x, trans_y, cis_y)
+        self.PSS = PSS(self, trans_x, trans_y * K, cis_y*K)
         self.PSS.set_lamp(lamp_name)
         self.PSS.lamp.set_power_intensity(pw_int=pw_int)
         self.PSS.set_thermal_rates(trans_k, cis_k)
@@ -931,9 +934,8 @@ class PSS(object):
         photon_flux          = self.get_photon_flux_spectrum(wl, debug=debug)
 
         # Apply proper units to both spectra 
-        K = (np.pi * constants.planck_Js * constants.elem_charge) / (constants.epsilon_0 * constants.speed_light * constants.electron_mass)
-        rate_photo_trans2cis = phi_EZ * np.trapezoid((self.trans_spectrum * K) * photon_flux, self.wl_range)
-        rate_photo_cis2trans = phi_ZE * np.trapezoid((self.cis_spectrum * K) * photon_flux, self.wl_range) 
+        rate_photo_trans2cis = phi_EZ * np.trapezoid((self.trans_spectrum) * photon_flux, self.wl_range)
+        rate_photo_cis2trans = phi_ZE * np.trapezoid((self.cis_spectrum) * photon_flux, self.wl_range) 
         return rate_photo_trans2cis, rate_photo_cis2trans 
 
     def get_pss_ratio(self, wl: float, phi_EZ: float=0.3, phi_ZE: float=0.5, overwrite: bool=True, debug: int=0):

@@ -412,7 +412,7 @@ class State(object):
         for es in self.exc_states:
             es.shift_energy(shift, debug=debug)
 
-    def get_abs_spectrum(self, lmin: float=200, lmax: float=1000, function: str='gaussian', sigma: float=0.2, debug: int=0):
+    def get_abs_spectrum(self, lmin: float=200, lmax: float=1000, function: str='gaussian', sigma: float=0.2, as_cross_section: bool=False, debug: int=0):
         '''
         Using the stored TD-DFT data, computes the spectrum in the energy range, and returns it as an [x,y] array
         '''
@@ -423,8 +423,8 @@ class State(object):
         if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_ABS_SPECTRUM: [WARNING] No TDDFT data found in this state')
 
         # Collects Values
-        energies = [es.energy for es in self.exc_states]
-        fosc     = [es.fosc for es in self.exc_states]
+        energies = [es.energy for es in self.exc_states] # in eV
+        fosc     = [es.fosc for es in self.exc_states]   # oscillator strength   
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: energies {energies}')
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: osc. strengths {fosc}')
 
@@ -433,7 +433,8 @@ class State(object):
         erange = constants.hc/lrange[::-1]
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: erange {np.min(erange):6.4f}-{np.max(erange):6.4f}')
         # Builds the spectrum from discrete values, using Gaussian broadening
-        x, y = build_spectrum(erange, energies, fosc, function=function, sigma=sigma, normalize=False, debug=debug)
+        normalize = True if as_cross_section else False
+        x, y = build_spectrum(erange, energies, fosc, function=function, sigma=sigma, normalize=normalize, debug=debug)
 
         self.abs_spec_x = constants.hc/x[::-1]  # Converts the result to a range of nm values   
         self.abs_spec_y = y[::-1]
