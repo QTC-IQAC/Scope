@@ -737,7 +737,7 @@ class System_azo(System):
         temp         : float, optional   Temperature in Kelvin used for thermal-rate handling. Default is 298.15 K.
         phi_EZ       : float, optional   Quantum yield for trans -> cis photoisomerization. Default is 0.3.
         phi_ZE       : float, optional   Quantum yield for cis -> trans photoisomerization. Default is 0.5.
-        pw_int       : float, optional   Lamp power/intensity scaling factor passed to `lamp.set_power_intensity()`. Default is 1.0.        
+        pw_int       : float, optional   Lamp power/intensity scaling factor, used to adjust the lamp power intensity. Default is 1.0 (100%).        
         trans_k      : float, optional   Thermal rate constant for trans -> cis (s^-1). If `None`, it is computed or retrieved from stored results.
         cis_k        : float, optional   Thermal rate constant for cis -> trans (s^-1). If `None`, it is computed or retrieved from stored results.
         lmin         : float, optional   Minimum wavelength (nm) for absorption spectra. Default is 200.
@@ -755,11 +755,9 @@ class System_azo(System):
         found_trans_state, trans_state = self.find_source('trans')[1].find_state(target_state)
         if not found_trans_state: raise Exception('SYSTEM_AZO.GET_PSS: The target state for the TRANS isomer was not found.')
 
-        # Extract absorption spectra from two isomers. NORMALIZED?
-        trans_x, trans_y = trans_state.get_abs_spectrum(lmin=lmin, lmax=lmax, as_cross_section=True, debug=debug) 
-        cis_x, cis_y     = cis_state.get_abs_spectrum(lmin=lmin,   lmax=lmax, as_cross_section=True, debug=debug) 
-        
-        K = (constants.planck_Js * constants.elem_charge) / (4 * constants.epsilon_0 * constants.speed_light * constants.electron_mass)
+        # Extract absorption spectra from two isomers. Here, we want the cross_section, so the resulting 'y' are returned in energy-1 units. 
+        trans_x, trans_y = trans_state.get_cross_section(lmin=lmin, lmax=lmax, debug=debug) 
+        cis_x, cis_y     = cis_state.get_cross_section(lmin=lmin,   lmax=lmax, debug=debug) 
 
         assert all(trans_x == cis_x)
         if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Spectra of cis and trans computed") 
@@ -787,8 +785,9 @@ class System_azo(System):
         if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Creating PSS-Class object")
 
         # Initializes PSS and computes it for all wl
-        self.PSS = PSS(self, trans_x, trans_y * K, cis_y*K)
+        self.PSS = PSS(self, trans_x, trans_y, cis_y)
         self.PSS.set_lamp(lamp_name)
+        # Normally, lamp power data assumes 100% intensity. This can be changed here
         self.PSS.lamp.set_power_intensity(pw_int=pw_int)
         self.PSS.set_thermal_rates(trans_k, cis_k)
         for wl in self.PSS.lamp.wavelengths:
@@ -891,6 +890,7 @@ class System_azo(System):
 #################
 class PSS(object):
     def __init__(self, system, wl_range, trans_spectrum, cis_spectrum): 
+        # Trans and Cis spectra are cross sections
         self.system         = system
         self.wl_range       = wl_range
         self.trans_spectrum = trans_spectrum
@@ -966,7 +966,7 @@ class PSS(object):
             self.get_pss_ratio(wl, phi_EZ, phi_ZE, debug=debug)
         result = self.pss_results[wl]
         pss_spectrum = result['pss_trans_ratio'] * self.trans_spectrum + (1 - result['pss_trans_ratio']) * self.cis_spectrum
-        to_molar_extinction = constants.avogadro / (1000 * np.log(10)) * 1e4  # from m2 to M^-1 cm^-1
+        to_molar_extinction = constants.avogadro / (1000 * np.log(10)) * 1e4  # from m2 to M^-1 cm^-1, the IUPAC Lambert-Beer definition
         pss_spectrum *= to_molar_extinction
         result.update({'pss_spectrum': pss_spectrum})
         return pss_spectrum
@@ -995,7 +995,8 @@ class PSS(object):
         # Power Intensity Controls the intensity of the power source. In practice, it acts as a multiplier of self.power
         power    = self.lamp.power[idx] * self.lamp.power_intensity 
         sigma    = fwhm / (2 * np.sqrt(2 * np.log(2)))     # Conversion from FWHM to sigma 
-        profile  = gaussian(self.wl_range, wl, sigma=sigma)
+        # Power data should refer to the value at the peak of the band. Otherwise, normalize=True belo
+        profile  = gaussian(self.wl_range, wl, sigma=sigma, normalize=False)
         ## Find Intensity along the wavelength space. 
         ## Irradiances are also computed as self.get_irradiance(), but in discrete points, not the spectrum as we do here.  
         irr_spec = power * profile / self.area   # in W/m2/nm
@@ -1353,6 +1354,7 @@ class Lamp:
         return self.fwhm
 
     def read_power(self, debug: int=0):
+        # Power data should refer to the center of the band
         if "power_data_mW" in self.data:
             self.power         = np.array(list(self._coerce_wavelength_dict(self.data.get("power_data_mW")).values()))
         elif "default_power_mW" in self.data: 
@@ -1362,6 +1364,8 @@ class Lamp:
         return self.power
 
     def read_power_intensity(self, debug: int=0):
+        # Power Values are normally given assuming that the applied intensity is 100% (factor = 1.0)
+        # If otherwise, you can change the intensity with this factor
         if "default_power_intensity" in self.data: 
             self.power_intensity = float(self.data.get("default_power_intensity")) # in mW
             assert self.power_intensity >= 0.0 and self.power_intensity <= 1.0 
