@@ -212,6 +212,10 @@ class ExcitedState(object):
         if debug > 0: print(f"EXC_STATE.SHIFT_ENERGY: energy shifted to {self.energy} from {self.original_energy}, and wavelength adapted to {self.wavelength}")
         return self.energy
 
+    def restore(self):
+        if hasattr(self,"original_wl"):     self.wavelength  = self.original_wl
+        if hasattr(self,"original_energy"): self.energy      = self.original_energy
+
     def __repr__(self):
         to_print  = f'-----------------------------\n'
         to_print +=  '   Electronic Excited State  \n'
