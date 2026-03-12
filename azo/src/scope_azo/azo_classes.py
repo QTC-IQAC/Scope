@@ -964,12 +964,16 @@ class PSS(object):
             self.get_pss_ratio(wl, phi_EZ, phi_ZE, debug=debug)
         result = self.pss_results[wl]
         pss_spectrum = result['pss_trans_ratio'] * self.trans_spectrum + (1 - result['pss_trans_ratio']) * self.cis_spectrum
+        to_molar_extinction = constants.avogadro / (1000 * np.log(10)) * 1e4  # from m2 to M^-1 cm^-1
+        pss_spectrum *= to_molar_extinction
         result.update({'pss_spectrum': pss_spectrum})
         return pss_spectrum
 
     def build_pss_spectrum(self, pss_trans_ratio: float, debug: int=0):
         assert pss_trans_ratio <= 1.0 and pss_trans_ratio >= 0.0
+        to_molar_extinction = constants.avogadro / (1000 * np.log(10)) * 1e4  # from m2 to M^-1 cm^-1
         pss_spectrum = pss_trans_ratio * self.trans_spectrum + (1 - pss_trans_ratio) * self.cis_spectrum
+        pss_spectrum *= to_molar_extinction
         return pss_spectrum
 
     def get_photon_flux_spectrum(self, wl: float, debug: int=0):
@@ -1003,7 +1007,7 @@ class PSS(object):
     #############################
     ## Plots and Visualization ##
     #############################
-    def plot_spectra(self, typ: str = 'all'):
+    def plot_spectra(self, typ: str = 'all', lmin: float=None, lmax: float=None):
         """
         Plots the available PSS (Photostationary State) results stored in `pss_results`. 
         Cis (Z), trans (E), and Dark spectra are also plotted as references.
@@ -1014,7 +1018,8 @@ class PSS(object):
                                      Accepts:
                                         - "all" (plots every available spectrum) or 
                                         - "mixed" (plots only spectra with a PSS ratio strictly between 0.01 and 0.99). 
-            
+        lmin : float, optional      Minimum wavelength (in nm) for the x-axis limit. Default is given by the minimum wavelength in "wl_range".
+        lmax : float, optional      Maximum wavelength (in nm) for the x-axis limit. Default is given by the maximum wavelength in "wl_range".    
         """
         import matplotlib.pyplot as plt
 
@@ -1022,11 +1027,11 @@ class PSS(object):
         trans_time = Data('time_thermal_trans2cis', self.time_thermal_trans2cis, 's').get_best_time_format()
         cis_time = Data('time_thermal_cis2trans', self.time_thermal_cis2trans, 's').get_best_time_format()
 
-        plt.subplots(figsize=(7, 5), dpi=300)
-        
+        plt.subplots(figsize=(8, 5), dpi=300)
+        to_molar_extinction = constants.avogadro / (1000 * np.log(10)) * 1e4  # from m2 to M^-1 cm^-1
         # Plot E (trans) and Z (cis) spectra first with a high zorder so they stay on top.
-        plt.plot(self.wl_range, self.trans_spectrum, color='black',  linestyle='dashed', label=f'E\t\t $t_{{1/2}}$ = {trans_time}', linewidth=1, zorder=10)
-        plt.plot(self.wl_range, self.cis_spectrum  , color='blue', linestyle='dashed',   label=f'Z\t\t $t_{{1/2}}$ = {cis_time}',   linewidth=1, zorder=10)
+        plt.plot(self.wl_range, self.trans_spectrum * to_molar_extinction, color='black',  linestyle='dashed', label=f'E\t\t $t_{{1/2}}$ = {trans_time}', linewidth=1, zorder=10)
+        plt.plot(self.wl_range, self.cis_spectrum * to_molar_extinction  , color='blue', linestyle='dashed',   label=f'Z\t\t $t_{{1/2}}$ = {cis_time}',   linewidth=1, zorder=10)
         
         # Iterate through the stored PSS results to plot the remaining curves.
         for wl, result in self.pss_results.items():
@@ -1054,9 +1059,15 @@ class PSS(object):
         # Apply axis labels and limits.
         plt.xlabel('Wavelength (nm)')
         plt.ylabel(r'$\epsilon$ (M$^{-1}$ cm$^{-1}$)')
+
+        # Set x-axis limits if not provided.
+        if lmin is None:    lmin = self.wl_range[0]
+        if lmax is None:    lmax = self.wl_range[-1]
+        plt.xlim(lmin, lmax)
         
         # Display the legend in a single column.
-        plt.legend(ncol=1)
+        plt.legend(bbox_to_anchor=(1.02, 0.50), loc='center left', borderaxespad=0.,frameon=False)
+        plt.tight_layout()
         plt.show()
 
     ######
