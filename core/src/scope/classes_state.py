@@ -412,6 +412,11 @@ class State(object):
         for es in self.exc_states:
             es.shift_energy(shift, debug=debug)
 
+    def restore_exc_states(self): 
+        # Reverts any changes in wavelength or energy
+        for es in self.exc_states:
+            es.restore()
+
     def get_abs_spectrum(self, lmin: float=200, lmax: float=1000, function: str='gaussian', sigma: float=0.2, as_cross_section: bool=False, debug: int=0):
         '''
         Using the stored TD-DFT data, computes the spectrum in the energy range, and returns it as an [x,y] array
@@ -432,13 +437,48 @@ class State(object):
         lrange = np.linspace(lmin, lmax, lmax-lmin)
         erange = constants.hc/lrange[::-1]
         if debug > 0: print(f'STATE_AZO.GET_ABS_SPECTRUM: erange {np.min(erange):6.4f}-{np.max(erange):6.4f}')
+
         # Builds the spectrum from discrete values, using Gaussian broadening
+        # If normalize = True, the spectrum is normalized and the resulting 'y' has units of energy-1.
+        # If normalize = False, the resulting 'y' is just a deconvoluted spectrum in fosc units
         normalize = True if as_cross_section else False
         x, y = build_spectrum(erange, energies, fosc, function=function, sigma=sigma, normalize=normalize, debug=debug)
 
         self.abs_spec_x = constants.hc/x[::-1]  # Converts the result to a range of nm values   
         self.abs_spec_y = y[::-1]
         return self.abs_spec_x, self.abs_spec_y
+
+    def get_cross_section(self, lmin: float=200, lmax: float=1000, function: str='gaussian', sigma: float=0.2, debug: int=0):
+        '''
+        Using the stored TD-DFT data, computes the absorption cross section in the energy range, and returns it as an [x,y] array
+        '''
+        from scope.operations.vecs_and_mats import build_spectrum
+        from scope import constants
+
+        # Check if TDDFT data exists.
+        if not hasattr(self, 'exc_states'): raise ValueError('AZO.GET_CROSS_SECTION: [WARNING] No TDDFT data found in this state')
+
+        # Collects Values
+        energies = [es.energy for es in self.exc_states] # in eV
+        fosc     = [es.fosc for es in self.exc_states]   # oscillator strength   
+        if debug > 0: print(f'STATE_AZO.GET_CROSS_SECTION: energies {energies}')
+        if debug > 0: print(f'STATE_AZO.GET_CROSS_SECTION: osc. strengths {fosc}')
+
+        ## Convert desired range in nm (lrange) to energies (erange)
+        lrange = np.linspace(lmin, lmax, lmax-lmin)
+        erange = constants.hc/lrange[::-1]
+        if debug > 0: print(f'STATE_AZO.GET_CROSS_SECTION: erange {np.min(erange):6.4f}-{np.max(erange):6.4f}')
+
+        # Builds the spectrum from discrete values, using Gaussian broadening
+        x, y = build_spectrum(erange, energies, fosc, function=function, sigma=sigma, normalize=True, debug=debug)
+                
+        # Here, we convert from energy-1 in eV, to absorption cross section in m2
+        K = (constants.planck_Js * constants.elem_charge) / (4 * constants.epsilon_0 * constants.speed_light * constants.electron_mass)
+        y = y * K
+
+        self.cross_sec_x = constants.hc/x[::-1]  # Converts the result to a range of nm values   
+        self.cross_sec_y = y[::-1]
+        return self.cross_sec_x, self.cross_sec_y
 
     def plot_abs_spectrum(self, lmin: float=200, lmax: float=1000, function: str='gaussian', sigma: float=0.2, debug: int=0):
         import matplotlib.pyplot as plt
