@@ -105,7 +105,9 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
         ### STEP 1.4: BRANCH ###
         ########################
         exists, this_branch        = sys.find_branch(job_data.branch, debug=0)
-        if not exists: this_branch = sys.add_branch(job_data.branch, debug=debug); updated = True
+        if not exists: 
+            if debug > 0:   print(f"RUN_TASK, step 1.4: Branch not found. Creating it")
+            this_branch = sys.add_branch(job_data.branch, debug=debug); updated = True
 
         ##########################
         ### STEP 1.5: WORKFLOW ###
@@ -120,7 +122,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
             if this_workflow is None: 
                 raise ValueError(f"RUN_TASK, step 2.0: WORKFLOW could not be created. Make sure a Source with name {wrk} exist in System")
             if debug == 1:   print(f"RUN_TASK, step 2.0: Evaluating WORKFLOW with name={this_workflow.name}")
-            elif debug > 1:  print(f"RUN_TASK, step 2.0: Evaluating WORKFLOW \n {this_workflow}")
+            elif debug > 1:  print(f"RUN_TASK, step 2.0: Evaluating WORKFLOW below: \n {this_workflow}")
 
             ###################
             ### STEP 2: JOB ###
