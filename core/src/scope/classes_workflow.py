@@ -210,10 +210,10 @@ class Workflow(object):
 
     def find_job(self, name=None, hierarchy=None, job_data=None, debug: int=0):
         if name is None and hierarchy is None and job_data is not None:
-            assert hasattr(job_data,"job_name") and hasattr(job_data,"hierarchy")
-            if debug > 1: print(f"WORKFLOW.FIND_JOB: Searching Job with name: '{job_data.job_name}' and hierarchy '{job_data.hierarchy}'")
+            assert hasattr(job_data,"job") and hasattr(job_data,"hierarchy")
+            if debug > 1: print(f"WORKFLOW.FIND_JOB: Searching Job with name: '{job_data.job}' and hierarchy '{job_data.hierarchy}'")
             for jb in self.jobs:
-                if jb.name == job_data.job_name and jb.hierarchy == job_data.hierarchy:
+                if jb.name == job_data.job and jb.hierarchy == job_data.hierarchy:
                     if debug > 1: print(f"WORKFLOW.FIND_JOB: Job found")
                     return True, jb
         elif name is None and hierarchy is not None and job_data is None:  
@@ -308,7 +308,7 @@ class Job(object):
         self.isfinished       = False
         
         ## I hate to do this; repeat variables from job_data
-        self.name             = job_data.job_name
+        self.name             = job_data.job
         self.type             = job_data.job_type
         self.istate           = job_data.istate
         self.fstate           = job_data.fstate
@@ -341,7 +341,7 @@ class Job(object):
         self.job_data         = new_job_data
         self.job_data        += old_job_data
         ## This is done to mimic the __init of a job class
-        self.name             = new_job_data.job_name.lower()
+        self.name             = new_job_data.job.lower()
         self.type             = new_job_data.job_type.lower()
         self.requisites       = new_job_data.requisites
         self.constrains       = new_job_data.constrains
@@ -1092,11 +1092,11 @@ class Computation(object):
 
         ## 3-Registration of Optimization, Frequency and TD/TDA Tasks 
         opt_keywords = ['relax', 'vc-relax', 'opt', 'ts']
-        if self._job.type in opt_keywords:
+        if self.type in opt_keywords:
             worked = reg_optimization(self, debug=debug)
-        elif self._job.type == 'freq': 
+        elif self.type == 'freq': 
             worked = reg_frequencies(self, witheigen=False, debug=debug)
-        elif self._job.type in ['td', 'tda']: 
+        elif self.type in ['td', 'tda']: 
             worked = reg_excited_states(self, debug=debug)
 
         ## 4-Wraps Up
