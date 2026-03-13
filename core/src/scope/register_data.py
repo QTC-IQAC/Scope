@@ -31,6 +31,8 @@ def reg_optimization(comp: object, debug: int=0):
 
     ### 1-Retrieve the last geometry, and evaluate if it is the converged one (or if it needs to run more)
     labels, new_coord = comp.output.get_geometry_last_complete_block()
+    if new_coord is None:
+        print(f"REG_OPTIMIZATION: received None coordinates from comp.output. State won't be updated")
     comp.isgood = comp.output.get_optimization_finished()
     if labels is not None:
         assert len(labels) == len(new_coord)
@@ -47,9 +49,12 @@ def reg_optimization(comp: object, debug: int=0):
         ### 3a-Stores Results in the State Object
         exists, fstate        = comp.source.find_state(comp.qc_data.fstate, debug=debug)  ## If exists, it will be updated
         if not exists: fstate = comp.source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created
+        print(f"REG_OPTIMIZATION: Setting new geometry on fstate={fstate.name}")
         fstate.set_geometry(labels, new_coord)                                            ## New geometry is stored
         if comp.source.type == "cell": 
+            print(f"REG_OPTIMIZATION: Setting new cell parameters on fstate={fstate.name}")
             fstate.set_cell(cellvec, cellparam)
+            print(f"REG_OPTIMIZATION: Getting molecules for fstate={fstate.name} and checking fragmentation")
             fstate.get_molecules()
             fstate.check_fragmentation(reconstruct=True, debug=debug)
         ### 3b-Computation is linked to the fstate

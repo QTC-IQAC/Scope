@@ -638,10 +638,10 @@ class Specie(object):
         if not hasattr(self,"states"): setattr(self,"states",list([]))
         exists, new_state = self.find_state(name)
         if exists:  
-            if debug > 0: print(f"SPECIE.ADD_STATE. State with same {name=} found, returning it")
+            if debug > 0: print(f"SPECIE.ADD_STATE: State with same {name=} found, returning it")
             return new_state
         else:
-            if debug > 0: print("SPECIE.ADD_STATE. Creating new state, returning it")
+            if debug > 0: print("SPECIE.ADD_STATE: Creating new state, returning it")
             new_state = State(self, name, debug=debug)
             self.states.append(new_state)
         return new_state
