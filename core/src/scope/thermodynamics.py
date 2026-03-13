@@ -102,7 +102,7 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
             scnterm                  = (f*exponential)/(1-exponential)       # hartree/molecule
             t_i                      = (fstterm+scnterm)/nmol 
             total                    += t_i
-            if debug > 0: print(f"\t{idx} i= {freqs[idx]:.2f} cm-1: Hvib(i)= {t_i:.4e} a.u, Hvib(i)= {t_i*constants.har2kJmol/constants.kcal2kJmol:.4f} kcal/mol")
+            if debug > 0: print(f"\t{idx} i= {freqs[idx]:.2f} cm-1: Hvib(i)= {t_i:.4e} a.u, Hvib(i)= {t_i*constants.har2kJmol/constants.kcal2kJ:.4f} kcal/mol")
 
     ## Arranges units 
     if outunits.lower() == 'kj':  total = total*constants.har2kJmol    # kJ/mol

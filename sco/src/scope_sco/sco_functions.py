@@ -56,19 +56,25 @@ def get_T12(branch: object, High_E_state: object, Low_E_state: object, Trange: r
     ## dHvib
     if overwrite or not "dHvib" in branch.results.keys():
         assert High_E_state.results["Hvib"].units == Low_E_state.results["Hvib"].units 
-        dHvib_collection = substract_collections("dHvib", High_E_state.results["Hvib"], Low_E_state.results["Hvib"], prop="temperature")
+        #dHvib_collection = substract_collections("dHvib", High_E_state.results["Hvib"], Low_E_state.results["Hvib"], prop="temperature")
+        dHvib_collection = High_E_state.results["Hvib"]-Low_E_state.results["Hvib"]
+        dHvib_collection.key = "dHvib"
         branch.add_result(dHvib_collection, overwrite=overwrite)
         
     ## dSvib
     if overwrite or not "dSvib" in branch.results.keys():
         assert High_E_state.results["Svib"].units == Low_E_state.results["Svib"].units 
-        dSvib_collection = substract_collections("dSvib", High_E_state.results["Svib"], Low_E_state.results["Svib"], prop="temperature")
+        #dSvib_collection = substract_collections("dSvib", High_E_state.results["Svib"], Low_E_state.results["Svib"], prop="temperature")
+        dSvib_collection = High_E_state.results["Svib"]-Low_E_state.results["Svib"]
+        dSvib_collection.key = "dSvib"
         branch.add_result(dSvib_collection, overwrite=overwrite)
 
     ## dGtot
     if overwrite or not "dGtot" in branch.results.keys():
         assert High_E_state.results["Gtot"].units == Low_E_state.results["Gtot"].units 
-        dGtot_collection = substract_collections("dGtot", High_E_state.results["Gtot"], Low_E_state.results["Gtot"], prop="temperature")
+        #dGtot_collection = substract_collections("dGtot", High_E_state.results["Gtot"], Low_E_state.results["Gtot"], prop="temperature")
+        dGtot_collection = High_E_state.results["Gtot"]-Low_E_state.results["Gtot"]
+        dGtot_collection.key = "dGtot"
         branch.add_result(dGtot_collection, overwrite=overwrite)
 
     ## T12

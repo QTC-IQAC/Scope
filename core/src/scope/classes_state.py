@@ -229,12 +229,13 @@ class State(object):
         ## Returns the number of stoichiometric units in the unit cell. 
         ## Basically, how many times the same stoichiometry unit is repeated in the cell
         from scope.operations.vecs_and_mats import gcd_list
-        if debug > 0: print(f"STATE.GET_Z checking fragmentation")
+        if debug > 0: print(f"STATE.GET_Z: checking fragmentation")
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
-        assert not self.fragmented, f"STATE.GET_Z found Fragmented molecules in the geometry of self: {self.name}"
+        assert not self.fragmented, f"STATE.GET_Z: found Fragmented molecules in the geometry of self: {self.name}"
 
-        if debug > 0: print(f"STATE.GET_Z getting molecules")
+        if debug > 0: print(f"STATE.GET_Z: getting molecules")
         if not hasattr(self,"molecules"): self.get_molecules(debug=debug)
+        if debug > 0: print(f"STATE.GET_Z: received {len(self.molecules)} molecules")
 
         unique = [] 
         occurrences = []
@@ -244,7 +245,8 @@ class State(object):
                 if mol == uni: found = True
             if not found: 
                 unique.append(mol)
-                occurrences.append(self.get_occurrence(mol))
+                occurrences.append(self.get_occurrence(mol, debug=debug))
+        if debug > 0: print(f"STATE.GET_Z: {occurrences=}")
         self._z = int(gcd_list(occurrences))
         return self._z 
     
@@ -286,7 +288,7 @@ class State(object):
         if not hasattr(self,"molecules"): self.get_molecules(debug=debug)
 
         ## Case of Species inside self
-        if hasattr(substructure,"type"):
+        if hasattr(substructure,"object_type"):
             if substructure.object_type == 'specie':
                 for mol in self.molecules:
                     if mol.__eq__(substructure, with_graph=True): occurrence += 1
