@@ -5,7 +5,7 @@ class QE_output(object):
     def __init__(self, lines: list, computation: object=None):
         self._computation   = computation
         self.lines          = lines
-        self.set_jobtype()
+        self.set_comp_type()
         self.get_requisites()
 
     def clear_lines(self):
@@ -14,27 +14,27 @@ class QE_output(object):
     def read_lines(self):
         if hasattr(self,"_computation"): self.lines = read_lines_file(self._computation.out_path)
         
-    def set_jobtype(self, jobtype: str=None):
-        if jobtype is not None:
-            self.jobtype = jobtype
+    def set_comp_type(self, comp_type: str=None):
+        if comp_type is not None:
+            self.comp_type = comp_type
         else:
             if self._computation is not None:
-                if hasattr(self._computation,"jobtype"):             self.jobtype        = self._computation.jobtype
+                if hasattr(self._computation,"type"):                self.comp_type        = self._computation.type
                 elif hasattr(self._computation,"qc_data"):
-                    if hasattr(self._computation.qc_data,"comp_type"): self.jobtype      = self._computation.qc_data.comp_type
-                else:                                          self.jobtype        = "unknown"
-            else:                                              self.jobtype        = "unknown"
-        return self.jobtype
+                    if hasattr(self._computation.qc_data,"comp_type"): self.comp_type      = self._computation.qc_data.comp_type
+                else:                                          self.comp_type        = "unknown"
+            else:                                              self.comp_type        = "unknown"
+        return self.comp_type
 
 ##################
 ### REQUISITES ###
 ##################
-    # Not very useful now, the idea is to define the blocks of data that are needed for every jobtype
+    # Not very useful now, the idea is to define the blocks of data that are needed for every comp_type
     def get_requisites(self):
-        if   self.jobtype == 'scf':       self.requisites = ['scf'] 
-        elif self.jobtype == 'relax':     self.requisites = ['scf','opt'] 
-        elif self.jobtype == 'vc-relax':  self.requisites = ['scf','opt'] 
-        else:                             self.requisites = []
+        if   self.comp_type == 'scf':       self.requisites = ['scf'] 
+        elif self.comp_type == 'relax':     self.requisites = ['scf','opt'] 
+        elif self.comp_type == 'vc-relax':  self.requisites = ['scf','opt'] 
+        else: raise ValueError(f"QE_OUTPUT: {self.comp_type=} not recognised.")
         return self.requisites
 
 ###############
@@ -76,7 +76,7 @@ class QE_output(object):
     def get_last_complete_block(self, debug: int=0):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks(debug=debug)
         found = False
-        if debug > 0: print(f"GET_LAST_COMPLETE_BLOCK: evaluating with jobtype={self.jobtype}")
+        if debug > 0: print(f"GET_LAST_COMPLETE_BLOCK: evaluating with comp_type={self.comp_type}")
         for idx in range(len(self.opt_blocks)-1,-1,-1):
             if not found:
                 init_line = self.opt_blocks[idx][0]+1
@@ -96,7 +96,7 @@ class QE_output(object):
                 if good: found = True; self.last_complete_block = block_lines 
  
                 # OLD WAY
-#                if 'scf' in self.jobtype:
+#                if 'scf' in self.comp_type:
 #                    if not time_limit and scf_convergence:
 #                        self.last_complete_block = block_lines
 #                        found = True
@@ -568,8 +568,8 @@ class QE_output(object):
         to_print  = f'---------------------------------------------------\n'
         to_print += f'          SCOPE QEspresso OUTPUT CLASS             \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' #Lines           = {len(self.lines)}\n'
-        to_print += f' Job Type         = {self.jobtype}\n'
+        to_print += f' Num of Lines     = {len(self.lines)}\n'
+        to_print += f' Computation Type = {self.comp_type}\n'
         to_print += f' Requisites       = {self.requisites}\n'
         if hasattr(self,"last_block_status"):  to_print += f' Last Block Status = {self.last_block_status}\n'
         if hasattr(self,"scf_blocks"):    to_print += f' #SCF Blocks       = {len(self.scf_blocks)}\n'

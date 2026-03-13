@@ -397,52 +397,52 @@ class Job(object):
         self.constrains_fulfilled = False
         requisites_fulfilled = np.zeros((len(self.requisites)))  ## To be correct, all must be 1
         constrains_fulfilled = np.zeros((len(self.constrains)))  ## To be correct, all must be 0
-        if debug > 1: print("Checking Requisites", self.requisites, "for job:",self.name)
-        if debug > 1: print("Checking Constrains", self.constrains, "for job:",self.name)
+        if debug > 1: print("JOB.CHECK_REQUISITES: Requisites", self.requisites, "for job:",self.name)
+        if debug > 1: print("JOB.CHECK_REQUISITES: Constrains", self.constrains, "for job:",self.name)
         for idx, job in enumerate(self._workflow.jobs):
 
             if self != job:
                 ## If necessary, it registers any related job
-                if debug > 1: print("Evaluating Job with name:", job.name)
-                if debug > 1: print("Evaluating Job, isregistered:", job.isregistered)
-                if debug > 1: print("Evaluating Job, isgood:", job.isgood)
-                if debug > 1: print("Evaluating Job, isfinished:", job.isfinished)
+                if debug > 1: print("JOB.CHECK_REQUISITES: Evaluating Job with name:", job.name)
+                if debug > 1: print("JOB.CHECK_REQUISITES: Evaluating Job, isregistered:", job.isregistered)
+                if debug > 1: print("JOB.CHECK_REQUISITES: Evaluating Job, isgood:", job.isgood)
+                if debug > 1: print("JOB.CHECK_REQUISITES: Evaluating Job, isfinished:", job.isfinished)
                 if (job.name in self.requisites or job.name in self.constrains) and not job.isregistered: 
-                    if debug > 1: print("Registering Previous Unregistered Job", job.name)
+                    if debug > 1: print("JOB.CHECK_REQUISITES: Registering Previous Unregistered Job", job.name)
                     job.register(debug=debug)
-                    if debug > 1: print("Registered Job while checking requisites", job.name)
+                    if debug > 1: print("JOB.CHECK_REQUISITES: Registered Job while checking requisites", job.name)
                     if debug > 1: print(job.name, job.isregistered, job.isgood, job.isfinished)
 
                 ## Evaluates Requisites and Constrains
                 if job.name in self.requisites and job.isfinished:
                     if job.must_be_good and job.isgood: 
                         requisites_fulfilled[where_in_array(self.requisites,job.name)[0]] = 1
-                        if debug > 1: print("Requisite: ", job.name, "fulfilled 1")
+                        if debug > 1: print("JOB.CHECK_REQUISITES: Requisite: ", job.name, "fulfilled case 1")
                     if not job.must_be_good:
                         requisites_fulfilled[where_in_array(self.requisites,job.name)[0]] = 1
-                        if debug > 1: print("Requisite: ", job.name, "fulfilled 2")
+                        if debug > 1: print("JOB.CHECK_REQUISITES: Requisite: ", job.name, "fulfilled case 2")
                 elif job.name in self.constrains and job.isfinished and job.isgood: 
                     constrains_fulfilled[where_in_array(self.constrains,job.name)[0]] = 1
-                    if debug > 1: print("Constrain: ", job.name, "not fulfilled")
+                    if debug > 1: print("JOB.CHECK_REQUISITES: Constrain: ", job.name, "not fulfilled")
                 elif job.name == self.name and 'self' in self.constrains and job.isfinished and job.isgood: 
                     constrains_fulfilled[where_in_array(self.constrains,'self')[0]] = 1
-                    if debug > 1: print("Constrain: ", job.name, "in self not fulfilled")
+                    if debug > 1: print("JOB.CHECK_REQUISITES: Constrain: ", job.name, "in self not fulfilled")
                 elif job.name not in self.requisites and job.name not in self.constrains:
-                    if debug > 1: print("Unrelated or Unregisterd Job with name:", job.name)
+                    if debug > 1: print("JOB.CHECK_REQUISITES: Unrelated or Unregisterd Job with name:", job.name)
                 elif job.name in self.requisites and not job.isfinished:
-                    if debug > 1: print("Job in Requisites has not finished:", job.name)
+                    if debug > 1: print("JOB.CHECK_REQUISITES: Job in Requisites has not finished:", job.name)
 
         # Takes Decision
         if all(a == 1 for a in requisites_fulfilled) or len(self.requisites) == 0: self.requisites_fulfilled = True
         if all(b == 0 for b in constrains_fulfilled) or len(self.constrains) == 0: self.constrains_fulfilled = True
         if self.requisites_fulfilled and self.constrains_fulfilled: 
-            if debug > 1: print("Requisites fulfilled")
+            if debug > 1: print("JOB.CHECK_REQUISITES: Requisites fulfilled")
             return True
         else: 
             if not   self.requisites_fulfilled: 
-                if debug > 1: print("Requisites NOT fulfilled")
+                if debug > 1: print("JOB.CHECK_REQUISITES: Requisites NOT fulfilled")
             elif not self.constrains_fulfilled: 
-                if debug > 1: print("Constrains NOT fulfilled")
+                if debug > 1: print("JOB.CHECK_REQUISITES: Constrains NOT fulfilled")
             return False
 
     def remove_output_lines(self):
@@ -732,7 +732,7 @@ class Computation(object):
         self._job             = _job       
         self.qc_data          = qc_data
         self.software         = qc_data.software
-        self.jobtype          = _job.type             ## Type inherited from the parent job
+        self.type             = qc_data.comp_type     ## Type inherited from the parent job
         self.step             = step
         self.keyword          = keyword               ## Normally blank, but it can be used to identify the computation in jobs with complex setups
         self.path             = path
@@ -887,7 +887,7 @@ class Computation(object):
         self.software         = new_qc_data.software
         ## Adds any old information that is now not present. I'm not sure about this one
         self.qc_data         += old_qc_data
-        self.jobtype          = self.qc_data.comp_type
+        self.type             = self.qc_data.comp_type
         ## Exceptions
         if self.is_update and self.software == 'qe' and old_qc_data.mix_beta != new_qc_data.mix_beta:
             self.qc_data._mod_attr("mix_beta",old_qc_data.mix_beta)

@@ -210,11 +210,11 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                             new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
                             if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
                         elif not comp.isgood and this_job.must_be_good:
-                            if comp.jobtype == 'opt':
+                            if comp.type == 'opt':
                                 if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=opt")  
                                 new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
                                 if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
-                            elif comp.jobtype == 'ts':
+                            elif comp.type == 'ts':
                                 if comp.qc_data.recalcfc != "calcall":
                                     if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=ts")  
                                     new_comp = this_job.set_continuation_computation(comp, "ts", debug=debug)

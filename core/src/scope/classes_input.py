@@ -188,7 +188,6 @@ def fill_qc_data(data: object, debug: int=0):
     ## Adds defaults to qc_data
     if not hasattr(data,"software"):      raise ValueError("ERROR: qc_data is missing 'software' input variable")
     else:                                 data._add_attr("software", interpret_software(data.software))
-    if hasattr(data,"jobtype") and not hasattr(data,"comp_type"): data._add_attr("comp_type", data.jobtype)
 
     if data.software == "g16":
         # Adds default if needed and checks Jobtype
@@ -236,7 +235,6 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"pressure"):      data._add_attr("pressure", int(0))
         if not hasattr(data,"forc_conv"):     data._add_attr("forc_conv", float(1e-5))
         if not hasattr(data,"elec_conv"):     data._add_attr("elec_conv", float(1e-5))
-
 
     return data
 

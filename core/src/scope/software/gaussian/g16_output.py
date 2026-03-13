@@ -7,16 +7,16 @@ class G16_output(object):
         self._computation     = computation
         self.lines            = lines
         if computation is not None:
-            if hasattr(computation,"jobtype"):           self.jobtype        = computation.jobtype
-            elif hasattr(computation.qc_data,"comp_type"): self.jobtype      = computation.qc_data.comp_type
+            if hasattr(computation,"type"):                self.comp_type      = computation.type
+            elif hasattr(computation.qc_data,"comp_type"): self.comp_type      = computation.qc_data.comp_type
             self.requisites       = self.get_requisites()
         else: 
             print(f"G16_OUTPUT: output created without Computation.")
-            print(f"G16_OUTPUT: Please specify jobtype doing set_jobtype()")
+            print(f"G16_OUTPUT: Please specify comp_type doing set_comp_type()")
             print(f"G16_OUTPUT: Options are: 'scf', 'opt', 'freq', 'td' and 'tda'")
             #print(f"G16_OUTPUT: Remember that computations with BOTH 'opt' and 'freq' are not yet implemented.")
-            self.jobtype        = "unknown"
-            self.requisites     = []            ### It is dangerous to not specify requities: get_last_complete_block depends on them
+            self.comp_type  = "unknown"
+            self.requisites = []            ### It is dangerous to not specify requities: get_last_complete_block depends on them
         
     def clear_lines(self):
         self.lines          = []
@@ -29,19 +29,19 @@ class G16_output(object):
 ##################
 ### REQUISITES ###
 ##################
-    def set_jobtype(self,jobtype):
-        self.jobtype     = jobtype
-        self.requisites  = self.get_requisites()  ## Resets Requisites 
+    def set_comp_type(self,comp_type):
+        self.comp_type     = comp_type
+        self.requisites    = self.get_requisites()  ## Resets Requisites 
 
-    # Not very useful now, the idea is to define the blocks of data that are needed for every jobtype
+    # Not very useful now, the idea is to define the blocks of data that are needed for every comp_type
     def get_requisites(self):
-        if   self.jobtype == 'scf':   self.requisites = ['scf'] 
-        elif self.jobtype == 'opt':   self.requisites = ['scf','opt'] 
-        elif self.jobtype == 'ts':    self.requisites = ['scf','opt'] 
-        elif self.jobtype == 'freq':  self.requisites = ['scf','freq'] 
-        elif self.jobtype == 'td' or self.jobtype == 'tda': self.requisites = ['scf']
-        #elif self.jobtype == 'opt-freq': self.requities ??   ## Case to be implemented, when opt and freq are run in the same computation
-        else: raise ValueError(f"G16_OUTPUT: {self.jobtype=} not recognised.")
+        if   self.comp_type == 'scf':   self.requisites = ['scf'] 
+        elif self.comp_type == 'opt':   self.requisites = ['scf','opt'] 
+        elif self.comp_type == 'ts':    self.requisites = ['scf','opt'] 
+        elif self.comp_type == 'freq':  self.requisites = ['scf','freq'] 
+        elif self.comp_type == 'td' or self.comp_type == 'tda': self.requisites = ['scf']
+        #elif self.comp_type == 'opt-freq': self.requities ??   ## Case to be implemented, when opt and freq are run in the same computation
+        else: raise ValueError(f"G16_OUTPUT: {self.comp_type=} not recognised.")
         return self.requisites
 
 ###############
@@ -83,7 +83,7 @@ class G16_output(object):
     def get_last_complete_block(self, debug: int=0):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks(debug=debug)
         found = False
-        if debug > 0: print(f"GET_LAST_COMPLETE_BLOCK: evaluating with jobtype={self.jobtype}")
+        if debug > 0: print(f"GET_LAST_COMPLETE_BLOCK: evaluating with comp_type={self.comp_type}")
         for idx in range(len(self.opt_blocks)-1,-1,-1):
             if not found:
                 init_line = self.opt_blocks[idx][0]#+1
@@ -393,8 +393,8 @@ class G16_output(object):
         to_print  = f'---------------------------------------------------\n'
         to_print += f'          SCOPE Gaussian16 OUTPUT CLASS            \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' #Lines           = {len(self.lines)}\n'
-        to_print += f' Job Type         = {self.jobtype}\n'
+        to_print += f' Num of Lines     = {len(self.lines)}\n'
+        to_print += f' Computation Type = {self.comp_type}\n'
         to_print += f' Requisites       = {self.requisites}\n'
         if hasattr(self,"last_block_status"):  to_print += f' Last Block Status = {self.last_block_status}\n'
         if hasattr(self,"scf_blocks"):   to_print += f' #SCF Blocks       = {len(self.scf_blocks)}\n'
