@@ -373,11 +373,9 @@ class Cell(object):
     ######
     def check_fragmentation(self, reconstruct: bool = False, debug: int=0):
         """Check whether current molecules match reference molecules.
-
         Args:
             reconstruct: Attempt reconstruction before final fragmentation verdict.
             debug: Verbosity level.
-
         Returns:
             `True` if fragmented, `False` otherwise.
         """
@@ -385,7 +383,9 @@ class Cell(object):
             if debug > 0: print("CELL.CHECK_FRAGMENTATION: retrieving moleclist")
             self.get_moleclist()
 
-        if debug > 0: 
+        if debug == 1: 
+            print("CELL.CHECK_FRAGMENTATION: moleclist available. Checking Fragmentation")
+        elif debug == 2: 
             print("CELL.CHECK_FRAGMENTATION: moleclist available (below). Checking Fragmentation")
             for mol in self.moleclist:
                 print(mol.formula)
@@ -395,11 +395,17 @@ class Cell(object):
         for mol in self.moleclist:
             found = False
             for rmol in self.refmoleclist:
-                if debug > 1: print(f"CELL.CHECK_FRAGMENTATION: comparing {mol.formula} and {rmol.formula}: issame={rmol == mol}")
-                if rmol == mol: found = True
+                issame = mol.__eq__(rmol, with_graph=False) # It is very unlikely that the graph is needed in this case. 
+                if issame: found = True
+                if debug > 0: print(f"CELL.CHECK_FRAGMENTATION: compared {mol.formula} and {rmol.formula} without graph analysis: {issame=}")
             if not found: 
                 if debug > 0: print(f"CELL.CHECK_FRAGMENTATION: {mol.formula} not found in refmoleclist")
                 self.fragmented = True
+
+        if self.fragmented:
+            if debug > 0: print(f"CELL.CHECK_FRAGMENTATION: cell is fragmented")
+        else:
+            if debug > 0: print(f"CELL.CHECK_FRAGMENTATION: cell is not fragmented")
 
         # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
         if self.fragmented and reconstruct:
@@ -414,9 +420,6 @@ class Cell(object):
             if not self.fragmented: 
                 self.moleclist = new_moleclist
                #self.set_geometry_from_moleclist()
-        else:
-            if debug > 0: print(f"CELL.CHECK_FRAGMENTATION: cell is not fragmented")
-
         return self.fragmented
 
     ######

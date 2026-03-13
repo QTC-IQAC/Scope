@@ -31,11 +31,10 @@ def create_many(args):
 
     print(f"\t------------------------------------------------")
     print(f"\tThe script expects the following folder structure")
-    print(f"\t\tenv.sources_path/")
-    print(f"\t\t\t...systems/")
-    print(f"\t\t\t\t...crystals/")
-    print(f"\t\t\t\t\t *.cif")
-    print(f"\t\t\t\t\t Cell_*.gmol")
+    print(f"\t\t{env.sources_path}/")
+    print(f"\t\t\t...Systems/")
+    print(f"\t\t\t\t...*/*.cif")
+    print(f"\t\t\t\t...*/*.gmol")
     print(f"\t------------------------------------------------")
 
     ###############################
