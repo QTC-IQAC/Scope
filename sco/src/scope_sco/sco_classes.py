@@ -215,14 +215,14 @@ class System_sco(System):
         ## Prepares the cells:
         hs.name = "ref_hs_cell"
         hs.set_spin_metals(4, debug=debug)
-        for mol in hs.moleclist:
+        for mol in hs.molecules:
             mol.set_bonds()
             if mol.iscomplex: mol.fix_ligands_rdkit_obj()
         self.add_source(hs.name, hs, overwrite=overwrite)
 
         ls.name = "ref_ls_cell"
         ls.set_spin_metals(0, debug=debug) # Not strictly necessary, but for clarity 
-        for mol in ls.moleclist:
+        for mol in ls.molecules:
             mol.set_bonds()
             if mol.iscomplex: mol.fix_ligands_rdkit_obj()
         self.add_source(ls.name, ls, overwrite=overwrite)
@@ -258,20 +258,20 @@ class Cell_sco(Cell):
         from scope_sco.sco_structure import geom_sco_from_xyz
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"Found Fragmented molecules in the geometry of self: {self.name}"
-        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
-        for mol in self.moleclist:
+        if not hasattr(self,"molecules"): self.get_molecules(debug=debug)
+        for mol in self.molecules:
             if mol.iscomplex: print(geom_sco_from_xyz(self.labels, self.coord, debug=debug))
 
     ######
     def get_FeN6_molecules(self, overwrite: bool=False, debug: int=0):
-        if not hasattr(self,"moleclist"): self.get_moleclist()
+        if not hasattr(self,"molecules"): self.get_molecules()
 
         ## If already computed, returns them
         if not overwrite and hasattr(self,"FeN6s"):
             if len(self.FeN6s) > 0: return self.FeN6s
 
         self.FeN6s = []
-        for mol in self.moleclist:
+        for mol in self.molecules:
             if mol.iscomplex:
                 keepit = False
                 for met in mol.metals:

@@ -17,9 +17,9 @@ from scope.elementdata import ElementData
 elemdatabase = ElementData()
 
 #######################################################
-def classify_fragments(blocklist: list, refmoleclist: list, debug: int=0):
+def classify_fragments(blocklist: list, ref_molecules: list, debug: int=0):
     init_natoms = 0
-    moleclist = []
+    molecules = []
     fraglist  = []
     Hlist     = []
 
@@ -31,17 +31,17 @@ def classify_fragments(blocklist: list, refmoleclist: list, debug: int=0):
             Hlist.append(block)
         else:
             found = False 
-            for ref in refmoleclist:
+            for ref in ref_molecules:
                 if ref == block: 
                     block.subtype = "molecule"
-                    moleclist.append(block)
+                    molecules.append(block)
                     found = True
             if not found:
                 block.subtype = "fragment"
                 fraglist.append(block)
 
-    if debug > 0: print(len(blocklist),"Blocks sorted as (Molec, Frag, H):",len(moleclist),len(fraglist),len(Hlist))
-    return moleclist, fraglist, Hlist
+    if debug > 0: print(len(blocklist),"Blocks sorted as (Molec, Frag, H):",len(molecules),len(fraglist),len(Hlist))
+    return molecules, fraglist, Hlist
 
 #######################################################
 def tmatgenerator(centroid, thres=0.40, full=False):
@@ -191,11 +191,11 @@ def assign_subtype(molecule: object, references: list) -> str:
     else:                  return "Other"
 
 ######
-def fragments_reconstruct(moleclist: list, fraglist: list, Hlist: list, refmoleclist: list, cell_vector: list, factor: float=1.3, metal_factor: float=1.0, debug: int=0):
-    ## Moleclist is the list of species which have been identified as 'complete' molecules
+def fragments_reconstruct(molecules: list, fraglist: list, Hlist: list, ref_molecules: list, cell_vector: list, factor: float=1.3, metal_factor: float=1.0, debug: int=0):
+    ## Molecules is the list of species which have been identified as 'complete' molecules
     ## Fraglist is the list of species which are not 'complete' molecules
     ## Hlist is the list of species that are only H atoms
-    ## Refmoleclist is the list of species that are identified as reference molecules (that is, molecules that will appear in the unit cell once reconstructed)
+    ## Reference molecules is the list of species that are identified as reference molecules (that is, molecules that will appear in the unit cell once reconstructed)
     Warning = False
     # Reconstruct Heavy Fragments
     if len(fraglist) > 1:
@@ -203,9 +203,9 @@ def fragments_reconstruct(moleclist: list, fraglist: list, Hlist: list, refmolec
         print("##############################################")
         print("FRAG_RECONSTRUCT.", len(fraglist), "molecules submitted to SEQUENTIAL with Heavy")
         print("##############################################")
-        newmols, remfrag = sequential(fraglist, refmoleclist, cell_vector, factor, metal_factor, "Heavy", debug)
+        newmols, remfrag = sequential(fraglist, ref_molecules, cell_vector, factor, metal_factor, "Heavy", debug)
         print(f"FRAG_RECONSTRUCT. {len(newmols)} molecules and {len(remfrag)} fragments out of SEQUENTIAL with Heavy")
-        moleclist.extend(newmols)
+        molecules.extend(newmols)
         print(f"FRAG_RECONSTRUCT. {remfrag=}")
         # After the first step, fraglist is made of the remaining molecules in the first step, and the list of H atoms
         fraglist = []
@@ -220,12 +220,12 @@ def fragments_reconstruct(moleclist: list, fraglist: list, Hlist: list, refmolec
             for frag in fraglist:
                 print("FRAG_RECONSTRUCT.", frag.formula, frag.subtype, frag.labels)
 
-        finalmols, remfrag = sequential(fraglist, refmoleclist, cell_vector, factor, metal_factor, "All", debug=2)
-        moleclist.extend(finalmols)
-        print(f"FRAG_RECONSTRUCT. {moleclist=}")
+        finalmols, remfrag = sequential(fraglist, ref_molecules, cell_vector, factor, metal_factor, "All", debug=2)
+        molecules.extend(finalmols)
+        print(f"FRAG_RECONSTRUCT. {molecules=}")
         print(f"FRAG_RECONSTRUCT. {remfrag=}")
         if len(remfrag) > 0:        Warning = True;  print("FRAG_RECONSTRUCT. Remaining after Hydrogen reconstruction",remfrag)
-        elif len(moleclist) == 0:   Warning = True; print("FRAG_RECONSTRUCT. No Molecules after Hydrogen reconstruction", moleclist)
+        elif len(molecules) == 0:   Warning = True; print("FRAG_RECONSTRUCT. No Molecules after Hydrogen reconstruction", molecules)
         else:                       Warning = False; print("FRAG_RECONSTRUCT. No remaining Molecules after Hydrogen reconstruction")
     elif len(remfrag) > 0 and len(Hlist) == 0:
         Warning = True
@@ -234,22 +234,22 @@ def fragments_reconstruct(moleclist: list, fraglist: list, Hlist: list, refmolec
         Warning = True
         print("FRAG_RECONSTRUCT. WARNING: There are isolated H atoms in cell")
 
-    # In moleclist, now there is a mix between molecules that were already complete (non-fragmented), and molecules that have been reconstructed
-    # The former were identified in the cell.get_moleclist() function, and have cell as parent. 
+    # In molecules, now there is a mix between molecules that were already complete (non-fragmented), and molecules that have been reconstructed
+    # The former were identified in the cell.get_molecules() function, and have cell as parent. 
     # The latter have been constructed by merging fragments, and do not have cell as parent, but have the cell_indices stored in mol.cell_indices
     # Here we homogenize the situation by adding the cell_indices variable to all molecules
-    for mol in moleclist:
+    for mol in molecules:
         if not hasattr(mol,"cell_indices"): 
             if mol.check_parent("cell"):
                 mol.cell_indices = mol.get_parent_indices("cell")
 
-    return moleclist, Warning
+    return molecules, Warning
 
 ######
-def sequential(fragmentlist: list, refmoleclist: list, cellvec: list, factor: float=1.3, metal_factor: float=1.0, typ: str="All", debug: int=2):
+def sequential(fragmentlist: list, ref_molecules: list, cellvec: list, factor: float=1.3, metal_factor: float=1.0, typ: str="All", debug: int=2):
     # Crappy function that controls the reconstruction process. It is called sequential because pairs of fragments are sent one by one. Ideally, a parallel version would be desirable.
-    # Given a list of fragments(fragmentlist), a list of reference molecules(refmoleclist), and some other minor parameters, the function sends pairs of fragments and evaluates if they...
-    # ...form a bigger fragment. If so, the bigger fragment is evaluated. If it coincides with one of the molecules in refmoleclist, than it means that it is a full molecule that requires no further work.
+    # Given a list of fragments(fragmentlist), a list of reference molecules(ref_molecules), and some other minor parameters, the function sends pairs of fragments and evaluates if they...
+    # ...form a bigger fragment. If so, the bigger fragment is evaluated. If it coincides with one of the molecules in ref_molecules, than it means that it is a full molecule that requires no further work.
     # ...if it does not, then it means that requires further reconstruction, and is again introduced in the loop.
     # typ is a variable that defines how to combine the fragments. To speed up the process, this function is called twice in main.
     # -First, to combine heavy fragments among themselves (typ="Heavy")
@@ -260,7 +260,7 @@ def sequential(fragmentlist: list, refmoleclist: list, cellvec: list, factor: fl
 
     # Finds How many atoms, at max, can a molecule have. It is used to skip meaningless combinations
     maxatoms = 0
-    for ref in refmoleclist:
+    for ref in ref_molecules:
         if ref.natoms > maxatoms:
             maxatoms = ref.natoms
 
@@ -372,7 +372,7 @@ def sequential(fragmentlist: list, refmoleclist: list, cellvec: list, factor: fl
             #################
             #  Here, the function "combine" is called. It will try cell translations of one fragment, and check whether it eventually combines with the second fragment into either a bigger fragment or a molecule
             #################
-            goodlist, avglist, badlist = combine(sublist, refmoleclist, cellvec, threshold_tmat, factor, metal_factor, debug=debug)
+            goodlist, avglist, badlist = combine(sublist, ref_molecules, cellvec, threshold_tmat, factor, metal_factor, debug=debug)
             if debug >=2 :
                 print("SEQUENTIAL: goodlist", len(goodlist), [g.formula for g in goodlist])
                 print("SEQUENTIAL: avglist", len(avglist), [a.formula for a in avglist])

@@ -115,15 +115,15 @@ class Cell(object):
 
     #### 
     def reset_charge(self, debug: int=0):
-        """Reset charge information for all molecules in `moleclist`."""
-        if not hasattr(self,"moleclist"): return None
-        for mol in self.moleclist:
+        """Reset charge information for all molecules in `molecules`."""
+        if not hasattr(self,"molecules"): return None
+        for mol in self.molecules:
             mol.reset_charge()
 
     def reset_spin(self, debug: int=0):
-        """Reset spin information for all molecules in `moleclist`."""
-        if not hasattr(self,"moleclist"): return None
-        for mol in self.moleclist:
+        """Reset spin information for all molecules in `molecules`."""
+        if not hasattr(self,"molecules"): return None
+        for mol in self.molecules:
             mol.reset_spin()
 
     ####
@@ -138,7 +138,7 @@ class Cell(object):
             Total cell spin after assignment, or `None` if no complexes are found.
         """
         ## Function to simplify setting the spin for the Transition Metal Complexes of this cell
-        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+        if not hasattr(self,"molecules"): self.get_molecules(debug=debug)
         ncomplex = self.get_ncomplex(debug=debug) 
         if ncomplex == 0:
             print(f"CELL.SET_SPIN_METALS: there are no Transition Metal Complexes in this cell")
@@ -151,7 +151,7 @@ class Cell(object):
             print(f"CELL.SET_SPIN_METALS: Received {spins=}")
         ## Main
         pointer = 0
-        for mol in self.moleclist:
+        for mol in self.molecules:
             if mol.iscomplex: 
                 if len(mol.metals) > 1: 
                     print(f"CELL.SET_SPIN_METALS: Molecule {mol.formula} has more than one metal atom.") 
@@ -179,15 +179,15 @@ class Cell(object):
         self.path = path
 
     def get_ncomplex(self, debug: int=0):
-        # Counts transition-metal complexes in `moleclist`.
+        # Counts transition-metal complexes in `molecules`.
         if debug > 0: print(f"CELL.GET_NCOMPLEX checking fragmentation")
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"Found Fragmented molecules in the geometry of cell: {self.name}"
          
-        if debug > 0: print(f"CELL.GET_NCOMPLEX getting moleclist")
-        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+        if debug > 0: print(f"CELL.GET_NCOMPLEX getting molecules")
+        if not hasattr(self,"molecules"): self.get_molecules(debug=debug)
         self.ncomplex = 0
-        for mol in self.moleclist:
+        for mol in self.molecules:
             if mol.iscomplex: self.ncomplex += 1
         if debug > 0: print(f"CELL.GET_NCOMPLEX {self.ncomplex} complexes found in cell: {self.name}")
         return self.ncomplex
@@ -204,13 +204,13 @@ class Cell(object):
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"self.GET_Z found Fragmented molecules in the geometry of self: {self.name}"
 
-        if not hasattr(self,"moleclist"): 
-            if debug > 0: print(f"self.GET_Z getting moleclist")
-            self.get_moleclist(debug=debug)
+        if not hasattr(self,"molecules"): 
+            if debug > 0: print(f"self.GET_Z getting molecules")
+            self.get_molecules(debug=debug)
 
         unique = [] 
         occurrences = []
-        for mol in self.moleclist:
+        for mol in self.molecules:
             found = False
             for uni in unique:
                 if mol == uni: found = True
@@ -245,27 +245,27 @@ class Cell(object):
     ## Atoms and Molecules ##
     #########################
     def get_atoms(self, debug: int=0):
-        """Collect and return all atom objects from molecules in `moleclist`."""
-        if not hasattr(self,"moleclist"): 
-            if debug > 0: print("CELL.GET_ATOMS: retrieving moleclist")
-            self.get_moleclist()
+        """Collect and return all atom objects from molecules in `molecules`."""
+        if not hasattr(self,"molecules"): 
+            if debug > 0: print("CELL.GET_ATOMS: retrieving molecules")
+            self.get_molecules()
         self.atoms = []
-        for mol in self.moleclist:
+        for mol in self.molecules:
             for at in mol.atoms:
                 self.atoms.append(at)
         return self.atoms
 
     ######
-    def set_moleclist(self, moleclist: list) -> None:
+    def set_molecules(self, molecules: list) -> None:
         """Set the internal molecule list representation."""
-        self.moleclist = moleclist
+        self.molecules = molecules
     
     ######
-    def get_moleclist(self, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
+    def get_molecules(self, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
         """Build or return the list of molecules detected in the cell.
 
         Args:
-            overwrite: Recompute even if `moleclist` already exists.
+            overwrite: Recompute even if `molecules` already exists.
             cov_factor: Covalent radii scaling factor for connectivity.
             metal_factor: Metal-specific scaling factor for connectivity.
             debug: Verbosity level.
@@ -274,47 +274,47 @@ class Cell(object):
             A list of `Molecule` objects, or `None` if input data is insufficient.
         """
         ## Overwrite and Warning
-        if not overwrite and hasattr(self,"moleclist"): 
-            if debug > 0: print(f"CELL.GET_MOLECLIST. Moleclist already exists and default is overwrite=False")
-            return self.moleclist
+        if not overwrite and hasattr(self,"molecules"): 
+            if debug > 0: print(f"CELL.GET_MOLECULES. Molecules already exist and default is overwrite=False")
+            return self.molecules
 
         ## Security
         if not hasattr(self,"labels") or not hasattr(self,"coord"): 
-            if debug > 0: print(f"CELL.GET_MOLECLIST. Labels or coordinates not found. Returning None")
+            if debug > 0: print(f"CELL.GET_MOLECULES. Labels or coordinates not found. Returning None")
             return None
         if len(self.labels) == 0 or len(self.coord) == 0:           
-            if debug > 0: print(f"CELL.GET_MOLECLIST. Empty labels or coordinates. Returning None")
+            if debug > 0: print(f"CELL.GET_MOLECULES. Empty labels or coordinates. Returning None")
             return None
-        if debug > 0: print(f"CELL.GET_MOLECLIST passed initial checks")
+        if debug > 0: print(f"CELL.GET_MOLECULES passed initial checks")
 
         ## If fragmented, then it reconstructs the unit cell
         if hasattr(self,"fragmented"): 
             if self.fragmented:
-                print("CELL.GET_MOLECLIST. Reconstructing unit cell")
+                print("CELL.GET_MOLECULES. Reconstructing unit cell")
                 self.reconstruct(debug=debug)
-                print("CELL.GET_MOLECLIST. Arranging new coordinates from moleclist")
+                print("CELL.GET_MOLECULES. Arranging new coordinates from molecules")
                 new_coord = self.fix_cell_coord()
                 if new_coord is None:
-                    print("CELL.GET_MOLECLIST. NONE received from FIX_CELL_COORD. Stopping")
+                    print("CELL.GET_MOLECULES. NONE received from FIX_CELL_COORD. Stopping")
                     return None 
 
         blocklist = split_species(self.labels, self.coord, cov_factor=cov_factor, debug=debug)
         if blocklist is None: 
             return None
         else :
-            if debug > 0: print(f"CELL.GET_MOLECLIST: found {len(blocklist)} blocks")
-            if debug > 0: print(f"CELL.GET_MOLECLIST: {blocklist=}")
+            if debug > 0: print(f"CELL.GET_MOLECULES: found {len(blocklist)} blocks")
+            if debug > 0: print(f"CELL.GET_MOLECULES: {blocklist=}")
         
-        self.moleclist = []
+        self.molecules = []
         for b in blocklist:
-            if debug > 0: print(f"CELL.GET_MOLECLIST: doing block={b}")
+            if debug > 0: print(f"CELL.GET_MOLECULES: doing block={b}")
             mol_labels      = extract_from_list(b, self.labels, dimension=1)
             mol_coord       = extract_from_list(b, self.coord, dimension=1)
             mol_frac_coord  = extract_from_list(b, self.frac_coord, dimension=1)
             # Creates Molecule Object
             newmolec        = Molecule(mol_labels, mol_coord, mol_frac_coord)
             # For debugging
-            newmolec.origin = "cell.get_moleclist"
+            newmolec.origin = "cell.get_molecules"
             # Adds cell as parent of the molecule, with indices b
             newmolec.add_parent(self, indices=b)            
             # Store Adjacency Parameters
@@ -323,11 +323,11 @@ class Cell(object):
             newmolec.set_atoms(create_adjacencies=True, debug=debug)
             # The split_complex must be below the frac_coord, so they are carried on to the ligands
             if newmolec.iscomplex: 
-                if debug > 0: print(f"CELL.GET_MOLECLIST: splitting complex")
+                if debug > 0: print(f"CELL.GET_MOLECULES: splitting complex")
                 newmolec.split_complex(debug=debug)
             # Not needed here, as the reconstruction will take care of it
-            self.moleclist.append(newmolec)
-        return self.moleclist
+            self.molecules.append(newmolec)
+        return self.molecules
 
     ######
     def get_occurrence(self, substructure: object, debug: int=0) -> int:
@@ -346,13 +346,13 @@ class Cell(object):
         if not hasattr(self,"fragmented"): self.check_fragmentation(reconstruct=True, debug=debug)
         assert not self.fragmented, f"CELL.GET_OCCURRENCE found fragmented molecules in the geometry of cell: {self.name}"
          
-        if debug > 0: print(f"CELL.GET_OCCURRENCE getting moleclist")
-        if not hasattr(self,"moleclist"): self.get_moleclist(debug=debug)
+        if debug > 0: print(f"CELL.GET_OCCURRENCE getting molecules")
+        if not hasattr(self,"molecules"): self.get_molecules(debug=debug)
 
         ## Case of Species inside self
         if hasattr(substructure,"type"):
             if substructure.type == 'specie':
-                for mol in self.moleclist:
+                for mol in self.molecules:
                     if mol.__eq__(substructure, with_graph=True): occurrence += 1
         return occurrence
 
@@ -379,27 +379,27 @@ class Cell(object):
         Returns:
             `True` if fragmented, `False` otherwise.
         """
-        if not hasattr(self,"moleclist"): 
-            if debug > 0: print("CELL.CHECK_FRAGMENTATION: retrieving moleclist")
-            self.get_moleclist()
+        if not hasattr(self,"molecules"): 
+            if debug > 0: print("CELL.CHECK_FRAGMENTATION: retrieving molecules")
+            self.get_molecules()
 
         if debug == 1: 
-            print("CELL.CHECK_FRAGMENTATION: moleclist available. Checking Fragmentation")
+            print("CELL.CHECK_FRAGMENTATION: molecules available. Checking Fragmentation")
         elif debug == 2: 
-            print("CELL.CHECK_FRAGMENTATION: moleclist available (below). Checking Fragmentation")
-            for mol in self.moleclist:
+            print("CELL.CHECK_FRAGMENTATION: molecules available (below). Checking Fragmentation")
+            for mol in self.molecules:
                 print(mol.formula)
 
         self.fragmented = False
-        # First comparison with ref_moleclist
-        for mol in self.moleclist:
+        # First comparison with ref_molecules
+        for mol in self.molecules:
             found = False
-            for rmol in self.refmoleclist:
+            for rmol in self.ref_molecules:
                 issame = mol.__eq__(rmol, with_graph=False) # It is very unlikely that the graph is needed in this case. 
                 if issame: found = True
                 if debug > 0: print(f"CELL.CHECK_FRAGMENTATION: compared {mol.formula} and {rmol.formula} without graph analysis: {issame=}")
             if not found: 
-                if debug > 0: print(f"CELL.CHECK_FRAGMENTATION: {mol.formula} not found in refmoleclist")
+                if debug > 0: print(f"CELL.CHECK_FRAGMENTATION: {mol.formula} not found in ref_molecules")
                 self.fragmented = True
 
         if self.fragmented:
@@ -407,19 +407,19 @@ class Cell(object):
         else:
             if debug > 0: print(f"CELL.CHECK_FRAGMENTATION: cell is not fragmented")
 
-        # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new moleclist
+        # If there are fragments and user wants reconstruction, it tries to reconstruct and checks the new molecules
         if self.fragmented and reconstruct:
             if debug > 0: print("CELL.CHECK_FRAGMENTATION: reconstructing")
-            new_moleclist = self.reconstruct(debug=debug)
+            new_molecules = self.reconstruct(debug=debug)
             self.fragmented = False
-            for mol in new_moleclist:
+            for mol in new_molecules:
                 found = False
-                for rmol in self.refmoleclist:
+                for rmol in self.ref_molecules:
                     if rmol == mol: found = True
                 if not found: self.fragmented = True
             if not self.fragmented: 
-                self.moleclist = new_moleclist
-               #self.set_geometry_from_moleclist()
+                self.molecules = new_molecules
+               #self.set_geometry_from_molecules()
         return self.fragmented
 
     ######
@@ -427,14 +427,14 @@ class Cell(object):
         """Rebuild cell labels/coordinates from molecule atoms and restore ordering."""
         ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell.
         ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
-        if not hasattr(self,"moleclist"): 
-            if debug > 0: print(f"CELL.FIX_CELL_COORD: creating moleclist")
-            self.get_moleclist(debug=debug)
+        if not hasattr(self,"molecules"): 
+            if debug > 0: print(f"CELL.FIX_CELL_COORD: creating molecules")
+            self.get_molecules(debug=debug)
 
         self.labels = []
         self.coord  = []
         indices     = []
-        for mol in self.moleclist:
+        for mol in self.molecules:
             for idx, a in enumerate(mol.atoms):
                 self.labels.append(a.label)
                 self.coord.append(a.coord)
@@ -458,26 +458,26 @@ class Cell(object):
             debug: Verbosity level.
 
         Returns:
-            Updated `moleclist` after reconstruction (or unchanged if not fragmented).
+            Updated `molecules` after reconstruction (or unchanged if not fragmented).
         """
         from scope.reconstruct import classify_fragments, fragments_reconstruct
 
         if not hasattr(self,"fragmented"): self.check_fragmentation()
         if not self.fragmented:
             print("CELL.RECONSTRUCT. Cell is not fragmented")
-            return self.moleclist
+            return self.molecules
 
-        if not hasattr(self,"refmoleclist"): print("CELL.RECONSTRUCT. CELL missing list of reference molecules"); return
-        if cov_factor is None:   cov_factor   = self.refmoleclist[0].cov_factor
-        if metal_factor is None: metal_factor = self.refmoleclist[0].metal_factor
+        if not hasattr(self,"ref_molecules"): print("CELL.RECONSTRUCT. CELL missing list of reference molecules"); return
+        if cov_factor is None:   cov_factor   = self.ref_molecules[0].cov_factor
+        if metal_factor is None: metal_factor = self.ref_molecules[0].metal_factor
 
-        ## Get the fragments, which is the moleclist of a fragmented cell
-        fragments = self.get_moleclist(cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
+        ## Get the fragments, which is the molecules of a fragmented cell
+        fragments = self.get_molecules(cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
         if fragments is None: self.error_get_fragments = True; return  
         else:                 self.error_get_fragments = False
 
         ## Classifies fragments
-        molecules, fragments, hydrogens = classify_fragments(fragments, self.refmoleclist, debug=debug)
+        molecules, fragments, hydrogens = classify_fragments(fragments, self.ref_molecules, debug=debug)
         if debug > 0: print(f"CELL.RECONSTRUCT: {len(molecules)} {molecules=}")
         if debug > 0: print(f"CELL.RECONSTRUCT: {len(fragments)} {fragments=}")
         if debug > 0: print(f"CELL.RECONSTRUCT: {len(hydrogens)} {hydrogens=}")
@@ -486,13 +486,13 @@ class Cell(object):
         if len(fragments) > 0 or len(hydrogens) > 0: self.is_fragmented = True
         else:                                        self.is_fragmented = False
         
-        self.moleclist = []
+        self.molecules = []
         if not self.is_fragmented: 
             for mol in molecules:
-                self.moleclist.append(mol)
-            return self.moleclist     
+                self.molecules.append(mol)
+            return self.molecules     
         else:
-            reconstructed_molecules, Warning = fragments_reconstruct(molecules, fragments, hydrogens, self.refmoleclist, self.cell_vector, cov_factor, metal_factor)
+            reconstructed_molecules, Warning = fragments_reconstruct(molecules, fragments, hydrogens, self.ref_molecules, self.cell_vector, cov_factor, metal_factor)
             
             if Warning:
                 self.is_fragmented = True
@@ -503,7 +503,7 @@ class Cell(object):
                 self.error_reconstruction = False 
 
             ## For consistency, we create the molecules once again, even if mol is already a molecule-class object.
-            ## One must follow the same structure as in self.get_moleclist()
+            ## One must follow the same structure as in self.get_molecules()
             if debug > 0: print(f"CELL.RECONSTRUCT: Creating and preparing molecules")
             for idx, mol in enumerate(reconstructed_molecules):
                 if debug > 0: print(f"CELL.RECONSTRUCT: Doing molecule {idx} with {mol.formula=}")
@@ -515,18 +515,18 @@ class Cell(object):
                 if debug > 0: print(f"CELL.RECONSTRUCT: Setting fractional coordinates")
                 newmolec.set_fractional_coord(mol.frac_coord)
                 if newmolec.iscomplex: newmolec.split_complex()
-                self.moleclist.append(newmolec)         
-            return self.moleclist
+                self.molecules.append(newmolec)         
+            return self.molecules
 
     #########################################
     ### Functions to Interact with States ###
     #########################################
     def set_initial_state(self, name: str='initial', debug: int=0):
-        """Creates the initial state of the cell, with the cell geometry, and initiates moleclist"""
+        """Creates the initial state of the cell, with the cell geometry, and initiates molecules"""
         ini_state = self.add_state(name)
         ini_state.set_geometry(self.labels, self.coord)
         ini_state.set_cell(self.cell_vector, self.cell_param)
-        ini_state.get_moleclist(debug=debug)
+        ini_state.get_molecules(debug=debug)
         return ini_state
         
     ######
@@ -654,16 +654,16 @@ class Cell(object):
         if hasattr(self,"volume"): to_print += f' Volume (Angs^3)       = {np.round(self.volume,4)}\n'
         to_print += f' Number of Units (Z)   = {self.z}\n'
         #if hasattr(self,"z"):      to_print += f' Z                     = {self.z}\n'
-        if hasattr(self,"moleclist"):  
-            to_print += f' Num Molecules:        = {len(self.moleclist)}\n'
+        if hasattr(self,"molecules"):  
+            to_print += f' Num Molecules:        = {len(self.molecules)}\n'
             to_print += f' With Formulae:                               \n'
-            for idx, m in enumerate(self.moleclist):
+            for idx, m in enumerate(self.molecules):
                 to_print += f'    {idx}: {m.formula} \n'
         to_print += '-------------------------------\n'
-        if hasattr(self,"refmoleclist"):
-            to_print += f' Num of Ref Molecules: = {len(self.refmoleclist)}\n'
+        if hasattr(self,"ref_molecules"):
+            to_print += f' Num of Ref Molecules: = {len(self.ref_molecules)}\n'
             to_print += f' With Formulae:                                  \n'
-            for idx, ref in enumerate(self.refmoleclist):
+            for idx, ref in enumerate(self.ref_molecules):
                 to_print += f'    {idx}: {ref.formula} \n'
         if self.charge != 0:
             to_print += f' WARNING: Charge is {self.charge}. It should be 0\n'
@@ -704,36 +704,36 @@ def import_cell(old_cell: object, debug: int=0) -> object:
     new_cell.origin     = "import_cell"
     if debug > 0: print(f"IMPORT CELL: importing cell {new_cell.name}")
 
-    ## Moleclist
-    if debug > 0: print(f"IMPORT CELL: creating moleclist")
-    moleclist = []
-    for mol in old_cell.moleclist: 
+    ## Molecules
+    if debug > 0: print(f"IMPORT CELL: creating molecules")
+    molecules = []
+    for mol in old_cell.molecules: 
         new_mol = import_molecule(mol, parent=new_cell, debug=debug)
         new_mol.set_bonds()
         new_mol.fix_ligands_rdkit_obj(debug=debug)
-        moleclist.append(new_mol)
+        molecules.append(new_mol)
 
     if debug > 0: 
-        print(f"IMPORT CELL: prepared moleclist: (formula, charge, spin)")
-        for mol in moleclist:
+        print(f"IMPORT CELL: prepared molecules: (formula, charge, spin)")
+        for mol in molecules:
             print(mol.formula, mol.charge, mol.spin)
 
-    new_cell.set_moleclist(moleclist)
+    new_cell.set_molecules(molecules)
     new_cell.fix_cell_coord(debug=debug)  ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell. 
                                           ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
 
-    ## Refmoleclist
-    if debug > 0: print(f"IMPORT CELL: creating refmoleclist")
-    new_cell.refmoleclist = []
-    if hasattr(old_cell,"refmoleclist"):
-        for rmol in old_cell.refmoleclist:
-            new_cell.refmoleclist.append(import_molecule(rmol, parent=new_cell))
-    elif hasattr(new_cell,"moleclist"):
-        for mol in new_cell.moleclist:
+    ## Reference molecules
+    if debug > 0: print(f"IMPORT CELL: creating ref_molecules")
+    new_cell.ref_molecules = []
+    if hasattr(old_cell,"ref_molecules"):
+        for rmol in old_cell.ref_molecules:
+            new_cell.ref_molecules.append(import_molecule(rmol, parent=new_cell))
+    elif hasattr(new_cell,"molecules"):
+        for mol in new_cell.molecules:
             found = False
-            for rmol in new_cell.refmoleclist:
+            for rmol in new_cell.ref_molecules:
                 if mol == rmol: found = True 
-            if not found: new_cell.refmoleclist.append(mol)
+            if not found: new_cell.ref_molecules.append(mol)
 
     ## Temporary things that I'd like to remove from the import once sorted 
     if hasattr(old_cell,"warning_list"): new_cell.warning_list = old_cell.warning_list 

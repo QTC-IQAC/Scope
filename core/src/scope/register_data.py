@@ -50,7 +50,7 @@ def reg_optimization(comp: object, debug: int=0):
         fstate.set_geometry(labels, new_coord)                                            ## New geometry is stored
         if comp.source.type == "cell": 
             fstate.set_cell(cellvec, cellparam)
-            fstate.get_moleclist()
+            fstate.get_molecules()
             fstate.check_fragmentation(reconstruct=True, debug=debug)
         ### 3b-Computation is linked to the fstate
         fstate.add_computation(comp)

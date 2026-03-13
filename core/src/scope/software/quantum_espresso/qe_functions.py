@@ -5,9 +5,9 @@
 ################################################
 def get_qe_data(state: object, debug: int=0):
     assert state.type == "state"
-    if not hasattr(state,"moleclist"): state.get_moleclist()
+    if not hasattr(state,"molecules"): state.get_molecules()
     pairs = []
-    for mol in state.moleclist:
+    for mol in state.molecules:
         for at in mol.atoms:
             if tuple([at.label,at.spin]) not in pairs: pairs.append(tuple([at.label,at.spin]))
     if debug > 0: print(f"GET_QE_DATA. Pairs of label-spin found: {pairs}")

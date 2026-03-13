@@ -10,8 +10,8 @@ def get_sco_geom(state: object, debug: int=0):
     from scope.classes_state import State
     if not hasattr(state,"fragmented"): state.check_fragmentation(reconstruct=True, debug=debug)
     assert not state.fragmented, f"Found Fragmented molecules in the geometry of state: {state.name}"
-    if not hasattr(state,"moleclist"): state.get_moleclist(debug=debug)
-    for mol in state.moleclist:
+    if not hasattr(state,"molecules"): state.get_molecules(debug=debug)
+    for mol in state.molecules:
         if mol.iscomplex: print(geom_sco_from_xyz(state.labels, state.coord, debug=debug)) 
 
 ######
