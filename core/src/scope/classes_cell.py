@@ -698,6 +698,13 @@ def import_cell(old_cell: object, debug: int=0) -> object:
     elif hasattr(old_cell,"cellparam"):   cell_param  = old_cell.cellparam
     else:                                 cell_param  = None
 
+    if   hasattr(old_cell,"moleclist"):   old_molecules = old_cell.moleclist
+    elif hasattr(old_cell,"molecules"):   old_molecules = old_cell.molecules
+
+    if   hasattr(old_cell,"refmoleclist"):    old_ref_molecules = old_cell.refmoleclist
+    elif hasattr(old_cell,"ref_molecules"):   old_ref_molecules = old_cell.ref_molecules
+    else:                                     old_ref_molecules = None
+
     # If cell_param and cell_vector are None, the creation of the cell will fail
     new_cell            = Cell(name, labels, coord, cell_vector, cell_param)
     new_cell.subtype    = "cell"
@@ -705,30 +712,31 @@ def import_cell(old_cell: object, debug: int=0) -> object:
     if debug > 0: print(f"IMPORT CELL: importing cell {new_cell.name}")
 
     ## Molecules
-    if debug > 0: print(f"IMPORT CELL: creating molecules")
-    molecules = []
-    for mol in old_cell.molecules: 
+    if debug > 0: print(f"IMPORT CELL: importing molecules")
+    new_molecules = []
+    for mol in old_molecules: 
         new_mol = import_molecule(mol, parent=new_cell, debug=debug)
         new_mol.set_bonds()
         new_mol.fix_ligands_rdkit_obj(debug=debug)
-        molecules.append(new_mol)
+        new_molecules.append(new_mol)
 
     if debug > 0: 
         print(f"IMPORT CELL: prepared molecules: (formula, charge, spin)")
-        for mol in molecules:
+        for mol in new_molecules:
             print(mol.formula, mol.charge, mol.spin)
 
-    new_cell.set_molecules(molecules)
+    new_cell.set_molecules(new_molecules)
     new_cell.fix_cell_coord(debug=debug)  ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell. 
                                           ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
 
     ## Reference molecules
-    if debug > 0: print(f"IMPORT CELL: creating ref_molecules")
     new_cell.ref_molecules = []
-    if hasattr(old_cell,"ref_molecules"):
-        for rmol in old_cell.ref_molecules:
+    if old_ref_molecules is not None:
+        if debug > 0: print(f"IMPORT CELL: importing ref_molecules")
+        for rmol in old_ref_molecules:
             new_cell.ref_molecules.append(import_molecule(rmol, parent=new_cell))
-    elif hasattr(new_cell,"molecules"):
+    else:
+        if debug > 0: print(f"IMPORT CELL: creating ref_molecules")
         for mol in new_cell.molecules:
             found = False
             for rmol in new_cell.ref_molecules:
