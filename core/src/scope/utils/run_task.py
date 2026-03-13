@@ -125,7 +125,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
             ### STEP 2: JOB ###
             ###################
             ## 2.1 Finds or creates the job.
-            print(f"RUN_TASK, step 2.1: Evaluating JOB with name={job_data.job_name}")
+            print(f"RUN_TASK, step 2.1: Evaluating JOB with name={job_data.job}")
             exists, this_job = this_workflow.find_job(job_data=job_data, debug=debug)
             if not exists: this_job = this_workflow.add_job(job_data); updated = True
 
