@@ -292,17 +292,18 @@ class System(object):
         ## Branch Names are de-capitalized and spaces replaced by underscores
         name = name.lower()
         name = name.replace(" ","_")
-        if debug > 1: print(f"FIND_BRANCH. Finding Branch with name:", name)
-        if debug > 1: print(f"FIND_BRANCH. There are {len(self.branches)} Branches in system")
+        if debug > 1: print(f"FIND_BRANCH: Finding Branch with name:", name)
+        if debug > 1: print(f"FIND_BRANCH: There are {len(self.branches)} Branches in system")
         if len(self.branches) == 0: return False, None
         for idx, br in enumerate(self.branches):
-            if debug > 1: print(f"FIND_BRANCH. Evaluating Branch {idx} with name: {br.name} and path: {br.path}")
+            if debug > 1: print(f"FIND_BRANCH: Evaluating Branch {idx} with name: {br.name} and path: {br.path}")
             if br.name.lower() == name.lower():
-                if debug > 1: print(f"FIND_BRANCH. Branch was found. Checking path...")
+                if debug > 1: print(f"FIND_BRANCH: Branch was found. Checking path...")
                 if not os.path.isdir(br.path) and debug > 0: 
                     print(f"WARNING: The path associated with this Branch (below) does not exist. Loading the Branch anyway")
                     print(f"WARNING: {br.path=}")
                 return True, br
+        if debug > 1: print(f"FIND_BRANCH: Branch not found")
         return False, None
 
     ######
