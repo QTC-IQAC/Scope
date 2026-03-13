@@ -154,9 +154,9 @@ def fill_job_data(data: object, debug: int=0):
     ## Adds defaults to job_data
     if not hasattr(data,"branch"):        raise ValueError("WARNING: job_data is missing 'branch' input variable")
     if not hasattr(data,"hierarchy"):     raise ValueError("WARNING: job_data is missing 'hierarchy' input variable")  ## This shouldn't be mandatory, I need to fix it
+    if not hasattr(data,"job_type"):      raise ValueError("WARNING: job_data is missing 'job_type' input variable")
     if not hasattr(data,"workflow"):      data._add_attr("workflow",str('all')),    
     if not hasattr(data,"job_name"):      data._add_attr("job_name", str(data.hierarchy))
-    if not hasattr(data,"job_type"):      data._add_attr("job_type", str(data.job_name))
     if not hasattr(data,"istate"):        data._add_attr("istate", str("initial"))
     if not hasattr(data,"fstate"):        data._add_attr("fstate", str(data.job_name))
     if not hasattr(data,"job_setup"):     data._add_attr("job_setup", "regular")
@@ -170,9 +170,10 @@ def fill_job_data(data: object, debug: int=0):
     if data.job_setup == 'rep_opt' and not hasattr(data,"energiess"):    data._add_attr("energies",np.zeros((data.max_steps)))
 
     ## Modifies some attributes to avoid blank spaces and dashes, and to use lower letters
-    data._mod_attr("job_name",str(data.job_name.lower().replace("-","_").replace(" ","_")))
-    data._mod_attr("istate",str(data.istate.lower().replace("-","_").replace(" ","_")))
-    data._mod_attr("fstate",str(data.fstate.lower().replace("-","_").replace(" ","_")))
+    data._mod_attr("job_name",str(data.job_name.strip().lower().replace("-","_").replace(" ","_")))
+    data._mod_attr("job_type",str(data.job_type.strip().lower().replace("-","_").replace(" ","_")))
+    data._mod_attr("istate",str(data.istate.strip().lower().replace("-","_").replace(" ","_")))
+    data._mod_attr("fstate",str(data.fstate.strip().lower().replace("-","_").replace(" ","_")))
 
     ## Modifies the list of requisites and constrains to avoid blanks and dashes
     tmp_req = []
