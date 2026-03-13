@@ -16,7 +16,7 @@ def gen_g16_input(comp, debug: int=0):
 
     ## 1-Change some variable names to simplify calls
     source     = comp.source
-    jobtype    = comp.qc_data.jobtype
+    comp_type  = comp.qc_data.comp_type
     functional = comp.qc_data.functional
     basis      = comp.qc_data.basis
     loose_opt  = comp.qc_data.loose_opt
@@ -66,7 +66,7 @@ def gen_g16_input(comp, debug: int=0):
             raise ValueError("G16_INPUT: basis", basis, "not recognized. Implemented are def2sv, def2svp, def2tzv, def2tzvp, def2tzvpp and sto-3g")
 
         ## 2.4-Jobtype
-        if jobtype == "opt" or jobtype == "opth" or jobtype == "opt&freq": 
+        if comp_type == "opt" or comp_type == "opth" or comp_type == "opt&freq": 
             if comp.qc_data.fctype == 'recalcfc':
                 if   loose_opt: commandline.append(f" opt=(RecalcFC={comp.qc_data.recalc_steps},cartesian,skipdihedral,loose)")
                 elif tight_opt: commandline.append(f" opt=(RecalcFC={comp.qc_data.recalc_steps},cartesian,skipdihedral,VeryTight)")
@@ -80,7 +80,7 @@ def gen_g16_input(comp, debug: int=0):
                 elif tight_opt: commandline.append(f" opt=(CalcFC,cartesian,skipdihedral,VeryTight)")
                 else:           commandline.append(f" opt=(CalcFC,cartesian,skipdihedral)")
         
-        elif jobtype == "ts":
+        elif comp_type == "ts":
             if comp.qc_data.fctype == 'recalcfc':
                 commandline.append(f" opt=(TS,NoEigenTest,RecalcFC={comp.qc_data.recalc_steps},Cartesian,SkipDihedral,MaxCycles=300)")
             elif comp.qc_data.fctype == 'calcall':
@@ -88,19 +88,19 @@ def gen_g16_input(comp, debug: int=0):
             elif comp.qc_data.fctype == 'calcfc':
                 commandline.append(f" opt=(TS,NoEigenTest,CalcFC,Cartesian,SkipDihedral,MaxCycles=300)")
 
-        elif jobtype == "opt&freq" or jobtype == "ts&freq" or jobtype == "freq": 
+        elif comp_type == "opt&freq" or comp_type == "ts&freq" or comp_type == "freq": 
             commandline.append(" freq(hpmodes)")
 
-        elif jobtype == "td":  
+        elif comp_type == "td":  
             if not is_unrestricted:  commandline.append(f" td=({comp.qc_data.td_type},nstates={comp.qc_data.td_nstates})")
             else:                    commandline.append(f" td=(nstates={comp.qc_data.td_nstates})")
-        elif jobtype == "tda": 
+        elif comp_type == "tda": 
             if not is_unrestricted:  commandline.append(f" tda=({comp.qc_data.td_type},nstates={comp.qc_data.td_nstates})")
             else:                    commandline.append(f" tda=(nstates={comp.qc_data.td_nstates})")
 
-        elif jobtype == "scf": pass
+        elif comp_type == "scf": pass
         else: 
-            raise ValueError("G16_INPUT: jobtype", jobtype, "not recognized. Implemented are opt, opt&freq, freq, td, tda and scf")
+            raise ValueError("G16_INPUT: comp_type", comp_type, "not recognized. Implemented are opt, opt&freq, freq, td, tda and scf")
 
         ## 2.5-Grimme
         if functional == "wb97xd": comp.qc_data._mod_attr("is_grimme", False)       ## Grimme Disperson Corrections are already implemented in wb97xd
@@ -110,7 +110,7 @@ def gen_g16_input(comp, debug: int=0):
         if tight_opt: commandline.append(" Int=UltraFine")
 
         ## 2.7-TD-DFT options for Theodore: 
-        if jobtype == "td" or jobtype == "tda": commandline.append(" pop=full iop(9/40=3) GFINPUT Integral=NoXCTest")
+        if comp_type == "td" or comp_type == "tda": commandline.append(" pop=full iop(9/40=3) GFINPUT Integral=NoXCTest")
 
         ## 2.8-Other options
         if comp.qc_data.ultrafine_grid: commandline.append(" Int=Ultrafine")
@@ -127,7 +127,7 @@ def gen_g16_input(comp, debug: int=0):
         ### Coordinates, which are taken from the initial state object ###
         ##################################################################
         for idx, z in enumerate(zip(istate.labels, istate.coord)):
-            if jobtype.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (z[0], z[1][0], z[1][1], z[1][2]), file=inp)
+            if comp_type.lower() != "opth": print("%s  %.6f  %.6f  %.6f" % (z[0], z[1][0], z[1][1], z[1][2]), file=inp)
             else: 
                 if a.label == 'H': print("%s %s %.6f  %.6f  %.6f" % (z[0], " 0", z[1][0], z[1][1], s[1][2]), file=inp)
                 else:              print("%s $s %.6f  %.6f  %.6f" % (z[0], "-1", z[1][0], z[1][1], s[1][2]), file=inp)

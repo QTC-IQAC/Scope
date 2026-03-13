@@ -154,7 +154,6 @@ def fill_job_data(data: object, debug: int=0):
     ## Adds defaults to job_data
     if not hasattr(data,"branch"):        raise ValueError("WARNING: job_data is missing 'branch' input variable")
     if not hasattr(data,"hierarchy"):     raise ValueError("WARNING: job_data is missing 'hierarchy' input variable")  ## This shouldn't be mandatory, I need to fix it
-    if not hasattr(data,"job_type"):      raise ValueError("WARNING: job_data is missing 'job_type' input variable")
     if not hasattr(data,"workflow"):      data._add_attr("workflow",str('all')),    
     if not hasattr(data,"job_name"):      data._add_attr("job_name", str(data.hierarchy))
     if not hasattr(data,"istate"):        data._add_attr("istate", str("initial"))
@@ -171,7 +170,6 @@ def fill_job_data(data: object, debug: int=0):
 
     ## Modifies some attributes to avoid blank spaces and dashes, and to use lower letters
     data._mod_attr("job_name",str(data.job_name.strip().lower().replace("-","_").replace(" ","_")))
-    data._mod_attr("job_type",str(data.job_type.strip().lower().replace("-","_").replace(" ","_")))
     data._mod_attr("istate",str(data.istate.strip().lower().replace("-","_").replace(" ","_")))
     data._mod_attr("fstate",str(data.fstate.strip().lower().replace("-","_").replace(" ","_")))
 
@@ -190,12 +188,13 @@ def fill_qc_data(data: object, debug: int=0):
     ## Adds defaults to qc_data
     if not hasattr(data,"software"):      raise ValueError("ERROR: qc_data is missing 'software' input variable")
     else:                                 data._add_attr("software", interpret_software(data.software))
+    if hasattr(data,"jobtype") and not hasattr(data,"comp_type"): data._add_attr("comp_type", data.jobtype)
 
     if data.software == "g16":
         # Adds default if needed and checks Jobtype
-        if not hasattr(data,"jobtype"):        data._add_attr("jobtype", "scf")
+        if not hasattr(data,"comp_type"):      data._add_attr("comp_type", "scf")
         g16_available_jobtypes = ["scf", "opt", "freq", "ts", "td", "tda"] # "opt&freq" and "ts&freq" are being implemented
-        if data.jobtype not in g16_available_jobtypes: raise ValueError(f"{data.jobtype} is not implemented")
+        if data.comp_type not in g16_available_jobtypes: raise ValueError(f"{data.comp_type} is not implemented")
 
         # Adds defaults
         if not hasattr(data,"functional"):     data._add_attr("functional", "pbe")
@@ -206,20 +205,20 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"grimme_type"):    data._add_attr("grimme_type", "d2")
         if not hasattr(data,"ultrafine_grid"): data._add_attr("ultrafine_grid", False)
 
-        if data.jobtype == "td" or data.jobtype == "tda":
+        if data.comp_type == "td" or data.comp_type == "tda":
             if not hasattr(data,"td_type"):    data._add_attr("td_type", "singlets")  ## Will be ignored if specie.spin > 0
             if not hasattr(data,"td_nstates"): data._add_attr("td_nstates", int(10))
 
-        elif data.jobtype == "ts" or data.jobtype == "opt": 
+        elif data.comp_type == "ts" or data.comp_type == "opt": 
             ## Default is recalcFC=30
             if not hasattr(data,"fctype"): data._add_attr("fctype","recalcfc")
             if data.fctype == "recalcfc" and not hasattr(data,"recalc_steps"): data._add_attr("recalc_steps", int(30))
 
     elif data.software == "qe":
         # Adds default if needed and checks Jobtype
-        if not hasattr(data,"jobtype"):       data._add_attr("jobtype", "scf")
+        if not hasattr(data,"comp_type"):     data._add_attr("comp_type", "scf")
         qe_available_jobtypes = ["scf", "opt", "relax", "vc-relax", "freq"]
-        if data.jobtype not in qe_available_jobtypes: raise ValueError(f"{data.jobtype} is not implemented")
+        if data.comp_type not in qe_available_jobtypes: raise ValueError(f"{data.comp_type} is not implemented")
 
         # Adds defaults
         if not hasattr(data,"version"):       data._add_attr("version", float(7.0))
@@ -241,6 +240,11 @@ def fill_qc_data(data: object, debug: int=0):
 
     return data
 
+def harmonize_input_data(environment: object, options: object, job_data: object, qc_data: object, debug: int=0):
+    if hasattr(job_data, "job_type"): job_data._mod_attr("job_type", qc_data.comp_type)
+    else:                             job_data._add_attr("job_type", qc_data.comp_type)
+    return environment, options, job_data, qc_data
+
 #######################
 def set_environment_data(content, section="&environment", isfile: bool=True, debug: int=0):
     environment = Input_data(content=content, section=section, isfile=isfile, debug=debug)
@@ -248,19 +252,26 @@ def set_environment_data(content, section="&environment", isfile: bool=True, deb
     return environment
 
 def set_options_data(content, section="&options", isfile: bool=True, debug: int=0):
-    options = Input_data(content=content, section=section, isfile=isfile, debug=debug)
-    options = fill_options_data(options)
+    options     = Input_data(content=content, section=section, isfile=isfile, debug=debug)
+    options     = fill_options_data(options)
     return options
 
 def set_job_data(content, section="&job_data", isfile: bool=True, debug: int=0):
-    job_data = Input_data(content=content, section=section, isfile=isfile, debug=debug)
-    job_data = fill_job_data(job_data)
+    job_data    = Input_data(content=content, section=section, isfile=isfile, debug=debug)
+    job_data    = fill_job_data(job_data)
     return job_data
 
 def set_qc_data(content, section="&qc_data", isfile: bool=True, debug: int=0):
-    qc_data = Input_data(content=content, section=section, isfile=isfile, debug=debug)
-    qc_data = fill_qc_data(qc_data)
+    qc_data     = Input_data(content=content, section=section, isfile=isfile, debug=debug)
+    qc_data     = fill_qc_data(qc_data)
     return qc_data
+
+def set_input_data(content, isfile: bool=True, debug: int=0):
+    environment = set_environment_data(content, section="&environment", isfile=isfile, debug=debug)
+    options     = set_options_data(content, section="&options", isfile=isfile, debug=debug)
+    job_data    = set_job_data(content, section="&job_data", isfile=isfile, debug=debug)
+    qc_data     = set_qc_data(content, section="&qc_data", isfile=isfile, debug=debug)
+    return harmonize_input_data(environment, options, job_data, qc_data, debug=debug)
 
 #######################
 def read_section(lines: list, section: str, debug: int=0):

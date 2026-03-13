@@ -64,7 +64,7 @@ def gen_qe_input(comp: object, debug: int=0):
     ####################
     with open(comp.inp_path, 'w+') as inp:
         print(" &control", file=inp)
-        print(f"    calculation='{comp.qc_data.jobtype}'", file=inp)
+        print(f"    calculation='{comp.qc_data.comp_type}'", file=inp)
         print( "    restart_mode='from_scratch'", file=inp)
         print(f"    pseudo_dir ='{PP_path}'", file=inp)
         print( "    disk_io='low'", file=inp)
@@ -72,10 +72,10 @@ def gen_qe_input(comp: object, debug: int=0):
 
         ## Print forces for finite differences computation.
         if hasattr(comp.qc_data,"print_forces"):
-            if comp.qc_data.print_forces and comp.qc_data.jobtype == "scf": print(f"    tprnfor = .true.", file=inp)
+            if comp.qc_data.print_forces and comp.qc_data.comp_type == "scf": print(f"    tprnfor = .true.", file=inp)
 
         ## Keywords for Optimization-related computations 
-        if comp.qc_data.jobtype == "opt" or comp.qc_data.jobtype == "relax" or comp.qc_data.jobtype == "vc-relax":
+        if comp.qc_data.comp_type == "opt" or comp.qc_data.comp_type == "relax" or comp.qc_data.comp_type == "vc-relax":
             print(f"    wf_collect = .true.", file=inp)
             print(f"    tprnfor = .true.", file=inp)
             print(f"    nstep = 300", file=inp)
@@ -93,7 +93,7 @@ def gen_qe_input(comp: object, debug: int=0):
             if cutoff_wfc > min_cowfc: min_cowfc = cutoff_wfc # updates
             if cutoff_rho > min_corho: min_corho = cutoff_rho # updates
 
-        if comp.qc_data.jobtype == "vc-relax": min_cowfc *= 2; min_corho *= 2  ## In vc-relax it is convenient to minimize pulay stress
+        if comp.qc_data.comp_type == "vc-relax": min_cowfc *= 2; min_corho *= 2  ## In vc-relax it is convenient to minimize pulay stress
 
         print(" &system", file=inp)
         if   system_type == "molecule": print(f"    ibrav=1, celldm(1)={comp.qc_data.cubeside}", file=inp)
@@ -146,7 +146,7 @@ def gen_qe_input(comp: object, debug: int=0):
         #///////////////////
         #// Ions control ///
         #///////////////////
-        if comp.qc_data.jobtype == "opt" or comp.qc_data.jobtype == "relax" or comp.qc_data.jobtype == "vc-relax":
+        if comp.qc_data.comp_type == "opt" or comp.qc_data.comp_type == "relax" or comp.qc_data.comp_type == "vc-relax":
             print(" &ions", file=inp)
             print("    upscale=10", file=inp)
             print("    ion_dynamics='bfgs'", file=inp)
@@ -156,7 +156,7 @@ def gen_qe_input(comp: object, debug: int=0):
         #///////////////////
         #// Cell control ///
         #///////////////////
-        if comp.qc_data.jobtype == "vc-relax":
+        if comp.qc_data.comp_type == "vc-relax":
             print(" &cell", file=inp)
             print("    cell_dynamics='bfgs'", file=inp)
             print("    cell_dofree='all'", file=inp)

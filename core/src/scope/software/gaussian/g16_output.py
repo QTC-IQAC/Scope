@@ -8,7 +8,7 @@ class G16_output(object):
         self.lines            = lines
         if computation is not None:
             if hasattr(computation,"jobtype"):           self.jobtype        = computation.jobtype
-            elif hasattr(computation.qc_data,"jobtype"): self.jobtype        = computation.qc_data.jobtype
+            elif hasattr(computation.qc_data,"comp_type"): self.jobtype      = computation.qc_data.comp_type
             self.requisites       = self.get_requisites()
         else: 
             print(f"G16_OUTPUT: output created without Computation.")

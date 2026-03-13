@@ -21,7 +21,7 @@ class QE_output(object):
             if self._computation is not None:
                 if hasattr(self._computation,"jobtype"):             self.jobtype        = self._computation.jobtype
                 elif hasattr(self._computation,"qc_data"):
-                    if hasattr(self._computation.qc_data,"jobtype"): self.jobtype        = self._computation.qc_data.jobtype
+                    if hasattr(self._computation.qc_data,"comp_type"): self.jobtype      = self._computation.qc_data.comp_type
                 else:                                          self.jobtype        = "unknown"
             else:                                              self.jobtype        = "unknown"
         return self.jobtype

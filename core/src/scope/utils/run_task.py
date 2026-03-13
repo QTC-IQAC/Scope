@@ -86,10 +86,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
         if debug > 0: print(f"#####################")
         
         #### Step 1.1-Reads Input Data
-        user_environment = set_environment_data(inp_path, section="&environment", debug=0)  ## For completeness, but env data is read in global_env.read_job_specs below 
-        options          = set_options_data(inp_path, section="&options"        , debug=0)
-        job_data         = set_job_data(inp_path, section="&job_data"           , debug=0)
-        qc_data          = set_qc_data(inp_path, section="&qc_data"             , debug=0)
+        user_environment, options, job_data, qc_data = set_input_data(inp_path, debug=0)
 
         #### Step 1.2-Loads Environment and Enriches with User Choices
         global_env.read_job_specs(inp_path, debug=0)

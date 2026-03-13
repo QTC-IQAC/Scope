@@ -324,9 +324,9 @@ class Job(object):
         if self.type == 'findiff' or self.type == 'findif': self.job_setup = 'findiff'
         
     def check_job_data(self, inp_path: str, debug: int=0):
-        from scope.classes_input import set_job_data
+        from scope.classes_input import set_input_data
         if debug > 0: print(f"CHECK_JOB_DATA: reading job_data from path: {inp_path}")
-        new_job_data    = set_job_data(inp_path, section="&job_data", debug=0)
+        _, _, new_job_data, _ = set_input_data(inp_path, debug=0)
         old_job_data    = self.job_data 
         if new_job_data != old_job_data: 
             print(f"CHECK_JOB_DATA: identified changes in job_data for job.name={self.name}")
@@ -864,9 +864,9 @@ class Computation(object):
     #### QC_DATA-related functions ####
     ###################################
     def check_qc_data(self, inp_path: str, debug: int=0):
-        from scope.classes_input import set_qc_data
+        from scope.classes_input import set_input_data
         old_qc_data    = deepcopy(self.qc_data)
-        new_qc_data    = set_qc_data(inp_path, section="&qc_data" , debug=0)
+        _, _, _, new_qc_data = set_input_data(inp_path, debug=0)
         if new_qc_data != old_qc_data: 
             if debug > 1:
                 print("COMP.CHECK_QC_DATA: found different qc_data:")
@@ -887,6 +887,7 @@ class Computation(object):
         self.software         = new_qc_data.software
         ## Adds any old information that is now not present. I'm not sure about this one
         self.qc_data         += old_qc_data
+        self.jobtype          = self.qc_data.comp_type
         ## Exceptions
         if self.is_update and self.software == 'qe' and old_qc_data.mix_beta != new_qc_data.mix_beta:
             self.qc_data._mod_attr("mix_beta",old_qc_data.mix_beta)
