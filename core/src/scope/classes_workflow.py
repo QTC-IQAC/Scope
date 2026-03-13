@@ -1075,6 +1075,7 @@ class Computation(object):
 
 ###########################################
     def register(self, debug: int=0) -> None:
+        if debug > 0: print(f"COMP.REGISTER: Registering Computation with Job Keyword: {self._job.keyword}")
        
         ## Checks whether the output file exists:
         if not hasattr(self,"output_exists") or not hasattr(self,"output_modtime"): self.check_files()
