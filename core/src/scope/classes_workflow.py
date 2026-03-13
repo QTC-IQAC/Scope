@@ -12,7 +12,7 @@ from scope.parse_general              import read_lines_file
 ##########################
 class Branch(object):
     def __init__(self, path: str, name: str, _system: object, debug: int=0) -> None:
-        self.type             = "branch"
+        self.object_type      = "branch"
         self.path             = path
         self.name             = name
         self._system          = _system
@@ -163,7 +163,7 @@ class Branch(object):
 ############################
 class Workflow(object):
     def __init__(self, name: str, source: object, _branch: object, debug: int=0) -> None:
-        self.type             = "workflow"
+        self.object_type      = "workflow"
         self._branch          = _branch
         self.path             = _branch.path
         self.name             = name
@@ -187,54 +187,54 @@ class Workflow(object):
     ############
     ### JOBS ### 
     ############
-    def add_job(self, job_data, debug: int=0): ## As opposed to add_branch or add_workflow, add_job does not need a name, but a job_data input that will include a keyword
+    def add_job(self, job_data, debug: int=0): ## As opposed to add_branch or add_workflow, add_job does not need a name, but a job_data input
         exists, new_job = self.find_job(job_data=job_data, debug=debug)
         if not exists:
             new_job = Job(job_data, _workflow=self)
             self.jobs.append(new_job)
         return new_job 
 
-    def remove_job(self, keyword=None, hierarchy=None):
+    def remove_job(self, name=None, hierarchy=None):
         found = False
-        if keyword is None and hierarchy is None: print("WORKFLOW.REMOVE_JOB: Error removing job, please indicate either keyword, or hierarchy number")
-        elif keyword is not None and hierarchy is not None: print("WORKFLOW.REMOVE_JOB: Error removing job, please indicate only keyword or hierarchy number, not BOTH")
+        if name is None and hierarchy is None: print("WORKFLOW.REMOVE_JOB: Error removing job, please indicate either name, or hierarchy number")
+        elif name is not None and hierarchy is not None: print("WORKFLOW.REMOVE_JOB: Error removing job, please indicate only name or hierarchy number, not BOTH")
         else:
             for idx, jb in enumerate(self.jobs):
-                if keyword is not None and hierarchy is None:
-                    keyword = str(keyword)
-                    if jb.keyword == keyword and not found: found = True; found_idx = idx
-                elif hierarchy is not None and keyword is None:
+                if name is not None and hierarchy is None:
+                    name = str(name)
+                    if jb.name == name and not found: found = True; found_idx = idx
+                elif hierarchy is not None and name is None:
                     hierarchy = int(hierarchy)
                     if jb.hierarchy == hierarchy and not found: found = True; found_idx = idx
         if found: del self.jobs[found_idx]
 
-    def find_job(self, keyword=None, hierarchy=None, job_data=None, debug: int=0):
-        if keyword is None and hierarchy is None and job_data is not None:
-            assert hasattr(job_data,"keyword") and hasattr(job_data,"hierarchy")
-            if debug > 1: print(f"WORKFLOW.FIND_JOB: Searching Job with keyword: '{job_data.keyword}' and hierarchy '{job_data.hierarchy}'")
+    def find_job(self, name=None, hierarchy=None, job_data=None, debug: int=0):
+        if name is None and hierarchy is None and job_data is not None:
+            assert hasattr(job_data,"job_name") and hasattr(job_data,"hierarchy")
+            if debug > 1: print(f"WORKFLOW.FIND_JOB: Searching Job with name: '{job_data.job_name}' and hierarchy '{job_data.hierarchy}'")
             for jb in self.jobs:
-                if jb.keyword == job_data.keyword and jb.hierarchy == job_data.hierarchy:
+                if jb.name == job_data.job_name and jb.hierarchy == job_data.hierarchy:
                     if debug > 1: print(f"WORKFLOW.FIND_JOB: Job found")
                     return True, jb
-        elif keyword is None and hierarchy is not None and job_data is None:  
+        elif name is None and hierarchy is not None and job_data is None:  
             assert type(hierarchy) == int
             if debug > 1: print(f"WORKFLOW.FIND_JOB: Searching Job with and hierarchy '{hierarchy}'")
             for jb in self.jobs:
                 if jb.hierarchy == hierarchy:
                     if debug > 1: print(f"WORKFLOW.FIND_JOB: Job found")
                     return True, jb
-        elif keyword is not None and hierarchy is None and job_data is None:  
-            assert type(keyword) == str
-            if debug > 1: print(f"WORKFLOW.FIND_JOB: Searching Job with and keyword '{keyword}'")
+        elif name is not None and hierarchy is None and job_data is None:  
+            assert type(name) == str
+            if debug > 1: print(f"WORKFLOW.FIND_JOB: Searching Job with and name '{name}'")
             for jb in self.jobs:
-                if jb.keyword == keyword:
+                if jb.name == name:
                     if debug > 1: print(f"WORKFLOW.FIND_JOB: Job found")
                     return True, jb
-        elif keyword is not None and hierarchy is not None and job_data is None:  
-            assert type(keyword) == str and type(hierarchy) == int
-            if debug > 1: print(f"WORKFLOW.FIND_JOB: Searching Job with keyword: '{keyword}' and hierarchy '{hierarchy}'")
+        elif name is not None and hierarchy is not None and job_data is None:  
+            assert type(name) == str and type(hierarchy) == int
+            if debug > 1: print(f"WORKFLOW.FIND_JOB: Searching Job with name: '{name}' and hierarchy '{hierarchy}'")
             for jb in self.jobs:
-                if jb.keyword == keyword and jb.hierarchy == hierarchy:
+                if jb.name == name and jb.hierarchy == hierarchy:
                     if debug > 1: print(f"WORKFLOW.FIND_JOB: Job found")
                     return True, jb
         return False, None
@@ -272,8 +272,8 @@ class Workflow(object):
         to_print +=  '   >>> >>> WORKFLOW                                \n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' Source Name                 = {self.source.name}\n'
-        to_print += f' Source Type                 = {self.source.type}\n'
-        to_print += f' Source sub-Type             = {self.source.subtype}\n'
+        to_print += f' Source Type                 = {self.source.object_type}\n'
+        to_print += f' Source sub-Type             = {self.source.object_subtype}\n'
 
         if hasattr(self.source,"charge"):    
             if self.source.charge is not None: to_print += f' Source Charge               = {self.source.charge}\n'
@@ -287,7 +287,7 @@ class Workflow(object):
         to_print += f' Num Jobs                    = {len(self.jobs)}\n'
         if len(self.jobs) > 0: 
             self.jobs.sort(key=lambda x: x.hierarchy)
-            to_print += f'\tLast Job Keyword     = {self.jobs[-1].keyword}\n'
+            to_print += f'\tLast Job Name        = {self.jobs[-1].name}\n'
             to_print += f'\tLast Job Hierarchy   = {self.jobs[-1].hierarchy}\n'
         to_print += '\n'
         return to_print
@@ -297,7 +297,7 @@ class Workflow(object):
 #######################
 class Job(object):
     def __init__(self, job_data: object, _workflow: object):        
-        self.type             = "job"
+        self.object_type      = "job"
         self._workflow        = _workflow
         self.source           = _workflow.source
         self.path             = _workflow.path
@@ -308,11 +308,11 @@ class Job(object):
         self.isfinished       = False
         
         ## I hate to do this; repeat variables from job_data
-        self.keyword          = job_data.keyword
+        self.name             = job_data.job_name
+        self.type             = job_data.job_type
         self.istate           = job_data.istate
         self.fstate           = job_data.fstate
         self.hierarchy        = int(job_data.hierarchy)
-        self.suffix           = job_data.suffix
         self.requisites       = job_data.requisites
         self.constrains       = job_data.constrains
         self.job_setup        = job_data.job_setup.lower()
@@ -321,7 +321,7 @@ class Job(object):
         ## Corrects self.path in case the user forgets to add '/' 
         if self.path[-1] != '/': self.path += '/'
         ## Corrects self.job_setup in case the user forgets to change
-        if self.keyword == 'findiff' or self.keyword == 'findif': self.job_setup == 'findiff'
+        if self.type == 'findiff' or self.type == 'findif': self.job_setup = 'findiff'
         
     def check_job_data(self, inp_path: str, debug: int=0):
         from scope.classes_input import set_job_data
@@ -329,7 +329,7 @@ class Job(object):
         new_job_data    = set_job_data(inp_path, section="&job_data", debug=0)
         old_job_data    = self.job_data 
         if new_job_data != old_job_data: 
-            print(f"CHECK_JOB_DATA: identified changes in job_data for job.keyword={self.keyword}")
+            print(f"CHECK_JOB_DATA: identified changes in job_data for job.name={self.name}")
             self.update_job_data(old_job_data, new_job_data) 
             for comp in self.computations:
                 comp.check_qc_data(inp_path=inp_path, debug=debug)
@@ -341,8 +341,8 @@ class Job(object):
         self.job_data         = new_job_data
         self.job_data        += old_job_data
         ## This is done to mimic the __init of a job class
-        self.keyword          = new_job_data.keyword.lower()
-        self.suffix           = new_job_data.suffix
+        self.name             = new_job_data.job_name.lower()
+        self.type             = new_job_data.job_type.lower()
         self.requisites       = new_job_data.requisites
         self.constrains       = new_job_data.constrains
         self.job_setup        = new_job_data.job_setup.lower()
@@ -397,40 +397,40 @@ class Job(object):
         self.constrains_fulfilled = False
         requisites_fulfilled = np.zeros((len(self.requisites)))  ## To be correct, all must be 1
         constrains_fulfilled = np.zeros((len(self.constrains)))  ## To be correct, all must be 0
-        if debug > 1: print("Checking Requisites", self.requisites, "for job:",self.keyword)
-        if debug > 1: print("Checking Constrains", self.constrains, "for job:",self.keyword)
+        if debug > 1: print("Checking Requisites", self.requisites, "for job:",self.name)
+        if debug > 1: print("Checking Constrains", self.constrains, "for job:",self.name)
         for idx, job in enumerate(self._workflow.jobs):
 
             if self != job:
                 ## If necessary, it registers any related job
-                if debug > 1: print("Evaluating Job with keyword:", job.keyword)
+                if debug > 1: print("Evaluating Job with name:", job.name)
                 if debug > 1: print("Evaluating Job, isregistered:", job.isregistered)
                 if debug > 1: print("Evaluating Job, isgood:", job.isgood)
                 if debug > 1: print("Evaluating Job, isfinished:", job.isfinished)
-                if (job.keyword in self.requisites or job.keyword in self.constrains) and not job.isregistered: 
-                    if debug > 1: print("Registering Previous Unregistered Job", job.keyword)
+                if (job.name in self.requisites or job.name in self.constrains) and not job.isregistered: 
+                    if debug > 1: print("Registering Previous Unregistered Job", job.name)
                     job.register(debug=debug)
-                    if debug > 1: print("Registered Job while checking requisites", job.keyword)
-                    if debug > 1: print(job.keyword, job.isregistered, job.isgood, job.isfinished)
+                    if debug > 1: print("Registered Job while checking requisites", job.name)
+                    if debug > 1: print(job.name, job.isregistered, job.isgood, job.isfinished)
 
                 ## Evaluates Requisites and Constrains
-                if job.keyword in self.requisites and job.isfinished:
+                if job.name in self.requisites and job.isfinished:
                     if job.must_be_good and job.isgood: 
-                        requisites_fulfilled[where_in_array(self.requisites,job.keyword)[0]] = 1
-                        if debug > 1: print("Requisite: ", job.keyword, "fulfilled 1")
+                        requisites_fulfilled[where_in_array(self.requisites,job.name)[0]] = 1
+                        if debug > 1: print("Requisite: ", job.name, "fulfilled 1")
                     if not job.must_be_good:
-                        requisites_fulfilled[where_in_array(self.requisites,job.keyword)[0]] = 1
-                        if debug > 1: print("Requisite: ", job.keyword, "fulfilled 2")
-                elif job.keyword in self.constrains and job.isfinished and job.isgood: 
-                    constrains_fulfilled[where_in_array(self.constrains,job.keyword)[0]] = 1
-                    if debug > 1: print("Constrain: ", job.keyword, "not fulfilled")
-                elif job.keyword == self.keyword and 'self' in self.constrains and job.isfinished and job.isgood: 
+                        requisites_fulfilled[where_in_array(self.requisites,job.name)[0]] = 1
+                        if debug > 1: print("Requisite: ", job.name, "fulfilled 2")
+                elif job.name in self.constrains and job.isfinished and job.isgood: 
+                    constrains_fulfilled[where_in_array(self.constrains,job.name)[0]] = 1
+                    if debug > 1: print("Constrain: ", job.name, "not fulfilled")
+                elif job.name == self.name and 'self' in self.constrains and job.isfinished and job.isgood: 
                     constrains_fulfilled[where_in_array(self.constrains,'self')[0]] = 1
-                    if debug > 1: print("Constrain: ", job.keyword, "in self not fulfilled")
-                elif job.keyword not in self.requisites and job.keyword not in self.constrains:
-                    if debug > 1: print("Unrelated or Unregisterd Job with keyword:", job.keyword)
-                elif job.keyword in self.requisites and not job.isfinished:
-                    if debug > 1: print("Job in Requisites has not finished:", job.keyword)
+                    if debug > 1: print("Constrain: ", job.name, "in self not fulfilled")
+                elif job.name not in self.requisites and job.name not in self.constrains:
+                    if debug > 1: print("Unrelated or Unregisterd Job with name:", job.name)
+                elif job.name in self.requisites and not job.isfinished:
+                    if debug > 1: print("Job in Requisites has not finished:", job.name)
 
         # Takes Decision
         if all(a == 1 for a in requisites_fulfilled) or len(self.requisites) == 0: self.requisites_fulfilled = True
@@ -480,7 +480,6 @@ class Job(object):
 
                 if initial_state.isminimum: 
                     if debug > 0: print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' is already a minimum")
-                    #self._workflow.remove_job(keyword=self.keyword)    # not sure if this is possible
                 else: 
                     ## 0-Checks that the VNM exists, and that they have eigenvalues. If not, registers those eigenvalues.
                     if not hasattr(initial_state.VNMs[0],"atomidxs"):  #Actually only checking for the first one, but its ok
@@ -488,8 +487,8 @@ class Job(object):
                         print(f"SET COMPUTATIONS FROM SETUP: now searching a job with frequencies in the state class object")
                         found = False
                         for idx, comp in enumerate(initial_state.computations):
-                            print(idx, comp._job.keyword, comp.isgood)
-                            if "freq" in comp._job.keyword and comp.isgood and not found:
+                            print(idx, comp._job.name, comp.isgood)
+                            if comp._job.type == "freq" and comp.isgood and not found:
                                 print(f"SET COMPUTATIONS FROM SETUP: I will try to read the eigenvectors from", idx, comp.out_path)
                                 ### 1-Parsing and storage (this block is similar to register_frequencies)
                                 if not hasattr(comp,"output"): reg_general(comp)
@@ -518,7 +517,7 @@ class Job(object):
 
             else:     
                 print(f"SET COMPUTATIONS FROM SETUP: initial state '{self.istate}' does not have the properties required to apply the displacement")
-                self._workflow.remove_job(keyword=self.keyword)    # I'm trying to delete the job when it is not necessary
+                self._workflow.remove_job(name=self.name)    # I'm trying to delete the job when it is not necessary
         
         #####################
         ## 3- Setup for finite Differences
@@ -646,18 +645,6 @@ class Job(object):
             else: 
                 print("JOB.SET_CONTINUATION_COMP: istate of new computation remains as:", new_comp.qc_data.istate)
                 print("JOB.SET_CONTINUATION_COMP: fstate of new computation remains as:", new_comp.qc_data.fstate)
-
-        ### In theory, this elif block could be removed
-        #elif hasattr(self,"fstate"):
-        #    iscorrect = comp.verify_state(self.fstate, target='opt')
-        #    if iscorrect:
-        #        new_comp.qc_data._add_attr("istate",self.fstate)
-        #        new_comp.qc_data._add_attr("fstate",self.fstate)
-        #        print("Set_Continuation_Comp: istate of new computation is modified to", new_comp.qc_data.istate)
-        #        print("Set_Continuation_Comp: fstate of new computation is modified to", new_comp.qc_data.fstate)
-        #    else:
-        #        print("Set_Continuation_Comp: istate of new computation remains as:", new_comp.qc_data.istate)
-        #        print("Set_Continuation_Comp: fstate of new computation remains as:", new_comp.qc_data.fstate)
     
         return new_comp
 
@@ -667,7 +654,7 @@ class Job(object):
 ### Registration ###
 ####################
     def register(self, debug: int=0):
-        if debug > 1: print("JOB.REGISTER: Registering Job:", self.keyword)
+        if debug > 1: print("JOB.REGISTER: Registering Job:", self.name)
 
         ##########################################################################
         #### Irrespectively of the setup, we try to register all computations ####
@@ -680,7 +667,6 @@ class Job(object):
                     if debug > 1: print("Registering Job: Evaluating computation with run_number:", comp.run_number)
                     comp.check_files()
                     if comp.output_exists:
-                        #if debug > 1: print("Registering Job:", self.keyword, "output of:", comp.keyword, "exists")
                         if not comp.isregistered:                     worked = comp.register(debug=debug)
                         else:                                         worked = True
                         if not worked or not comp.isgood:             allgood     = False
@@ -706,7 +692,7 @@ class Job(object):
         if allgood:                                           self.isgood       = True
         if allfinished:                                       self.isfinished   = True
         self.isregistered = True
-        if debug > 1: print("Registered Job:", self.keyword, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
+        if debug > 1: print("Registered Job:", self.name, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
 
 #############
 ### Other ###
@@ -716,13 +702,14 @@ class Job(object):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> >>> JOB                                 \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' Source Type           = {self.source.type}\n'
+        to_print += f' Source Type           = {self.source.object_type}\n'
         to_print += f' Source Name           = {self.source.name}\n'
         to_print += f' Branch Name           = {self._workflow._branch.name}\n'
         to_print += f' Workflow Name         = {self._workflow.name}\n'
         to_print += f'---------------------------------------------------\n'
         to_print += f' Job path              = {self.path}\n'
-        to_print += f' Job keyword           = {self.keyword}\n'
+        to_print += f' Job name              = {self.name}\n'
+        to_print += f' Job type              = {self.type}\n'
         to_print += f' Job hierarchy         = {self.hierarchy}\n'
         to_print += f' Job requisites        = {self.requisites}\n'
         to_print += f' Job constrains        = {self.constrains}\n'
@@ -741,14 +728,13 @@ class Job(object):
 ###########################
 class Computation(object):
     def __init__(self, _job: object, qc_data: object, step: int, path: str, keyword: str, is_update: bool=False, debug: int=0):        
-        self.type             = "computation"
+        self.object_type      = "computation"
         self._job             = _job       
         self.qc_data          = qc_data
         self.software         = qc_data.software
-        self.jobtype          = qc_data.jobtype       ## Type of computation (opt, scf, vc-relax)
+        self.jobtype          = _job.type             ## Type inherited from the parent job
         self.step             = step
         self.keyword          = keyword               ## Normally blank, but it can be used to identify the computation in jobs with complex setups
-        self.suffix           = _job.suffix           ## A string to add to the file name. I think this could be eliminated 
         self.path             = path
         self.index            = len(_job.computations)+1
         self.isregistered     = False
@@ -783,14 +769,14 @@ class Computation(object):
                     if debug > 2: print(f"comp.GET_NAME_FROM_CONFIG: modifying {mod=} in new_filename")
         return new_filename
 
-    def set_filename(self, use_sys_name: bool=True, use_sou_name: bool=True, use_suffix: bool=True, use_step: bool=False, use_run_number: bool=True, use_spin: bool=True, debug: int=0):
+    def set_filename(self, use_sys_name: bool=True, use_sou_name: bool=True, use_job_name: bool=True, use_step: bool=False, use_run_number: bool=True, use_spin: bool=True, debug: int=0):
         ### Here is the convention I'm using to name files. It is better not to change once computations have been submitted
         ### Uses a filename-class object, as defined below, defined as a sum of items
         if not hasattr(self,"run_number"): self.set_run_number() 
         self.filename = Filename()   ## Class defined at the end of this file
         if use_sys_name:       new_item = Filename_item("sys_name",   self.source._sys.name);  self.filename.add_item(new_item)
         if use_sou_name:       new_item = Filename_item("sou_name",   self.source.name);       self.filename.add_item(new_item)
-        if use_suffix:         new_item = Filename_item("suffix",     self._job.suffix);       self.filename.add_item(new_item)
+        if use_job_name:       new_item = Filename_item("job_name",   self._job.name);         self.filename.add_item(new_item)
         if use_step:           # Only step=2 and above are printed in name 
             new_item = filename_item("step",       self.step,'s')
             new_item.set_min_value(int(2))
@@ -915,13 +901,13 @@ class Computation(object):
         if   self.software == 'g16': 
             from scope.software.gaussian.g16_output import G16_output
             allowed_types = ['specie']
-            assert self.source.type in allowed_types
+            assert self.source.object_type in allowed_types
             self.output = G16_output(self.output_lines, self)
         ## Quantum Espresso Computations
         elif self.software == 'qe':  
             from scope.software.quantum_espresso.qe_output import QE_output
             allowed_types = ['specie', 'cell']
-            assert self.source.type in allowed_types
+            assert self.source.object_type in allowed_types
             self.output = QE_output(self.output_lines, self)
         else: print(f"COMPUTATION.CREATE_OUTPUT: Output of {comp.software} computationss is not implemented."); return None
         return self.output 
@@ -1075,7 +1061,7 @@ class Computation(object):
 
 ###########################################
     def register(self, debug: int=0) -> None:
-        if debug > 0: print(f"COMP.REGISTER: Registering Computation with Job Keyword: {self._job.keyword}")
+        if debug > 0: print(f"COMP.REGISTER: Registering Computation with Job Name: {self._job.name}")
        
         ## Checks whether the output file exists:
         if not hasattr(self,"output_exists") or not hasattr(self,"output_modtime"): self.check_files()
@@ -1105,11 +1091,11 @@ class Computation(object):
 
         ## 3-Registration of Optimization, Frequency and TD/TDA Tasks 
         opt_keywords = ['relax', 'vc-relax', 'opt', 'ts']
-        if self._job.keyword in opt_keywords:
+        if self._job.type in opt_keywords:
             worked = reg_optimization(self, debug=debug)
-        elif 'freq' in self._job.keyword: 
+        elif self._job.type == 'freq': 
             worked = reg_frequencies(self, witheigen=False, debug=debug)
-        elif 'td' in self._job.keyword or 'tda' in self._job.keyword: 
+        elif self._job.type in ['td', 'tda']: 
             worked = reg_excited_states(self, debug=debug)
 
         ## 4-Wraps Up
@@ -1128,11 +1114,12 @@ class Computation(object):
         to_print  = f'---------------------------------------------------\n'
         to_print +=  '   >>> >>> >>> >>> COMPUTATION                     \n'
         to_print += f'---------------------------------------------------\n'
-        to_print += f' Source Type           = {self.source.type}\n'
-        to_print += f' Source sub-Type       = {self.source.subtype}\n'
+        to_print += f' Source Type           = {self.source.object_type}\n'
+        to_print += f' Source sub-Type       = {self.source.object_subtype}\n'
         to_print += f' Branch Name           = {self._job._workflow._branch.name}\n'
         to_print += f' Workflow Name         = {self._job._workflow.name}\n'
-        to_print += f' Job Keyword           = {self._job.keyword}\n'
+        to_print += f' Job Name              = {self._job.name}\n'
+        to_print += f' Job Type              = {self._job.type}\n'
         to_print += f'---------------------------------------------------\n'
         if hasattr(self,"istate"): to_print += f' Initial State         = {self.istate}\n'
         else:                      to_print += f' Initial State         = {self._job.istate}\n'

@@ -64,12 +64,12 @@ class State(object):
     get_thermal_data()                  Compute and store thermodynamic data (Helec, Selec, Hvib, Svib, Gtot).
     """
     def __init__(self, _source: object, name: str, debug: int=0):
-        self.type         = "state"
-        self.subtype      = "state"
-        self._source      = _source
-        self.name         = name
-        self.results      = dict()
-        self.computations = []
+        self.object_type    = "state"
+        self.object_subtype = "state"
+        self._source        = _source
+        self.name           = name
+        self.results        = dict()
+        self.computations   = []
 
 ############################################
 #### Basic Functions to add information ####
@@ -198,7 +198,7 @@ class State(object):
             # Sets Fractional Coordinates
             if hasattr(self,"frac_coord"): 
                 newmolec.set_fractional_coord(mol_frac_coord)
-            elif self._source.type == "cell": 
+            elif self._source.object_type == "cell": 
                 if debug > 0: print(f"STATE.GET_MOLECULES: getting frac_coord from _source of type=cell")
                 newmolec.get_fractional_coord(cell_vector = self._source.cell_vector)
             # The split_complex must be below the frac_coord, so they are carried on to the ligands    
@@ -260,7 +260,7 @@ class State(object):
         tmp_indices = []
         for mol in self.molecules:
             for at in mol.atoms:
-                tmp_indices.append(at.get_parent_index(self._source.subtype))  ## We get the index of the atom in the source of this state
+                tmp_indices.append(at.get_parent_index(self._source.object_subtype))  ## We get the index of the atom in the source of this state
                 self.atoms.append(at)
         self.atoms = [x for _, x in sorted(zip(tmp_indices, self.atoms), key=lambda pair: pair[0])]
         return self.atoms
@@ -287,7 +287,7 @@ class State(object):
 
         ## Case of Species inside self
         if hasattr(substructure,"type"):
-            if substructure.type == 'specie':
+            if substructure.object_type == 'specie':
                 for mol in self.molecules:
                     if mol.__eq__(substructure, with_graph=True): occurrence += 1
         return occurrence
@@ -297,8 +297,8 @@ class State(object):
 ########################
     def reconstruct(self, debug: int=0):
         from scope.reconstruct import classify_fragments, fragments_reconstruct 
-        if not self._source.type == "cell":          raise ValueError(f"STATE_RECONSTRUCT: state's source should by a CELL object") 
-        if not hasattr(self,"cell_vector"):          raise ValueError(f"STATE_RECONSTRUCT: state should have a cell vector") 
+        if not self._source.object_type == "cell":    raise ValueError(f"STATE_RECONSTRUCT: state's source should by a CELL object") 
+        if not hasattr(self,"cell_vector"):           raise ValueError(f"STATE_RECONSTRUCT: state should have a cell vector") 
         if not hasattr(self._source,"ref_molecules"): raise ValueError(f"STATE.RECONSTRUCT: state's source does not have a list of reference molecules"); return None
         from scope.read_write import HiddenPrints
         if debug > 0: print("STATE.RECONSTRUCT: reconstructing cell of state", self.name)
@@ -322,7 +322,7 @@ class State(object):
 
     def check_fragmentation(self, reconstruct: bool = False, debug: int=0):
         ## If the source is a specie, then in principle there should only be one. So with molecules is enough to find
-        if self._source.type == "specie":
+        if self._source.object_type == "specie":
             if not hasattr(self,"molecules"): self.get_molecules(debug=debug)
             if len(self.molecules) > 1: self.fragmented = True
             else:                       self.fragmented = False
@@ -330,7 +330,7 @@ class State(object):
             return self.fragmented
         ## If it is a unit cell, then we need a list of molecules that should in principle be there. This is ref_molecules
         ## If the cell is created by cell2mol, then this list is already stored in the .cell object
-        elif self._source.type == "cell": 
+        elif self._source.object_type == "cell": 
             assert hasattr(self,"cell_vector")
             assert hasattr(self._source,"ref_molecules")
             if not hasattr(self,"molecules"): self.get_molecules(debug=debug)
@@ -353,7 +353,7 @@ class State(object):
                 if not self.fragmented: 
                     self.molecules = new_molecules
                     self.set_geometry_from_molecules(debug=debug)
-        else: print(f"STATE.CHECK_FRAGMENTATION: Unknown source Type {self._source.type}")
+        else: print(f"STATE.CHECK_FRAGMENTATION: Unknown source Type {self._source.object_type}")
         return self.fragmented
 
 ##############################
@@ -493,13 +493,13 @@ class State(object):
 ##################################
 #### Connection with Workflow ####
 ##################################
-    def find_computation(self, job_keyword: str='', step: int=1, run_number: int=1, debug: int=0):
+    def find_computation(self, job_name: str='', step: int=1, run_number: int=1, debug: int=0):
         for idx, comp in enumerate(self.computations):
-            if comp._job.keyword == job_keyword and comp.step == step and comp.run_number == run_number: this_comp = comp; return True, this_comp
+            if comp._job.name == job_name and comp.step == step and comp.run_number == run_number: this_comp = comp; return True, this_comp
         return False, None
 
     def add_computation(self, computation: object, debug: int=0):
-        found, comp = self.find_computation(computation._job.keyword, computation.step, computation.run_number)
+        found, comp = self.find_computation(computation._job.name, computation.step, computation.run_number)
         if not found: 
             if debug > 0: print("STATE.ADD_COMPUTATION: same computation wasn't found. So adding it to state")
             self.computations.append(computation)
@@ -803,7 +803,7 @@ class State(object):
         if not hasattr(self,"z"): self.get_z(debug=debug)
 
         # If the source is not a cell, it doesn't make sense to compute the PV term, so we return 0.0 kJ as a default value.
-        if self._source.type != 'cell': 
+        if self._source.object_type != 'cell': 
             data = Data("PV",float(0.0),'kj',"state.compute_PV_term()")
             return data                     
         
@@ -825,8 +825,8 @@ class State(object):
         if not indirect: to_print +=  '   STATE                                           \n'
         if not indirect: to_print += f'---------------------------------------------------\n'
         to_print += f' Name                  = {self.name}\n'
-        if hasattr(self._source,"name"):   to_print += f' Source Name           = {self._source.name}\n'
-        if hasattr(self._source,"type"):   to_print += f' Source Type           = {self._source.type}\n'
+        if hasattr(self._source,"name"):        to_print += f' Source Name           = {self._source.name}\n'
+        if hasattr(self._source,"object_type"): to_print += f' Source Type           = {self._source.object_type}\n'
         if hasattr(self,"labels"):         to_print += f' Labels                = {self.labels[0]}...\n'
         if hasattr(self,"coord"):          to_print += f' Coord                 = {self.coord[0]}...\n'
         if hasattr(self,"z"):              to_print += f' Number of Units (Z)   = {self.z}\n' 

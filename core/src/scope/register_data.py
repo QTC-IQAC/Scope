@@ -39,7 +39,7 @@ def reg_optimization(comp: object, debug: int=0):
         assert len(labels) > 0
 
     ### 2-If it is a periodic object, gets the cell vectors as well
-    if comp.source.type == "cell": 
+    if comp.source.object_type == "cell": 
         cellvec, celldim, cellparam = comp.output.get_cell_vectors_last_complete_block()
         if cellvec is None: cellvec, celldim, cellparam = comp.output.get_last_cell_vectors()
         if cellvec is None: print("Couldn't Extract cell vectors from output", comp.out_path)
@@ -51,7 +51,7 @@ def reg_optimization(comp: object, debug: int=0):
         if not exists: fstate = comp.source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created
         print(f"REG_OPTIMIZATION: Setting new geometry on fstate={fstate.name}")
         fstate.set_geometry(labels, new_coord)                                            ## New geometry is stored
-        if comp.source.type == "cell": 
+        if comp.source.object_type == "cell": 
             print(f"REG_OPTIMIZATION: Setting new cell parameters on fstate={fstate.name}")
             fstate.set_cell(cellvec, cellparam)
             print(f"REG_OPTIMIZATION: Getting molecules for fstate={fstate.name} and checking fragmentation")

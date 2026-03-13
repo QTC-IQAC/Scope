@@ -18,7 +18,7 @@ from scope_sco.sco_structure    import *
 class System_sco(System):
     def __init__(self, refcode: str) -> None:
         System.__init__(self, refcode)
-        self.subtype              = "sco_system" 
+        self.object_subtype       = "sco_system" 
         self.refcode              = refcode
         self.refcode_wo_digits    = ''.join([i for i in refcode if not i.isdigit()])
 
@@ -116,7 +116,7 @@ class System_sco(System):
         ## Collect all FeN6 molecules in the cells of the system 
         pool = []
         for source in self.sources:
-            if source.type == "cell": pool.extend(source.get_FeN6_molecules(overwrite=overwrite, debug=0))
+            if source.object_type == "cell": pool.extend(source.get_FeN6_molecules(overwrite=overwrite, debug=0))
         if debug > 0:      print(f"SET_REF_MOLEC: {len(pool)} FeN6 molecules in pool")
         if len(pool) == 0: print(f"SET_REF_MOLEC: Empty pool of reference molecules"); return False           
 
@@ -169,7 +169,7 @@ class System_sco(System):
         found_hs = False
         found_ls = False
         for source in self.sources:
-            if source.type == "cell":
+            if source.object_type == "cell":
                 cell = source
                 if hasattr(cell,"warning_list"):        ## In cell2mol cells, this variable contains any warning found during the interpretation
                     if not any(cell.warning_list):      ## For a cell to be valid, no error is allowed
@@ -196,14 +196,14 @@ class System_sco(System):
 
         if not found_hs:
             for source in self.sources:
-                if source.type == "cell":
+                if source.object_type == "cell":
                     cell = source
                     if hasattr(cell,"warning_list"):
                         if not any(cell.warning_list):
                             hs = deepcopy(cell)
         if not found_ls:
             for source in self.sources:
-                if source.type == "cell":
+                if source.object_type == "cell":
                     cell = source
                     if hasattr(cell,"warning_list"):
                         if not any(cell.warning_list):
@@ -240,7 +240,7 @@ class System_sco(System):
 class Cell_sco(Cell):
     def __init__(self, name: str, labels: list, pos: list, cell_vector: list=None, cell_param: list=None) -> None:
         Cell.__init__(self, name, labels, pos, cell_vector, cell_param)
-        self.subtype              = "sco_cell"
+        self.object_subtype       = "sco_cell"
 
     def __repr__(self) -> None:
         to_print  = ''

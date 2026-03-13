@@ -312,9 +312,9 @@ def check_triplet(input_object, overwrite:bool = False, debug:int = 0):
     Checks if Triplet energies from results after computations have been corrected.
     If not, correction is applied.
     """
-    if input_object.type == 'specie':
+    if input_object.object_type == 'specie':
         system = input_object._sys
-    elif input_object.type == 'state':
+    elif input_object.object_type == 'state':
         system = input_object._source._sys
     else: 
         raise Exception('CHECK_TRIPLET: Type not recognised. Please insert a Specie or System-derived object')
@@ -549,4 +549,3 @@ def wavelength_to_rgb(nm: float):
     b = (b * factor) ** gamma if b > 0 else 0.0
 
     return (r, g, b)
-

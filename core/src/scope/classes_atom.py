@@ -14,8 +14,8 @@ elemdatabase = ElementData()
 ############
 class Atom(object):
     def __init__(self, label: str, coord: list, frac_coord: list=None, radii: float=None) -> None:
-        self.type                 = "atom"
-        self.subtype              = "atom"
+        self.object_type          = "atom"
+        self.object_subtype       = "atom"
         self.version              = "1.0"
         self.origin               = "created"
         self.label                = label
@@ -88,7 +88,7 @@ class Atom(object):
         ## this is to avoid having a substructure (e.g. a ligand) in more than one superstructure (e.g. a molecule) 
         append = True
         for idx, p in enumerate(self.parents):
-            if p.subtype == parent.subtype:
+            if p.object_subtype == parent.object_subtype:
                 if overwrite: 
                     self.parents[idx]         = parent
                     self.parents_index[idx]   = index
@@ -96,27 +96,27 @@ class Atom(object):
         if append: 
             self.parents.append(parent)
             self.parents_index.append(index)
-            if debug > 0: print(f"ATOM.ADD_PARENT: added parent with subtype {parent.subtype}. Atom index is {index=}")
+            if debug > 0: print(f"ATOM.ADD_PARENT: added parent with subtype {parent.object_subtype}. Atom index is {index=}")
 
     ######
     def check_parent(self, subtype: str):
         ## checks if parent of a given subtype exists
         for p in self.parents:
-            if p.subtype == subtype: return True
+            if p.object_subtype == subtype: return True
         return False
 
     ######
     def get_parent(self, subtype: str):
         ## retrieves parent of a given subtype 
         for p in self.parents:
-            if p.subtype == subtype: return p
+            if p.object_subtype == subtype: return p
         return None
     
     ######
     def get_parent_index(self, subtype: str):
         ## retrieves parent of a given subtype 
         for idx, p in enumerate(self.parents):
-            if p.subtype == subtype: return self.parents_index[idx]
+            if p.object_subtype == subtype: return self.parents_index[idx]
         return None
 
     ##################
@@ -329,8 +329,8 @@ class Atom(object):
         if not indirect: to_print += '------------- SCOPE ATOM Object ----------------\n'
         if not indirect: to_print += '------------------------------------------------\n'
         to_print += f' Version                      = {self.version}\n'
-        to_print += f' Type                         = {self.type}\n'
-        if hasattr(self,'subtype'): to_print += f' Sub-Type                     = {self.subtype}\n'
+        to_print += f' Type                         = {self.object_type}\n'
+        if hasattr(self,'object_subtype'): to_print += f' Sub-Type                     = {self.object_subtype}\n'
         to_print += f' Label                        = {self.label}\n'
         to_print += f' Atomic Number                = {self.atnum}\n'
         if hasattr(self,"charge"):     to_print += f' Atom Charge                  = {self.charge}\n'
@@ -351,7 +351,7 @@ class Atom(object):
 class Metal(Atom):
     def __init__(self, label: str, coord: list, frac_coord: list=None, radii: float=None) -> None:
         Atom.__init__(self, label, coord, frac_coord=frac_coord, radii=radii)
-        self.subtype = "metal"
+        self.object_subtype = "metal"
 
     ###########
     ## Other ##
@@ -508,8 +508,8 @@ class Metal(Atom):
 ############
 class Bond(object):
     def __init__(self, atom1: object, atom2: object, bond_order: int=1, subtype: str="intraspecie"):
-        self.type       = "bond"
-        self.subtype    = subtype
+        self.object_type = "bond"
+        self.object_subtype = subtype
         self.version    = "1.0"
         self.atom1      = atom1
         self.atom2      = atom2
@@ -521,7 +521,7 @@ class Bond(object):
         to_print += '------------- SCOPE BOND Object --------------\n'
         to_print += '----------------------------------------------\n'
         to_print += f' Version                 = {self.version}\n'
-        to_print += f' Type                    = {self.type}\n'
+        to_print += f' Type                    = {self.object_type}\n'
         to_print += f' Atom1 Index in Molecule = {self.atom1.get_parent_index("molecule")}\n'
         to_print += f' Atom2 Index in Molecule = {self.atom2.get_parent_index("molecule")}\n'
         to_print += f' Label Atom1             = {self.atom1.label}\n'
@@ -564,7 +564,7 @@ def import_atom(old_atom: object, parent: object=None, index: int=None, debug: i
     ## Parents
     if parent is not None:
         new_atom.add_parent(parent, index, overwrite=False, debug=debug)
-        if debug > 0: print(f"IMPORT ATOM: parent {parent.subtype=} added with {index=}") 
+    if debug > 0: print(f"IMPORT ATOM: parent {parent.object_subtype=} added with {index=}") 
     else:
         if debug > 0: print(f"IMPORT ATOM: parent is None") 
     
@@ -574,14 +574,14 @@ def import_atom(old_atom: object, parent: object=None, index: int=None, debug: i
     if hasattr(old_atom,"charge"):       
         if type(old_atom.charge) == int:    
             new_atom.set_charge(old_atom.charge)
-            if new_atom.subtype == "atom"  and debug > 0: print(f"IMPORT ATOM: atom charge set to {new_atom.charge}") 
-            if new_atom.subtype == "metal" and debug > 0: print(f"IMPORT ATOM: metal charge set to {new_atom.charge}") 
+            if new_atom.object_subtype == "atom"  and debug > 0: print(f"IMPORT ATOM: atom charge set to {new_atom.charge}") 
+            if new_atom.object_subtype == "metal" and debug > 0: print(f"IMPORT ATOM: metal charge set to {new_atom.charge}") 
 
     elif hasattr(old_atom,"totcharge"):     
         if type(old_atom.totcharge) == int: 
             new_atom.set_charge(old_atom.totcharge)
-            if new_atom.subtype == "atom"  and debug > 0: print(f"IMPORT ATOM: atom charge set to {new_atom.charge}") 
-            if new_atom.subtype == "metal" and debug > 0: print(f"IMPORT ATOM: metal charge set to {new_atom.charge}") 
+            if new_atom.object_subtype == "atom"  and debug > 0: print(f"IMPORT ATOM: atom charge set to {new_atom.charge}") 
+            if new_atom.object_subtype == "metal" and debug > 0: print(f"IMPORT ATOM: metal charge set to {new_atom.charge}") 
     else:
         if debug > 0: print(f"IMPORT ATOM: no charge found for old atom {old_atom.label}. Setting Default: charge=0")
         new_atom.set_charge(int(0))
@@ -596,7 +596,7 @@ def import_atom(old_atom: object, parent: object=None, index: int=None, debug: i
         new_atom.set_spin(int(0))
 
     ## Connectivity
-    if debug > 0: print(f"IMPORT ATOM: inheriting connectivity for {new_atom.subtype=}")
+    if debug > 0: print(f"IMPORT ATOM: inheriting connectivity for {new_atom.object_subtype=}")
     if index is not None: new_atom.inherit_connectivity("molecule", debug=debug)
     else:         print(f"IMPORT ATOM: connectivity could not be imported since Index=None")
 

@@ -9,7 +9,7 @@ from scope.parse_general import search_string, read_lines_file
 ###########
 class Cif(object):
     def __init__(self, name: str, path: str) -> None:
-        self.type              = "cif" 
+        self.object_type       = "cif" 
         self.version           = "1.0" 
         self.origin            = "created"
         self.name              = name

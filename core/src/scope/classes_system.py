@@ -8,8 +8,8 @@ from scope.classes_workflow import Branch
 class System(object):
     def __init__(self, name: str) -> None:
         self.version              = "1.0"
-        self.type                 = "system"
-        self.subtype              = "system"
+        self.object_type          = "system"
+        self.object_subtype       = "system"
         self.origin               = "created"
         self.name                 = name
         self.sources              = []
@@ -37,8 +37,8 @@ class System(object):
         if not indirect: to_print += '   >>> SCOPE System Object >>>   \n'
         if not indirect: to_print += '---------------------------------\n'
         to_print += f' Version               = {self.version}\n'
-        to_print += f' Type                  = {self.type}\n'
-        to_print += f' Subtype               = {self.subtype}\n'
+        to_print += f' Type                  = {self.object_type}\n'
+        to_print += f' Subtype               = {self.object_subtype}\n'
         if hasattr(self,"sources_path"):      to_print += f' Source Path           = {self.sources_path}\n'  ## Path where files with molecular or cell structures are stored
         if hasattr(self,"system_path"):       to_print += f' System File Path      = {self.system_path}\n'      ## Path where the system object is stored
         if hasattr(self,"system_file"):       to_print += f' System File Name      = {self.system_file}\n'      ## Full system path
@@ -48,7 +48,7 @@ class System(object):
             to_print += f' Num Sources           = {len(self.sources)}\n'
             to_print += f'     idx: type, name, formula               \n'
             for idx, spec in enumerate(self.sources):
-                to_print += f'     {idx}: {spec.type}, {spec.name}, {spec.formula} \n'
+                to_print += f'     {idx}: {spec.object_type}, {spec.name}, {spec.formula} \n'
         if len(self.branches) > 0:
             to_print += '\n'
             to_print += f' Num Branches          = {len(self.branches)}\n'
@@ -80,7 +80,7 @@ class System(object):
         if debug > 0: 
             print(f"SYSTEM.FIND_SOURCE. Searching for source with {name} in system with {len(self.sources)} sources:")
             for sour in self.sources:
-                print(f"    {sour.name} {sour.type}")
+                print(f"    {sour.name} {sour.object_type}")
         if len(self.sources) == 0: return False, None
         for sour in self.sources:
             if sour.name.lower() == name.lower(): return True, sour 
@@ -306,7 +306,7 @@ class System(object):
         return False, None
 
     ######
-    def find_computation(self, branch_name: str, workflow_name: str, job_keyword: str, comp_keyword: str='', comp_step: int=1, comp_run_number: int=1, debug: int=0):
+    def find_computation(self, branch_name: str, workflow_name: str, job_name: str, comp_keyword: str='', comp_step: int=1, comp_run_number: int=1, debug: int=0):
         if len(self.branches) == 0: return False, None
         for br in self.branches:
             if br.name.lower() == branch_name.lower():
@@ -315,7 +315,7 @@ class System(object):
                     if wrk.source.spin.lower() == workflow_name.lower():
                         if len(wrk.jobs) == 0: return False, None
                         for job in wrk.jobs:
-                            if job.keyword.lower() == job_keyword.lower():
+                            if job.name.lower() == job_name.lower():
                                 if len(job.computations) == 0: return False, None
                                 for idx, comp in enumerate(job.computations):
                                     if comp.run_number == comp_run_number and comp.step == comp_step and comp.keyword.lower() == comp_keyword.lower(): return True, comp

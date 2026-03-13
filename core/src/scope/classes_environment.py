@@ -73,7 +73,7 @@ class Environment(object):
         3) Run `set_paths()` to configure project paths.
     """
     def __init__(self, name: str):
-        self.type                   = "environment"
+        self.object_type            = "environment"
         self.name                   = name
         self.user                   = set_user()
         self.group                  = set_group()

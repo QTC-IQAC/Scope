@@ -11,6 +11,7 @@ elemdatabase = ElementData()
 ######################
 class VNM(object):
     def __init__(self, index: int, freq: float, red_mass: float=1.0, force_cnt: float=0.0, IR_int: float=0.0, sym: str='A'):
+        self.object_type  = "vnm"
         self.index        = index 
         self.freq_cm      = freq                     ## In cm-1
         self.freq         = freq*constants.cm2har    ## In atomic units 
@@ -189,7 +190,7 @@ def plot_ir_spectrum(vnms, xmin=None, xmax=None, broadening=10.0, points=2000, k
 ##############################
 class ExcitedState(object):
     def __init__(self, index: int, energy: float, wavelength: float, fosc: float, s2: float, debug: int=0) -> None:
-        self.type              = "excited_state"
+        self.object_type       = "excited_state"
         self.index             = index
         self.energy            = energy
         self.wavelength        = wavelength

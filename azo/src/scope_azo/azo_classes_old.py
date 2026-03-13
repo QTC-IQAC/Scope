@@ -18,7 +18,7 @@ from    scope_azo.azo_functions             import *
 class System_azo(System):
     def __init__(self, name: str, smiles: str, debug: int=0):
         System.__init__(self, name)
-        self.subtype          = "system_azo"        
+        self.object_subtype   = "system_azo"        
         self.name             = name
         self.smiles           = smiles
         self.dihedral_indices = self.get_dihedral_indices()
@@ -625,7 +625,7 @@ class System_azo(System):
 class State_azo(State):
     def __init__(self, _source: object, name: str, debug: int=0):
         State.__init__(self, _source, name, debug=debug)
-        self.subtype  = "state_azo" 
+        self.object_subtype  = "state_azo" 
 
     def get_abs_spectrum(self, normalize: bool = False, units: bool = False, lmin: float=200, lmax: float=1000, debug: int=0):
         # Check if TDDFT data exists.
@@ -650,7 +650,7 @@ class Molecule_azo(Molecule):
 
     def __init__(self, labels, coord):
         Molecule.__init__(self, labels, coord)
-        self.subtype  = "molecule_azo"
+        self.object_subtype  = "molecule_azo"
 
     def set_halflife_time(self, skip_triplets : bool = True, overwrite = False, debug: int = 0):
         '''

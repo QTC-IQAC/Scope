@@ -27,7 +27,7 @@ class Input_data(object):
         if section is not None:
             if section[0] != '&': section = f"&{section}"
 
-        self.type     = "input_data"
+        self.object_type = "input_data"
         self.section  = section
         self.read(content, section, isfile=isfile, debug=debug)
  
@@ -107,7 +107,7 @@ class Input_data(object):
         to_print += '---------------------------------------------------\n'
         for key in self.dct.keys():
             val = self.dct[key]
-            if key != 'section' and key != 'type':
+            if key != 'section' and key != 'object_type':
                 to_print += string.format(key, str(type(val)), str(val))
         return to_print
 
@@ -155,10 +155,10 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"branch"):        raise ValueError("WARNING: job_data is missing 'branch' input variable")
     if not hasattr(data,"hierarchy"):     raise ValueError("WARNING: job_data is missing 'hierarchy' input variable")  ## This shouldn't be mandatory, I need to fix it
     if not hasattr(data,"workflow"):      data._add_attr("workflow",str('all')),    
-    if not hasattr(data,"suffix"):        data._add_attr("suffix", str(data.hierarchy))
-    if not hasattr(data,"keyword"):       data._add_attr("keyword", str(data.suffix))
+    if not hasattr(data,"job_name"):      data._add_attr("job_name", str(data.hierarchy))
+    if not hasattr(data,"job_type"):      data._add_attr("job_type", str(data.job_name))
     if not hasattr(data,"istate"):        data._add_attr("istate", str("initial"))
-    if not hasattr(data,"fstate"):        data._add_attr("fstate", str(data.suffix))
+    if not hasattr(data,"fstate"):        data._add_attr("fstate", str(data.job_name))
     if not hasattr(data,"job_setup"):     data._add_attr("job_setup", "regular")
     if not hasattr(data,"requisites"):    data._add_attr("requisites", [])
     if not hasattr(data,"constrains"):    data._add_attr("constrains", ['self'])
@@ -170,7 +170,7 @@ def fill_job_data(data: object, debug: int=0):
     if data.job_setup == 'rep_opt' and not hasattr(data,"energiess"):    data._add_attr("energies",np.zeros((data.max_steps)))
 
     ## Modifies some attributes to avoid blank spaces and dashes, and to use lower letters
-    data._mod_attr("keyword",str(data.keyword.lower().replace("-","_").replace(" ","_")))
+    data._mod_attr("job_name",str(data.job_name.lower().replace("-","_").replace(" ","_")))
     data._mod_attr("istate",str(data.istate.lower().replace("-","_").replace(" ","_")))
     data._mod_attr("fstate",str(data.fstate.lower().replace("-","_").replace(" ","_")))
 

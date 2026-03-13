@@ -126,7 +126,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
             ### STEP 2: JOB ###
             ###################
             ## 2.1 Finds or creates the job.
-            print(f"RUN_TASK, step 2.1: Evaluating JOB with keyword={job_data.keyword}")
+            print(f"RUN_TASK, step 2.1: Evaluating JOB with name={job_data.job_name}")
             exists, this_job = this_workflow.find_job(job_data=job_data, debug=debug)
             if not exists: this_job = this_workflow.add_job(job_data); updated = True
 
@@ -154,7 +154,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
 
                 #if comp.has_update and comp.isregistered: continue # Skip jobs with update (i.e. with other related computations with higher run_number)
                 if debug > 0: print(f"--------------------------------------------------------------------------")
-                if debug > 0: print(f" {sys.name} -> {this_branch.name} -> {this_workflow.name} -> {this_job.keyword} -> Step: {comp.step} -> Run: {comp.run_number}")
+                if debug > 0: print(f" {sys.name} -> {this_branch.name} -> {this_workflow.name} -> {this_job.name} -> Step: {comp.step} -> Run: {comp.run_number}")
                 if debug > 0: print(f"--------------------------------------------------------------------------")
                 if debug > 0: print(f"RUN_TASK, step 3.0: evaluating job, and computation with indices: {this_workflow.jobs.index(this_job)+1}/{len(this_workflow.jobs)}, {jdx+1}/{len(this_job.computations)}")
 
@@ -211,11 +211,11 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                             new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
                             if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
                         elif not comp.isgood and this_job.must_be_good:
-                            if comp.qc_data.jobtype == 'opt':
+                            if comp.jobtype == 'opt':
                                 if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=opt")  
                                 new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
                                 if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
-                            elif comp.qc_data.jobtype == 'ts':
+                            elif comp.jobtype == 'ts':
                                 if comp.qc_data.recalcfc != "calcall":
                                     if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=ts")  
                                     new_comp = this_job.set_continuation_computation(comp, "ts", debug=debug)

@@ -4,7 +4,7 @@
 ## Functions Related to Quantum Espresso Only ##
 ################################################
 def get_qe_data(state: object, debug: int=0):
-    assert state.type == "state"
+    assert state.object_type == "state"
     if not hasattr(state,"molecules"): state.get_molecules()
     pairs = []
     for mol in state.molecules:

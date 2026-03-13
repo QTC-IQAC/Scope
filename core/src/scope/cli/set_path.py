@@ -7,7 +7,7 @@ def env_exists(path):
     if not os.path.isfile(path):
         raise ValueError(f'Environment Path {path} does not exist!')
     env = load_binary(path)
-    if env.type == "environment":
+    if env.object_type == "environment":
         return path
     else:
         raise ValueError(f'Path {path} is not an Environment binary file!')

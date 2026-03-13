@@ -14,7 +14,7 @@ from scope_azo.azo_functions import *
 class System_azo(System):
     def __init__(self, name: str, smiles: str, debug: int=0):
         System.__init__(self, name)
-        self.subtype          = "system_azo"        
+        self.object_subtype   = "system_azo"        
         self.name             = name
         self.smiles           = smiles
         self.dihedral_indices = self.get_dihedral_indices()
@@ -1097,7 +1097,7 @@ class PSS(object):
 class Molecule_azo(Molecule):
     def __init__(self, labels, coord):
         Molecule.__init__(self, labels, coord)
-        self.subtype  = "molecule_azo"
+        self.object_subtype  = "molecule_azo"
 
     def set_dihedral_indices(self, dih: list):
         self.dihedral_indices = dih
@@ -1193,7 +1193,7 @@ class Molecule_azo(Molecule):
 class State_azo(State):
     def __init__(self, _source: object, name: str, debug: int=0):
         State.__init__(self, _source, name, debug=debug)
-        self.subtype  = "state_azo" 
+        self.object_subtype  = "state_azo" 
 
     ##############
     ## Geometry ##  # Same as in Molecule_azo, but adapted to read dihedral indices from source. Coordinates are read from self

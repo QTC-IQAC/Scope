@@ -7,7 +7,7 @@ from scope import constants
 ##################
 class Collection(object):
     def __init__(self, key: str, variable: str):
-        self.type           = "collection"
+        self.object_type    = "collection"
         self.key            = key
         self.variable       = variable
         self.datas          = []
@@ -126,7 +126,7 @@ class Collection(object):
 ############
 class Data(object):
     def __init__(self, key: str, value, units: str, function: str="Unknown", notes=None, debug: str=0):
-        self.type          = "data"
+        self.object_type   = "data"
         self.key           = key
 
         try: self.value    = literal_eval(value)

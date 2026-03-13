@@ -28,8 +28,8 @@ class Specie(object):
         else:                   self.radii   = get_radii(labels)
 
         self.version              = "1.0"
-        self.type                 = "specie"
-        self.subtype              = "specie"
+        self.object_type          = "specie"
+        self.object_subtype       = "specie"
         self.origin               = "created"
         self.labels               = labels
         self.coord                = coord
@@ -125,7 +125,7 @@ class Specie(object):
         # 1st-evaluates parent
         append = True
         for idx, p in enumerate(self.parents):
-            if p.subtype == parent.subtype:
+            if p.object_subtype == parent.object_subtype:
                 if overwrite: 
                     self.parents[idx]         = parent
                     self.parents_indices[idx] = indices
@@ -133,15 +133,15 @@ class Specie(object):
         if append: 
             self.parents.append(parent)
             self.parents_indices.append(indices)
-            if debug > 0: print(f"SPECIE.ADD_PARENT: added parent with subtype={parent.subtype}. Indices are {indices}")
+            if debug > 0: print(f"SPECIE.ADD_PARENT: added parent with subtype={parent.object_subtype}. Indices are {indices}")
 
         # 2nd-evaluates parents of parent
         if hasattr(parent,"parents"):
             for jdx, p2 in enumerate(parent.parents):
                 append = True
-                new_indices = extract_from_list(indices, parent.get_parent_indices(p2.subtype), dimension=1)
+                new_indices = extract_from_list(indices, parent.get_parent_indices(p2.object_subtype), dimension=1)
                 for idx, p in enumerate(self.parents):
-                    if p.subtype == p2.subtype:
+                    if p.object_subtype == p2.object_subtype:
                         if overwrite: 
                             self.parents[idx]         = p2
                             self.parents_indices[idx] = new_indices
@@ -149,31 +149,31 @@ class Specie(object):
                 if append: 
                     self.parents.append(p2)
                     self.parents_indices.append(new_indices)
-                    if debug > 0: print(f"SPECIE.ADD_PARENT: added parent of parent with subtype {p2.subtype}. Indices are {new_indices}")
+                    if debug > 0: print(f"SPECIE.ADD_PARENT: added parent of parent with subtype {p2.object_subtype}. Indices are {new_indices}")
 
     ######
     def check_parent(self, subtype: str):
         ## checks if parent of a given subtype exists
         for p in self.parents:
-            if p.subtype == subtype: return True
+            if p.object_subtype == subtype: return True
         return False
 
     ######
     def get_parent(self, subtype: str):
         ## retrieves parent of a given subtype 
         for p in self.parents:
-            if hasattr(p, "subtype"):  
-                if p.subtype.lower() == subtype.lower(): return p
+            if hasattr(p, "object_subtype"):  
+                if p.object_subtype.lower() == subtype.lower(): return p
             else:  
-                print(f"Warning. Parent with type: {p.type} does not have subtype")
+                print(f"Warning. Parent with type: {p.object_type} does not have subtype")
         return None
 
     ######
     def get_parent_indices(self, subtype: str):
         ## retrieves parent indices of a given subtype 
         for idx, p in enumerate(self.parents):
-            if hasattr(p, "subtype"):  
-                if p.subtype.lower() == subtype.lower(): return self.parents_indices[idx]
+            if hasattr(p, "object_subtype"):  
+                if p.object_subtype.lower() == subtype.lower(): return self.parents_indices[idx]
         return None
 
     ###########
@@ -189,7 +189,7 @@ class Specie(object):
         self.mol_graph = nx.Graph()
         # Add nodes
         for at in self.atoms:
-            idx = at.get_parent_index(self.subtype)
+            idx = at.get_parent_index(self.object_subtype)
             if not hasattr(at,"adjnum"):  at.set_adjacencies(self.adjmat[idx], self.madjmat[idx], self.adjnum[idx], self.madjnum[idx])
             self.mol_graph.add_node(idx, label=at.label, connec=at.adjnum, mconnec=at.madjnum)
             if debug > 0: print(f"SPECIE.GET_GRAPH: node created for {idx}:{at.label}") 
@@ -197,10 +197,10 @@ class Specie(object):
         if self.has_bonds: ## We use bonds as source of info
             if debug > 0: print(f"SPECIE.GET_GRAPH: Bonds info is not available")
             for at in self.atoms:
-                idx = at.get_parent_index(self.subtype)
+                idx = at.get_parent_index(self.object_subtype)
                 for b in at.bonds:
-                    idx1 = b.atom1.get_parent_index(self.subtype)
-                    idx2 = b.atom2.get_parent_index(self.subtype)
+                    idx1 = b.atom1.get_parent_index(self.object_subtype)
+                    idx2 = b.atom2.get_parent_index(self.object_subtype)
                     if idx2 > idx1: 
                         self.mol_graph.add_edge(idx1, idx2, order=b.order, distance=b.distance)
                         if debug > 0: print(f"SPECIE.GET_GRAPH: edge created between atoms {idx1}:{b.atom1.label} and {idx2}:{b.atom2.label} from Bonds")
@@ -216,9 +216,9 @@ class Specie(object):
                     for idx, at in enumerate(self.atoms):
                         at.set_adjacencies(self.adjmat[idx], self.madjmat[idx], self.adjnum[idx], self.madjnum[idx])
             for at in self.atoms:
-                idx1 = at.get_parent_index(self.subtype)
+                idx1 = at.get_parent_index(self.object_subtype)
                 for b in at.adjacency:
-                    idx2 = self.atoms[b].get_parent_index(self.subtype)
+                    idx2 = self.atoms[b].get_parent_index(self.object_subtype)
                     if idx2 > idx1: 
                         distance = np.linalg.norm(np.array(at.coord) - np.array(self.atoms[b].coord))
                         self.mol_graph.add_edge(idx1, idx2, distance=distance)
@@ -369,7 +369,7 @@ class Specie(object):
             self.atoms = atomlist.copy()
             for idx, at in enumerate(self.atoms):
                 at.add_parent(self, index=idx)
-                if debug > 1: print(f"SPECIE.SET_ATOMS: set parent {self.subtype} to atom, with index={idx}")
+                if debug > 1: print(f"SPECIE.SET_ATOMS: set parent {self.object_subtype} to atom, with index={idx}")
 
         ## If not, that is, if the atom objects must be created from scratch....
         else: 
@@ -408,7 +408,7 @@ class Specie(object):
                 newatom.add_parent(self, index=idx)
                 # Add other parents of the molecule, as parents of the atom
                 for par in self.parents:
-                    parent_indices = self.get_parent_indices(par.subtype)
+                    parent_indices = self.get_parent_indices(par.object_subtype)
                     newatom.add_parent(par, parent_indices[idx])
 
                 newatom.set_charge(int(0)) # initializes charge to 0 as a default.
@@ -431,15 +431,15 @@ class Specie(object):
             if debug > 0: print(f"SPECIE.SET_BONDS: Can't set bonds, specie lacks an rdkit_object: {self.formula}")
             return False
         natoms_rdkit = self.rdkit_obj.GetNumAtoms() 
-        if debug >= 1: print(f"SPECIE.SET_BONDS: {self.formula=}, {self.subtype=} {self.smiles=}")
+        if debug >= 1: print(f"SPECIE.SET_BONDS: {self.formula=}, {self.object_subtype=} {self.smiles=}")
 
         if self.natoms == natoms_rdkit:  
-            if debug >= 2: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are equal: {self.natoms} {natoms_rdkit}")
+            if debug >= 2: print(f"\tNumber of atoms in {self.object_subtype} object and RDKit object are equal: {self.natoms} {natoms_rdkit}")
 
             for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8
                 if debug >= 2: print(f"\t{idx=}", rdkit_atom.GetSymbol(), "Number of bonds in rdkit_obj:", len(rdkit_atom.GetBonds()))
                 if len(rdkit_atom.GetBonds()) == 0:
-                    if debug >= 1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} due to no bonds in {self.subtype} RDKit object")
+                    if debug >= 1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} due to no bonds in {self.object_subtype} RDKit object")
                 else:
                     for b in rdkit_atom.GetBonds():
                         bond_startatom = b.GetBeginAtomIdx()
@@ -468,13 +468,13 @@ class Specie(object):
                         if debug >=1 : print(f"\tBONDS", [(bd.atom1.label, bd.atom2.label, bd.order, round(bd.distance,3)) for bd in self.atoms[idx].bonds])
                     else:
                         if self.natoms == 1:
-                            if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.subtype} object")
+                            if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.object_subtype} object")
                             pass
                         else:
-                            if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.subtype} RDKit object index {idx}. Please check the RDKit object.")
+                            if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.object_subtype} RDKit object index {idx}. Please check the RDKit object.")
                             return False # return False if no bonds are created
         else:
-            if debug >= 1: print(f"\tNumber of atoms in {self.subtype} object and RDKit object are different: {self.natoms} {natoms_rdkit}")
+            if debug >= 1: print(f"\tNumber of atoms in {self.object_subtype} object and RDKit object are different: {self.natoms} {natoms_rdkit}")
             if debug >= 2: print(f"\t{[(i, atom.label) for i, atom in enumerate(self.atoms)]}")
             if debug >= 2: print(f"\t{[(i, atom.GetSymbol()) for i, atom in enumerate(self.rdkit_obj.GetAtoms())]}")       
             non_bonded_atoms = list(range(0, natoms_rdkit))[self.natoms:]
@@ -483,7 +483,7 @@ class Specie(object):
             for idx, rdkit_atom in enumerate(self.rdkit_obj.GetAtoms()): # e.g. idx 0, 1, 2, 3, 4, 5, 6, 7, 8, 9
                 if debug >= 2: print(f"\t{idx=}", rdkit_atom.GetSymbol(), "Number of bonds :", len(rdkit_atom.GetBonds()))
                 if len(rdkit_atom.GetBonds()) == 0:
-                    if debug >= 1: print(f"\tNO BONDS CREATED for {rdkit_atom.GetSymbol()} due to no bonds in {self.subtype} RDKit object")
+                    if debug >= 1: print(f"\tNO BONDS CREATED for {rdkit_atom.GetSymbol()} due to no bonds in {self.object_subtype} RDKit object")
                 else:
                     for b in rdkit_atom.GetBonds():
                         bond_startatom = b.GetBeginAtomIdx()
@@ -513,13 +513,13 @@ class Specie(object):
                                 print(f"\tBONDS", [(bd.atom1.label, bd.atom2.label, bd.order, round(bd.distance,3)) for bd in self.atoms[idx].bonds])
                         else:
                             if self.natoms == 1:
-                                if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.subtype} object")
+                                if debug >=1: print(f"\tNO BONDS CREATED for {self.atoms[idx].label} because it is the only atom in {self.object_subtype} object")
                                 pass
                             else:
-                                if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.subtype} RDKit object index {idx}. Please check the RDKit object.")
+                                if debug >=1: print(f"\tNO BONDS for {self.atoms[idx].label} with {self.object_subtype} RDKit object index {idx}. Please check the RDKit object.")
                                 return False # return False if no bonds are created
                     else :
-                        if debug >=1: print(f"\tNO BONDS for {rdkit_atom.GetSymbol()} with {self.subtype} RDKit object index {idx} because it is an added atom")
+                        if debug >=1: print(f"\tNO BONDS for {rdkit_atom.GetSymbol()} with {self.object_subtype} RDKit object index {idx} because it is an added atom")
         self.has_bonds = True
         return True 
 
@@ -576,9 +576,9 @@ class Specie(object):
         """
         Counts the number of times a given substructure appears inside self.
         The method supports different types of substructures:
-        - Ligands within Complexes (when substructure.subtype == 'ligand' and self.subtype == 'molecule')
-        - Groups within Ligands    (when substructure.subtype == 'group' and self.subtype == 'ligand')
-        - Atoms within Species     (when substructure.type == 'atom' and self.type == 'specie')
+        - Ligands within Complexes (when substructure.object_subtype == 'ligand' and self.object_subtype == 'molecule')
+        - Groups within Ligands    (when substructure.object_subtype == 'group'  and self.object_subtype == 'ligand')
+        - Atoms within Species     (when substructure.object_type == 'atom'      and self.object_type    == 'specie')
         Args:
             substructure (object): The substructure to search for within the current object.
             debug (int, optional): Debug level for comparison functions. Defaults to 0.
@@ -592,14 +592,14 @@ class Specie(object):
         ## Case of Ligands in Complexes or Groups in Ligands
         done = False
         if hasattr(substructure,"subtype") and hasattr(self,"subtype"):
-            if substructure.subtype == 'ligand' and self.subtype == 'molecule':
+            if substructure.object_subtype == 'ligand' and self.object_subtype == 'molecule':
                 if not hasattr(self,"ligands"): self.split_complex()
                 if self.ligands is not None:
                     for l in self.ligands:
                         issame = l.__eq__(substructure, with_graph=True)
                         if issame: occurrence += 1
                     done = True 
-            elif substructure.subtype == 'group' and self.subtype == 'ligand':
+            elif substructure.object_subtype == 'group' and self.object_subtype == 'ligand':
                 if not hasattr(self,"ligands"): self.split_complex()
                 if self.ligands is not None:
                     for l in self.ligands:
@@ -610,7 +610,7 @@ class Specie(object):
                 done = True 
         ## Atoms in Species
         if not done:
-            if substructure.type == 'atom' and self.type == 'specie':
+            if substructure.object_type == 'atom' and self.object_type == 'specie':
                 if not hasattr(self,"atoms"): self.set_atoms()
                 for at in self.atoms:
                     issame = at.__eq__(substructure, at)
@@ -683,8 +683,8 @@ class Specie(object):
         if not indirect: to_print += '------ SCOPE SPECIE Object -------\n'
         if not indirect: to_print += '----------------------------------\n'
         to_print += f' Version               = {self.version}\n'
-        to_print += f' Type                  = {self.type}\n'
-        to_print += f' Sub-Type              = {self.subtype}\n'
+        to_print += f' Type                  = {self.object_type}\n'
+        to_print += f' Sub-Type              = {self.object_subtype}\n'
         if hasattr(self,"name"):         to_print += f' Name                  = {self.name}\n'
         to_print += f' Number of Atoms       = {self.natoms}\n'
         to_print += f' Formula               = {self.formula}\n'
@@ -813,7 +813,7 @@ class Specie(object):
 class Molecule(Specie):
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
         Specie.__init__(self, labels, coord, frac_coord, radii)
-        self.subtype = "molecule"
+        self.object_subtype = "molecule"
 
     def __repr__(self, indirect: bool=False):
         to_print                   = ''
@@ -1085,7 +1085,7 @@ class Ligand(Specie):
             assert len(frac_coord) == len(coord)
             self.frac_coord = frac_coord
         Specie.__init__(self, labels, coord, frac_coord, radii)
-        self.subtype  = "ligand"
+        self.object_subtype  = "ligand"
 
     ######
     def __repr__(self, indirect: bool=False):
@@ -1684,7 +1684,7 @@ class Group(Specie):
             assert len(frac_coord) == len(coord)
             self.frac_coord = frac_coord
         Specie.__init__(self, labels, coord, frac_coord, radii)
-        self.subtype = "group"
+        self.object_subtype = "group"
 
     ######
     def __repr__(self, indirect: bool=False) -> str:
@@ -1829,7 +1829,7 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
     ## 4) Imports Parents if available
     if parent is not None:
         new_molec.add_parent(parent, indices, overwrite=False, debug=debug) 
-        if debug > 0: print(f"IMPORT MOLEC: parent {parent.subtype=} added with {indices=}")
+        if debug > 0: print(f"IMPORT MOLEC: parent {parent.object_subtype=} added with {indices=}")
     else:
         if debug > 0: print(f"IMPORT MOLEC: parent is None") 
 
@@ -1867,7 +1867,7 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
         # Metals         !! now, metals are taken from molecule.atoms. Otherwise it wasn't working
         new_molec.metals = []
         for at in new_molec.atoms:
-            if at.subtype == "metal": new_molec.metals.append(at)
+            if at.object_subtype == "metal": new_molec.metals.append(at)
 
         # Checks and fixes ligands_rdkit_obj if necessary
         try:
@@ -1918,7 +1918,7 @@ def import_ligand(lig: object, parent: object=None, debug: int=0) -> object:
     ## Parents
     if parent is not None:
         new_ligand.add_parent(parent, indices, overwrite=False, debug=debug)
-        if debug > 0: print(f"IMPORT LIGAND: parent {parent.subtype} added with {indices=}") 
+        if debug > 0: print(f"IMPORT LIGAND: parent {parent.object_subtype} added with {indices=}") 
     else:
         if debug > 0: print(f"IMPORT LIGAND: parent is None") 
 
@@ -1998,7 +1998,7 @@ def import_group(old_group: object, parent: object=None, debug: int=0) -> object
     ## Parents
     if parent is not None:
         new_group.add_parent(parent, indices, overwrite=False, debug=debug)
-        if debug > 0: print(f"IMPORT GROUP: parent {parent.subtype} added with {indices=}") 
+        if debug > 0: print(f"IMPORT GROUP: parent {parent.object_subtype} added with {indices=}") 
     else:
         if debug > 0: print(f"IMPORT GROUP: parent is None") 
 

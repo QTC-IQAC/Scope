@@ -35,8 +35,8 @@ class Cell(object):
             ValueError: If both `cell_vector` and `cell_param` are not provided.
         """
         self.version              = "1.0"
-        self.type                 = "cell"
-        self.subtype              = "cell"
+        self.object_type          = "cell"
+        self.object_subtype       = "cell"
         self.origin               = "created"
         self.name                 = name
         self.labels               = labels 
@@ -351,7 +351,7 @@ class Cell(object):
 
         ## Case of Species inside self
         if hasattr(substructure,"type"):
-            if substructure.type == 'specie':
+            if substructure.object_type == 'specie':
                 for mol in self.molecules:
                     if mol.__eq__(substructure, with_graph=True): occurrence += 1
         return occurrence
@@ -645,8 +645,8 @@ class Cell(object):
         if not indirect: to_print += '   >>> SCOPE CELL Object >>>   \n'
         if not indirect: to_print += '-------------------------------\n'
         to_print += f' Version               = {self.version}\n'
-        to_print += f' Type                  = {self.type}\n'
-        to_print += f' SubType               = {self.subtype}\n'
+        to_print += f' Type                  = {self.object_type}\n'
+        to_print += f' SubType               = {self.object_subtype}\n'
         to_print += f' Name                  = {self.name}\n'
         to_print += f' Num Atoms             = {self.natoms}\n'
         to_print += f' Cell Parameters a:c   = {self.cell_param[0:3]}\n'
@@ -707,7 +707,7 @@ def import_cell(old_cell: object, debug: int=0) -> object:
 
     # If cell_param and cell_vector are None, the creation of the cell will fail
     new_cell            = Cell(name, labels, coord, cell_vector, cell_param)
-    new_cell.subtype    = "cell"
+    new_cell.object_subtype = "cell"
     new_cell.origin     = "import_cell"
     if debug > 0: print(f"IMPORT CELL: importing cell {new_cell.name}")
 

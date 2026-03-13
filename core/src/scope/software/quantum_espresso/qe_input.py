@@ -23,9 +23,9 @@ def gen_qe_input(comp: object, debug: int=0):
     if not hasattr(istate,"atoms"):        istate.get_atoms()
 
     ## 2-Cell or Molecule?
-    if   comp.source.type == "cell":   system_type = "cell"
-    elif comp.source.type == "specie": system_type = "molecule"
-    else: print(f"GEN_QE_input: unrecognised {comp.source.type=}")
+    if   comp.source.object_type == "cell":   system_type = "cell"
+    elif comp.source.object_type == "specie": system_type = "molecule"
+    else: print(f"GEN_QE_input: unrecognised {comp.source.object_type=}")
 
     ## 3-Determines the PP_Library path
     if not hasattr(comp.qc_data,"pp_library"): f"PP_Library could not be found. Please set it in the qc_data.section of the Job"
