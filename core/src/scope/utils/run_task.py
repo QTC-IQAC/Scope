@@ -85,8 +85,6 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
         if debug > 0: print(f"- Starting JOB {inp_idx+1}/{len(inp_paths)} -")
         if debug > 0: print(f"#####################")
         
-        print("ABSPATH:", os.path.abspath('.'))
-
         #### Step 1.1-Reads Input Data
         user_environment = set_environment_data(inp_path, section="&environment", debug=0)  ## For completeness, but env data is read in global_env.read_job_specs below 
         options          = set_options_data(inp_path, section="&options"        , debug=0)
@@ -134,7 +132,6 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
 
             print(f"RUN_TASK, step 2.2: Checking its job_data")
             ## 2.2 If job exists, it checks for input changes (also in qc_data for the computations)
-            print("ABSPATH:", os.path.abspath('.'))
             if exists: this_job.check_job_data(inp_path=inp_path, debug=debug)
 
             ## 2.3-Checks that all requisites and constrains of the job are fulfilled
