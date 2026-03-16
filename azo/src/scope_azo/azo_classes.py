@@ -513,7 +513,7 @@ class System_azo(System):
     #######################
     def get_mets(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, force: bool=False, p_sh: float=0.0002, debug: int=0):
         '''
-        Find the minimum-energy transition structure (METS) for thermal isomerization.
+        Find the minimum-energy transition structure (METS) for thermal isomerization (cis-to-trans).
 
         This method scans the available sources in the system and builds a list of
         candidate "barrier" structures at the requested temperature:
@@ -523,9 +523,9 @@ class System_azo(System):
           `target_state` is a minimum on the triplet PES (`state.isminimum`) and
           `skip_triplets` is `False`.
 
-        Energies are compared in atomic units (au):
-        - Singlets use `Gtot(T)`.
-        - Triplets use the corrected free energy `Gtot_eff(T)`.
+        Energies are compared in atomic units (au) using 'Gtot_eff(T):
+        - For Singlets, it is equal to `Gtot(T)`.
+        - For triplets, `Gtot_eff(T)` is Gtot(T) plus a penalty associated with the ISC processes.
 
         The source with the lowest collected energy is stored in `self.mets` and
         returned.
@@ -537,6 +537,7 @@ class System_azo(System):
         skip_triplets : bool, default=False    If `True`, triplet minima are ignored and only singlet TS candidates are used.
         force : bool, default=False            If `False` and `self.mets` already exists, the cached value is returned.
                                                If `True`, candidates are recomputed from current sources/results.         
+        p_sh : float, optional                 The probability of surface hopping. The default is 0.0002.
         debug : int, default=0                 Verbosity level for diagnostic prints.
 
         Returns
@@ -1252,7 +1253,7 @@ class State_azo(State):
     ################################
     ## Thermal Properties for Azo ##
     ################################
-    def get_gtot_eff(self, temp: float=298.15, p_sh: float=0.0002, debug: int=0):
+    def get_gtot_eff(self, temp: float=298.15, p_sh: float=0.0002, debug:int=0):
         from math import log as ln
         '''
         Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
@@ -1295,8 +1296,8 @@ class State_azo(State):
             # Compute the Penalty, based on Surface Hopping Probability (p_sh)
             dx = - constants.R_J * temp * ln(p_sh)     # J/mol
             dx /= 1000                                 # kJ/mol
-            if debug>0: print(f'STATE_AZO.GET_Gtot_EFF: Adding penalty of {dx*constants.kJmol2kcalmol:.2f} kcal/mol.')
-            dx *= constants.kJmol2har
+            if debug>0: print(f'STATE_AZO.GET_Gtot_EFF: Adding psh-related penalty of {dx*constants.kJ2kcal:.2f} kcal/mol.')
+            dx   *= constants.kJmol2har
         else: 
             dx = 0
 

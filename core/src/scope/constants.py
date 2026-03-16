@@ -30,6 +30,7 @@ angs2bohr       = 1/bohr2angs
 
 # Energy
 har2kJmol       = 2625.5002
+har2kJ          = 2625.5002
 har2cm          = 219474.6
 har2eV          = 27.211399
 eV2har          = 0.03674930495
@@ -41,6 +42,7 @@ kcal2kJ         = 4.184             # without 'mol'
 
 # Energy Inverse
 kJmol2har       = 1/har2kJmol
+kJ2har          = 1/har2kJ
 kJmol2kcalmol   = 1/kcalmol2kJmol   # with 'mol'
 kJ2kcal         = 1/kcal2kJ         # without 'mol'
 

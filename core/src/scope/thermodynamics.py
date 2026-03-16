@@ -134,6 +134,7 @@ def find_t12(templist, dGlist: list):
 def eyring_equation(e_ground: float, e_barrier: float, temp: float=298.15, debug: int=0):
     '''
     Computes half-life time in seconds using Eyring equation.
+    For use in TST of adiabatic processes
     
     Parameters
     ----------
