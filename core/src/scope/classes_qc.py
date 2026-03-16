@@ -118,7 +118,6 @@ def plot_overlap_vnms_diagonal(vnmsA: object, vnmsB: object):
 def plot_overlap_vnms(vnmsA: object, vnmsB: object):
     import matplotlib.pyplot as plt
     overlap_matrix = np.array([[a.overlap(b) for b in vnmsB] for a in vnmsA])
-
     plt.figure(figsize=(10, 8))
     plt.imshow(overlap_matrix, aspect='auto', interpolation='nearest', cmap='viridis')
     plt.colorbar(label='Overlap')
@@ -126,64 +125,6 @@ def plot_overlap_vnms(vnmsA: object, vnmsB: object):
     plt.ylabel('vnmsA index')
     plt.title('Overlap Matrix: vnmsA vs vnmsB')
     plt.show()
-
-def plot_ir_spectrum(vnms, xmin=None, xmax=None, broadening=10.0, points=2000, kind="gaussian"):
-    import matplotlib.pyplot as plt
-    """
-    Simulate and plot IR spectrum from a list of VNM objects.
-
-    Parameters
-    ----------
-    vnms : list of VNM
-        List of vibrational normal mode objects.
-    xmin, xmax : float, optional
-        Frequency range in cm^-1. If None, automatically set from vnms.
-    broadening : float
-        Half-width-at-half-maximum (HWHM) for Lorentzian,
-        or standard deviation (sigma) for Gaussian (in cm^-1).
-    points : int
-        Number of points in spectrum.
-    kind : str
-        "gaussian" or "lorentzian"
-    """
-
-    # Extract frequencies and intensities
-    freqs       = np.array([v.freq_cm for v in vnms])
-    intensities = np.array([v.IR_int for  v in vnms])
-
-    # Define range
-    if xmin is None:  xmin = max(0, freqs.min() - 100)
-    if xmax is None:  xmax = freqs.max() + 100
-
-    x = np.linspace(xmin, xmax, points)
-    spectrum = np.zeros_like(x)
-
-    # Build spectrum
-    for f, I in zip(freqs, intensities):
-        if kind.lower() == "gaussian":
-            spectrum += I * np.exp(-0.5 * ((x - f)/broadening)**2)
-        elif kind.lower() == "lorentzian":
-            spectrum += I * (broadening**2 / ((x - f)**2 + broadening**2))
-        else:
-            raise ValueError("kind must be 'gaussian' or 'lorentzian'")
-
-    # Plot
-    plt.figure(figsize=(8,4))
-    plt.plot(x, spectrum, 'k-', lw=1.5)
-    plt.fill_between(x, 0, spectrum, color="grey", alpha=0.4)
-
-    # Optional: add sticks
-    for f, I in zip(freqs, intensities):
-        plt.vlines(f, 0, I, color="r", lw=1, linestyle="--")
-
-    plt.xlabel("Wavenumber (cm$^{-1}$)")
-    plt.ylabel("Intensity (a.u.)")
-    plt.title("Simulated IR Spectrum")
-    plt.gca().invert_xaxis()  # convention in spectroscopy
-    plt.tight_layout()
-    plt.show()
-
-    return x, spectrum
 
 ##############################
 ## Electronic Excited State ##

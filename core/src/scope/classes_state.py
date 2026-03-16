@@ -397,6 +397,53 @@ class State(object):
             if self.num_neg_freqs <= 3 and VNMs[0].freq_cm > -50: self.almost_minimum = True
             else:                                                 self.almost_minimum = False
 
+    def get_ir_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, debug: int=0):
+        from scope.operations.vecs_and_mats import build_spectrum
+        """
+        Simulate and plot the IR spectrum associated with a State.
+
+        Parameters
+        ----------
+        vnms : list of VNM                       List of vibrational normal mode objects.
+        vmin, vmax : float, optional             Frequency range in cm^-1. If None, automatically set from vnms.
+        broadening : float                       Standard deviation (sigma) for Gaussian (in cm^-1).         
+        function : str                           "gaussian", "lorentzian" or "laplacian"
+        """
+
+        # Extract frequencies and intensities
+        freqs       = np.array([v.freq_cm for v in self.VNMs])
+        intensities = np.array([v.IR_int for  v in self.VNMs])
+
+        # Define range
+        if vmin is None:  vmin = -100
+        if vmax is None:  vmax = freqs.max() + 100
+        xrange = np.linspace(vmin, vmax, 2000)
+        self.ir_spec_x, self.ir_spec_y = build_spectrum(xrange, freqs, intensities, function=function, sigma=sigma, debug=debug)
+        return self.ir_spec_x, self.ir_spec_y
+
+    def plot_ir_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, debug: int=0):
+        import matplotlib.pyplot as plt
+        if not hasattr(self,"ir_spec_x"): self.get_ir_spectrum(vmin=vmin, vmax=vmax, function=function, sigma=sigma, debug=debug)
+
+        x, y = self.ir_spec_x, self.ir_spec_y
+        spectrum = np.zeros_like(x)
+
+        freqs       = np.array([v.freq_cm for v in self.VNMs])
+        intensities = np.array([v.IR_int for  v in self.VNMs])
+        
+        # Plot
+        plt.figure(figsize=(8,4))
+        plt.plot(x, y, 'k-', lw=1.5)
+        plt.fill_between(x, 0, spectrum, color="grey", alpha=0.4)
+        # Add sticks
+        for f, I in zip(freqs, intensities):
+            plt.vlines(f, 0, I, color="r", lw=1, linestyle="--")
+        plt.xlabel("Wavenumber (cm$^{-1}$)")
+        plt.ylabel("Intensity (a.u.)")
+        plt.title("Simulated IR Spectrum")
+        plt.tight_layout()
+        plt.show()
+
 ########################################
 #### Connection with Excited States ####
 ########################################
