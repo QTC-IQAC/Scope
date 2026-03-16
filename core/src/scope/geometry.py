@@ -333,23 +333,96 @@ def solve_dihedral(labels: list, coord: list, at0: int, at1: int, at2: int, at3:
         1 - left: (at0-at3)
         2 - right: (at2-at5)
 
-    Combinations are done in a grid of 64x64 steps, from -180 to 180 degrees.
-    The first valid combination is returned. 
+    Candidate dihedral values are explored starting from the current adjacent
+    dihedrals and expanding outward. A side is only rotated if removing its
+    bond splits the graph into two blocks; removing both side bonds together
+    must yield three blocks before both are rotated in the same search.
+    The first valid combination is returned.
     """
-    from itertools import product
-    from scope.connectivity   import get_adjmatrix
-    
-    ## Creates list of values that will be evaluated
-    rot_steps               = np.linspace(-180,180, 64).astype(int)           
+    from copy import deepcopy
+    from itertools import chain
+    from scipy.sparse import csr_matrix
+    from scipy.sparse.csgraph import reverse_cuthill_mckee
+    from scope.connectivity import get_adjmatrix, get_blocks
 
-    ## Computes left and right dihedral angles 
-    left_dih  = np.degrees(get_dihedral(coord[at0],coord[at1],coord[at2],coord[at3]))
-    right_dih = np.degrees(get_dihedral(coord[at2],coord[at3],coord[at4],coord[at5]))
-    if debug>0: print(f'SOLVE_DIHEDRAL: Original adjacent dihedral angles {left_dih=}, {right_dih=}')
+    def get_nblocks_for_adjmat(adjmat, adjnum):
+        degree  = np.diag(adjnum)
+        lap     = adjmat - degree
+        graph   = csr_matrix(lap)
+        perm    = reverse_cuthill_mckee(graph)
+        dense   = graph[perm, :][:, perm].toarray()
+        startlist, endlist = get_blocks(dense)
+        return len(startlist)
 
-    rot_steps_ordered_left  = rot_steps[np.argsort(np.abs(rot_steps - left_dih))]
-    rot_steps_ordered_right = rot_steps[np.argsort(np.abs(rot_steps - right_dih))]
-    rot_combinations = list(product(rot_steps_ordered_left, rot_steps_ordered_right))
+    def can_rotate_dihedral(adjmat, adjnum, bond_a, bond_b):
+        adjmat_try = deepcopy(adjmat)
+        adjnum_try = deepcopy(adjnum)
+
+        if adjmat_try[bond_a][bond_b] == 0 or adjmat_try[bond_b][bond_a] == 0:
+            return False
+        adjmat_try[bond_a][bond_b] = 0
+        adjmat_try[bond_b][bond_a] = 0
+        adjnum_try[bond_a] -= 1
+        adjnum_try[bond_b] -= 1
+        return get_nblocks_for_adjmat(adjmat_try, adjnum_try) == 2
+
+    def can_rotate_adjacent_dihedrals(adjmat, adjnum):
+        adjmat_try = deepcopy(adjmat)
+        adjnum_try = deepcopy(adjnum)
+        for bond_a, bond_b in ((at1, at2), (at3, at4)):
+            if adjmat_try[bond_a][bond_b] == 0 or adjmat_try[bond_b][bond_a] == 0:
+                return False
+            adjmat_try[bond_a][bond_b] = 0
+            adjmat_try[bond_b][bond_a] = 0
+            adjnum_try[bond_a] -= 1
+            adjnum_try[bond_b] -= 1
+        return get_nblocks_for_adjmat(adjmat_try, adjnum_try) == 3
+
+    def get_rot_combinations(rot_steps_left, rot_steps_right):
+        nleft   = len(rot_steps_left)
+        nright  = len(rot_steps_right)
+        nlayers = max(nleft, nright)
+
+        for layer in range(nlayers):
+            if layer < nright:
+                yield rot_steps_left[0], rot_steps_right[layer]
+            if layer > 0 and layer < nleft:
+                yield rot_steps_left[layer], rot_steps_right[0]
+            for idx in range(1, layer):
+                if idx < nleft and layer < nright:
+                    yield rot_steps_left[idx], rot_steps_right[layer]
+                if layer < nleft and idx < nright:
+                    yield rot_steps_left[layer], rot_steps_right[idx]
+            if layer > 0 and layer < nleft and layer < nright:
+                yield rot_steps_left[layer], rot_steps_right[layer]
+
+    ## Computes left and right dihedral angles
+    rot_steps = np.linspace(-180,180,64).astype(int)
+    left_dih  = np.degrees(get_dihedral(coord[at0], coord[at1], coord[at2], coord[at3]))
+    right_dih = np.degrees(get_dihedral(coord[at2], coord[at3], coord[at4], coord[at5]))
+    if debug > 0: print(f'SOLVE_DIHEDRAL: Original adjacent dihedral angles {left_dih=}, {right_dih=}')
+
+    rot_steps_ordered_left  = rot_steps[np.argsort(np.abs(((rot_steps - left_dih + 180) % 360) - 180))]
+    rot_steps_ordered_right = rot_steps[np.argsort(np.abs(((rot_steps - right_dih + 180) % 360) - 180))]
+
+    can_rotate_left  = can_rotate_dihedral(adjmat_ref, adjnum_ref, at1, at2)
+    can_rotate_right = can_rotate_dihedral(adjmat_ref, adjnum_ref, at3, at4)
+    can_rotate_both  = can_rotate_adjacent_dihedrals(adjmat_ref, adjnum_ref)
+    if debug > 0: print(f'SOLVE_DIHEDRAL: {can_rotate_left=}, {can_rotate_right=}, {can_rotate_both=}')
+
+    if can_rotate_left and can_rotate_right and can_rotate_both:
+        rot_combinations = get_rot_combinations(rot_steps_ordered_left, rot_steps_ordered_right)
+    elif can_rotate_left and can_rotate_right:
+        rot_combinations = chain(
+            get_rot_combinations(rot_steps_ordered_left, np.array([rot_steps_ordered_right[0]])),
+            get_rot_combinations(np.array([rot_steps_ordered_left[0]]), rot_steps_ordered_right))
+    elif can_rotate_left:
+        rot_combinations = get_rot_combinations(rot_steps_ordered_left, np.array([rot_steps_ordered_right[0]]))
+    elif can_rotate_right:
+        rot_combinations = get_rot_combinations(np.array([rot_steps_ordered_left[0]]), rot_steps_ordered_right)
+    else:
+        print("SOLVE_DIHEDRAL: Adjacent dihedrals are not rotatable. Returning original coordinates.")
+        return False, coord
 
     worked = False
     for angle1, angle2 in rot_combinations:
