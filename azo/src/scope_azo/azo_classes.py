@@ -20,7 +20,7 @@ class System_azo(System):
         # Correct SMILES strings, if needed.
         is_correct, corrected_smiles = self.correct_smiles(smiles, debug) 
         if not is_correct:
-            print(f"Warning: Initialization of {self.name} completed, but SMILES lacks a valid azo group.")
+            print(f"SYSTEM_AZO: WARNING. Initialization of {self.name} completed, but SMILES lacks a valid azo group.")
 
         self.smiles = corrected_smiles
         self.dihedral_indices = self.get_dihedral_indices()
