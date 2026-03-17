@@ -1183,7 +1183,9 @@ class Molecule_azo(Molecule):
 
     def __repr__(self):
         to_print = ""
-        to_print += f'---------- SCOPE Molecule_azo Object ------------\n'
+        to_print += f'---------------------------------------\n'
+        to_print += f'------ SCOPE Molecule_azo Object ------\n'
+        to_print += f'---------------------------------------\n'
         to_print += Molecule.__repr__(self, indirect=True)
         to_print += f"{self.get_geometry_summary(do_print=False)}" 
         return to_print
@@ -1317,7 +1319,9 @@ class State_azo(State):
     ######
     def __repr__(self):
         to_print = ""
-        to_print += f'---------- SCOPE State_azo Object ------------\n'
+        to_print += f'------------------------------------\n'
+        to_print += f'------ SCOPE State_azo Object ------\n'
+        to_print += f'------------------------------------\n'
         to_print += State.__repr__(self, indirect=True)
         to_print += f"{self.get_geometry_summary(do_print=False)}" 
         return to_print

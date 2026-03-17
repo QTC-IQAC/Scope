@@ -870,9 +870,9 @@ class State(object):
 #######################
     def __repr__(self, indirect: bool=False) -> None:
         to_print = ''
-        if not indirect: to_print += f'---------------------------------------------------\n'
-        if not indirect: to_print +=  '   STATE                                           \n'
-        if not indirect: to_print += f'---------------------------------------------------\n'
+        if not indirect: to_print += f'--------------------------------\n'
+        if not indirect: to_print += f'------ SCOPE STATE Object ------\n'  
+        if not indirect: to_print += f'--------------------------------\n'
         to_print += f' Name                  = {self.name}\n'
         if hasattr(self._source,"name"):        to_print += f' Source Name           = {self._source.name}\n'
         if hasattr(self._source,"object_type"): to_print += f' Source Type           = {self._source.object_type}\n'

@@ -79,9 +79,9 @@ class VNM(object):
         else:         return False
 
     def __repr__(self) -> None:
-        to_print  = f'-----------------------------\n'
-        to_print +=  '   Vibrational Normal Mode   \n'
-        to_print += f'-----------------------------\n'
+        to_print  = f'----------------------------------\n'
+        to_print += f'------   SCOPE VNM Object    -----\n'
+        to_print += f'----------------------------------\n'
         to_print += f' Index                  = {self.index}\n'
         to_print += f' Freq (cm-1)            = {self.freq_cm}\n'
         to_print += f' IR Intensity (KM/Mole) = {self.IR_int}\n'
@@ -159,9 +159,9 @@ class ExcitedState(object):
         if hasattr(self,"original_energy"): self.energy      = self.original_energy
 
     def __repr__(self):
-        to_print  = f'-----------------------------\n'
-        to_print +=  '   Electronic Excited State  \n'
-        to_print += f'-----------------------------\n'
+        to_print  = f'-------------------------------------------\n'
+        to_print +=  '------ SCOPE Elec. Exc. State Object ------\n' 
+        to_print  = f'-------------------------------------------\n'
         to_print += f' Index                  = {self.index}\n'
         to_print += f' Energy (eV)            = {self.energy} eV\n'
         to_print += f' Wavelength (nm)        = {self.wavelength} nm\n'
