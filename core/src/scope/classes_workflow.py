@@ -599,7 +599,7 @@ class Job(object):
             new_comp.set_name()
             new_comp.set_paths()
             new_comp.qc_data._mod_attr("fctype","calcall")
-            print("JOB.SET_CONTINUATION_COMP: recalcFC changed to calcAll")
+            print("JOB.SET_CONTINUATION_COMP: recalcFC changed to calcAll in G16 Input")
             update_fstate = False ## In TS searches, it is preferable to retry from istate, rather than continuing from fstate
 
         elif typ == "scf":
@@ -647,8 +647,6 @@ class Job(object):
                 print("JOB.SET_CONTINUATION_COMP: fstate of new computation remains as:", new_comp.qc_data.fstate)
     
         return new_comp
-
-                 
 
 ####################
 ### Registration ###
