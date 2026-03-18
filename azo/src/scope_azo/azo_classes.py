@@ -18,7 +18,7 @@ class System_azo(System):
         self.name             = name
 
         # Correct SMILES strings, if needed.
-        is_correct, corrected_smiles = self.correct_smiles(smiles, debug) 
+        is_correct, corrected_smiles = self.check_smiles(smiles, debug) 
         if not is_correct:
             print(f"SYSTEM_AZO: WARNING. Initialization of {self.name} completed, but SMILES lacks a valid azo group.")
 
@@ -29,7 +29,7 @@ class System_azo(System):
     #################
     #### Results ####
     #################
-    def correct_smiles(self, smiles: str, debug: int = 0):
+    def check_smiles(self, smiles: str, debug: int = 0):
         """
         Checks if the SMILES string is in the trans isomer configuration. 
         If it is cis, it corrects it to trans. Returns a tuple of (is_correct, smiles).
