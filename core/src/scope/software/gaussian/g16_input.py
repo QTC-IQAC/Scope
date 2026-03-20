@@ -101,7 +101,10 @@ def gen_g16_input(comp, debug: int=0):
 
         ## 2.5-Grimme
         if functional == "wb97xd": comp.qc_data._mod_attr("is_grimme", False)       ## Grimme Disperson Corrections are already implemented in wb97xd
-        if comp.qc_data.is_grimme: commandline.append(" EmpiricalDispersion=GD3BJ")
+        if comp.qc_data.is_grimme: 
+            if   comp.qc_data.grimme_type == 'd3bj': commandline.append(" EmpiricalDispersion=GD3BJ")
+            elif comp.qc_data.grimme_type == 'd3':   commandline.append(" EmpiricalDispersion=GD3")
+            elif comp.qc_data.grimme_type == 'd2':   commandline.append(" EmpiricalDispersion=GD2")
 
         ## 2.6-Integral Grid
         if tight_opt: commandline.append(" Int=UltraFine")

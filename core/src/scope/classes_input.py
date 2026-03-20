@@ -201,8 +201,10 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"loose_opt"):      data._add_attr("loose_opt", False)
         if not hasattr(data,"tight_opt"):      data._add_attr("tight_opt", False)
         if not hasattr(data,"is_grimme"):      data._add_attr("is_grimme", False)
-        if not hasattr(data,"grimme_type"):    data._add_attr("grimme_type", "d2")
         if not hasattr(data,"ultrafine_grid"): data._add_attr("ultrafine_grid", False)
+
+        if data.is_grimme: 
+            if not hasattr(data,"grimme_type"): data._add_attr("grimme_type", "d3bj")
 
         if data.comp_type == "td" or data.comp_type == "tda":
             if not hasattr(data,"td_type"):    data._add_attr("td_type", "singlets")  ## Will be ignored if specie.spin > 0
