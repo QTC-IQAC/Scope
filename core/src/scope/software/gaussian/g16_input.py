@@ -56,14 +56,11 @@ def gen_g16_input(comp, debug: int=0):
             raise ValueError("G16_INPUT: functional", functional, "not recognized. Implemented are pbe, wb97xd, b3lyp, b3lyp* and b3lyp**")
 
         ## 2.3-Basis
-        if   basis == "def2sv":    commandline.append(" def2SV")
-        elif basis == "def2svp":   commandline.append(" def2SVP")
-        elif basis == "def2tzv":   commandline.append(" def2TZV")
-        elif basis == "def2tzvp":  commandline.append(" def2TZVP")
-        elif basis == "def2tzvpp": commandline.append(" def2TZVPP")
-        elif basis == "sto-3g":    commandline.append(" STO-3G")
+        basis = basis.lower()
+        if basis in BASIS_ALIASES:
+            commandline.append(f" {BASIS_ALIASES[basis]}")
         else: 
-            raise ValueError("G16_INPUT: basis", basis, "not recognized. Implemented are def2sv, def2svp, def2tzv, def2tzvp, def2tzvpp and sto-3g")
+            raise ValueError("G16_INPUT: basis", basis, f"not recognized. Implemented are {SUPPORTED_BASIS_NAMES}")
 
         ## 2.4-Jobtype
         if comp_type == "opt" or comp_type == "opth" or comp_type == "opt&freq": 
@@ -190,4 +187,69 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
 
         os.chmod(comp.sub_path, 0o777)
 
-###################################################
+################
+## BASIS SETS ##
+################
+BASIS_ALIASES = {
+    "def2sv": "def2SV",
+    "def2svp": "def2SVP",
+    "def2tzv": "def2TZV",
+    "def2tzvp": "def2TZVP",
+    "def2tzvpp": "def2TZVPP",
+    "sto-3g": "STO-3G",
+    "sto-3g*": "STO-3G*",
+    "3-21g": "3-21G",
+    "3-21g*": "3-21G*",
+    "6-21g": "6-21G",
+    "6-21g*": "6-21G*",
+    "6-21g(d)": "6-21G*",
+    "6-21g**": "6-21G**",
+    "6-21g(d,p)": "6-21G(d,p)",
+    "4-31g": "4-31G",
+    "4-31g*": "4-31G*",
+    "4-31g(d)": "4-31G*",
+    "4-31g**": "4-31G**",
+    "4-31g(d,p)": "4-31G(d,p)",
+    "6-31g": "6-31G",
+    "6-31g*": "6-31G(d)",
+    "6-31g(d)": "6-31G(d)",
+    "6-31g**": "6-31G(d,p)",
+    "6-31g(d,p)": "6-31G(d,p)",
+    "6-31+g": "6-31+G",
+    "6-31+g*": "6-31+G(d)",
+    "6-31+g(d)": "6-31+G(d)",
+    "6-31+g**": "6-31+G(d,p)",
+    "6-31+g(d,p)": "6-31+G(d,p)",
+    "6-31++g": "6-31++G",
+    "6-31++g*": "6-31++G(d)",
+    "6-31++g(d)": "6-31++G(d)",
+    "6-31++g**": "6-31++G(d,p)",
+    "6-31++g(d,p)": "6-31++G(d,p)",
+    "6-311g": "6-311G",
+    "6-311g*": "6-311G(d)",
+    "6-311g(d)": "6-311G(d)",
+    "6-311g**": "6-311G(d,p)",
+    "6-311g(d,p)": "6-311G(d,p)",
+    "6-311+g": "6-311+G",
+    "6-311+g*": "6-311+G(d)",
+    "6-311+g(d)": "6-311+G(d)",
+    "6-311+g**": "6-311+G(d,p)",
+    "6-311+g(d,p)": "6-311+G(d,p)",
+    "6-311++g": "6-311++G",
+    "6-311++g*": "6-311++G(d)",
+    "6-311++g(d)": "6-311++G(d)",
+    "6-311++g**": "6-311++G(d,p)",
+    "6-311++g(d,p)": "6-311++G(d,p)",
+    "cc-pvdz": "cc-pVDZ",
+    "cc-pvtz": "cc-pVTZ",
+    "cc-pvqz": "cc-pVQZ",
+    "cc-pv5z": "cc-pV5Z",
+    "cc-pv6z": "cc-pV6Z",
+    "aug-cc-pvdz": "aug-cc-pVDZ",
+    "aug-cc-pvtz": "aug-cc-pVTZ",
+    "aug-cc-pvqz": "aug-cc-pVQZ",
+    "aug-cc-pv5z": "aug-cc-pV5Z",
+    "aug-cc-pv6z": "aug-cc-pV6Z",
+}
+
+SUPPORTED_BASIS_NAMES = ", ".join(BASIS_ALIASES.keys())

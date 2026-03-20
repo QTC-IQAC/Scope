@@ -16,18 +16,47 @@ class System_azo(System):
         System.__init__(self, name)
         self.object_subtype   = "system_azo"        
         self.name             = name
-        self.smiles           = smiles
+
+        # Correct SMILES strings, if needed.
+        is_correct, corrected_smiles = self.check_smiles(smiles, debug) 
+        if not is_correct:
+            print(f"SYSTEM_AZO: WARNING. Initialization of {self.name} completed, but SMILES lacks a valid azo group.")
+
+        self.smiles = corrected_smiles
         self.dihedral_indices = self.get_dihedral_indices()
         self.results          = dict()
 
     #################
     #### Results ####
     #################
+    def check_smiles(self, smiles: str, debug: int = 0):
+        """
+        Checks if the SMILES string is in the trans isomer configuration. 
+        If it is cis, it corrects it to trans. Returns a tuple of (is_correct, smiles).
+        """
+        # Check for both possible string representations of a cis azo group
+        if '/N=N\\' in smiles or '\\N=N/' in smiles:
+            if debug > 0: 
+                print("AZO_SYSTEM.CHECK_SMILES: Received SMILES of CIS isomer, converting to TRANS.")
+            # Replace cis structures with their corresponding trans structures
+            smiles = smiles.replace('/N=N\\', '/N=N/').replace('\\N=N/', '\\N=N\\')
+            correct = True
+        # Check for both possible string representations of an already trans azo group
+        elif '/N=N/' in smiles or '\\N=N\\' in smiles: 
+            if debug > 0:   print("AZO_SYSTEM.CHECK_SMILES: Received SMILES of TRANS isomer. OK.") 
+            correct = True
+        else: 
+            if debug > 0:   print("AZO_SYSTEM.CHECK_SMILES: ERROR. Could not find a stereodefined Azo group.")
+            correct = False
+        return correct, smiles
+
+    #####
     def add_result(self, result: object, overwrite: bool=False):
         result._object = self
         if overwrite or result.key not in self.results.keys():  
             self.results[result.key] = result
 
+    ######
     def remove_result(self, key: str):
         return self.results.pop(key, None)
 
@@ -184,12 +213,8 @@ class System_azo(System):
         from scope_azo.azo_functions import get_3D
 
         if debug > 0: print(f"AZO.CREATE_TRANS: Creating trans isomer for {self.name}")
-        smiles = self.smiles
 
-        if '/N=N\\' in smiles:
-            if debug > 0: print(f"AZO.CREATE_TRANS: Received SMILES of CIS isomer, replacing '\\' with '/' for {self.name}")
-            smiles = smiles.replace('/N=N\\', '/N=N/')
-
+        smiles        = self.smiles
         labels, coord = get_3D(smiles)
         coord         = centercoords(coord, 0)
         trans         = Molecule_azo(labels, coord)

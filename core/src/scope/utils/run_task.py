@@ -215,7 +215,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                                 new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
                                 if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
                             elif comp.type == 'ts':
-                                if comp.qc_data.recalcfc != "calcall":
+                                if comp.qc_data.fctype != "calcall":
                                     if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=ts")  
                                     new_comp = this_job.set_continuation_computation(comp, "ts", debug=debug)
                                 else:

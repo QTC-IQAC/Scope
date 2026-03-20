@@ -3,6 +3,19 @@ import sys
 from argparse import ArgumentParser
 from scope.read_write      import load_binary, clear_screen
 from scope_azo.azo_classes import System_azo
+
+def sanitize_smiles(smiles_str: str) -> str:
+    """
+    Cleans extra slashes introduced by the bash terminal.
+    Converts inputs like '//N=N\\\\' to '/N=N\\'
+    """
+    if smiles_str is None:
+        return None
+    # Replace double forward slashes with a single one
+    cleaned = smiles_str.replace('//', '/')
+    # Replace literal double backslashes with a single one
+    cleaned = cleaned.replace(r'\\', '\\')
+    return cleaned
   
 def path_exists(path):
     if not os.path.exists(path):
@@ -22,7 +35,7 @@ def create_single_parser(subparsers):
     parser = subparsers.add_parser("create_single",help="Creates an AZO system from a smiles string",description="Creates an AZO system from a smiles string")
     parser.add_argument('-n',      '--env', type=env_exists,  help='Path to the Environment. Script will load Source data in env.sources_path')
     parser.add_argument('-s',     '--name', type=str,         help='Name of the system to be created')
-    parser.add_argument('-smi', '--smiles', type=str,         help='SMILES string of the trans_isomer of that system. Embed smiles in quotes to avoid issues with special characters')
+    parser.add_argument('-smi', '--smiles', type=sanitize_smiles,         help='SMILES string of that system. Embed smiles in quotes to avoid issues with special characters')
     parser.add_argument('-ts', '--create_ts',  action='store_true')
     parser.add_argument('-f',      '--force',  action='store_true')
     parser.add_argument('-v',    '--verbose',  action='store_true')
@@ -58,7 +71,7 @@ def create_single(args):
         sys.exit()
 
     print(f"\tCreating System {system_name}")
-    new_sys = System_azo(system_name, smiles)
+    new_sys = System_azo(system_name, smiles, debug)
     new_sys.set_paths_from_environment(env)
     print(f"\tCreation TRANS isomer")
     new_sys.create_trans(debug=debug)
