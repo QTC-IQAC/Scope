@@ -111,6 +111,23 @@ class System(object):
             print(f"SYSTEM.ADD_SOURCE: If you would like to Overwrite, specify overwrite=True")
         return self.sources
 
+    ######
+    def remove_source(self, name: str, debug: int=0):
+        ## Source names are de-capitalized and spaces replaced by underscores
+        name = name.lower()
+        name = name.replace(" ","_")
+        if debug > 0:
+            print(f"SYSTEM.REMOVE_SOURCE: Searching {name} source in SYSTEM with {list(src.name for src in self.sources)} sources")
+        found = False
+        for idx, src in enumerate(self.sources):
+            if src.name.lower() == name.lower() and not found:
+                found = True; found_idx = idx
+                if debug > 0: print(f"SYSTEM.REMOVE_SOURCE: source {name} found. Removing it")
+        if found:
+            del self.sources[found_idx]
+        else:
+            if debug > 0: print(f"SYSTEM.REMOVE_SOURCE: source {name} not found")
+
     #############
     ### Paths ###
     #############
@@ -335,8 +352,8 @@ class System(object):
         labels, coord = read_xyz(filepath)
         new_specie = Specie(labels, coord)
         ## Creates the Initial State
-        ini_state = new_specie.add_state("initial")
-        ini_state.set_geometry(new_specie.labels, new_specie.coord)
+        #ini_state = new_specie.add_state("initial")
+        #ini_state.set_geometry(new_specie.labels, new_specie.coord)
         ## Adds the Specie as a Source of System
         self.add_source(name, new_specie, overwrite=overwrite)
 
