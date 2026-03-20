@@ -559,7 +559,7 @@ class Job(object):
         ##    Here, it only needs to create the first computation. 
         ##    Following ones are created in "self.set_continuation_computation()"
         #####################
-        elif self.setup == "rep_opt":
+        elif self.job_setup == "rep_opt":
             print(f"SET COMPUTATIONS FROM SETUP: repetitive optimization (rep_opt) selected")
             exists, new_comp = self.find_computation()    # Searches for first step and first run_number computation
             if not exists: new_comp = self.add_computation(qc_data, 1, self.path, comp_keyword="", is_update=False, debug=debug)
@@ -778,11 +778,11 @@ class Computation(object):
         if use_sou_name:       new_item = Filename_item("sou_name",   self.source.name);       self.filename.add_item(new_item)
         if use_job_name:       new_item = Filename_item("job_name",   self._job.name);         self.filename.add_item(new_item)
         if use_step:           # Only step=2 and above are printed in name 
-            new_item = filename_item("step",       self.step,'s')
+            new_item = Filename_item("step",       self.step,'s')
             new_item.set_min_value(int(2))
             self.filename.add_item(new_item)
         if use_run_number:     new_item = Filename_item("run_number", self.run_number,'r'); self.filename.add_item(new_item)
-        #if use_spin:           new_item = filename_item("spin",       self.spin);           self.filename.add_item(new_item)
+        #if use_spin:           new_item = Filename_item("spin",       self.spin);           self.filename.add_item(new_item)
         if self.keyword != '': new_item = Filename_item("keyword",    self.keyword);        self.filename.add_item(new_item)
         return self.filename
 
@@ -1179,7 +1179,7 @@ class Filename(object):
 class Filename_item(object):
     ## Simple object to create filenames for computation files: input, output and submission
     def __init__(self, variable: str, value, prefix: str=''):
-        self.typ              = 'filename_item'
+        self.object_type      = 'Filename_item'
         self.variable         = variable
         self.value            = value
         try:    self.value    = literal_eval(value)
