@@ -41,6 +41,13 @@ def labels2electrons(labels):
     return eleccount
 
 ######
+def labels2atnums(labels):
+    atnums = []
+    for l in labels:
+        atnums.append(elemdatabase.elementnr[l])
+    return atnums
+
+######
 def get_element_count(labels: list, heavy_only: bool=False) -> np.ndarray:
     elems = list(elemdatabase.elementnr.keys())
     count = np.zeros((len(elems)),dtype=int)
