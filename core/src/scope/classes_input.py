@@ -161,7 +161,7 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"job_setup"):     data._add_attr("job_setup", "regular")
     if not hasattr(data,"requisites"):    data._add_attr("requisites", [])
     if not hasattr(data,"constrains"):    data._add_attr("constrains", ['self'])
-    if not hasattr(data,"must_be_good"):  data._add_attr("must_be_good", False)
+    if not hasattr(data,"must_be_good"):  data._add_attr("must_be_good", True)
 
     ## Adds defaults for rep_opt job setup type
     if data.job_setup == 'rep_opt' and not hasattr(data,"energy_thres"): data._add_attr("energy_thres",float(1e-5))
