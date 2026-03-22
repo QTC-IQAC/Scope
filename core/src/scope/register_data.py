@@ -101,7 +101,7 @@ def reg_energy(comp: object, debug: int=0):
     if not hasattr(comp,"output"): reg_general(comp)
 
     ### 1-Parses Energy
-    energy      = comp.output.get_energy_last_complete_block()       ## last_complete_block requires convergence, not necessary energy. Careful
+    energy      = comp.output.get_energy_last_complete_block()  ## last_complete_block requires convergence, not necessary energy. Careful
     comp.isgood = comp.output.get_scf_finished()
     if debug > 0: print(f"REG_ENERGY: {comp.isgood=}")          ## Stores isgood, which determines if the computation converged, essentially
     if debug > 0: print(f"REG_ENERGY: {energy=} a.u.")          ## Parsing routines already convert energy to a.u.

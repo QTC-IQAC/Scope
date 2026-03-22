@@ -185,7 +185,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
 
                 ## Step 3.2b-Warns if output exists but not input
                 elif comp.output_exists and not comp.input_exists:  
-                    report += f"Investigate {comp.out_path} \n"
+                    report += f"Investigate {comp.out_path}: Missing Input \n"
                     print(f"Investigate {comp.out_path}")
 
                 ############################
@@ -208,19 +208,19 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                         if comp.status == 'no_scf_convergence': 
                             if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=scf")  
                             new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
-                            if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
+                            if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path}: Run Number > 10 \n"
                         elif not comp.isgood and this_job.must_be_good:
                             if comp.type == 'opt':
                                 if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=opt")  
                                 new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
-                                if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} \n"
+                                if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path}: Run Number > 10 \n"
                             elif comp.type == 'ts':
                                 if comp.qc_data.fctype != "calcall":
                                     if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=ts")  
                                     new_comp = this_job.set_continuation_computation(comp, "ts", debug=debug)
                                 else:
                                     if debug > 0: print(f"RUN_TASK, step 4.2: continuation computation for TS not set. calcAll already attempted")  
-                                    report += f"Investigate {comp.out_path}. TS could not be found\n"
+                                    report += f"Investigate {comp.out_path}: TS could not be found\n"
 
                         ## 4.3 Cases meant to be repetitive. Next step added to JOB object 
                         if this_job.job_setup == "rep_opt" and comp.isgood:

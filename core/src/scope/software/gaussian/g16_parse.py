@@ -356,7 +356,9 @@ def parse_exc_states(lines, nstates: int=10, debug: int=0):
             line_nums, found = search_string(f"Excited State  {st_num}:", lines, typ='first')
         elif st_num >= 100 and st_num < 1000: 
             line_nums, found = search_string(f"Excited State {st_num}:", lines, typ='first')
-        if not found: print(f"PARSE_TD: Excited State {st_num} not found in lines") 
+        if not found: 
+            print(f"PARSE_TD: Excited State {st_num} not found in lines") 
+            return None
 
         # Parses relevant data
         _, _, idx, _, energy, _, wavelength, _, fosc, s2 = lines[line_nums].split() 
