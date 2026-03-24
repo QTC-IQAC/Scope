@@ -1,7 +1,8 @@
 [project]
 name = "scope-sco"
-version = "0.0.0"
-description = "Temporary test package"
+version = "0.9.0"
+description = "Spin-crossover add-on for SCOPE"
+readme = "README.md"
 authors = [{ name = "Sergi Vela", email = "sergi.vela@iqac.csic.es" }]
 requires-python = ">=3.10"
 dependencies = [
@@ -10,7 +11,7 @@ dependencies = [
 
 # Where your CLI entry point lives
 [project.scripts]
-scope_sco                = "scope_sco.cli.main:main"
+scope_sco = "scope_sco.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]

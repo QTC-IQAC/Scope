@@ -16,6 +16,20 @@ from scope_sco.sco_structure    import *
 ##### SYSTEM Object Adapted to SCO #####
 ########################################
 class System_sco(System):
+    """
+    Represent a spin-crossover system built from crystal references.
+
+    Attributes:
+        object_subtype (str):           System subtype (`"sco_system"`).
+        refcode (str):                  Reference code for the system.
+        refcode_wo_digits (str):        Reference code stripped of digits.
+
+    Methods:
+        load_single_cell2mol_folder():  Import one cell2mol folder.
+        load_multiple_cell2mol_folders(): Import several cell2mol folders.
+        set_reference_molecs():         Build HS/LS molecular references.
+        set_reference_cells():          Build HS/LS crystal references.
+    """
     def __init__(self, refcode: str) -> None:
         System.__init__(self, refcode)
         self.object_subtype       = "sco_system" 
@@ -36,22 +50,15 @@ class System_sco(System):
     ######
     def load_single_cell2mol_folder(self, folder: str, overwrite: bool=False, debug: int=0):
         """
-        Imports a sco_cell-class object from a cell2mol folder containing both a Cell-class ".gmol" object and a ".cif" file, 
-        and integrates the data into the current SCO system.
+        Import one cell2mol folder into the current SCO system.
 
-        Args:
-            path (str): Path to the folder containing cell2mol files.
-            overwrite (bool, optional): If True, overwrites existing cell data. Defaults to False.
-            debug (int, optional): Debug level for verbose output. Defaults to 0.
+        Parameters:
+            folder (str):               Folder containing `.gmol` and `.cif` files.
+            overwrite (bool):           Whether to overwrite an existing source.
+            debug (int):                Verbosity level.
 
         Returns:
-            self: The updated System_SCO instance with the loaded cell and associated CIF data.
-
-        Notes:
-            - The method searches for files in the specified folder that match both the Cell ".gmol" and ".cif" formats.
-            - Both files must be present for the cell to be loaded and integrated.
-            - The Cell and CIF objects are linked to each other after loading.
-            - If either file is missing or cannot be loaded, the method returns without modifying the system.
+            object | None: Updated system, or `None` if the folder is invalid.
         """
         from cell2mol.tmcharge_common import Cell, atom, molecule, ligand, metal
         if folder[-1] != '/': folder += '/'
@@ -238,6 +245,20 @@ class System_sco(System):
 ##### CELL Object Adapted to SCO #####
 ######################################
 class Cell_sco(Cell):
+    """
+    Represent a crystal cell specialized for spin-crossover analysis.
+
+    Attributes:
+        object_subtype (str):           Cell subtype (`"sco_cell"`).
+        FeN6s (list):                   FeN6 coordination environments.
+        phase (str):                    Assigned spin-crossover phase.
+        hs_molar_fraction (float):      High-spin molar fraction.
+
+    Methods:
+        get_FeN6_molecules():           Extract FeN6 molecular environments.
+        get_spin_and_phase_data():      Assign phase and HS fraction.
+        get_sco_geom():                 Print SCO geometric descriptors.
+    """
     def __init__(self, name: str, labels: list, pos: list, cell_vector: list=None, cell_param: list=None) -> None:
         Cell.__init__(self, name, labels, pos, cell_vector, cell_param)
         self.object_subtype       = "sco_cell"

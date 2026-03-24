@@ -11,6 +11,23 @@ from scope.parse_general              import read_lines_file
 ###### BRANCH CLASS ######
 ##########################
 class Branch(object):
+    """
+    Represent a branch of workflows attached to a system.
+
+    Attributes:
+        object_type (str):              Object category (`"branch"`).
+        name (str):                     Branch name.
+        path (str):                     Branch working directory.
+        _system (object):               Parent system.
+        workflows (list):               Workflows contained in the branch.
+        results (dict):                 Branch-level results.
+
+    Methods:
+        add_workflow():                 Create a workflow for a source.
+        find_workflow():                Find an existing workflow.
+        register():                     Register contained workflows.
+        set_status():                   Update branch status markers.
+    """
     def __init__(self, path: str, name: str, _system: object, debug: int=0) -> None:
         self.object_type      = "branch"
         self.path             = path
@@ -162,6 +179,22 @@ class Branch(object):
 ###### WORKFLOW CLASS ######
 ############################
 class Workflow(object):
+    """
+    Represent the sequence of jobs applied to a single source.
+
+    Attributes:
+        object_type (str):              Object category (`"workflow"`).
+        name (str):                     Workflow name.
+        source (object):                Source object being processed.
+        _branch (object):               Parent branch.
+        jobs (list):                    Jobs in the workflow.
+        results (dict):                 Workflow-level results.
+
+    Methods:
+        add_job():                      Create a new job from input data.
+        find_job():                     Locate a job by name or hierarchy.
+        register():                     Register contained jobs.
+    """
     def __init__(self, name: str, source: object, _branch: object, debug: int=0) -> None:
         self.object_type      = "workflow"
         self._branch          = _branch
@@ -296,6 +329,25 @@ class Workflow(object):
 ###### JOB CLASS ######
 #######################
 class Job(object):
+    """
+    Represent a logical job inside a workflow.
+
+    Attributes:
+        object_type (str):              Object category (`"job"`).
+        name (str):                     Job name.
+        type (str):                     Job type.
+        hierarchy (int):                Execution order within the workflow.
+        computations (list):            Computations created for the job.
+        requisites (list):              Jobs that must finish first.
+        constrains (list):              Jobs that block this job.
+
+    Methods:
+        add_computation():              Create a computation for the job.
+        set_computations_from_setup():  Expand the job into computations.
+        set_continuation_computation(): Create a retry or continuation run.
+        check_requisites():             Evaluate job dependencies.
+        register():                     Register all computations.
+    """
     def __init__(self, job_data: object, _workflow: object):        
         self.object_type      = "job"
         self._workflow        = _workflow
@@ -725,6 +777,26 @@ class Job(object):
 #### COMPUTATION CLASS ####
 ###########################
 class Computation(object):
+    """
+    Represent a single software execution generated from a job.
+
+    Attributes:
+        object_type (str):              Object category (`"computation"`).
+        _job (object):                  Parent job.
+        qc_data (object):               Quantum-chemistry input parameters.
+        software (str):                 Software backend identifier.
+        type (str):                     Computation type.
+        step (int):                     Step number in the job setup.
+        run_number (int):               Retry or update counter.
+
+    Methods:
+        set_name():                     Build the computation name.
+        set_paths():                    Build input, output, and submission paths.
+        check_files():                  Check expected files on disk.
+        create_output():                Create a parser object for the output.
+        run():                          Generate inputs and optionally submit.
+        register():                     Parse and register output data.
+    """
     def __init__(self, _job: object, qc_data: object, step: int, path: str, keyword: str, is_update: bool=False, debug: int=0):        
         self.object_type      = "computation"
         self._job             = _job       
@@ -1144,6 +1216,18 @@ class Computation(object):
 ### FILENAME Class to facilitate controling the file names ###
 ##############################################################
 class Filename(object):
+    """
+    Represent a structured filename assembled from reusable items.
+
+    Attributes:
+        typ (str):                      Filename object type.
+        items (list):                   Ordered filename components.
+
+    Methods:
+        add_item():                     Append a filename component.
+        get_name():                     Build the final filename string.
+        set_path():                     Join the filename with a directory.
+    """
     def __init__(self):
         self.typ      = 'name_global'
         self.items    = []
@@ -1175,7 +1259,21 @@ class Filename(object):
 
 #######################
 class Filename_item(object):
-    ## Simple object to create filenames for computation files: input, output and submission
+    """
+    Represent one formatted component of a computation filename.
+
+    Attributes:
+        object_type (str):              Object category (`"Filename_item"`).
+        variable (str):                 Semantic role of the item.
+        value:                          Stored value.
+        prefix (str):                   Optional prefix added when formatted.
+
+    Methods:
+        set_min_value():                Set a minimum value for printing.
+        mod_value():                    Update the stored value.
+        format():                       Return the formatted filename fragment.
+    """
+    ## Simple object to create filenames for computation files: input, output and submission
     def __init__(self, variable: str, value, prefix: str=''):
         self.object_type      = 'Filename_item'
         self.variable         = variable

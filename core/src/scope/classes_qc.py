@@ -10,6 +10,23 @@ elemdatabase = ElementData()
 ##### QC Objects #####
 ######################
 class VNM(object):
+    """
+    Represent a vibrational normal mode.
+
+    Attributes:
+        object_type (str):              Object category (`"vnm"`).
+        index (int):                    Mode index.
+        freq_cm (float):                Frequency in cm^-1.
+        freq (float):                   Frequency in atomic units.
+        red_mass (float):               Reduced mass.
+        has_mode (bool):                Whether eigenvectors are available.
+
+    Methods:
+        set_mode():                     Store eigenvector data for the mode.
+        mass_weight_mode():             Build the mass-weighted mode.
+        write_dyn():                    Export a displacement trajectory.
+        overlap():                      Compute overlap with another mode.
+    """
     def __init__(self, index: int, freq: float, red_mass: float=1.0, force_cnt: float=0.0, IR_int: float=0.0, sym: str='A'):
         self.object_type  = "vnm"
         self.index        = index 
@@ -130,6 +147,22 @@ def plot_overlap_vnms(vnmsA: object, vnmsB: object):
 ## Electronic Excited State ##
 ##############################
 class ExcitedState(object):
+    """
+    Represent an electronic excited state.
+
+    Attributes:
+        object_type (str):              Object category (`"excited_state"`).
+        index (int):                    State index.
+        energy (float):                 Excitation energy.
+        wavelength (float):             Transition wavelength.
+        fosc (float):                   Oscillator strength.
+        s2 (float):                     Spin expectation value.
+
+    Methods:
+        shift_wavelength():             Shift wavelength and update energy.
+        shift_energy():                 Shift energy and update wavelength.
+        restore():                      Restore original shifted values.
+    """
     def __init__(self, index: int, energy: float, wavelength: float, fosc: float, s2: float, debug: int=0) -> None:
         self.object_type       = "excited_state"
         self.index             = index

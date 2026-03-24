@@ -15,6 +15,25 @@ elemdatabase = ElementData()
 ### SPECIE ###
 ##############
 class Specie(object):
+    """
+    Represent a generic chemical species built from atoms.
+
+    Attributes:
+        object_type (str):              Object category (`"specie"`).
+        object_subtype (str):           Species subtype.
+        labels (list):                  Atomic symbols.
+        coord (list):                   Cartesian coordinates.
+        natoms (int):                   Number of atoms.
+        formula (str):                  Chemical formula.
+        parents (list):                 Parent objects related to the species.
+
+    Methods:
+        set_atoms():                    Build atom objects for the species.
+        get_adjmatrix():                Compute covalent connectivity.
+        get_graph():                    Build a graph representation.
+        add_parent():                   Register a parent-child relation.
+        save():                         Serialize the species to disk.
+    """
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
 
        # Sanity Checks
@@ -300,71 +319,15 @@ class Specie(object):
     #####################
     def set_atoms(self, atomlist=None, create_adjacencies: bool=False, debug: int=0):
         """
-        Set or create Atom objects for this Specie, and optionally initialize adjacency data.
-        This method populates the self.atoms list for this Specie instance in one of two ways:
-        1. If `atomlist` is provided, it copies that list into self.atoms and re-parents each
-            atom to this Specie (calling atom.add_parent(self, index=...)).
-        2. If `atomlist` is None, it constructs new Atom or Metal objects from the Specie's
-            labels, coordinates and radii, sets their parent to this Specie, and appends them
-            to self.atoms.
-        After populating self.atoms, if `create_adjacencies` is True the method ensures the
-        Specie has adjacency matrices (adjmat and madjmat) by calling get_adjmatrix()
-        and get_metal_adjmatrix() as needed, and then calls each atom's set_adjacencies(...)
-        to provide per-atom adjacency rows and neighbor counts.
-        Parameters
-        ----------
-        atomlist : list, optional
-             If provided, a sequence of existing atom-like objects to assign to this Specie.
-             Each element will be copied into self.atoms and re-parented (add_parent).
-             If None (default) new atom objects are created from this Specie's labels/coords.
-        create_adjacencies : bool, optional
-             If True, compute or retrieve adjacency matrices for the Specie and call
-             each atom's set_adjacencies(...) with the appropriate rows and neighbor counts.
-             Default is False.
-        debug : int, optional
-             Verbosity/debug level. When > 0 the method emits informational prints about
-             progress and decisions (e.g. whether an element is treated as a metal,
-             creation of atoms, parent-setting, etc.). Default is 0.
-        Behavior and notes
-        ------------------
-        - When constructing atoms from scratch, the method iterates over self.labels. For
-          each label it determines whether to instantiate a Metal or Atom class (via
-          elemdatabase.elementblock and get_non_transition_metal_idxs), then creates the
-          object with cartesian coordinates (self.coord[idx]) and, if available,
-          fractional coordinates (self.frac_coord[idx]). Radii are passed from
-          self.radii[idx] when present.
-        - If a parent cell exists and fractional coordinates have not yet been computed,
-          the method will attempt to compute them by calling get_fractional_coord(...).
-        - Newly created or assigned atom objects receive a parent relationship through
-          atom.add_parent(self, index=idx).
-        - If create_adjacencies is True the method will:
-             - Ensure self.adjmat exists (calling get_adjmatrix() if necessary).
-             - Ensure self.madjmat exists (calling get_metal_adjmatrix() if necessary).
-             - For each atom i, call atom.set_adjacencies(self.adjmat[i],
-                self.madjmat[i], self.adjnum[i], self.madjnum[i]) — those arrays/attributes
-                must therefore be present or produced by the adjacency-generation methods.
-        - The method mutates self (self.atoms and potentially adjacency-related attributes)
-          and also invokes methods on atom objects (add_parent and set_adjacencies).
-        Returns
-        -------
-        None
-        Raises
-        ------
-        IndexError
-             If lengths of self.labels, self.coord, self.radii or self.frac_coord (when present)
-             do not match, or an index is out of range while constructing atoms.
-        AttributeError
-             If expected helper attributes/methods (e.g. elemdatabase, metal/atom classes,
-             get_fractional_coord, get_adjmatrix, get_metal_adjmatrix) are missing.
-        RuntimeError
-             If adjacency creation is requested but adjacency methods fail to produce
-             compatible adjmat/madjmat and neighbor count arrays.
-        Example
-        -------
-        # Attach an existing list of atom objects to a specie and also initialize adjacencies:
-        specie.set_atoms(atomlist=prebuilt_atoms, create_adjacencies=True, debug=1)
-        # Create atoms from labels/coords stored on the specie without adjacency setup:
-        specie.set_atoms()
+        Build or assign atom objects for the species.
+
+        Parameters:
+            atomlist (list | None):      Existing atoms to attach, or `None` to create them.
+            create_adjacencies (bool):   Whether to populate per-atom adjacency data.
+            debug (int):                 Verbosity level.
+
+        Returns:
+            None
         """
         ## If the atom objects already exist, and you want to set them in self from a different specie
         if atomlist is not None: 
@@ -580,16 +543,14 @@ class Specie(object):
     ######
     def get_occurrence(self, substructure: object, debug: int=0) -> int:
         """
-        Counts the number of times a given substructure appears inside self.
-        The method supports different types of substructures:
-        - Ligands within Complexes (when substructure.object_subtype == 'ligand' and self.object_subtype == 'molecule')
-        - Groups within Ligands    (when substructure.object_subtype == 'group'  and self.object_subtype == 'ligand')
-        - Atoms within Species     (when substructure.object_type == 'atom'      and self.object_type    == 'specie')
-        Args:
-            substructure (object): The substructure to search for within the current object.
-            debug (int, optional): Debug level for comparison functions. Defaults to 0.
+        Count how many times a substructure appears in the species.
+
+        Parameters:
+            substructure (object):       Substructure to search for.
+            debug (int):                 Verbosity level.
+
         Returns:
-            int: The number of times the substructure appears within self.
+            int: Number of occurrences found.
         """
     
         ## Finds how many times a substructure appears in self
@@ -634,7 +595,7 @@ class Specie(object):
     ### Functions to Interact with States ###
     #########################################
     def set_initial_state(self, name: str='initial', debug: int=0):
-        """Creates the initial state of the specie, with only the geometry"""
+        """Create the initial state for this species."""
         ini_state = self.add_state(name)
         ini_state.set_geometry(self.labels, self.coord)
         return ini_state
@@ -817,6 +778,21 @@ class Specie(object):
 ### MOLECULE ##
 ###############
 class Molecule(Specie):
+    """
+    Represent a discrete molecular species.
+
+    Attributes:
+        object_subtype (str):           Species subtype (`"molecule"`).
+        ligands (list):                 Ligands detected in metal complexes.
+        metals (list):                  Metal atoms detected in the molecule.
+
+    Methods:
+        split_complex():                Separate metals and ligands in a complex.
+        set_spin_metals():              Assign spins to metal centers.
+        set_charge_metals():            Assign charges to metal centers.
+        set_bonds():                    Build intra- and metal-related bonds.
+        fix_ligands_rdkit_obj():        Repair ligand RDKit representations.
+    """
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
         Specie.__init__(self, labels, coord, frac_coord, radii)
         self.object_subtype = "molecule"
@@ -1088,6 +1064,21 @@ class Molecule(Specie):
 ### LIGAND ####
 ###############
 class Ligand(Specie):
+    """
+    Represent a ligand extracted from a molecule.
+
+    Attributes:
+        object_subtype (str):           Species subtype (`"ligand"`).
+        groups (list):                  Subgroups identified inside the ligand.
+        smiles (str):                   RDKit-derived SMILES when available.
+
+    Methods:
+        get_groups():                   Split the ligand into connected groups.
+        get_connected_metals():         Identify bound metal centers.
+        get_hapticity():                Evaluate ligand hapticity.
+        fix_rdkit_obj():                Repair RDKit connectivity and charges.
+        set_smiles_from_rdkit_obj():    Export a SMILES string from RDKit.
+    """
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
         if frac_coord is not None:        
             assert len(frac_coord) == len(coord)
@@ -1229,21 +1220,13 @@ class Ligand(Specie):
     ######
     def fix_rdkit_obj(self, debug: int=0):
         """
-        Fixes common issues in the RDKit molecule object (`rdkit_obj`) associated with the ligand, particularly those arising from conversion tools like cell2mol.
-        The function applies corrections to specific bonding and charge patterns that are known to be problematic, including:
-            - N2-CSe+ ([N--]C#[Se+])
-            - N-CSe+  ([N-]C#[Se+])
-            - N2-CS+  ([N--]C#[S+])
-            - N-CS+   ([N-]C#[S+])
-        For each pattern, it adjusts bond orders and formal charges in both the RDKit molecule and the ligand's atom objects.
-        Additional corrections include:
-            - Removal of extra atoms added during conversion, with charge compensation for neighboring atoms.
-            - Correction of adjacent atoms with opposite formal charges, except for nitrosyl groups.
-            - Attempts to sanitize the molecule using RDKit's `Chem.SanitizeMol`. If sanitization fails (e.g., due to nitrosyl groups), the original molecule is preserved and the failed attempt is stored in `self.failed_rdkit_obj`.
-        Args:
-            debug (int, optional): If greater than 0, prints debug information during the fixing process. Default is 0.
+        Fix common issues in the ligand RDKit object.
+
+        Parameters:
+            debug (int):                 Verbosity level.
+
         Returns:
-            rdkit.Chem.Mol: The fixed RDKit molecule object. If fixing or sanitization fails, returns the original `rdkit_obj`.
+            object | None: Updated RDKit molecule, or `None`.
         """
 
         from rdkit import Chem
@@ -1687,6 +1670,20 @@ class Ligand(Specie):
 #### GROUP ####
 ###############
 class Group(Specie):
+    """
+    Represent a connected fragment inside a ligand.
+
+    Attributes:
+        object_subtype (str):           Species subtype (`"group"`).
+        closest_metal (object):         Closest metal center, when available.
+        metals (list):                  Metals connected to the group.
+
+    Methods:
+        remove_atom():                  Remove an atom from the group.
+        get_closest_metal():            Find the nearest metal center.
+        get_connected_metals():         Retrieve metals bonded to the group.
+        get_hapticity():                Evaluate group hapticity.
+    """
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
         if frac_coord is not None:        
             assert len(frac_coord) == len(coord)
@@ -2037,11 +2034,15 @@ def import_group(old_group: object, parent: object=None, debug: int=0) -> object
 ### MORE IMPORTS ###
 ####################
 def import_rdkit_molecule(mol, debug: int=0) -> object:
-    """Imports an RDKit molecule into a Scope molecule object.
-    Args:
-        mol (rdkit.Chem.rdchem.Mol): RDKit molecule object to be imported.
+    """
+    Import an RDKit molecule into a SCOPE `Molecule` object.
+
+    Parameters:
+        mol (object):                   RDKit molecule to import.
+        debug (int):                    Verbosity level.
+
     Returns:
-        object: Scope molecule object with the imported data.
+        object: Imported SCOPE molecule.
     """
     from rdkit import Chem
     from rdkit.Chem import AllChem

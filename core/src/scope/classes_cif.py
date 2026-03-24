@@ -8,6 +8,22 @@ from scope.parse_general import search_string, read_lines_file
 ### CIF ###
 ###########
 class Cif(object):
+    """
+    Represent metadata parsed from a crystallographic information file.
+
+    Attributes:
+        object_type (str):              Object category (`"cif"`).
+        name (str):                     CIF identifier.
+        path (str):                     Path to the CIF file.
+        sym_group (str):                Space-group label.
+        sym_ops (list):                 Symmetry operations.
+        diff_temp (str | None):         Diffraction temperature.
+
+    Methods:
+        get_biblio_data():              Read bibliographic metadata.
+        associate_cell():               Link the CIF to a cell object.
+        save():                         Serialize the CIF object to disk.
+    """
     def __init__(self, name: str, path: str) -> None:
         self.object_type       = "cif" 
         self.version           = "1.0" 

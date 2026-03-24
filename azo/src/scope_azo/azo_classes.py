@@ -12,6 +12,22 @@ from scope_azo.azo_functions import *
 #### SYSTEM Object adapted to System_azo ###
 ############################################
 class System_azo(System):
+    """
+    Represent an azo-specific system built around a stereodefined SMILES string.
+
+    Attributes:
+        object_subtype (str):           System subtype (`"system_azo"`).
+        smiles (str):                   Corrected azo SMILES string.
+        dihedral_indices (list):        Atom indices defining the azo geometry.
+        results (dict):                 System-level results.
+
+    Methods:
+        check_smiles():                 Validate and normalize azo stereochemistry.
+        get_dihedral_indices():         Locate key azo atoms from the SMILES string.
+        create_trans():                 Build the trans isomer.
+        create_cis():                   Build the cis isomer.
+        create_ts():                    Build transition-state guesses.
+    """
     def __init__(self, name: str, smiles: str, debug: int=0):
         System.__init__(self, name)
         self.object_subtype   = "system_azo"        
@@ -915,6 +931,23 @@ class System_azo(System):
 ##### PSS Object 
 #################
 class PSS(object):
+    """
+    Represent a photostationary-state model for an azo system.
+
+    Attributes:
+        system (object):                Associated azo system.
+        wl_range (array-like):          Wavelength grid.
+        trans_spectrum (array-like):    Trans absorption spectrum.
+        cis_spectrum (array-like):      Cis absorption spectrum.
+        pss_results (dict):             Cached PSS calculations by wavelength.
+
+    Methods:
+        set_thermal_rates():            Store thermal isomerization rates.
+        set_lamp():                     Attach a lamp model.
+        get_photo_rates():              Compute photoisomerization rates.
+        get_pss_ratio():                Compute the trans fraction at PSS.
+        get_pss_spectrum():             Build the PSS spectrum.
+    """
     def __init__(self, system, wl_range, trans_spectrum, cis_spectrum): 
         # Trans and Cis spectra are cross sections
         self.system         = system
@@ -1121,6 +1154,20 @@ class PSS(object):
 ##### MOLECULE Object Adapted to Azo's #####
 ############################################
 class Molecule_azo(Molecule):
+    """
+    Represent an azo molecule with dedicated geometric descriptors.
+
+    Attributes:
+        object_subtype (str):           Species subtype (`"molecule_azo"`).
+        dihedral_indices (list):        Atom indices defining the azo motif.
+
+    Methods:
+        set_dihedral_indices():         Store azo reference indices.
+        get_main_dihedral():            Compute the CNNC dihedral angle.
+        get_geometry_summary():         Summarize the main azo descriptors.
+        set_initial_state():            Create the initial azo state.
+        add_state():                    Add an azo-specific state object.
+    """
     def __init__(self, labels, coord):
         Molecule.__init__(self, labels, coord)
         self.object_subtype  = "molecule_azo"
@@ -1219,6 +1266,19 @@ class Molecule_azo(Molecule):
 ##### STATE Object Adapted to Azo's #####
 #########################################
 class State_azo(State):
+    """
+    Represent a state associated with an azo molecule.
+
+    Attributes:
+        object_subtype (str):           State subtype (`"state_azo"`).
+        coord (list):                   Cartesian coordinates of the state.
+        results (dict):                 Registered state results.
+
+    Methods:
+        get_main_dihedral():            Compute the CNNC dihedral angle.
+        get_geometry_summary():         Summarize azo geometric descriptors.
+        get_gtot_eff():                 Compute the effective free energy for azo states.
+    """
     def __init__(self, _source: object, name: str, debug: int=0):
         State.__init__(self, _source, name, debug=debug)
         self.object_subtype  = "state_azo" 
@@ -1355,6 +1415,24 @@ class State_azo(State):
 ## Lamp Class ##
 ################
 class Lamp:
+    """
+    Represent a tabulated irradiation source used in azo PSS calculations.
+
+    Attributes:
+        name (str):                     Lamp name.
+        data (dict):                    Raw lamp data loaded from JSON.
+        wavelengths (ndarray):          Available wavelengths.
+        fwhm (ndarray):                 Band widths for each wavelength.
+        power (ndarray):                Band powers.
+        power_intensity (float):        Intensity scaling factor.
+
+    Methods:
+        read_wl():                      Load available wavelengths.
+        read_fwhm():                    Load or derive FWHM values.
+        read_power():                   Load lamp powers.
+        read_power_intensity():         Load the intensity multiplier.
+        available_lamps():              List bundled lamp definitions.
+    """
     from pathlib import Path
     _LAMP_DATA_DIR = Path(__file__).resolve().parent / "lamp_data" ## Path of where lamp-data files are stored
     def __init__(self, name: str, debug: int=0):

@@ -6,20 +6,15 @@ import networkx as nx
 
 def build_graph(adj_matrix, debug: int = 0, **node_features):
     """
-    Builds a NetworkX graph from an adjacency matrix and node features provided as kwargs.
-    It might result in a different graph than using the Specie-class function
+    Build a NetworkX graph from an adjacency matrix and node features.
 
-    Parameters
-    ----------
-    adj_matrix : (N, N) array
-        Adjacency matrix
-    node_features : keyword arguments
-        Each value must be list-like of the same length as the adj_matrix.
-        Example: labels=[...], mass=[...]
+    Parameters:
+        adj_matrix:                     Adjacency matrix.
+        debug (int):                    Verbosity level.
+        **node_features:                Per-node attributes with one value per node.
 
-    Returns
-    -------
-    G : networkx.Graph
+    Returns:
+        networkx.Graph: Graph built from the input data.
     """
     G = nx.Graph()
     N = len(adj_matrix)
@@ -80,7 +75,7 @@ def get_permutation_from_isomorphism(G1, G2):
 
 ####
 def resistance_matrix(G):
-    """Computes the resistance-distance matrix for a graph."""
+    """Compute the resistance-distance matrix of a graph."""
     L = nx.laplacian_matrix(G).astype(float).toarray()
     L_pinv = np.linalg.pinv(L)  # Moore–Penrose pseudoinverse
     n = L.shape[0]

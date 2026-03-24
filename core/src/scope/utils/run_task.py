@@ -9,36 +9,17 @@ from scope.read_write           import load_binary
 ######################
 def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_errors: bool=False, debug: int=0):
     """
-    Runs a SCOPE Input (defined in the inp_paths file) on a SCOPE system (in the sys_path). 
-    The Configuration of the Computer is read from the GLOBAL_ENVIRONMENT, which must be configured before and given as a binary.
-    This function performs the following steps:
-    - Verifies the existence of the system and input files
-    - Reads input data from the input file, including environment, options, job data, and QC_data.
-    - Loads the system object from the binary file and updates paths if necessary. Handy if registration and execution of tasks are performed in different computers
-    - Finds or creates the required branch and workflow in the system.
-    - Finds or creates the job, and checks for input changes.
-    - Validates job requisites and continues only if they are fulfilled.
-    - Sets up computations for the job, checks file existence, and handles submission.
-    - Registers computations, handles errors, and manages continuation or repetitive computations as needed.
-    - Updates registry information and saves the system binary if changes occurred.
-    ----------
-    Parameters
-    ----------
-    sys_path : str
-        Path to the system binary file
-    inp_paths : list
-        List of Paths to the job files. 
-    global_env : str or object
-        Global environment as a path or directly the object.
-    handle_errors : bool, optional
-        If True, handles errors encountered during registration (default is False).
-    debug : int, optional
-        Debug level for verbose output (default is 0).
-    Returns
-    -------
-    report : str or None
-        A report string summarizing any issues or actions taken during run,
-        or None if the required files do not exist.
+    Run one or more SCOPE input files on a stored system.
+
+    Parameters:
+        sys_path (str):                Path to the system binary.
+        inp_paths (list):              Input-job file paths.
+        global_env (str | object):     Environment path or loaded environment object.
+        handle_errors (bool):          Whether to apply automatic error handling.
+        debug (int):                   Verbosity level.
+
+    Returns:
+        str: Report string summarizing actions and issues.
     """
 
     report = ''

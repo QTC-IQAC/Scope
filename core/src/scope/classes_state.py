@@ -11,57 +11,24 @@ elemdatabase = ElementData()
 ##############
 class State(object):
     """
-    State class for representing a physical or chemical state associated with a source (cell or specie).
-    This class provides methods for managing geometries, molecules, computations, vibrational normal modes (VNMs) and thermodynamic data
+    Represent a geometry- and result-bearing state of a source object.
 
-    Initiate
+    Attributes:
+        object_type (str):              Object category (`"state"`).
+        name (str):                     State name.
+        _source (object):               Parent molecule, specie, or cell.
+        results (dict):                 Registered results for the state.
+        computations (list):            Computations linked to the state.
+        labels (list):                  Atomic symbols for the geometry.
+        coord (list):                   Cartesian coordinates.
 
-    _source : object                    The parent object (cell, molecule, or specie) to which this state belongs.
-    name : str                          Name of the state.
-
-    Attributes
-
-    type : str                          Type of the object ("state").
-    name : str                          Name of the state.
-    results : dict                      Dictionary of results associated with the state.
-    computations : list                 List of computations associated with the state.
-    labels : list                       Atomic labels for the geometry.
-    coord : list                        Atomic positions (Cartesian coordinates).
-    natoms : int                        Number of atoms in the state.
-    formula : str                       Chemical formula, derived from labels.
-    radii : list                        List of Atomic radii.
-    cell_vector : array-like            Cell vectors for periodic systems.
-    cell_param : array-like             Cell parameters.
-    forces : array-like                 Forces on atoms.
-    atoms : list                        List of atom objects.
-    molecules : list                    List of molecule objects in the state.
-    ncomplex : int                      Number of Transition Metal Complexes in the state.
-    z : int                             Number of stoichiometric Units in the state (Z).
-    fragmented : bool                   Whether the state geometry is fragmented.
-    VNMs : list                         Vibrational normal modes.
-
-    Methods
-
-    set_geometry()                      Set atomic labels and positions for the state geometry.
-    set_geometry_from_molecules()       Set geometry from the list of molecule objects.
-    set_cell()                          Set cell vectors and parameters.
-    set_forces()                        Set atomic forces.
-    set_atoms()                         Set atom objects from molecule list.
-    get_atoms()                         Retrieve list of atom objects from molecules.
-    get_molecules()                     Generate molecule list from geometry.
-    get_ncomplex()                      Count number of complex molecules.
-    get_z()                             Count number of stoichiometric units in the state (Z)
-    reconstruct()                       Attempt to reconstruct fragmented state geometry.
-    check_fragmentation()               Check if the state geometry is fragmented.
-    check_minimum()                     Check if the state is a minimum or almost a minimum.
-    set_VNMs()                          Set vibrational normal modes and evaluate minimum status.
-    find_computation()                  Find a computation in the state.
-    add_computation()                   Add a computation to the state.
-    sample_geometries()                 Sample geometries around the current state using VNMs and furthest point sampling.
-    add_result()                        Add a result to the state.
-    set_energy()                        Set electronic energy result.
-    set_Helec()                         Set electronic energy per stoichiometric unit (Z)
-    get_thermal_data()                  Compute and store thermodynamic data (Helec, Selec, Hvib, Svib, Gtot).
+    Methods:
+        set_geometry():                 Store labels and coordinates.
+        set_cell():                     Attach unit-cell metadata.
+        get_molecules():                Build molecular fragments from the geometry.
+        get_atoms():                    Collect atom objects from molecules.
+        set_VNMs():                     Register vibrational normal modes.
+        get_thermal_data():             Compute thermodynamic quantities.
     """
     def __init__(self, _source: object, name: str, debug: int=0):
         self.object_type    = "state"
@@ -270,12 +237,14 @@ class State(object):
     ######
     def get_occurrence(self, substructure: object, debug: int=0) -> int:
         """
-        Counts the number of times a given substructure appears inside the State.
-        Args:
-            substructure (object): The substructure to search for within the State.
-            debug (int, optional): Debug level for comparison functions. Defaults to 0.
+        Count how many times a substructure appears in the state.
+
+        Parameters:
+            substructure (object):       Substructure to search for.
+            debug (int):                 Verbosity level.
+
         Returns:
-            int: The number of times the substructure appears within the State.
+            int: Number of occurrences found.
         """
         ## Finds how many times a substructure appears in self
         occurrence = 0
@@ -400,14 +369,17 @@ class State(object):
     def get_ir_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, debug: int=0):
         from scope.operations.vecs_and_mats import build_spectrum
         """
-        Simulate and plot the IR spectrum associated with a State.
+        Build a simulated IR spectrum from the stored VNMs.
 
-        Parameters
-        ----------
-        vnms : list of VNM                       List of vibrational normal mode objects.
-        vmin, vmax : float, optional             Frequency range in cm^-1. If None, automatically set from vnms.
-        broadening : float                       Standard deviation (sigma) for Gaussian (in cm^-1).         
-        function : str                           "gaussian", "lorentzian" or "laplacian"
+        Parameters:
+            vmin (float | None):         Lower bound of the frequency range.
+            vmax (float | None):         Upper bound of the frequency range.
+            function (str):              Broadening kernel.
+            sigma (float):               Broadening width.
+            debug (int):                 Verbosity level.
+
+        Returns:
+            tuple: Frequency grid and broadened intensity.
         """
 
         # Extract frequencies and intensities
@@ -467,9 +439,20 @@ class State(object):
             es.restore()
 
     def get_abs_spectrum(self, lmin: float=200, lmax: float=1000, function: str='gaussian', sigma: float=0.2, as_cross_section: bool=False, debug: int=0):
-        '''
-        Using the stored TD-DFT data, computes the spectrum in the energy range, and returns it as an [x,y] array
-        '''
+        """
+        Build an absorption spectrum from the stored excited states.
+
+        Parameters:
+            lmin (float):                Lower wavelength bound in nm.
+            lmax (float):                Upper wavelength bound in nm.
+            function (str):              Broadening kernel.
+            sigma (float):               Broadening width.
+            as_cross_section (bool):     Normalize as a cross-section-like spectrum.
+            debug (int):                 Verbosity level.
+
+        Returns:
+            tuple: Wavelength grid and intensity values.
+        """
         from scope.operations.vecs_and_mats import build_spectrum
         from scope import constants
 
@@ -498,9 +481,19 @@ class State(object):
         return self.abs_spec_x, self.abs_spec_y
 
     def get_cross_section(self, lmin: float=200, lmax: float=1000, function: str='gaussian', sigma: float=0.2, debug: int=0):
-        '''
-        Using the stored TD-DFT data, computes the absorption cross section in the energy range, and returns it as an [x,y] array
-        '''
+        """
+        Build an absorption cross section from the stored excited states.
+
+        Parameters:
+            lmin (float):                Lower wavelength bound in nm.
+            lmax (float):                Upper wavelength bound in nm.
+            function (str):              Broadening kernel.
+            sigma (float):               Broadening width.
+            debug (int):                 Verbosity level.
+
+        Returns:
+            tuple: Wavelength grid and cross-section values.
+        """
         from scope.operations.vecs_and_mats import build_spectrum
         from scope import constants
 
@@ -561,41 +554,19 @@ class State(object):
 #############################
     def sample_geometries(self, ngeoms: int, n_aux_geoms=100, n_fps_rounds=0, temp: float=300, sigma_damp_factor: float=1, freq_bottom_limit: float=50, debug: int=0):
         """
-        - The sampling parameters (temperature, number of rounds, samples per round) can be adjusted.
-        Samples geometries around the current state geometry. It uses vibrational normal modes (VNMs), and explores the geometries in Q space. 
-        If n_fps_rounds = 0, the distribution of output geometries should naturally follow a Wigner-like energetic criterion and be representative of the molecular motion
-        If n_fps_rounds > 0, the distribution of output geometries will prioritize distant geometries, selected using a furthest point sampling (FPS) on the Q-displacement arrays.
-        Parameters
-        ----------
-        ngeoms: int
-            Number of geometries to select per round (default is 10). This is also the final number of geometries you will receive
-        temp : float, optional
-            Temperature parameter for sampling (default is 300).
-        n_aux_geoms: int, optional
-            Number of geometries to sample per geometry selected in FPS round (default is 100). If n_fps_rounds == 0, it won't be used
-        n_fps_rounds : int, optional
-            Number of FPS sampling rounds (default is 0).
-        debug : int, optional
-            Debug level for verbose output (default is 0).
+        Sample geometries around the current state using vibrational modes.
 
-        Returns
-        -------
-        current_q_disp : list of np.ndarray
-            List of displacement vectors (in normal mode coordinates) for the selected geometries.
-        current_geoms : list of np.ndarray
-            List of sampled geometries (Cartesian coordinates).
+        Parameters:
+            ngeoms (int):                Number of geometries to keep.
+            n_aux_geoms (int):           Number of trial geometries per FPS round.
+            n_fps_rounds (int):          Number of furthest-point-sampling rounds.
+            temp (float):                Sampling temperature.
+            sigma_damp_factor (float):   Damping factor for mode amplitudes.
+            freq_bottom_limit (float):   Lower frequency cutoff.
+            debug (int):                 Verbosity level.
 
-        Raises
-        ------
-        ValueError
-            If the state is not a minimum or if VNMs do not have eigenvectors.
-
-        Notes
-        -----
-        - The method performs several rounds of sampling, each time generating new geometries by perturbing the current ones along their normal modes.
-        - Furthest point sampling (FPS) is used to select a diverse subset of geometries in each round.
-        - The sampling parameters (temperature, number of rounds, samples per round) depend on the `typ` argument.
-        - Requires that the state is a minimum and that VNMs have eigenvectors parsed.
+        Returns:
+            tuple: Selected Q displacements and Cartesian geometries.
         """
         from scope.vnm_tools import geom_sampling_from_vnm, euclidean_q_distance, custom_q_distance, beta_distance
         from scope.other import furthest_point_sampling

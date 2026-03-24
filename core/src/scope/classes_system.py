@@ -6,6 +6,24 @@ from scope.read_write import save_binary
 from scope.classes_workflow import Branch
 
 class System(object):
+    """
+    Represent the top-level container for sources, workflows, and results.
+
+    Attributes:
+        object_type (str):              Object category (`"system"`).
+        name (str):                     System name.
+        sources (list):                 Molecular or cell sources stored in the system.
+        branches (list):                Workflow branches attached to the system.
+        results (dict):                 Results registered at the system level.
+
+    Methods:
+        add_source():                   Add a new source and initialize its state.
+        find_source():                  Locate a source by name.
+        set_main_path():                Build system-specific folder paths.
+        set_paths_from_environment():   Derive paths from an environment object.
+        set_paths_down_hierarchy():     Propagate paths to workflows and computations.
+        save():                         Serialize the system to disk.
+    """
     def __init__(self, name: str) -> None:
         self.version              = "1.0"
         self.object_type          = "system"
@@ -59,7 +77,7 @@ class System(object):
 
     ######
     def create_folders(self):
-        """Create system and calculations folders if they do not exist."""
+        """Create the main system folders if they do not exist."""
         for path in [self.system_path, self.computations_path]:
             try:
                 os.makedirs(path, exist_ok=True)
@@ -163,10 +181,14 @@ class System(object):
     def set_paths(self, create_folders: bool=True, debug: int=0) -> None: 
         from scope.read_write import complete_path
         """
-        Modifies the paths associated with the system, as well as the Branches, Workflows, Jobs, and Computation files of a system
-        Args:
-            debug (int, optional): Debug level. Defaults to 0.
-        Returns: None
+        Interactively set the paths associated with this system.
+
+        Parameters:
+            create_folders (bool):       Whether to create missing folders.
+            debug (int):                 Verbosity level.
+
+        Returns:
+            None
         """
         import readline
         # Set up autocomplete
@@ -199,12 +221,15 @@ class System(object):
     ######
     def set_paths_from_environment(self, environment: object, create_folders: bool=True, debug: int=0) -> None: 
         """
-        Modifies the paths associated with the system, as well as the branches, workflows, jobs, and computation files of a system
-        Based on the paths stored in the environment object
-        Args:
-            environment (object): The environment to which the system paths must be updated
-            debug (int, optional): Debug level. Defaults to 0.
-        Returns: None
+        Set system paths from an environment object.
+
+        Parameters:
+            environment (object):        Environment that provides global paths.
+            create_folders (bool):       Whether to create missing folders.
+            debug (int):                 Verbosity level.
+
+        Returns:
+            bool: `True` if the paths were updated.
         """
         if not isinstance(environment, object):
             print("SYSTEM.SET_PATHS_FROM_ENV: environment argument must be object"); return False
@@ -246,11 +271,14 @@ class System(object):
     ######
     def set_paths_down_hierarchy(self, create_folders: bool=True, debug: int=0) -> None:
         """
-        Modifies the paths associated with all well branches, workflows, jobs, and computation files of a system
-        Based on the paths stored in this system-class object
-        Args:
-            debug (int, optional): Debug level. Defaults to 0.
-        Returns: None
+        Propagate system paths to branches, jobs, and computations.
+
+        Parameters:
+            create_folders (bool):       Whether to create missing folders.
+            debug (int):                 Verbosity level.
+
+        Returns:
+            None
         """
         for br in self.branches:
             br.path = self.computations_path+br.name+'/'

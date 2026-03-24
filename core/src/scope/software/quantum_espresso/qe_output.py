@@ -2,6 +2,22 @@ from scope.parse_general     import read_lines_file
 from scope.software.quantum_espresso.qe_parse  import *
 
 class QE_output(object):
+    """
+    Parse and store information extracted from a Quantum Espresso output file.
+
+    Attributes:
+        _computation (object):          Parent computation, when available.
+        lines (list):                   Raw output lines.
+        comp_type (str):                Computation type.
+        requisites (list):              Output sections required for a valid result.
+
+    Methods:
+        set_comp_type():                Set or infer the computation type.
+        get_requisites():               Define required parsed sections.
+        get_last_complete_block():      Retrieve the latest valid block.
+        get_last_geometry():            Extract the latest geometry.
+        get_status_finished():          Check whether the run finished.
+    """
     def __init__(self, lines: list, computation: object=None):
         self._computation   = computation
         self.lines          = lines

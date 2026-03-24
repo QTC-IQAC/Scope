@@ -51,8 +51,17 @@ def gcd_list(numbers):
 ###############
 def gaussian(grid, center, sigma=0.2, normalize=False, debug: int=0):
     """
-    Gaussian profile centered at `center`, and evaluated over 'grid'.
-    If normalize, it normalizes the final profile to unit area. Default is False.
+    Evaluate a Gaussian profile on a grid.
+
+    Parameters:
+        grid:                           Evaluation grid.
+        center:                         Peak center.
+        sigma:                          Width parameter or `"auto"`.
+        normalize (bool):               Whether to normalize the profile area.
+        debug (int):                    Verbosity level.
+
+    Returns:
+        ndarray: Evaluated profile.
     """
     sigma = _resolve_sigma(sigma, grid)
     profile = np.exp(-(grid - center) ** 2 / (2 * sigma ** 2))
@@ -62,8 +71,17 @@ def gaussian(grid, center, sigma=0.2, normalize=False, debug: int=0):
 ######
 def lorentzian(grid, center, sigma=0.2, normalize=False, debug: int=0):
     """
-    Lorentzian profile centered at `center`, and evaluated over 'grid'.
-    If normalize, it normalizes the final profile to unit area. Default is False.
+    Evaluate a Lorentzian profile on a grid.
+
+    Parameters:
+        grid:                           Evaluation grid.
+        center:                         Peak center.
+        sigma:                          Width parameter or `"auto"`.
+        normalize (bool):               Whether to normalize the profile area.
+        debug (int):                    Verbosity level.
+
+    Returns:
+        ndarray: Evaluated profile.
     """
     sigma = _resolve_sigma(sigma, grid)
     profile = 1 / (1 + ((grid - center) / sigma) ** 2)
@@ -73,8 +91,17 @@ def lorentzian(grid, center, sigma=0.2, normalize=False, debug: int=0):
 ######
 def laplacian(grid, center, sigma=0.2, normalize=False, debug: int=0):
     """
-    Laplacian profile centered at `center`, and evaluated over 'grid'.
-    If normalize, it normalizes the final profile to unit area. Default is False.
+    Evaluate a Laplacian profile on a grid.
+
+    Parameters:
+        grid:                           Evaluation grid.
+        center:                         Peak center.
+        sigma:                          Width parameter or `"auto"`.
+        normalize (bool):               Whether to normalize the profile area.
+        debug (int):                    Verbosity level.
+
+    Returns:
+        ndarray: Evaluated profile.
     """
     sigma = _resolve_sigma(sigma, grid)
     profile = np.exp(-np.abs(grid - center) / sigma)
@@ -86,7 +113,14 @@ def laplacian(grid, center, sigma=0.2, normalize=False, debug: int=0):
 #################
 def _auto_sigma(values, default=0.2):
     """
-    Estimate sigma as the median positive spacing of sorted input values.
+    Estimate a default sigma from the spacing of input values.
+
+    Parameters:
+        values:                         Input values.
+        default (float):                Fallback sigma.
+
+    Returns:
+        float: Estimated sigma.
     """
     vals = np.asarray(values, dtype=float).ravel()
     if vals.size < 2:
@@ -101,7 +135,15 @@ def _auto_sigma(values, default=0.2):
 ######
 def _resolve_sigma(sigma, values, default=0.2):
     """
-    Resolve sigma from explicit value or auto mode.
+    Resolve a sigma value from explicit input or auto mode.
+
+    Parameters:
+        sigma:                          Requested sigma or `"auto"`.
+        values:                         Reference values for auto estimation.
+        default (float):                Fallback sigma.
+
+    Returns:
+        float: Positive sigma value.
     """
     if sigma is None or (isinstance(sigma, str) and sigma.lower() == "auto"):
         sigma = _auto_sigma(values, default=default)
@@ -114,18 +156,18 @@ def _resolve_sigma(sigma, values, default=0.2):
 def build_spectrum(xrange, xvalues, yvalues, function: str='gaussian', sigma=0.2, normalize: bool=False, debug: int=0):
     """
     Build a broadened spectrum from discrete signal points.
-    
-    Parameters
-    ----------
-    xrange : array_like            Grid where the broadened signal is evaluated.
-    xvalues : list of floats       Discrete x positions for each transition/peak.
-    yvalues : list of floats       Discrete y intensities (weights) for each transition/peak.
-    function : str, optional       Broadening function, either "gaussian", "lorentzian" or "laplacian". Default is "gaussian".
-    sigma : float | str | None     Width parameter of the broadening function. Use "auto" (or None) to estimate sigma from median spacing in xvalues.
-    normalize : bool, optional     Whether to normalize each kernel to unit area. Default is False.
-    Returns
-    -------
-    tuple(array_like, array_like)  x grid and broadened spectrum.
+
+    Parameters:
+        xrange:                        Evaluation grid.
+        xvalues:                       Discrete x positions.
+        yvalues:                       Discrete intensities.
+        function (str):                Broadening kernel.
+        sigma:                         Width parameter or `"auto"`.
+        normalize (bool):              Whether to normalize each kernel.
+        debug (int):                   Verbosity level.
+
+    Returns:
+        tuple: Evaluation grid and broadened spectrum.
     """
     assert len(xvalues) == len(yvalues), "BUILD_SPECTRUM: xvalues and yvalues must have the same length."
     

@@ -132,21 +132,18 @@ def find_t12(templist, dGlist: list):
 
 ######
 def eyring_equation(e_ground: float, e_barrier: float, temp: float=298.15, debug: int=0):
-    '''
-    Computes half-life time in seconds using Eyring equation.
-    For use in TST of adiabatic processes
-    
-    Parameters
-    ----------
-    g_excited : float       Energy of transition state (in Hartree)
-    g_initial : float       Energy of the ground state (in Hartree)
-    temp : float            Temperature in Kelvin
-    
-    Returns
-    -------
-    t : float               half-life time in seconds
-    k : float               rate constant in s^-1
-    '''
+    """
+    Compute half-life and rate constant from the Eyring equation.
+
+    Parameters:
+        e_ground (float):              Ground-state energy in Hartree.
+        e_barrier (float):             Barrier energy in Hartree.
+        temp (float):                  Temperature in Kelvin.
+        debug (int):                   Verbosity level.
+
+    Returns:
+        tuple: Half-life in seconds and rate constant in s^-1.
+    """
     dG = (e_barrier - e_ground) * constants.har2kJmol   # in kJ/mol
     if debug > 0: print(f'AZO.COMPUTE_T: dG: {dG} kJ/mol / {dG*constants.kJmol2kcal} kcal/mol')
     dG *= 1000                                           # J/mol

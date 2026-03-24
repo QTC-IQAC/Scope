@@ -13,6 +13,24 @@ elemdatabase = ElementData()
 ### ATOM ###
 ############
 class Atom(object):
+    """
+    Represent a single atom in SCOPE.
+
+    Attributes:
+        object_type (str):              Object category (`"atom"`).
+        object_subtype (str):           Atom subtype.
+        label (str):                    Atomic symbol.
+        coord (list):                   Cartesian coordinates.
+        parents (list):                 Parent species that contain the atom.
+        bonds (list):                   Bonds attached to the atom.
+
+    Methods:
+        set_charge():                   Store an atomic charge.
+        set_spin():                     Store an atomic spin.
+        add_parent():                   Link the atom to a parent object.
+        set_adjacencies():              Store covalent and metal adjacency data.
+        check_connectivity():           Test connectivity against another atom.
+    """
     def __init__(self, label: str, coord: list, frac_coord: list=None, radii: float=None) -> None:
         self.object_type          = "atom"
         self.object_subtype       = "atom"
@@ -352,6 +370,21 @@ class Atom(object):
 #### METAL ####
 ###############
 class Metal(Atom):
+    """
+    Represent a metal atom with coordination-sphere helpers.
+
+    Attributes:
+        object_subtype (str):           Atom subtype (`"metal"`).
+        coord_sphere (list):            Neighboring atoms around the metal.
+        coord_sphere_formula (str):     Formula of the coordination sphere.
+
+    Methods:
+        get_valence_elec():             Estimate valence electrons from oxidation state.
+        get_coord_sphere():             Retrieve atoms bound to the metal.
+        get_coord_sphere_formula():     Summarize the coordination sphere formula.
+        get_connected_groups():         Find ligand groups attached to the metal.
+        get_cshm():                     Compute a continuous shape measure.
+    """
     def __init__(self, label: str, coord: list, frac_coord: list=None, radii: float=None) -> None:
         Atom.__init__(self, label, coord, frac_coord=frac_coord, radii=radii)
         self.object_subtype = "metal"
@@ -517,6 +550,20 @@ class Metal(Atom):
 ### BOND ###
 ############
 class Bond(object):
+    """
+    Represent a bond between two atoms.
+
+    Attributes:
+        object_type (str):              Object category (`"bond"`).
+        object_subtype (str):           Bond subtype.
+        atom1 (object):                 First bonded atom.
+        atom2 (object):                 Second bonded atom.
+        order (int | float):            Formal bond order.
+        distance (float):               Interatomic distance.
+
+    Methods:
+        __repr__():                     Return a formatted description of the bond.
+    """
     def __init__(self, atom1: object, atom2: object, bond_order: int=1, subtype: str="intraspecie"):
         self.object_type = "bond"
         self.object_subtype = subtype

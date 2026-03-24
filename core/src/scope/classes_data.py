@@ -6,6 +6,23 @@ from scope import constants
 ### COLLECTION ###
 ##################
 class Collection(object):
+    """
+    Group related `Data` objects that share a scanning variable.
+
+    Attributes:
+        object_type (str):              Object category (`"collection"`).
+        key (str):                      Quantity name stored in the collection.
+        variable (str):                 Property used as the scan coordinate.
+        datas (list):                   Stored `Data` objects.
+
+    Methods:
+        add_data():                     Append a compatible data point.
+        get_values():                   Return stored values as an array.
+        get_variables():                Return scanned variables as an array.
+        find_min():                     Retrieve the minimum-value entry.
+        find_max():                     Retrieve the maximum-value entry.
+        convert_to_units():             Convert all entries to new units.
+    """
     def __init__(self, key: str, variable: str):
         self.object_type    = "collection"
         self.key            = key
@@ -125,6 +142,24 @@ class Collection(object):
 ### DATA ###
 ############
 class Data(object):
+    """
+    Represent a single numerical or textual result in SCOPE.
+
+    Attributes:
+        object_type (str):              Object category (`"data"`).
+        key (str):                      Result name.
+        value:                          Stored value.
+        units (str):                    Units of the value.
+        function (str):                 Origin of the value.
+        subtype (str):                  Broad result type, such as energy or time.
+
+    Methods:
+        set_subtype():                  Infer the subtype from units.
+        add_property():                 Attach metadata to the result.
+        format():                       Build a formatted string representation.
+        convert_to_units():             Convert supported energy units.
+        print_in_units():               Print the value in alternate units.
+    """
     def __init__(self, key: str, value, units: str, function: str="Unknown", notes=None, debug: str=0):
         self.object_type   = "data"
         self.key           = key

@@ -38,22 +38,21 @@ def save_list_as_text(inplist: list, pathfile: str=os.getcwd()+"outfile.txt"):
 
 def read_user_input(message: str, rtext_options: Optional[List[str]] = None, rtype_options: Optional[List[Type]] = None, validator: Optional[Callable[[Any], bool]] = None, default: Any = None, case_insensitive: bool = True, limit_attempts: bool = True, attempts: int = 3, debug: int = 0) -> Any:
     """
-    Read user input with flexible validation options.
-    
+    Read user input with optional validation rules.
+
     Parameters:
-        message: str - prompt to show the user
-        rtext_options: Optional[List[str]] - list of allowed string options
-        rtype_options: Optional[List[Type]] - list of allowed types (int, float, str, etc.)
-        validator: Optional[Callable[[Any], bool]] - custom function to validate input
-        default: Any - value returned if user presses Enter without typing
-        case_insensitive: bool - apply lowercasing to rtext_options comparison
-        limit_attempts: bool - stop after `attempts` attempts
-        attempts: int - maximum attempts
-        debug: int - verbosity level
+        message (str):                 Prompt shown to the user.
+        rtext_options (list | None):   Allowed string values.
+        rtype_options (list | None):   Allowed Python types.
+        validator (callable | None):   Extra validation callback.
+        default:                       Value returned on empty input.
+        case_insensitive (bool):       Whether to compare text case-insensitively.
+        limit_attempts (bool):         Whether to stop after a fixed number of attempts.
+        attempts (int):                Maximum number of attempts.
+        debug (int):                   Verbosity level.
+
     Returns:
-        The validated input (may be string or evaluated type)
-    Raises:
-        UserInputError if limit_attempts reached and input invalid
+        Any: Validated user input.
     """
     rtext_options = rtext_options or []
     rtype_options = rtype_options or []
@@ -119,7 +118,13 @@ def read_user_input(message: str, rtext_options: Optional[List[str]] = None, rty
 #################
 def get_config_path(debug: int=0):
     """
-    Sets path and directory for a SCOPE config file with relevant data
+    Return the path to the SCOPE user config file.
+
+    Parameters:
+        debug (int):                   Verbosity level.
+
+    Returns:
+        str: Path to the config file.
     """
     config_dir = user_config_dir("scope")
     os.makedirs(config_dir, exist_ok=True)

@@ -35,20 +35,18 @@ def get_3D(smiles, debug: int=0):
 #### Thermal Properties ####
 ############################
 def eyring_halflife(g_initial: float, g_excited: float, temp: float=298.15, debug: int=0):
-    '''
-    Computes half-life time in seconds using Eyring equation.
-    
-    Parameters
-    ----------
-    g_initial : float       Free Gibbs energy of the ground state (in Hartree)
-    g_excited : float       Free Gibbs energy of transition state (in Hartree)
-    temp : float            Temperature in Kelvin
-    
-    Returns
-    -------
-    t : float               half-life time in seconds
-    k : float               rate constant in s^-1
-    '''
+    """
+    Compute half-life and rate constant from the Eyring equation.
+
+    Parameters:
+        g_initial (float):             Ground-state free energy in Hartree.
+        g_excited (float):             Transition-state free energy in Hartree.
+        temp (float):                  Temperature in Kelvin.
+        debug (int):                   Verbosity level.
+
+    Returns:
+        tuple: Half-life in seconds and rate constant in s^-1.
+    """
     dG = (g_excited - g_initial) * Constants.har2kJmol   # in kJ/mol
     if debug > 0: print(f'AZO.COMPUTE_T: dG: {dG} kJ/mol / {dG*Constants.kJmol2kcalmol} kcal/mol')
     dG *= 1000                                           # J/mol
@@ -59,9 +57,17 @@ def eyring_halflife(g_initial: float, g_excited: float, temp: float=298.15, debu
 
 ######
 def calculate_dG(time: float, temp: float=298.15, debug: int=0): 
-    '''
-    Reverse of the Eyring equation. Gets dG (in kcal/mol) from t (in seconds)
-    '''
+    """
+    Estimate a free-energy barrier from a half-life value.
+
+    Parameters:
+        time (float):                  Half-life in seconds.
+        temp (float):                  Temperature in Kelvin.
+        debug (int):                   Verbosity level.
+
+    Returns:
+        float: Free-energy barrier in kcal/mol.
+    """
     k = np.log(2) / time          # Assuming a first-order reaction
     dG = -Constants.R_JR * temp * np.log((k * Constants.planck_Js) / (Constants.boltz_J * temp))  # in J/mol
     dG /= 1000  # in kJ/mol
@@ -99,32 +105,29 @@ def show_thermal_data(systems):                                                 
 ######
 def build_pss_spectrum(initial_fraction, initial_spectrum, final_spectrum, debug=0):
     """
-    Builds the PSS spectrum using the fraction of trans isomer. 
+    Build a photostationary-state spectrum from two endpoint spectra.
 
-    Parameters
-    ----------
-    initial_fraction : float    Fraction of the initial isomer.
-    initial_spectrum : array    Spectrum of the initial isomer.
-    final_spectrum : array      Spectrum of the final isomer.
-    debug : int, optional       Verbose level.
+    Parameters:
+        initial_fraction (float):      Fraction of the initial isomer.
+        initial_spectrum:              Spectrum of the initial isomer.
+        final_spectrum:                Spectrum of the final isomer.
+        debug (int):                   Verbosity level.
 
-    Returns
-    -------
-    array   PSS spectrum.
+    Returns:
+        array: Combined PSS spectrum.
     """
     return initial_fraction * initial_spectrum + (1 - initial_fraction) * final_spectrum
 
 ######
 def wavelength_to_rgb(nm: float):
-    """Approximate the RGB color perceived for a wavelength in nm
+    """
+    Approximate the RGB color associated with a visible wavelength.
 
-    Parameters
-    ----------
-    nm : float    Wavelength in nanometers.
-    
-    Returns
-    -------
-    tuple   RGB color.
+    Parameters:
+        nm (float):                    Wavelength in nanometers.
+
+    Returns:
+        tuple: RGB color as three floats.
     """
     gamma = 0.8
     if nm < 360 or nm > 780:

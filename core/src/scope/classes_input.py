@@ -15,6 +15,21 @@ def interpret_software(name: str):
 ##### INPUT CLASS #####
 #######################
 class Input_data(object):
+    """
+    Represent parsed key-value input data from a file or text block.
+
+    Attributes:
+        object_type (str):              Object category (`"input_data"`).
+        section (str):                  Parsed section name.
+        dct (dict):                     Parsed values as a dictionary.
+
+    Methods:
+        read():                         Parse raw content into key-value pairs.
+        set():                          Store a dictionary as attributes.
+        _set_attr():                    Convert and assign a parsed value.
+        _add_attr():                    Add a new parsed attribute.
+        _mod_attr():                    Modify an existing parsed attribute.
+    """
     def __init__(self, content: str=None, section=None, isfile: bool=True, debug=0):
         
         if isfile: 

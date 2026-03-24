@@ -6,6 +6,24 @@ from scope.parse_general       import slurm_time_to_minutes
 ### QUEUE ###
 #############
 class Queue(object):
+    """
+    Represent a scheduler queue or partition available to an environment.
+
+    Attributes:
+        name (str):                     Normalized queue name.
+        alter_name (str):               Original queue name.
+        available (bool):               Whether the queue is available for use.
+        selected (bool):                Whether the queue has been selected.
+        _environment (object):          Parent environment.
+        commands (dict):                Scheduler commands for this queue.
+
+    Methods:
+        set_nodes():                    Discover nodes in the queue.
+        get_overall_usage():            Aggregate queue occupancy data.
+        get_user_running():             Count running jobs and CPUs for the user.
+        get_queue_score():              Score the queue for submission.
+        select_queue():                 Mark the queue as selected.
+    """
     def __init__(self, name: str, _environment: object, avail: str='up', time_limit: str=None, state: str='idle'):
         if avail == "up":  self.available  = True
         else:              self.available  = False
@@ -218,6 +236,22 @@ class Queue(object):
 ### NODE ###
 ############
 class Node(object):
+    """
+    Represent a compute node inside a scheduler queue.
+
+    Attributes:
+        name (str):                     Node name.
+        _queue (object):                Parent queue.
+        commands (dict):                Scheduler commands for this node.
+        total (int):                    Total CPUs.
+        allocated (int):                Allocated CPUs.
+        free (int):                     Free CPUs.
+
+    Methods:
+        set_commands():                 Build node-level scheduler commands.
+        set_occupation():               Store CPU occupancy data.
+        get_overall_usage():            Query the current node state.
+    """
     def __init__(self, name: str, _queue: object): 
         self.name                = name
         self._queue              = _queue

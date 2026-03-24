@@ -327,7 +327,14 @@ def kabsch_align(LP, P, LQ, Q, center_method: str="centroid", debug: int=0):
 #############
 def kabsch_rotate(coords1, coords2):
     """
-    Compute the rotation matrix to align coords2 with coords1 using the Kabsch algorithm.
+    Compute the Kabsch rotation that aligns `coords2` onto `coords1`.
+
+    Parameters:
+        coords1:                        Reference coordinates.
+        coords2:                        Coordinates to rotate.
+
+    Returns:
+        ndarray: Rotation matrix.
     """
     H = np.dot(coords2.T, coords1)
     V, S, W = np.linalg.svd(H)
@@ -428,24 +435,16 @@ def replace_zero(array):
     return array
 
 def gram_schmidt(A,norm=True,row_vect=False):
-    """Orthonormalizes vectors by gram-schmidt process
-    
-    Parameters
-    -----------
-    A : ndarray,
-    Matrix having vectors in its columns
-    
-    norm : bool,
-    Do you need Normalized vectors?
-    
-    row_vect: bool,
-    Does Matrix A has vectors in its rows?
-    
-    Returns 
-    -------
-    G : ndarray,
-    Matrix of orthogonal vectors 
-    
+    """
+    Orthonormalize vectors with the Gram-Schmidt procedure.
+
+    Parameters:
+        A (ndarray):                   Input matrix of vectors.
+        norm (bool):                   Whether to normalize the output vectors.
+        row_vect (bool):               Whether vectors are stored by rows.
+
+    Returns:
+        ndarray: Orthogonalized vector matrix.
     """
     if row_vect :
         # if true, transpose it to make column vector matrix

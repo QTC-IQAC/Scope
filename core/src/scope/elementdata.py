@@ -22,26 +22,18 @@
 # ******************************************************************************************
 class ElementData:
     """
-    Class for storing some data about the chemical elements.
+    Store tabulated chemical-element metadata used across SCOPE.
 
-    elementnr          :  dictionary of the element numbers.
-                         Example: elementnr['O'] is 8.
-    valenceelectrons   :  Number of valence electrons.
-    elementperiod      :  Which period?
-    elementgroup       :  Which group?
-    elementblock       :  dictionary of which block an element belong to (spdf).
-                         Example: elementblock['Fe'] is 'd'
-    elementweight      :  dictionary of atomic weights (IUPAC 2009)
-    angularmomentum    :  dictionary for the angular momentum quantum number of s,p,d,f states
-    CovalentRadius     :  From environmentalchemistry
-    CovalentRadius2    :  From Jmol.
-    IonicRadius        :  From Jmol.
-    ElectroNegativityPauling
-    ElectroNegativitySanderson
-    ElectronNegativityAllredRochow
-    ElectronegativityMullikenJaffe
-    ElectronegativityAllen
-    emtoelements       :  element setups for EMTO
+    Attributes:
+        elementnr (dict):               Mapping from symbol to atomic number.
+        elementname (dict):             Mapping from symbol to element name.
+        elementblock (dict):            Periodic-table block for each element.
+        elementweight (dict):           Atomic weights.
+        valenceelectrons (dict):        Valence-electron counts.
+        angularmomentum (dict):         Angular-momentum lookup table.
+
+    Methods:
+        __init__():                     Load the bundled element tables.
     """
 
     def __init__(self):
@@ -2359,4 +2351,3 @@ Valen  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  0  1  1  0  0
             "Hs": "#E6002E",  # Hassio - Rojo oscuro
             "Mt": "#EB0026",  # Meitnerio - Rojo oscuro
         }
-

@@ -6,8 +6,13 @@ from scope_azo.azo_classes import System_azo
 
 def sanitize_smiles(smiles_str: str) -> str:
     """
-    Cleans extra slashes introduced by the bash terminal.
-    Converts inputs like '//N=N\\\\' to '/N=N\\'
+    Remove duplicated slash escaping introduced by the shell.
+
+    Parameters:
+        smiles_str (str):              Raw SMILES string.
+
+    Returns:
+        str | None: Sanitized SMILES string.
     """
     if smiles_str is None:
         return None

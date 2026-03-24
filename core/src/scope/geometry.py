@@ -6,17 +6,32 @@ from scope.operations.vecs_and_mats import normalize, determinant
 ## Translation ##
 #################
 def centercoords(coords: list, atom_idx: int):
-    '''
-    Takes the original coordinates (coords) and applies translation to center the coordinates in a given atom (atom_idx) 
-    '''
+    """
+    Translate coordinates so a selected atom lies at the origin.
+
+    Parameters:
+        coords (list):                  Cartesian coordinates.
+        atom_idx (int):                 Index of the reference atom.
+
+    Returns:
+        ndarray: Shifted coordinates.
+    """
     coords = np.array(coords)
     origin = coords[atom_idx]
     return coords - origin
 
 def displace_coords(coords: list, atom_idx: int, point: list=[0,0,0]):
-    '''
-    Takes the original coordinates (coords) and applies translation to move selected atom (atom_idx) to a given point (point)
-    '''
+    """
+    Translate coordinates so a selected atom reaches a target point.
+
+    Parameters:
+        coords (list):                  Cartesian coordinates.
+        atom_idx (int):                 Index of the atom to move.
+        point (list):                   Target point.
+
+    Returns:
+        ndarray: Shifted coordinates.
+    """
     coords = np.array(coords)
     point  = np.array(point)
     disp   = point - coords[atom_idx] # Displacement vector
@@ -34,17 +49,15 @@ def get_dist(coord1: list, coord2: list) -> float:
 ###########
 def get_angle_vectors(v1, v2, eps: float=1e-8) -> float:
     """
-    Calculates the angle in radians between two vectors.
+    Calculate the angle in radians between two vectors.
 
     Parameters:
-        v1 (array-like): The first vector.
-        v2 (array-like): The second vector.
+        v1 (array-like):                First vector.
+        v2 (array-like):                Second vector.
+        eps (float):                    Small cutoff for numerical stability.
 
     Returns:
-        float: The angle in radians between vectors v1 and v2.
-
-    Notes:
-        In contrast with get_dihedral, this function receives vectors instead of points. Be careful
+        float: Angle in radians.
     """
     v1 = normalize(v1)
     v2 = normalize(v2)
@@ -54,15 +67,16 @@ def get_angle_vectors(v1, v2, eps: float=1e-8) -> float:
 
 def get_angle_points(P1, P2, P3, eps: float=1e-8) -> float:
     """
-    Calculates the angle in radians defined by three points in 3D space.
+    Calculate the angle in radians defined by three points.
 
     Parameters:
-        P1 (array-like): First point.
-        P2 (array-like): Vertex point.
-        P3 (array-like): Third point.
+        P1 (array-like):                First point.
+        P2 (array-like):                Vertex point.
+        P3 (array-like):                Third point.
+        eps (float):                    Small cutoff for numerical stability.
 
     Returns:
-        float: The angle in radians for P1-P2-P3.
+        float: Angle in radians.
     """
     P1, P2, P3 = map(np.asarray, (P1, P2, P3))
     v1 = P1 - P2
@@ -71,11 +85,16 @@ def get_angle_points(P1, P2, P3, eps: float=1e-8) -> float:
 
 def get_angle(a1, a2, a3=None, eps: float=1e-8) -> float:
     """
-    Backwards-compatible angle helper.
+    Compute an angle from either two vectors or three points.
 
-    - If called with two arguments, they are interpreted as vectors.
-    - If called with three arguments, they are interpreted as points, with
-      the middle argument as the vertex.
+    Parameters:
+        a1:                            First vector or point.
+        a2:                            Second vector or vertex point.
+        a3:                            Optional third point.
+        eps (float):                   Small cutoff for numerical stability.
+
+    Returns:
+        float: Angle in radians.
     """
     if a3 is None:
         return get_angle_vectors(a1, a2, eps=eps)
@@ -88,9 +107,21 @@ def set_angle(labels, coord, target_angle: float, atom1: int, atom2: int, atom3:
     from scipy.sparse.csgraph import reverse_cuthill_mckee
     from scope.connectivity   import get_adjmatrix, get_blocks, inv
 
-    '''
-    Adjusts the angle formed by three specified atoms to a target angle.
-    '''
+    """
+    Adjust the angle formed by three atoms to a target value.
+
+    Parameters:
+        labels:                        Atomic symbols.
+        coord:                         Cartesian coordinates.
+        target_angle (float):          Target angle in degrees.
+        atom1 (int):                   First atom index.
+        atom2 (int):                   Vertex atom index.
+        atom3 (int):                   Third atom index.
+        debug (int):                   Verbosity level.
+
+    Returns:
+        list: Updated coordinates.
+    """
     xy_plane = put_atoms_on_xy(coord, atom1, atom2, atom3, debug)
     isgood, adjmat, adjnum = get_adjmatrix(labels, xy_plane)
     
@@ -166,26 +197,17 @@ def set_angle(labels, coord, target_angle: float, atom1: int, atom2: int, atom3:
 ####################
 def get_dihedral(P1, P2, P3, P4, eps: float=1e-8) -> float:
     """
-    Calculate the dihedral angle (torsion angle) defined by four points in 3D space.
+    Calculate the signed dihedral angle defined by four points.
 
-    Given four points P1, P2, P3, and P4, this function computes the signed dihedral angle
-    between the planes formed by (P1, P2, P3) and (P2, P3, P4). The angle is returned in radians,
-    ranging from -π to π.
+    Parameters:
+        P1:                            First point.
+        P2:                            Second point.
+        P3:                            Third point.
+        P4:                            Fourth point.
+        eps (float):                   Small cutoff for numerical stability.
 
-    Parameters
-    ----------
-    P1, P2, P3, P4 : array-like
-        The coordinates of the four points, each as a 1D array-like of length 3.
-
-    Returns
-    -------
-    angle : float
-        The signed dihedral angle in radians.
-
-    Notes
-    -----
-        The sign of the angle follows the right-hand rule and is determined using the atan2 function.
-        In contrast with get_angle, this function receives points instead of vectors. Be careful
+    Returns:
+        float: Signed dihedral angle in radians.
     """
     P1, P2, P3, P4 = map(np.asarray, (P1, P2, P3, P4))
     # Bond vectors
@@ -327,17 +349,18 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
 ######
 def solve_dihedral(labels: list, coord: list, at0: int, at1: int, at2: int, at3: int, at4: int, at5: int, adjmat_ref, adjnum_ref, debug: int=0):
     """
-    Sometimes, when modifying the dihedral angle (A) of a molecule, steric clashes appear
-    This function modifies the adjacent dihedral angles of (A) to find a geometry that does not suffer from steric hindrance. 
-    Adjacent dihedral angles are made by atoms:
-        1 - left: (at0-at3)
-        2 - right: (at2-at5)
+    Adjust adjacent dihedrals to resolve steric clashes after a torsion change.
 
-    Candidate dihedral values are explored starting from the current adjacent
-    dihedrals and expanding outward. A side is only rotated if removing its
-    bond splits the graph into two blocks; removing both side bonds together
-    must yield three blocks before both are rotated in the same search.
-    The first valid combination is returned.
+    Parameters:
+        labels (list):                  Atomic symbols.
+        coord (list):                   Cartesian coordinates.
+        at0, at1, at2, at3, at4, at5:  Atom indices defining the main and adjacent dihedrals.
+        adjmat_ref:                     Reference adjacency matrix.
+        adjnum_ref:                     Reference coordination numbers.
+        debug (int):                    Verbosity level.
+
+    Returns:
+        tuple: `(worked, coordinates)` with the best geometry found.
     """
     from copy import deepcopy
     from itertools import chain
@@ -443,19 +466,13 @@ def solve_dihedral(labels: list, coord: list, at0: int, at1: int, at2: int, at3:
 #########
 def get_planar_distortion(theta: float) -> float:
     """
-    Calculates the minimum angular distance in radians between the given angle 
-    and the horizontal axis (0 or pi).
+    Compute the minimum angular distance to a planar orientation.
 
-    Parameters
-    ----------
-    theta : float or array-like
-        Input angle(s) in radians.
+    Parameters:
+        theta (float | array-like):     Input angle in radians.
 
-    Returns
-    -------
-    float or ndarray
-        The absolute smallest difference between the input angle and 
-        the nearest horizontal orientation.
+    Returns:
+        float: Minimum angular distance in radians.
     """
     mod_theta = np.mod(theta, np.pi)
     return float(np.minimum(mod_theta, np.pi - mod_theta))
@@ -487,8 +504,17 @@ def rot_in_z(theta:float,input_geom:np.ndarray):
 #########
 def put_atoms_on_xy(coord: list, at1: int, at2: int, at3: int, debug=0):
     """
-    Applies sequential X, Y, Z rotations to put at1-at2 bond on x-axis 
-    and at3 on xy plane.
+    Rotate coordinates so one bond lies on the x axis and a third atom lies on the xy plane.
+
+    Parameters:
+        coord (list):                   Cartesian coordinates.
+        at1 (int):                      First atom used to define the bond.
+        at2 (int):                      Central atom moved to the origin.
+        at3 (int):                      Third atom used to define the plane.
+        debug (int):                    Verbosity level.
+
+    Returns:
+        ndarray: Rotated coordinates.
     """
     # 1. Center geometry at at2 at (0,0,0)
     c1 = centercoords(coord, at2) 
@@ -523,16 +549,13 @@ def get_unit_cell_volume(a: float, b: float, c: float, alpha: float, beta: float
 ######
 def cellparam_2_cellvec(*args) -> list:
     """
-    Convert unit cell parameters into three Cartesian cell vectors.
+    Convert unit-cell parameters into Cartesian cell vectors.
 
-    Accepts either:
-      - six separate arguments: (a, b, c, alpha, beta, gamma)
-      - a single list/tuple with six elements.
+    Parameters:
+        *args:                          Either six scalar values or one 6-item sequence.
 
-    Returns
-    -------
-    vectors : list of np.ndarray
-        The three cell vectors [v1, v2, v3].
+    Returns:
+        list: Three Cartesian cell vectors.
     """
     # Handle list or tuple input
     if len(args) == 1 and isinstance(args[0], (list, tuple, np.ndarray)):
