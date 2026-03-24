@@ -127,8 +127,11 @@ class Specie(object):
         for idx, p in enumerate(self.parents):
             if p.object_subtype == parent.object_subtype:
                 if overwrite: 
+                    if debug > 0: print(f"SPECIE.ADD_PARENT: Parent with same subtype {parent.object_subtype} exists, but overwrite={overwrite}. Overwriting")
                     self.parents[idx]         = parent
                     self.parents_indices[idx] = indices
+                else:
+                    if debug > 0: print(f"SPECIE.ADD_PARENT: Parent with same subtype {parent.object_subtype} exists, so new won't be added")
                 append = False
         if append: 
             self.parents.append(parent)
@@ -541,9 +544,12 @@ class Specie(object):
             return None
         parent  = self.get_parent(parent_subtype)
         indices = self.get_parent_indices(parent_subtype)
+        if not hasattr(parent,"adjnum"): 
+            if debug > 0: print(f"SPECIE.INHERIT. {parent_subtype=} does not have adjnum. computing it")
+            parent.get_adjmatrix(debug=debug)
         if not hasattr(parent,"madjnum"): 
-            print(f"SPECIE.INHERIT. {parent_subtype=} does not have madjnum")
-            return None 
+            if debug > 0: print(f"SPECIE.INHERIT. {parent_subtype=} does not have madjnum. computing it")
+            parent.get_metal_adjmatrix(debug=debug)
         self.madjmat = np.stack(extract_from_list(indices, parent.madjmat, dimension=2), axis=0)
         self.madjnum = np.stack(extract_from_list(indices, parent.madjnum, dimension=1), axis=0)
         self.adjmat  = np.stack(extract_from_list(indices, parent.adjmat, dimension=2), axis=0)
@@ -823,17 +829,19 @@ class Molecule(Specie):
         to_print += Specie.__repr__(self, indirect=True)
         if hasattr(self,"ligands"):  
             if self.ligands is not None: 
-                if len(self.ligands) > 0: to_print += '\n'
-                to_print += f' Num of Ligands        = {len(self.ligands)}\n'
-                for idx, lig in enumerate(self.ligands):
-                    if hasattr(lig,"smiles"): to_print += f'   Ligand {idx}: {lig.formula} with {lig.natoms} atoms. Smiles: {lig.smiles}\n'
-                    else:                     to_print += f'   Ligand {idx}: {lig.formula} with {lig.natoms} atoms.\n'
+                if len(self.ligands) > 0: 
+                    to_print += '\n'
+                    to_print += f' Num of Ligands        = {len(self.ligands)}\n'
+                    for idx, lig in enumerate(self.ligands):
+                        if hasattr(lig,"smiles"): to_print += f'   Ligand {idx}: {lig.formula} with {lig.natoms} atoms. Smiles: {lig.smiles}\n'
+                        else:                     to_print += f'   Ligand {idx}: {lig.formula} with {lig.natoms} atoms.\n'
         if hasattr(self,"metals"):   
             if self.metals is not None:  
-                if len(self.metals) > 0: to_print += '\n'
-                to_print += f' Num of Metals         = {len(self.metals)}\n'
-                for idx, met in enumerate(self.metals):
-                    to_print += f'   Metal {idx}: {met.label} with charge:{met.charge} and spin:{met.spin}\n'
+                if len(self.metals) > 0: 
+                    to_print += '\n'
+                    to_print += f' Num of Metals         = {len(self.metals)}\n'
+                    for idx, met in enumerate(self.metals):
+                        to_print += f'   Metal {idx}: {met.label} with charge:{met.charge} and spin:{met.spin}\n'
         if not indirect: to_print += '\n'
         return to_print
 
@@ -1891,6 +1899,7 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
     ## Rdkit object
     if hasattr(mol,"rdkit_obj"): 
         new_molec.rdkit_obj = mol.rdkit_obj
+        new_molec.set_bonds(debug=debug)
         if debug > 0: print(f"IMPORT MOLEC: imported rdkit object")
 
     return new_molec

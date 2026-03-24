@@ -90,8 +90,11 @@ class Atom(object):
         for idx, p in enumerate(self.parents):
             if p.object_subtype == parent.object_subtype:
                 if overwrite: 
+                    if debug > 0: print(f"ATOM.ADD_PARENT: Parent with same subtype {parent.object_subtype} exists, but overwrite={overwrite}. Overwriting")
                     self.parents[idx]         = parent
                     self.parents_index[idx]   = index
+                else:
+                    if debug > 0: print(f"ATOM.ADD_PARENT: Parent with same subtype {parent.object_subtype} exists, so new won't be added")
                 append = False
         if append: 
             self.parents.append(parent)
@@ -393,29 +396,36 @@ class Metal(Atom):
     #########################
     def get_coord_sphere_idx(self, debug: int=0):
         if not self.check_parent("molecule"): 
-            print(f"METAL.Get_coord_sphere_idx. Metal does not have parent molecule")
-            return None
-        mol = self.get_parent("molecule")
-        pidx = self.get_parent_index("molecule")
-        if not hasattr(mol,"adjmat"): mol.get_adjmatrix()
-        adjmat = mol.adjmat.copy()
-        ## Collect Cordination sphere idx as a collection of indice
-        self.coord_sphere_idx = [idx for idx, at in enumerate(adjmat[pidx]) if at >= 1]
+            print(f"METAL.Get_coord_sphere_idx. Metal {self.label} does not have parent molecule")
+            self.coord_sphere_idx = None
+        else:
+            mol = self.get_parent("molecule")
+            pidx = self.get_parent_index("molecule")
+            if not hasattr(mol,"adjmat"): mol.get_adjmatrix()
+            adjmat = mol.adjmat.copy()
+            ## Collect Cordination sphere idx as a collection of indice
+            self.coord_sphere_idx = [idx for idx, at in enumerate(adjmat[pidx]) if at >= 1]
         return self.coord_sphere_idx
 
     ######
     def get_coord_sphere(self, debug: int=0):
         if not hasattr(self,"coord_sphere_idx"): self.get_coord_sphere_idx(debug=debug)
-        mol = self.get_parent("molecule")
-        ## Collect Cordination sphere defined as a collection of atoms
-        self.coord_sphere = [at for idx, at in enumerate(mol.atoms) if idx in self.coord_sphere_idx]
+        if self.coord_sphere_idx is None:
+            self.coord_sphere = None 
+        else:
+            mol = self.get_parent("molecule")
+            ## Collect Cordination sphere defined as a collection of atoms
+            self.coord_sphere = [at for idx, at in enumerate(mol.atoms) if idx in self.coord_sphere_idx]
         return self.coord_sphere
 
     ######
     def get_coord_sphere_formula(self, debug: int=0):
         if not hasattr(self,"coord_sphere"): self.get_coord_sphere(debug=debug)
-        self.coord_sphere_formula = labels2formula(list([at.label for at in self.coord_sphere])) 
-        if debug > 0: print(f"METAL.Get_coord_sphere_formula: {self.get_parent_index('molecule')} {self.label} {self.coord_sphere_formula}")
+        if self.coord_sphere is None:
+            self.coord_sphere_formula = None 
+        else:
+            self.coord_sphere_formula = labels2formula(list([at.label for at in self.coord_sphere])) 
+            if debug > 0: print(f"METAL.Get_coord_sphere_formula: {self.get_parent_index('molecule')} {self.label} {self.coord_sphere_formula}")
         return self.coord_sphere_formula 
 
     ##################
