@@ -344,17 +344,12 @@ class System(object):
     ############################################
     def load_single_xyz(self, filepath: str, overwrite: bool=False, debug: int=0):
         ## xyz files can only be of species, not unit cells. Unit Cells require the unit cell vectors or parameters
-        from scope.classes_specie import Specie
+        from scope.classes_specie import Molecule
         from scope.read_write import read_xyz
-        dir  = os.path.dirname(filepath)
         file = os.path.basename(filepath)
         name = file.split('.')[0]
         labels, coord = read_xyz(filepath)
-        new_specie = Specie(labels, coord)
-        ## Creates the Initial State
-        #ini_state = new_specie.add_state("initial")
-        #ini_state.set_geometry(new_specie.labels, new_specie.coord)
-        ## Adds the Specie as a Source of System
+        new_specie = Molecule(labels, coord)
         self.add_source(name, new_specie, overwrite=overwrite)
 
     def load_multiple_xyz(self, folder: str, overwrite: bool=False, debug: int=0):
