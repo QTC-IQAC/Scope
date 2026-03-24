@@ -2,12 +2,13 @@
 
 # SCOPE: A Chemically-Aware Workflow-Automation Software for Molecules and Molecular Crystals
 
-  This repository contains the source code of SCOPE, a Python package designed to handle computational chemistry workflows. SCOPE prepares, submits, and analyses Gaussian and Quantum Espresso computations of individual molecules or unit cells.  
+  This repository contains the source code of SCOPE, a Python package designed to handle computational chemistry workflows. SCOPE prepares, submits, and analyses Gaussian and Quantum Espresso computations of individual molecules or molecule-based crystals.
   
-  SCOPE has three main modules.
-  1) Chemical Species:        Enables the creation of chemistry-related classes (e.g. Molecules, Ligands, Atoms, Bonds, Cells) that can be navigated and interacted with.
-  2) Computational Workflow:  Enables setting any type of computational task that chemical species must go through.
-  3) Environment:             Enables the management of files within and between computers, and the submission of jobs to computational clusters. 
+  SCOPE has three core functionalities.
+  1) Chemical Species:        Dedicated to the definition of chemistry-related classes (e.g. Molecules, Ligands, Atoms, Bonds, Cells) that can be navigated and interacted with.
+  2) Computational Workflow:  Dedicated to the orchestration of dynamic computational workflows.
+  3) States:                  Dedicated to the analysis of results
+  4) Environment:             Dedicated to file management and job execution in HPC clusters.
 
 ---
 
@@ -24,6 +25,7 @@
   - Run quantum chemistry workflows for molecules or periodic structures, using Quantum Espresso or Gaussian16
   - Parse and analyse results of computations, and connect the data with SCOPE's molecule- and cell-class objects
   - Integration with [cell2mol](https://github.com/lcmd-epfl/cell2mol)  
+  - Optional `sco` and `azo` add-ons extend SCOPE with additional capabilities
   - CLI tools
 
 ---
@@ -85,9 +87,13 @@
   These objects are conceived to be inspected interactively in notebooks.   
 
   ## Command Line Interface: 
+
   SCOPE provides a single top-level command, "scope", with multiple subcommands.
-   - config    Configure the SCOPE environment
-   - run       Run a computation
+   - config         Configure the SCOPE environment
+   - create_many    Create many systems from xyz data
+   - create_single  Create one system from a xyz source
+   - run            Run a SCOPE task for a given system
+   - set_path       Set the current directory as the system main path
 
   All subcommands have a dedicated --help with the intended use. For instance:
   ```bash
@@ -106,7 +112,6 @@ MIT
 ---
 
   # Acknowledgements
-- Manel Serrano and Raul Santiago (IQAC-CSIC) for their coding contribution, and help at setting the repository
 - The Spanish Ministerio de Ciencia, Innovación y Universidades for funding (Project PID2022-138265NA-I00)
 - The EuroHPC Development Access Call (Project: EHPC-DEV-2024D11-031)
 - The Centre de Supercomputació de Catalunya (CSUC) for Computational Resources
@@ -114,4 +119,3 @@ MIT
 <p align="center">
   <img src="mciu_logo.png" alt="Logo" width="400">
 </p>
-
