@@ -12,14 +12,19 @@ Users commonly build and update serialized `System` objects through the CLI and 
 
 ## Chemistry Layer
 The chemistry layer represents structures and their relationships.
-Common classes include:
-- `Atom`
-- `Specie` and derived structure classes
+The two main classes are:
+- `Specie` 
 - `Cell`
-- `State`
+
+Substructures are automatically recognized, and include
+- `Ligand`
+- `Group`
+- `Atom`
+- `Metal`
 
 These classes hold structural data, connectivity, and chemical metadata used by later workflow and analysis stages.
-Sources can be created from native SCOPE objects, `.xyz` data, RDKit molecules, or cell2mol structures.
+These classes must be sourced to a System in order to execute a computational workflow.
+These classes can be created from `.xyz` data, RDKit molecules, or cell2mol structures.
 
 ## Workflow Layer
 The workflow layer organizes computations from project level down to individual runs.
@@ -27,8 +32,8 @@ Its main hierarchy is:
 
 `System -> Branch -> Workflow -> Job -> Computation`
 
-- `System` is the top-level container for sources, branches, and environment configuration.
-- Branches separate alternative workflow paths for a system.
+- `System` is the top-level container for sources, branches, and file management.
+- Branches connect different workflows of a system. Branches are associated with a folder were all computations will be located.
 - Workflows group related jobs and are associated with a specific source of the system.
 - Jobs group one or more computations.
 - Computations represent concrete software runs and their inputs, outputs, and status.
@@ -47,7 +52,8 @@ They manage paths, software configuration, and scheduler-specific settings for H
 ## Parsing And Registration
 Software-specific modules under `core/src/scope/software/` generate inputs and parse outputs for Gaussian and Quantum Espresso.
 Parsed results are then registered back into SCOPE objects, typically through states, workflow objects, and data containers.
-The analysis layer also includes `Data`, `Collection`, and `VNM` objects for storing parsed or derived results.
+Data is typically organized in two classes: `Data` and `Collection` with dedicated attributed and methods.
+Some QC objects have dedicated classes, such as `VNM` (Vibrational Normal Modes) and `ExcitedState`. 
 
 ## Data Flow
 The usual execution path is:

@@ -83,8 +83,8 @@
 
   # Usage
 
-  Ideally, CLI commands are used to configure and run SCOPE. The results are stored in binary files containing System-class objects
-  These objects are conceived to be inspected interactively in notebooks.   
+  Ideally, CLI commands are used to configure SCOPE, create systems, and run tasks. 
+  Systems are stored in binary files, and are conceived to be inspected interactively in notebooks.   
 
   ## Command Line Interface: 
 

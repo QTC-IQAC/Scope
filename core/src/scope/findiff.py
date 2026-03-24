@@ -1,3 +1,7 @@
+#######################################################
+## The findiff module in SCOPE requires more testing ##
+#######################################################
+
 from scope import constants
 from copy import deepcopy
 import numpy as np
@@ -5,7 +9,7 @@ import numpy as np
 def apply_coord_displacement(coord, atom: int, axis: int, displacement: float=0.01, units: str='angstrom'):
     mod_coord = deepcopy(coord)
     if units == 'angstrom':    mod_coord[atom][axis] += displacement
-    elif units == 'bohr':      mod_coord[atom][axis] += displacement*Constants.bohr2angs
+    elif units == 'bohr':      mod_coord[atom][axis] += displacement*constants.bohr2angs
     else: print(f"FINDIFF: APPLY COORD DISPLACEMENT: could not understand the specified {units=}"); return None
     return mod_coord
 
@@ -15,7 +19,7 @@ def get_central_difference(f1, f2, displacement: float=0.01, units: str='angstro
     ## f1 must be the forces of the positive displacement
     ## f2 must be the forces of the negative displacement
     assert np.shape(f1) == np.shape(f2)    
-    if units == 'angstrom': displacement = displacement*Constants.angs2bohr
+    if units == 'angstrom': displacement = displacement*constants.angs2bohr
     elif units == 'bohr':   pass
     else: print("FINDIFF: GET CENTRAL: could not understand the specified units"); return None
     cdiff = - ( f1 - f2 ) / (2.0 * displacement)
@@ -24,7 +28,7 @@ def get_central_difference(f1, f2, displacement: float=0.01, units: str='angstro
 def findiff_displacements(coord, displacement: float=0.01, units: str='bohr'):
     ## Default should be bohr instead
     if   units == "bohr": pass
-    elif units == "angstrom": displacement = displacement * Constants.angs2bohr
+    elif units == "angstrom": displacement = displacement * constants.angs2bohr
     geoms = []
     names = []
     for idx, atom_coord in enumerate(coord):
@@ -182,7 +186,7 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
         xs = evec[:,0]
         ys = evec[:,1]
         zs = evec[:,2]
-        new_VNM.eigenvec(atomidxs,atnums,xs,ys,zs)
+        new_VNM.set_mode(atomidxs,atnums,xs,ys,zs)
         VNMs.append(new_VNM)
 
     # So far, VNMs have been created in reverse order (from largest to smallest frequency). Here we reverse

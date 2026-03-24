@@ -1,19 +1,23 @@
 # Concepts
 
+## System
+A `System` is the top-level project container.
+It stores all data about a chemical entity. It can be a specific molecule or system (e.g. water) or a concept: (e.g. QM9_dataset).
+It is used for organization purposes. Users commonly save and reload systems as binary files while workflows progress.
+
+## Molecules and Cells
+SCOPE handles both isolated molecules and molecule-based crystals.
+Cell-related logic to recognise molecules and chemically meaningful substructures.
+This logic is important for downstream analysis and should be treated carefully.
+
 ## Source
 A source is the primary chemistry object attached to a `System`.
 In practice, a source is often a molecule-like object or a crystal/cell object from which states and workflows are derived.
 Sources may be created from native SCOPE objects, `.xyz` files, RDKit molecules, or cell2mol objects.
 
 ## State
-A `State` stores a concrete structural and data snapshot associated with a source.
-States are used to represent starting points, optimized geometries, excited configurations, or other workflow results.
-The `"initial"` state is commonly used as the starting reference for later computations.
-
-## System
-A `System` is the top-level project container.
-It groups sources, states, workflows, environment settings, and generated data for one study.
-Users commonly save and reload systems as binary files while workflows progress.
+A `State` stores a concrete snapshot of a source, and can contain structural and chemical data.
+States are the basis for advanced analyses involving chemical knowledge and results of computations.
 
 ## Workflow Hierarchy
 SCOPE organizes execution through four nested concepts:
@@ -25,15 +29,10 @@ SCOPE organizes execution through four nested concepts:
 This hierarchy helps track both structure evolution and calculation history.
 During execution, SCOPE may submit pending computations, wait for running ones, or register finished jobs before moving to later steps.
 
-## Environment And Queue
+## Environment, Queue and Node
 An `Environment` stores filesystem and software configuration.
-A `Queue` stores scheduler-related options for HPC execution.
+`Queue` and `Node` store scheduler-related options for HPC execution.
 Together they describe where jobs run and how they are submitted.
-
-## Molecules, Cells, And Fragmentation
-SCOPE handles both isolated molecules and molecule-based crystals.
-Cell-related logic may fragment a crystal into molecular units, identify reference molecules, and reconstruct chemically meaningful substructures.
-This logic is important for downstream analysis and should be treated carefully.
 
 ## Registration
 Registration is the process of taking parsed calculation results and attaching them to SCOPE objects.
