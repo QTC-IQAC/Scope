@@ -17,6 +17,13 @@
   - The associated manuscript is under preparation. Partial documentation is available at: ???
   - Tutorials are available [here](https://github.com/QTC-IQAC/Scope_Tutorials)
 
+## Developer Docs
+
+  For contributors and editor-based AI tools, the repository also includes:
+  - [Architecture Notes](docs/architecture.md)
+  - [Concepts And Terminology](docs/concepts.md)
+  - [Agent Guidance](AGENTS.md)
+
 ---
 
 # Features
