@@ -1,6 +1,7 @@
 .DS_Store
 *.pyc
 *.npy
+.pypirc
 
 # Editable install / build artifacts
 *.egg-info/

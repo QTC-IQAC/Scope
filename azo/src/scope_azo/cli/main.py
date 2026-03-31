@@ -9,5 +9,11 @@ def main():
     #create_many_parser(subparsers)
     create_single_parser(subparsers)
 
+    try:
+        import argcomplete
+        argcomplete.autocomplete(parser)
+    except ImportError:
+        pass
+
     args = parser.parse_args()
     args.func(args)

@@ -11,5 +11,11 @@ def main():
     create_single_parser(subparsers)
     #get_t12_parser(subparsers)
 
+    try:
+        import argcomplete
+        argcomplete.autocomplete(parser)
+    except ImportError:
+        pass
+
     args = parser.parse_args()
     args.func(args)

@@ -15,5 +15,11 @@ def main():
     run_parser(subparsers)
     set_path_parser(subparsers)
 
+    try:
+        import argcomplete
+        argcomplete.autocomplete(parser)
+    except ImportError:
+        pass
+
     args = parser.parse_args()
     args.func(args)

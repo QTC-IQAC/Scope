@@ -1,10 +1,12 @@
 [project]
-name = "scope"
-version = "0.9.0"
-description = "Temporary test package"
+name = "scope-qc"
+version = "0.9.1"
+description = "SCOPE: Chemically-aware workflow automation for molecules and molecular crystals. Core package"
+readme = "README.md"
 authors = [{ name = "Sergi Vela", email = "sergi.vela@iqac.csic.es" }]
-requires-python = ">=3.10"
+requires-python = ">=3.12,<3.13"
 dependencies = [
+    "argcomplete",
     "numpy",
     "networkx<3.3",
     "scipy",
@@ -15,7 +17,6 @@ dependencies = [
     "jupyter", 
     "matplotlib",
     "platformdirs",
-    "cell2mol @ git+https://github.com/lcmd-epfl/cell2mol.git",
 ]
 
 # Where your CLI entry point lives

@@ -1,12 +1,13 @@
 [project]
 name = "scope-azo"
-version = "0.9.0"
+version = "0.9.1"
 description = "Azo add-on for SCOPE"
 readme = "README.md"
 authors = [{ name = "Sergi Vela", email = "sergi.vela@iqac.csic.es" }]
-requires-python = ">=3.10"
+requires-python = ">=3.12,<3.13"
 dependencies = [
-    "scope",
+    "argcomplete",
+    "scope-qc",
 ]
 
 # Where your CLI entry point lives
