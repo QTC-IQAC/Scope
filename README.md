@@ -14,7 +14,7 @@
 
 # Documentation
 
-  - The associated manuscript is under preparation. Partial documentation is available at: ???
+  - The associated manuscript is under preparation. Partial documentation is available at: https://doi.org/10.26434/chemrxiv.15001415/v1
   - Tutorials are available [here](https://github.com/QTC-IQAC/Scope_Tutorials)
 
 ## Developer Docs
