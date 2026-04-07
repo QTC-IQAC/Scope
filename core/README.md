@@ -82,15 +82,14 @@ For help:
 scope -h
 ```
 
-Shell completion is available through `argcomplete`. After installation, enable it in your shell with:
-
-```bash
-activate-global-python-argcomplete
-```
-
 ## Usage
 
-SCOPE is typically used through the command line to configure environments, create systems, and execute computational workflows. Serialized `System` objects can then be inspected later in notebooks or other interactive sessions.
+SCOPE is typically used through the command line to:
+- configure environments: `scope config`
+- create systems:         `scope create_single` and `scope create_many`
+- execute workflows:      `scope run`
+
+`System` objects are saved in binary files that can then be inspected later in notebooks or other interactive sessions.
 
 ## License
 

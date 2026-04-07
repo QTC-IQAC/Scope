@@ -43,19 +43,30 @@
 Python 3.12 is a strict requirement for SCOPE and its add-ons.
 
   ```bash
-  
-  # create and activate conda environment and install pip
+  # 1-create and activate conda environment and install pip
   conda create --name scope python=3.12 
   conda activate scope
   conda install pip
+
+  # 2-install external prerequisite
+  pip install git+https://github.com/lcmd-epfl/cell2mol.git
+  ```
   
-  # clone repository and enter
+  ### Option 1: from pip
+  ```bash
+  pip install scope-qc
+
+  # install add-ons with pip if you want them
+  conda install openbabel -c conda-forge             ## only needed for the azo add-on
+  pip install scope-azo
+  pip install scope-sco
+  ```
+
+  ### Option 2: from repository
+  ```bash
   git clone https://github.com/QTC-IQAC/Scope.git
   cd Scope
 
-  # install external prerequisite
-  pip install git+https://github.com/lcmd-epfl/cell2mol.git
-  
   # install core with pip 
   pip install -e core
 
@@ -63,27 +74,6 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   conda install openbabel -c conda-forge             ## only needed for the azo add-on
   pip install -e azo
   pip install -e sco
-  ```
-
-  Installation when deployed to pip
-
-  ```bash
-
-  # create and activate conda environment and install pip
-  conda create --name scope python=3.12 
-  conda activate scope
-  conda install pip
-
-  # install external prerequisite
-  pip install git+https://github.com/lcmd-epfl/cell2mol.git
-
-  # install core with pip
-  pip install scope-qc
-
-  # install add-ons with pip if you want them
-  conda install openbabel -c conda-forge             ## only needed for the azo add-on
-  pip install scope-azo
-  pip install scope-sco
   ```
 
   ## Dependencies
@@ -114,12 +104,6 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   All subcommands have a dedicated --help with the intended use. For instance:
   ```bash
   scope config -h 
-  ```
-
-  Shell completion for `scope`, `scope_azo`, and `scope_sco` is available through `argcomplete`.
-  After installation, it can be enabled with:
-  ```bash
-  activate-global-python-argcomplete
   ```
 
   ## Interactive

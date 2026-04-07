@@ -38,12 +38,6 @@ The package provides the `scope_sco` command. For help:
 scope_sco -h
 ```
 
-Shell completion is available through `argcomplete`. After installation, enable it in your shell with:
-
-```bash
-activate-global-python-argcomplete
-```
-
 ## Usage
 
 `scope-sco` complements the main `scope` package and is meant to be used together with the core SCOPE workflow and data model.

@@ -40,12 +40,6 @@ The package provides the `scope_azo` command. For help:
 scope_azo -h
 ```
 
-Shell completion is available through `argcomplete`. After installation, enable it in your shell with:
-
-```bash
-activate-global-python-argcomplete
-```
-
 ## Usage
 
 `scope-azo` complements the main `scope` package and is meant to be used together with the core SCOPE workflow and data model.

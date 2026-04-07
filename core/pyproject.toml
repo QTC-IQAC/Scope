@@ -6,7 +6,6 @@ readme = "README.md"
 authors = [{ name = "Sergi Vela", email = "sergi.vela@iqac.csic.es" }]
 requires-python = ">=3.12,<3.13"
 dependencies = [
-    "argcomplete",
     "numpy",
     "networkx<3.3",
     "scipy",
