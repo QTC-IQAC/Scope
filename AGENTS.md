@@ -20,28 +20,37 @@ The repository is split into a core package and two optional add-ons:
 - `System.sources` stores chemistry sources, typically molecules or cells.
 - Sources may come from native SCOPE objects, `.xyz` data, RDKit molecules, or cell2mol objects.
 - Sources usually get an `"initial"` state during setup.
-- `State._source` links a state to its parent source.
-- `Environment` and `Queue` store runtime, filesystem, and scheduler information.
-- `Data`, `Collection`, and `VNM` store parsed or derived results for later analysis.
+- `Environment` stores runtime, filesystem, and scheduler information.
+- Results are stored as `Data` and `Collection` classes
+- Some quantum-chemistry (QC) objects exists, such as `VNM` or `ExcitedState`. They store parsed or derived results for later analysis.
 - Workflow execution follows this hierarchy: `System -> Branch -> Workflow -> Job -> Computation`
 
+## Objects are interconnected
+- In principle, all objects associated with a `System` are interconnected.
+- Chemistry-aware objects can be navigated both top-down and bottom-up 
+- Workflow-related objects can be navigated both top-down and bottom-up 
+- Sources have `States`. `State._source` links a state to its parent source.
+- Sources are connected to the computational workflow through `Workflow.source`
+- Computations that modified `States` are stored in `State.computations`
+- State, Branch, Workflow and System have a dictionary in `self.results` where results can be stored.
+
 ## Key Invariants
-- Keep chemistry containers internally consistent.
+- Keep chemistry containers (e.g. Molecule, Ligand, Group, Atom) internally consistent.
   `labels`, coordinates, atoms, and adjacency/connectivity data should describe the same structure.
 - When attaching a source to a `System`, keep parent links and source registration in sync.
 - Preserve the expected relationship between a `State` and its source.
-- Many objects use lazy or incrementally populated attributes. Do not replace these patterns casually with eager recomputation.
 - Path propagation across `System`, branches, workflows, jobs, and computations is part of the workflow model.
   Avoid changing it unless the task is explicitly about path handling.
 
 ## Domain Notes
 - Fragmentation, reconstruction, and reference-molecule logic are scientifically sensitive.
-- Transition-metal and ligand handling are central in species and cell operations.
-- The `azo` and `sco` packages add domain-specific workflows and assumptions on top of the core model.
+- Transition-metals and ligands are central in species and cell operations.
 - Gaussian and Quantum Espresso parsers feed results back into SCOPE objects.
-  Changes in parser output should preserve the structure expected by downstream classes.
+  First, parsers add information to the G16_output and QE_output classes
+  Second, the output classes feed the State class.
 - Scope input files and `run_task` drive workflow execution step by step.
   A run may submit pending computations, skip still-running work, or register finished jobs before advancing.
+- The `azo` and `sco` packages add domain-specific workflows and assumptions on top of the core model.
 
 ## Coding Guidance
 - Prefer small, local, backward-compatible edits unless a broader refactor is requested.

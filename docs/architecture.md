@@ -2,29 +2,31 @@
 
 ## Overview
 SCOPE is organized around a chemistry model, a workflow model, an analysis model, and a runtime model.
-The core package handles generic molecule and crystal workflows, while `azo` and `sco` add domain-specific behavior.
-Users commonly build and update serialized `System` objects through the CLI and inspect them later in notebooks.
+The core package handles workflows for generic molecules and molecule-based crystals, while `azo` and `sco` add domain-specific behavior.
+Users commonly build and update `System` objects through the CLI and inspect them later in notebooks.
 
 ## Package Layout
-- `core/src/scope/`: main package, CLI, chemistry classes, workflows, parsers, and utilities
+- `core/src/scope/`:    main package, CLI, chemistry classes, workflows, output parsers, and utilities
 - `azo/src/scope_azo/`: azobenzene-oriented extensions and CLI helpers
 - `sco/src/scope_sco/`: spin-crossover-oriented extensions and CLI helpers
 
 ## Chemistry Layer
 The chemistry layer represents structures and their relationships.
 The two main classes are:
-- `Specie` 
+- `Molecules` (subclass of `Specie`) 
 - `Cell`
 
-Substructures are automatically recognized, and include
+Substructures are automatically recognized, and include:
 - `Ligand`
 - `Group`
 - `Atom`
 - `Metal`
 
-These classes hold structural data, connectivity, and chemical metadata used by later workflow and analysis stages.
-These classes must be sourced to a System in order to execute a computational workflow.
-These classes can be created from `.xyz` data, RDKit molecules, or cell2mol structures.
+Normally, the user works with the main classes (Molecule and Cell), while substructures are used internally by SCOPE to execute tasks. 
+Those classes hold structural data, connectivity, and chemical metadata used by later workflow and analysis stages.
+They must be sourced to a System in order to execute a computational workflow. There are System-class functions to facilitate this task.
+Species can be created from `.xyz` data, RDKit molecules, or cell2mol molecules.
+Cells can be created from `.xyz` data and cell parameters, or cell2mol Cell objects.
 
 ## Workflow Layer
 The workflow layer organizes computations from project level down to individual runs.
@@ -46,26 +48,27 @@ The runtime layer describes where and how computations are executed.
 Key classes include:
 - `Environment`
 - `Queue`
+- `Node`
 
-They manage paths, software configuration, and scheduler-specific settings for HPC usage.
+The `Environment` class manages paths, software configuration, and scheduler-specific settings for HPC usage.
+`Queue` and `Node` are mainly used for queue selection (if more than one is available) when submitting jobs
 
 ## Parsing And Registration
 Software-specific modules under `core/src/scope/software/` generate inputs and parse outputs for Gaussian and Quantum Espresso.
-Parsed results are then registered back into SCOPE objects, typically through states, workflow objects, and data containers.
+Parsed results are then registered back into SCOPE objects, typically through states and workflow objects.
 Data is typically organized in two classes: `Data` and `Collection` with dedicated attributed and methods.
 Some QC objects have dedicated classes, such as `VNM` (Vibrational Normal Modes) and `ExcitedState`. 
 
 ## Data Flow
 The usual execution path is:
-1. create or load a source structure
-2. attach it to a `System`
-3. generate an initial `State`
-4. create branches, workflows, jobs, and computations
-5. write inputs and run software
-6. parse outputs
-7. store results back in SCOPE objects for inspection and further steps
+1. configure the `Environment` associated with a project (`scope config`).
+2. create a `System`.
+3. add sources (`Molecule` or `Cell`).
+4. define the desired workflow through input files.
+5. execute workflow (`scope run`). Run as many times as necessary
+6. results are stored in binary `System` files. Download if necessary and analyse
 
-Persistent outputs commonly include binary `System` files plus the corresponding computation directory structure.
+Persistent outputs include those binary `System` files, and the computations. Each are located under the main project path, in dedicated folders.
 
 ## Add-Ons
 - `azo` extends SCOPE with azobenzene-specific structure handling and workflow utilities
