@@ -57,31 +57,33 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   pip install scope-qc
 
   # install add-ons with pip if you want them
-  conda install openbabel -c conda-forge             ## only needed for the azo add-on
+  conda install openbabel -c conda-forge             # only needed for the azo add-on
   pip install scope-azo
   pip install scope-sco
   ```
 
   ### Option 2: from repository
   ```bash
+  # 0-Download repo
   git clone https://github.com/QTC-IQAC/Scope.git
   cd Scope
 
-  # install core with pip 
+  # 1-install core
   pip install -e core
 
-  # install add-ons with pip if you want them
-  conda install openbabel -c conda-forge             ## only needed for the azo add-on
+  # 2-install add-ons with pip if you want them
+  conda install openbabel -c conda-forge             # only needed for the azo add-on
   pip install -e azo
   pip install -e sco
   ```
 
   ### Option 3: from TestPyPI
   ```bash
+  # 1-install core
   pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-qc
 
-  # install add-ons from TestPyPI if you want them
-  conda install openbabel -c conda-forge             ## only needed for the azo add-on
+  # 2-install add-ons if you want them 
+  conda install openbabel -c conda-forge             # only needed for the azo add-on
   pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-azo
   pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-sco
   ```
