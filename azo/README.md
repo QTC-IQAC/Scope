@@ -36,7 +36,7 @@ pip install -e azo
 
 ### Option 3: from TestPyPi
 ```bash
-pip install --index-url <TESTPYPI_URL_PLACEHOLDER> --extra-index-url https://pypi.org/simple/ scope-azo
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-azo
 ```
 
 ## Command Line Interface

@@ -34,7 +34,7 @@ pip install -e sco
 
 ### Option 3: from TestPyPi
 ```bash
-pip install --index-url <TESTPYPI_URL_PLACEHOLDER> --extra-index-url https://pypi.org/simple/ scope-sco
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-sco
 ```
 
 ## Command Line Interface
