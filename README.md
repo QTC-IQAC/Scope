@@ -15,7 +15,7 @@
 # Documentation
 
   - The associated manuscript is under preparation. Preprint available [here](https://doi.org/10.26434/chemrxiv.15001415/v1)
-  - Repository and source [here](<https://github.com/QTC-IQAC/Scope)
+  - Repository and source [here](https://github.com/QTC-IQAC/Scope)
   - Tutorials are available [here](https://github.com/QTC-IQAC/Scope_Tutorials)
 
 ## Developer Docs
