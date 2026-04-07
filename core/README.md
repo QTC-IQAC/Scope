@@ -20,23 +20,34 @@ Optional add-ons such as `scope-azo` and `scope-sco` build on top of this core p
 
 ## Installation
 
-Python 3.12 is required.
-
-Install from PyPI:
-
+create and activate conda environment and install pip:
 ```bash
-pip install git+https://github.com/lcmd-epfl/cell2mol.git
-pip install scope-qc
-```
-
-For a local editable installation from this repository:
-
-```bash
-pip install git+https://github.com/lcmd-epfl/cell2mol.git
-pip install -e core
+conda create --name scope python=3.12 
+conda activate scope
+conda install pip
 ```
 
 `cell2mol` is an external dependency and must currently be installed separately from its source repository.
+```bash
+pip install git+https://github.com/lcmd-epfl/cell2mol.git
+```
+
+### Install from PyPI:
+
+```bash
+pip install scope-qc    # Core Modules
+```
+
+### For a local editable installation from this repository:
+
+```bash
+pip install -e core
+```
+
+### Install from TestPyPi:
+```bash
+pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-qc
+```
 
 ## Dependencies
 
