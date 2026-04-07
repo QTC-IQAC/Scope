@@ -12,22 +12,29 @@ This add-on is intended for users who already work with SCOPE's core chemistry a
 
 ## Installation
 
-Python 3.12 is required.
-
-Install the core package first, then install the add-on from PyPI:
-
-```bash
-pip install scope-qc
-pip install scope-sco
-```
-
-For a local editable installation from this repository:
+create and activate conda environment and install pip:
 
 ```bash
 conda create --name scope python=3.12
 conda activate scope
-pip install -e core
+conda install pip
+```
+
+### Option 1: from PyPI
+```bash
+pip install scope-sco
+```
+
+### Option 2: from repository
+```bash
+git clone https://github.com/QTC-IQAC/Scope.git
+cd Scope
 pip install -e sco
+```
+
+### Option 3: from TestPyPi
+```bash
+pip install --index-url <TESTPYPI_URL_PLACEHOLDER> --extra-index-url https://pypi.org/simple/ scope-sco
 ```
 
 ## Command Line Interface

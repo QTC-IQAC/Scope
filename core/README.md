@@ -37,6 +37,8 @@ pip install scope-qc    # Core Modules
 
 ### Option 2: from repository 
 ```bash
+git clone https://github.com/QTC-IQAC/Scope.git
+cd Scope
 pip install -e core
 ```
 
