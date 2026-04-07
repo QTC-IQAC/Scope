@@ -76,6 +76,16 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   pip install -e sco
   ```
 
+  ### Option 3: from TestPyPI
+  ```bash
+  pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-qc
+
+  # install add-ons from TestPyPI if you want them
+  conda install openbabel -c conda-forge             ## only needed for the azo add-on
+  pip install --index-url <TESTPYPI_URL_PLACEHOLDER> --extra-index-url https://pypi.org/simple/ scope-azo
+  pip install --index-url <TESTPYPI_URL_PLACEHOLDER> --extra-index-url https://pypi.org/simple/ scope-sco
+  ```
+
   ## Dependencies
 
   - python 3.12
