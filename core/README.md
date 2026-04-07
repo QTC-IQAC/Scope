@@ -30,7 +30,7 @@ conda install pip
 pip install git+https://github.com/lcmd-epfl/cell2mol.git
 ```
 
-### Option 1: from PyPI 
+### Option 1: from PyPI 
 ```bash
 pip install scope-qc    # Core Modules
 ```
