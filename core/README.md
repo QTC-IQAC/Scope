@@ -25,26 +25,22 @@ create and activate conda environment and install pip:
 conda create --name scope python=3.12 
 conda activate scope
 conda install pip
-```
 
-`cell2mol` is an external dependency and must currently be installed separately from its source repository.
-```bash
+# `cell2mol` is an external dependency and must currently be installed separately from its source repository.
 pip install git+https://github.com/lcmd-epfl/cell2mol.git
 ```
 
-### Install from PyPI:
-
+### Option 1: from PyPI
 ```bash
 pip install scope-qc    # Core Modules
 ```
 
-### For a local editable installation from this repository:
-
+### Option 2: from repository
 ```bash
 pip install -e core
 ```
 
-### Install from TestPyPi:
+### Option 3: from TestPyPi:
 ```bash
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-qc
 ```
