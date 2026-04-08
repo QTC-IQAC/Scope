@@ -881,8 +881,10 @@ class CommandResult:
 ####
 def run_command(cmd: str, timeout: int = 10) -> CommandResult:
     try:
-        completed = subprocess.run(cmd,shell=True,capture_output=True,text=True,timeout=timeout)
-        return CommandResult(command=cmd,returncode=completed.returncode,stdout=completed.stdout.strip(),stderr=completed.stderr.strip())
+        completed = subprocess.run(cmd,shell=True,capture_output=True,text=False,timeout=timeout)
+        stdout = completed.stdout.decode('utf-8', errors='replace').strip()
+        stderr = completed.stderr.decode('utf-8', errors='replace').strip()
+        return CommandResult(command=cmd,returncode=completed.returncode,stdout=stdout,stderr=stderr)
     except subprocess.TimeoutExpired:
         return CommandResult(cmd, -2, "", "Command timed out")
     except FileNotFoundError as e:
