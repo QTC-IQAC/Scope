@@ -1,15 +1,8 @@
-# scope
+# scope-qc
 
-`scope` is the core SCOPE package: a chemically aware workflow-automation toolkit for molecules and molecular crystals.
+`scope-qc` is the core SCOPE package: A Chemically-Aware Workflow-Automation Software for Molecules and Molecular Crystals
 
-It provides the main object model and workflow engine used across the SCOPE project:
-
-- chemistry-aware classes for molecules, ligands, atoms, bonds, and cells
-- workflow orchestration for preparing, submitting, and tracking computations
-- parsing and registration of Gaussian and Quantum Espresso results
-- environment, path, and queue management for HPC execution
-- a CLI for configuring projects, creating systems, and running tasks
-
+It provides the main object model and workflow engine used across the SCOPE project.
 Optional add-ons such as `scope-azo` and `scope-sco` build on top of this core package.
 
 ## Documentation

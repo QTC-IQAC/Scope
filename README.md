@@ -2,11 +2,11 @@
 
 # SCOPE: A Chemically-Aware Workflow-Automation Software for Molecules and Molecular Crystals
 
-  This repository contains the source code of SCOPE, a Python package designed to handle computational chemistry workflows. SCOPE prepares, submits, and analyses Gaussian and Quantum Espresso computations of individual molecules or molecule-based crystals.
+  This repository contains the tutorials associated with SCOPE, a Python package designed to orchestrate computational chemistry workflows. SCOPE prepares, submits, and analyses quantum chemistry computations of individual molecules or molecule-based crystals, and organizes the results to simplify analysis.  
   
-  SCOPE has three core functionalities.
-  1) Chemical Species:        Dedicated to the definition of chemistry-related classes (e.g. Molecules, Ligands, Atoms, Bonds, Cells) that can be navigated and interacted with.
-  2) Computational Workflow:  Dedicated to the orchestration of dynamic computational workflows.
+  SCOPE has four core pillars.
+  1) Chemical Species:        Dedicated to encode the chemistry of the systems of interest. It can be expanded through add-ons
+  2) Computational Workflow:  Dedicated to define dynamic computational workflows.
   3) States:                  Dedicated to the analysis of results
   4) Environment:             Dedicated to file management and job execution in HPC clusters.
 

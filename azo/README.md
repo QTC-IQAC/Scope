@@ -1,6 +1,6 @@
 # scope-azo
 
-`scope-azo` is the azo add-on for SCOPE. It extends the core `scope` package with tools for building, running, and analysing azo systems.
+`scope-azo` is the azo add-on for SCOPE. It extends the core `scope` package with tools for building, running, and analysing azo-based systems.
 
 This add-on is intended for users who already work with SCOPE's core chemistry and workflow abstractions and need azo-specific functionality on top of them.
 
