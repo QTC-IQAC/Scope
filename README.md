@@ -108,11 +108,14 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   ## Command Line Interface: 
 
   SCOPE provides a single top-level command, "scope", with multiple subcommands.
-   - config         Configure the SCOPE environment
-   - create_many    Create many systems from xyz data
-   - create_single  Create one system from a xyz source
-   - run            Run a SCOPE task for a given system
-   - set_path       Set the current directory as the system main path
+
+  ```bash
+  scope config         # Configure the SCOPE environment
+  scope create_many    # Create many systems from xyz data
+  scope create_single  # Create one system from a xyz source
+  scope run            # Run a SCOPE task for a given system
+  scope set_path       # Set the current directory as the system main path
+  ```
 
   All subcommands have a dedicated --help with the intended use. For instance:
   ```bash
