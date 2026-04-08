@@ -68,7 +68,7 @@ class Cell(object):
     def charge(self):
         if not hasattr(self,"atoms"): self.get_atoms()
         if not all(hasattr(at,"charge") for at in self.atoms): return None
-        return np.sum(at.charge for at in self.atoms)
+        return sum(at.charge for at in self.atoms)
 
     @property
     def atomic_charges(self):
@@ -80,7 +80,7 @@ class Cell(object):
     def spin(self):
         if not hasattr(self,"atoms"): self.get_atoms()
         if not all(hasattr(at,"spin") for at in self.atoms): return None
-        return np.sum(at.spin for at in self.atoms)
+        return sum(at.spin for at in self.atoms)
 
     @property
     def atomic_spins(self):

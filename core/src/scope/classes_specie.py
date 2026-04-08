@@ -78,7 +78,7 @@ class Specie(object):
     def charge(self):
         if not hasattr(self,"atoms"): self.set_atoms()
         if not all(hasattr(at,"charge") for at in self.atoms): return None
-        return int(np.sum([at.charge for at in self.atoms]))
+        return int(sum(at.charge for at in self.atoms))
 
     @property
     def atomic_charges(self):
@@ -90,7 +90,7 @@ class Specie(object):
     def spin(self):
         if not hasattr(self,"atoms"): self.set_atoms()
         if not all(hasattr(at,"spin") for at in self.atoms): return None
-        return int(np.sum([at.spin for at in self.atoms]))
+        return int(sum(at.spin for at in self.atoms))
 
     @property
     def atomic_spins(self):
