@@ -52,17 +52,18 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   pip install git+https://github.com/lcmd-epfl/cell2mol.git
   ```
   
-  ### Option 1: from pip
+  ### Option 1 (preferred): from pip
   ```bash
+  # 1-install core
   pip install scope-qc
 
-  # install add-ons with pip if you want them
+  # 2-install add-ons (optional)
   conda install openbabel -c conda-forge             # only needed for the azo add-on
   pip install scope-azo
   pip install scope-sco
   ```
 
-  ### Option 2: from repository
+  ### Option 2 (alternative): from repository
   ```bash
   # 0-Download repo
   git clone https://github.com/QTC-IQAC/Scope.git
@@ -71,18 +72,18 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   # 1-install core
   pip install -e core
 
-  # 2-install add-ons with pip if you want them
+  # 2-install add-ons (optional) 
   conda install openbabel -c conda-forge             # only needed for the azo add-on
   pip install -e azo
   pip install -e sco
   ```
 
-  ### Option 3: from TestPyPI
+  ### Option 3 (discouraged): from TestPyPI
   ```bash
   # 1-install core
   pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-qc
 
-  # 2-install add-ons if you want them 
+  # 2-install add-ons (optional) 
   conda install openbabel -c conda-forge             # only needed for the azo add-on
   pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-azo
   pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-sco

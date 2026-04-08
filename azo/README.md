@@ -12,9 +12,10 @@ This add-on is intended for users who already work with SCOPE's core chemistry a
 
 ## Installation
 
-create and activate conda environment and install pip:
+Installation of scope-azo will automatically install scope-qc (the core package)
 
 ```bash
+# create and activate conda environment and install pip:
 conda create --name scope python=3.12
 conda activate scope
 conda install pip
@@ -22,19 +23,20 @@ conda install pip
 conda install openbabel -c conda-forge
 ```
 
-### Option 1: from PyPI
+### Option 1 (preferred): from PyPI
 ```bash
 pip install scope-azo
 ```
 
-### Option 2: from repository
+### Option 2 (alternative): from repository
 ```bash
 git clone https://github.com/QTC-IQAC/Scope.git
 cd Scope
+pip install -e core  # optional, otherwise the core package (scope-qc) will be installed from pip 
 pip install -e azo
 ```
 
-### Option 3: from TestPyPi
+### Option 3 (discouraged): from TestPyPi
 ```bash
 pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-azo
 ```
