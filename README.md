@@ -111,8 +111,8 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
 
   ```bash
   scope config         # Configure the SCOPE environment
-  scope create_many    # Create many systems from xyz data
-  scope create_single  # Create one system from a xyz source
+  scope create_many    # Create many systems from multiple xyz data
+  scope create_single  # Create one system from a single xyz source
   scope run            # Run a SCOPE task for a given system
   scope set_path       # Set the current directory as the system main path
   ```
