@@ -46,9 +46,9 @@ def gen_qe_input(comp: object, debug: int=0):
     #########################
     ### DETERMINE SPECIES ###
     #########################
-    metal_indices            = get_metal_idxs(istate.labels)            ## Indices of metal atoms in the state
-    metal_species            = get_metal_species(istate.labels)         ## 
-    species                  = get_label_spin_pairs(istate, debug=debug)    ## Spin information is taken from the original source of the state
+    metal_indices            = get_metal_idxs(istate.labels)           ## Indices of metal atoms in the state
+    metal_species            = get_metal_species(istate.labels)        ## 
+    species                  = get_label_spin_pairs(istate._source)    ## Spin information is taken from the original source of the state
     nspecies                 = len(species)
 
     if debug >= 0: 
@@ -270,10 +270,10 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
 #####################
 ## Other Functions ##
 #####################
-def get_label_spin_pairs(state: object, debug: int=0):
-    if not hasattr(state,"atoms"): state.set_atoms(debug=debug)
+def get_label_spin_pairs(source: object, debug: int=0):
+    if not hasattr(source,"atoms"): source.set_atoms(debug=debug)
     pairs = []
-    for at in state.atoms:
+    for at in source.atoms:
         if tuple([at.label,at.spin]) not in pairs: pairs.append(tuple([at.label,at.spin]))
     if debug > 0: print(f"GET_LABEL_SPIN_PAIRS. Pairs of label-spin found: {pairs}")
     return pairs
