@@ -25,6 +25,15 @@ scope                    = "scope.cli.main:main"
 
 [tool.setuptools.packages.find]
 where = ["src"]
+
+[tool.setuptools.package-data]
+"scope" = ["cshm.yaml"]
+"scope.software.quantum_espresso" = [
+    "PP_Libraries/*/*.UPF",
+    "PP_Libraries/*/*.upf",
+    "PP_Libraries/*/*.json",
+]
+
 [tool.setuptools]
 include-package-data = false
 
