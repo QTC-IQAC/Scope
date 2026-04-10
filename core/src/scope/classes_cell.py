@@ -271,7 +271,6 @@ class Cell(object):
     #########################
     def set_atoms(self, debug: int=0):
         """Collect atom objects from the stored molecules."""
-        parent_subtype = "cell"
         if not hasattr(self,"molecules"): 
             if debug > 0: print("CELL.SET_ATOMS: retrieving molecules")
             self.get_molecules()
@@ -282,14 +281,14 @@ class Cell(object):
         for idx, mol in enumerate(self.molecules):
             if debug > 0: print(f"CELL.SET_ATOMS: doing molecule {idx} with formula {mol.formula}")
             for jdx, at in enumerate(mol.atoms):
-                if at.check_parent(parent_subtype, search_by="type"):
-                    index = at.get_parent_index(parent_subtype, search_by="type") ## We get the index of the atom in the Cell
+                if at.check_parent("cell", search_by="type"):
+                    index = at.get_parent_index("cell", search_by="type") ## We get the index of the atom in the Cell
                     tmp_indices.append(index)  
                     self.atoms.append(at)
                 else: 
                     ## If it doesn't work, we attempt to get the cell index from the molecule
-                    if mol.check_parent(parent_subtype, search_by="type"):
-                        mol_in_cell  = mol.get_parent_indices(parent_subtype, search_by="type")
+                    if mol.check_parent("cell", search_by="type"):
+                        mol_in_cell  = mol.get_parent_indices("cell", search_by="type")
                         at_in_mol    = at.get_parent_index(mol.object_subtype)
                         index = mol_in_cell[at_in_mol]
                         tmp_indices.append(index)  

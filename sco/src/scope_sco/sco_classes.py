@@ -18,6 +18,7 @@ from scope_sco.sco_structure    import *
 class System_sco(System):
     """
     Represent a spin-crossover system built from crystal references.
+    Some tasks are specific to Fe-N6-based SCO systems. Generalization is possible but not yet implemented.
 
     Attributes:
         object_subtype (str):           System subtype (`"sco_system"`).
@@ -247,6 +248,7 @@ class System_sco(System):
 class Cell_sco(Cell):
     """
     Represent a crystal cell specialized for spin-crossover analysis.
+    Some tasks are specific to Fe-N6-based SCO Cells. Generalization is possible but not yet implemented.
 
     Attributes:
         object_subtype (str):           Cell subtype (`"sco_cell"`).

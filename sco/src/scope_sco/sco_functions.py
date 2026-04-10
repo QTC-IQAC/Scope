@@ -7,7 +7,6 @@ from scope.thermodynamics import *
 ######
 def get_sco_geom(state: object, debug: int=0):
     from scope_sco.sco_structure import geom_sco_from_xyz
-    from scope.classes_state import State
     if not hasattr(state,"fragmented"): state.check_fragmentation(reconstruct=True, debug=debug)
     assert not state.fragmented, f"Found Fragmented molecules in the geometry of state: {state.name}"
     if not hasattr(state,"molecules"): state.get_molecules(debug=debug)
