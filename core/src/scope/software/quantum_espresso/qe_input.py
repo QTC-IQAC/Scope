@@ -9,6 +9,23 @@ elemdatabase = ElementData()
 
 #######################
 def gen_qe_input(comp: object, debug: int=0):
+    """
+    Generate a Quantum Espresso input file for a computation.
+
+    Parameters:
+        comp (object):                Computation object containing the QC settings,
+                                      source, and input-file path.
+        debug (int):                  Verbosity level.
+
+    Returns:
+        None
+
+    Warning:
+        Atomic coordinates and labels are taken from the requested state
+        (`comp.qc_data.istate`) so that the geometry reflects any updates coming
+        from previous computations. However, atomic spin information is instead taken from
+        the original source (comp.source).
+    """ 
 
     ######################
     ### INITIAL CHECKS ###
@@ -19,7 +36,6 @@ def gen_qe_input(comp: object, debug: int=0):
     assert exists,                         f"istate = {comp.qc_data.istate} does not exist"
     assert hasattr(istate,"labels"),       f"istate = {comp.qc_data.istate} doesn't have labels"
     assert hasattr(istate,"coord"),        f"istate = {comp.qc_data.istate} doesn't have coordinates"
-    #if not hasattr(istate,"atoms"):        istate.set_atoms(debug=debug)
 
     ## 2-Cell or Molecule?
     if   comp.source.object_type == "cell":   system_type = "cell"
@@ -48,7 +64,7 @@ def gen_qe_input(comp: object, debug: int=0):
     #########################
     metal_indices            = get_metal_idxs(istate.labels)           ## Indices of metal atoms in the state
     metal_species            = get_metal_species(istate.labels)        ## 
-    species                  = get_label_spin_pairs(istate._source)    ## Spin information is taken from the original source of the state
+    species                  = get_label_spin_pairs(comp.source)       ## Spin information is taken from the source
     nspecies                 = len(species)
 
     if debug >= 0: 
@@ -185,27 +201,27 @@ def gen_qe_input(comp: object, debug: int=0):
             pp, cutoff_wfc, cutoff_rho = get_pp(spec[0], PP_path)
             print(f"{label} {weight:6.4f} {pp}", file=inp)
         
-        #///////////////////////////////////////////////////////////////////////////////////////////////////////////////
-        #// Atom Coords, taken from istate, but spins taken from _source (state.atomic_spins just reads from source) ///
-        #///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        #/////////////////////////////////////////////////////////////////////
+        #// Atom Coords, taken from istate, but spins taken from the source //
+        #/////////////////////////////////////////////////////////////////////
         print("ATOMIC_POSITIONS angstrom", file=inp)
         # First, it prints the metal atoms
-        for idx, at in enumerate(istate._source.atoms):
+        for idx, at in enumerate(comp.source.atoms):
             if idx in metal_indices:
-                if istate.atomic_spins[idx] == 0: l = at.label
+                if comp.source.atomic_spins[idx] == 0: l = at.label
                 else:                             l = at.get_decorated_label(typ="spin") 
                 print(f"{l:4}        {at.coord[0]:12.6f}   {at.coord[1]:12.6f}   {at.coord[2]:12.6f}", file=inp)
         # Then the rest
-        for idx, at in enumerate(istate._source.atoms):
+        for idx, at in enumerate(comp.source.atoms):
             if idx not in metal_indices:
-                if istate.atomic_spins[idx] == 0: l = at.label
+                if comp.source.atomic_spins[idx] == 0: l = at.label
                 else:                             l = at.get_decorated_label(typ="spin") 
                 print(f"{l:4}        {at.coord[0]:12.6f}   {at.coord[1]:12.6f}   {at.coord[2]:12.6f}", file=inp)
         print("K_POINTS gamma", file=inp)
 
-        #/////////////////////////////
-        #// HUBBARD data after 7.1 ///
-        #/////////////////////////////
+        #//////////////////////////////////////////
+        #// HUBBARD data for versions above 7.0 ///
+        #//////////////////////////////////////////
         if comp.qc_data.is_hubbard and comp.qc_data.version > 7.0:
             print("HUBBARD (atomic)", file=inp)
             for idx, spec in enumerate(species):

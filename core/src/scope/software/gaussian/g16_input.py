@@ -13,6 +13,23 @@ elemdatabase = ElementData()
 
 #######################
 def gen_g16_input(comp, debug: int=0):
+    """
+    Generate a Gaussian 16 input file for a computation.
+
+    Parameters:
+        comp (object):                Computation object containing the QC settings,
+                                      source, and input-file path.
+        debug (int):                  Verbosity level.
+
+    Returns:
+        None
+
+    Warning:
+        Atomic coordinates and labels are taken from the requested state
+        (`comp.qc_data.istate`) so that the geometry reflects any updates coming
+        from previous computations. Total charge and spin multiplicity are taken
+        from the original source (comp.source)
+    """
 
     ## 1-Change some variable names to simplify calls
     source     = comp.source
@@ -38,7 +55,7 @@ def gen_g16_input(comp, debug: int=0):
         commandline.append(" nosymm")
         commandline.append(" scf=(maxconventionalcycles=200,xqc)")
 
-        ## 2.2 Decides Unrestricted or Restricted based on the spin multiplicity of the initial state
+        ## 2.2 Decides Unrestricted or Restricted based on the spin multiplicity of the source
         is_unrestricted = False
         if source.spin > 0: 
             is_unrestricted = True
@@ -121,7 +138,7 @@ def gen_g16_input(comp, debug: int=0):
         print("", file=inp) 
         print(f"Title Card", file=inp) 
         print("", file=inp) 
-        print(f"{istate.charge} {istate.spin_multiplicity}", file=inp) 
+        print(f"{source.charge} {source.spin_multiplicity}", file=inp) 
 
         ##################################################################
         ### Coordinates, which are taken from the initial state object ###
