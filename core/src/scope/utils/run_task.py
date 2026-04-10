@@ -139,8 +139,8 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                 if debug > 0: print(f"RUN_TASK, step 3.0: evaluating job, and computation with indices: {this_workflow.jobs.index(this_job)+1}/{len(this_workflow.jobs)}, {jdx+1}/{len(this_job.computations)}")
 
                 ## Step 3.1-Checks files and updates
-                qc_has_updated = comp.check_qc_data(inp_path=inp_path, debug=debug)  ## Checks wether the user has updated the qc_data
-                comp.check_updates()                                                 ## Checks for not-registered update computations 
+                qc_has_updated = comp.check_qc_data(inp_path=inp_path, debug=0)   ## Checks wether the user has updated the qc_data
+                comp.check_updates()                                              ## Checks for not-registered update computations 
                 comp.check_files()
 
                 if debug > 0: print("RUN_TASK, step 3.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
@@ -159,7 +159,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                         if debug > 0: print("RUN_TASK, step 3.2a: ignore_submitted=", options.ignore_submitted)
                         if debug > 0: print("RUN_TASK, step 3.2a: initial state is", comp.qc_data.istate)
                         if not comp.isrunning or options.ignore_submitted:       ## options.ignore_submitted will also be checked in comp.run 
-                            comp.check_qc_data(inp_path=inp_path, debug=debug)
+                            #comp.check_qc_data(inp_path=inp_path, debug=debug)
                             comp.run(global_env, options, debug=debug); updated = True
                     else: 
                         if debug > 0: print("RUN_TASK, step 3.2a: want_submit is False or comp.has_update")

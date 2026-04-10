@@ -1092,18 +1092,22 @@ class Computation(object):
 
         ## 1-Gets Resources
         if options.want_submit:
+            if debug > 0: print(f"COMPUTATION.RUN: Getting Resources for submission")
             askqueue = environment.get_best_queue(debug=debug)
             askprocs = environment.requested_procs 
+            if debug > 0: print(f"COMPUTATION.RUN: Found: {askprocs} processors and {askqueue} queue for submission")
             ## 1.1-Adds Resources
             self.add_submission_init(nprocs=askprocs, queue=askqueue)
             ## 1.2-Creates Files
             self.check_files()
             if not self.input_exists or options.overwrite_inputs:
-                if self.software == 'g16':  gen_g16_input(self, debug=0)
-                elif self.software == 'qe': gen_qe_input(self, debug=0)
+                if debug > 0: print(f"COMPUTATION.RUN: Creating Input File")
+                if self.software == 'g16':  gen_g16_input(self, debug=debug)
+                elif self.software == 'qe': gen_qe_input(self, debug=debug)
             if not self.subfile_exists or options.overwrite_inputs:
-                if self.software == 'g16':  gen_g16_subfile(self, queue=askqueue, module=environment.g16_module, procs=askprocs, savechk=False)
-                elif self.software == 'qe': gen_qe_subfile(self, queue=askqueue, module=environment.qe_module, procs=askprocs)
+                if debug > 0: print(f"COMPUTATION.RUN: Creating Submission File")
+                if self.software == 'g16':  gen_g16_subfile(self, queue=askqueue, module=environment.g16_module, procs=askprocs, savechk=False, debug=debug)
+                elif self.software == 'qe': gen_qe_subfile(self, queue=askqueue, module=environment.qe_module, procs=askprocs, debug=debug)
 
         ## 2-If output exists, prompts for registration
         if self.output_exists and not self.isregistered:

@@ -51,7 +51,7 @@ def gen_qe_input(comp: object, debug: int=0):
     species                  = get_label_spin_pairs(istate._source, debug=debug)    ## Spin information is taken from the original source of the state
     nspecies                 = len(species)
 
-    if debug >= 1: 
+    if debug >= 0: 
         print("GEN_QE_INPUT: Received cell with this data:")
         print(f"    species:  {species}")
         print(f"    metal_species: {metal_species}")
@@ -212,7 +212,11 @@ def gen_qe_input(comp: object, debug: int=0):
                 if spec[1] != 0: print(f"U {spec[0]}-3d {comp.qc_data.uterm}", file=inp)
 
 ###################################################
-def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: str="pw.x", version: float=7.0): 
+def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: str="pw.x", version: float=7.0, debug: int=0): 
+
+    if debug > 0: print(f"GEN_QE_SUBFILE: Creating submission file for {comp.name}")
+    if debug > 0: print(f"GEN_QE_SUBFILE: Using QE Module From Environment={module}") 
+    if debug > 0: print(f"GEN_QE_SUBFILE: Requesting Cores={procs}")
     version = str(version)
     with open(comp.sub_path, 'w+') as sub:
         if queue._environment.scheduler == 'slurm':

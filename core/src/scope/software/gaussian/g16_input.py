@@ -134,11 +134,15 @@ def gen_g16_input(comp, debug: int=0):
         print("", file=inp) 
 
 ###################################################
-def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, savechk: bool=False):
-   
+def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, savechk: bool=False, debug: int=0):
+
+    if debug > 0: print(f"GEN_G16_SUBFILE: Creating submission file for {comp.name}")
+    if debug > 0: print(f"GEN_G16_SUBFILE: Using G16 Module From Environment={module}") 
+    if debug > 0: print(f"GEN_G16_SUBFILE: Requesting Cores={procs}")
     if    procs*float(1.5) >= float(8): mem=int(procs*1.5)   ## Estimates the available memory as 1.5 GB per CPU
     else:                               mem=int(4)           ## With a minimum of 4GB
 
+    if debug > 0: print(f"GEN_G16_SUBFILE: Requesting Memory={mem}GB") 
     with open(comp.sub_path, 'w+') as sub:
         if queue._environment.scheduler == 'slurm':
             print(f"#!/bin/bash", file=sub)
