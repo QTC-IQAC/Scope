@@ -110,7 +110,7 @@ def gen_qe_input(comp: object, debug: int=0):
         if comp.qc_data.is_hubbard and comp.qc_data.version <= 7.0:
             print("    lda_plus_u=.true.,", file=inp)
             for idx, spec in enumerate(species):
-                if spec[1] != 0: print(f"    Hubbard_U({idx+1})={comp.qc_data.uterm}", file=inp)
+                if spec[0] in metal_species: print(f"    Hubbard_U({idx+1})={comp.qc_data.uterm}", file=inp)
 
         if comp.qc_data.is_grimme:
             if comp.qc_data.grimme_type == "d2":
