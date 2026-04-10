@@ -19,7 +19,7 @@ def gen_qe_input(comp: object, debug: int=0):
     assert exists,                         f"istate = {comp.qc_data.istate} does not exist"
     assert hasattr(istate,"labels"),       f"istate = {comp.qc_data.istate} doesn't have labels"
     assert hasattr(istate,"coord"),        f"istate = {comp.qc_data.istate} doesn't have coordinates"
-    #if not hasattr(istate,"atoms"):        istate.set_atoms(debug=debug)
+    if not hasattr(istate,"atoms"):        istate.set_atoms(debug=debug)
 
     ## 2-Cell or Molecule?
     if   comp.source.object_type == "cell":   system_type = "cell"
@@ -48,7 +48,7 @@ def gen_qe_input(comp: object, debug: int=0):
     #########################
     metal_indices            = get_metal_idxs(istate.labels)            ## Indices of metal atoms in the state
     metal_species            = get_metal_species(istate.labels)         ## 
-    species                  = get_label_spin_pairs(istate._source, debug=debug)    ## Spin information is taken from the original source of the state
+    species                  = get_label_spin_pairs(istate, debug=debug)    ## Spin information is taken from the original source of the state
     nspecies                 = len(species)
 
     if debug >= 0: 
@@ -104,13 +104,13 @@ def gen_qe_input(comp: object, debug: int=0):
   
         ## Starting Magnetization
         for idx, spec in enumerate(species):
-            if spec[1] != 0: print(f"    starting_magnetization({idx})={spec[1]}", file=inp)
+            if spec[1] != 0: print(f"    starting_magnetization({idx+1})={spec[1]}", file=inp)
 
         ## Hubbard: Here it is assumed that the Hubbard U term will apply to all metals
         if comp.qc_data.is_hubbard and comp.qc_data.version <= 7.0:
             print("    lda_plus_u=.true.,", file=inp)
             for idx, spec in enumerate(species):
-                if spec[1] != 0: print(f"    Hubbard_U({idx})={comp.qc_data.uterm}", file=inp)
+                if spec[1] != 0: print(f"    Hubbard_U({idx+1})={comp.qc_data.uterm}", file=inp)
 
         if comp.qc_data.is_grimme:
             if comp.qc_data.grimme_type == "d2":
@@ -270,10 +270,10 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
 #####################
 ## Other Functions ##
 #####################
-def get_label_spin_pairs(source: object, debug: int=0):
-    if not hasattr(source,"atoms"): source.set_atoms(debug=debug)
+def get_label_spin_pairs(state: object, debug: int=0):
+    if not hasattr(state,"atoms"): state.set_atoms(debug=debug)
     pairs = []
-    for at in source.atoms:
+    for at in state.atoms:
         if tuple([at.label,at.spin]) not in pairs: pairs.append(tuple([at.label,at.spin]))
     if debug > 0: print(f"GET_LABEL_SPIN_PAIRS. Pairs of label-spin found: {pairs}")
     return pairs
