@@ -19,7 +19,7 @@ def gen_qe_input(comp: object, debug: int=0):
     assert exists,                         f"istate = {comp.qc_data.istate} does not exist"
     assert hasattr(istate,"labels"),       f"istate = {comp.qc_data.istate} doesn't have labels"
     assert hasattr(istate,"coord"),        f"istate = {comp.qc_data.istate} doesn't have coordinates"
-    if not hasattr(istate,"atoms"):        istate.set_atoms(debug=debug)
+    #if not hasattr(istate,"atoms"):        istate.set_atoms(debug=debug)
 
     ## 2-Cell or Molecule?
     if   comp.source.object_type == "cell":   system_type = "cell"
@@ -190,13 +190,13 @@ def gen_qe_input(comp: object, debug: int=0):
         #///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         print("ATOMIC_POSITIONS angstrom", file=inp)
         # First, it prints the metal atoms
-        for idx, at in enumerate(istate.atoms):
+        for idx, at in enumerate(istate._source.atoms):
             if idx in metal_indices:
                 if istate.atomic_spins[idx] == 0: l = at.label
                 else:                             l = at.get_decorated_label(typ="spin") 
                 print(f"{l:4}        {at.coord[0]:12.6f}   {at.coord[1]:12.6f}   {at.coord[2]:12.6f}", file=inp)
         # Then the rest
-        for idx, at in enumerate(istate.atoms):
+        for idx, at in enumerate(istate._source.atoms):
             if idx not in metal_indices:
                 if istate.atomic_spins[idx] == 0: l = at.label
                 else:                             l = at.get_decorated_label(typ="spin") 
