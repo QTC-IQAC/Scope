@@ -231,28 +231,47 @@ class Cell(object):
     ## Parents ##
     #############
     ## This function mimics the specie-class function with the same name
-    def check_parent(self, subtype):
+    def check_parent(self, subtype, search_by: str="subtype"):
         """Return whether this cell matches the requested parent subtype."""
-        if subtype == "cell": return True
-        else:                 return False
+        if search_by.lower() == "subtype":
+            if subtype == "cell": return True
+            else:                 return False
+        elif search_by.lower() == "type":
+            if subtype == "cell": return True
+            else:                 return False
+        else:
+            raise ValueError(f"CELL.CHECK_PARENT: unknown {search_by=}")
 
     ## This function mimics the specie-class function with the same name
-    def get_parent(self, subtype):
+    def get_parent(self, subtype, search_by: str="subtype"):
         """Return this cell when `subtype == "cell"`."""
-        if subtype == "cell": return self
-        else:                 return None
+        if search_by.lower() == "subtype":
+            if subtype == "cell": return self
+            else:                 return None
+        elif search_by.lower() == "type":
+            if subtype == "cell": return self
+            else:                 return None
+        else:
+            raise ValueError(f"CELL.GET_PARENT: unknown {search_by=}")
 
     ## This function mimics the specie-class function with the same name
-    def get_parent_indices(self, subtype: str):
+    def get_parent_indices(self, subtype: str, search_by: str="subtype"):
         """Return atom indices for the cell parent subtype."""
-        if subtype == "cell": return list(range(0,self.natoms))
-        else:                 return None
+        if search_by.lower() == "subtype":
+            if subtype == "cell": return list(range(0,self.natoms))
+            else:                 return None
+        elif search_by.lower() == "type":
+            if subtype == "cell": return list(range(0,self.natoms))
+            else:                 return None
+        else:
+            raise ValueError(f"CELL.GET_PARENT_INDICES: unknown {search_by=}")
 
     #########################
     ## Atoms and Molecules ##
     #########################
     def set_atoms(self, debug: int=0):
         """Collect atom objects from the stored molecules."""
+        parent_subtype = "cell"
         if not hasattr(self,"molecules"): 
             if debug > 0: print("CELL.SET_ATOMS: retrieving molecules")
             self.get_molecules()
@@ -263,14 +282,14 @@ class Cell(object):
         for idx, mol in enumerate(self.molecules):
             if debug > 0: print(f"CELL.SET_ATOMS: doing molecule {idx} with formula {mol.formula}")
             for jdx, at in enumerate(mol.atoms):
-                if at.check_parent(self.object_subtype):
-                    index = at.get_parent_index(self.object_subtype) ## We get the index of the atom in the Cell
+                if at.check_parent(parent_subtype, search_by="type"):
+                    index = at.get_parent_index(parent_subtype, search_by="type") ## We get the index of the atom in the Cell
                     tmp_indices.append(index)  
                     self.atoms.append(at)
                 else: 
                     ## If it doesn't work, we attempt to get the cell index from the molecule
-                    if mol.check_parent(self.object_subtype):
-                        mol_in_cell  = mol.get_parent_indices(self.object_subtype)
+                    if mol.check_parent(parent_subtype, search_by="type"):
+                        mol_in_cell  = mol.get_parent_indices(parent_subtype, search_by="type")
                         at_in_mol    = at.get_parent_index(mol.object_subtype)
                         index = mol_in_cell[at_in_mol]
                         tmp_indices.append(index)  

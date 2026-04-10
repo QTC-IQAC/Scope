@@ -120,24 +120,39 @@ class Atom(object):
             if debug > 0: print(f"ATOM.ADD_PARENT: added parent with subtype {parent.object_subtype}. Atom index is {index=}")
 
     ######
-    def check_parent(self, subtype: str):
+    def check_parent(self, subtype: str, search_by: str="subtype"):
         ## checks if parent of a given subtype exists
         for p in self.parents:
-            if p.object_subtype == subtype: return True
+            if search_by.lower() == "subtype":
+                if p.object_subtype == subtype: return True
+            elif search_by.lower() == "type":
+                if p.object_type == subtype: return True
+            else:
+                raise ValueError(f"ATOM.CHECK_PARENT: unknown {search_by=}")
         return False
 
     ######
-    def get_parent(self, subtype: str):
+    def get_parent(self, subtype: str, search_by: str="subtype"):
         ## retrieves parent of a given subtype 
         for p in self.parents:
-            if p.object_subtype == subtype: return p
+            if search_by.lower() == "subtype":
+                if p.object_subtype == subtype: return p
+            elif search_by.lower() == "type":
+                if p.object_type == subtype: return p
+            else:
+                raise ValueError(f"ATOM.GET_PARENT: unknown {search_by=}")
         return None
     
     ######
-    def get_parent_index(self, subtype: str):
+    def get_parent_index(self, subtype: str, search_by: str="subtype"):
         ## retrieves parent of a given subtype 
         for idx, p in enumerate(self.parents):
-            if p.object_subtype == subtype: return self.parents_index[idx]
+            if search_by.lower() == "subtype":
+                if p.object_subtype == subtype: return self.parents_index[idx]
+            elif search_by.lower() == "type":
+                if p.object_type == subtype: return self.parents_index[idx]
+            else:
+                raise ValueError(f"ATOM.GET_PARENT_INDEX: unknown {search_by=}")
         return None
 
     ##################

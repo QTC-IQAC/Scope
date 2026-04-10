@@ -174,28 +174,47 @@ class Specie(object):
                     if debug > 0: print(f"SPECIE.ADD_PARENT: added parent of parent with subtype {p2.object_subtype}. Indices are {new_indices}")
 
     ######
-    def check_parent(self, subtype: str):
+    def check_parent(self, subtype: str, search_by: str="subtype"):
         ## checks if parent of a given subtype exists
         for p in self.parents:
-            if p.object_subtype == subtype: return True
+            if search_by.lower() == "subtype":
+                if p.object_subtype == subtype: return True
+            elif search_by.lower() == "type":
+                if p.object_type == subtype: return True
+            else:
+                raise ValueError(f"SPECIE.CHECK_PARENT: unknown {search_by=}")
         return False
 
     ######
-    def get_parent(self, subtype: str):
+    def get_parent(self, subtype: str, search_by: str="subtype"):
         ## retrieves parent of a given subtype 
         for p in self.parents:
-            if hasattr(p, "object_subtype"):  
-                if p.object_subtype.lower() == subtype.lower(): return p
-            else:  
-                print(f"Warning. Parent with type: {p.object_type} does not have subtype")
+            if search_by.lower() == "subtype":
+                if hasattr(p, "object_subtype"):  
+                    if p.object_subtype.lower() == subtype.lower(): return p
+                else:  
+                    print(f"Warning. Parent with type: {p.object_type} does not have subtype")
+            elif search_by.lower() == "type":
+                if hasattr(p, "object_type"):
+                    if p.object_type.lower() == subtype.lower(): return p
+                else:
+                    print(f"Warning. Parent with subtype: {p.object_subtype} does not have type")
+            else:
+                raise ValueError(f"SPECIE.GET_PARENT: unknown {search_by=}")
         return None
 
     ######
-    def get_parent_indices(self, subtype: str):
+    def get_parent_indices(self, subtype: str, search_by: str="subtype"):
         ## retrieves parent indices of a given subtype 
         for idx, p in enumerate(self.parents):
-            if hasattr(p, "object_subtype"):  
-                if p.object_subtype.lower() == subtype.lower(): return self.parents_indices[idx]
+            if search_by.lower() == "subtype":
+                if hasattr(p, "object_subtype"):  
+                    if p.object_subtype.lower() == subtype.lower(): return self.parents_indices[idx]
+            elif search_by.lower() == "type":
+                if hasattr(p, "object_type"):
+                    if p.object_type.lower() == subtype.lower(): return self.parents_indices[idx]
+            else:
+                raise ValueError(f"SPECIE.GET_PARENT_INDICES: unknown {search_by=}")
         return None
 
     ###########
