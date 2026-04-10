@@ -26,7 +26,7 @@ class State(object):
         set_geometry():                 Store labels and coordinates.
         set_cell():                     Attach unit-cell metadata.
         get_molecules():                Build molecular fragments from the geometry.
-        set_atoms():                    Collect atom objects from molecules.
+        #set_atoms():                    Collect atom objects from molecules.
         set_VNMs():                     Register vibrational normal modes.
         get_thermal_data():             Compute thermodynamic quantities.
     """
@@ -222,21 +222,21 @@ class State(object):
         return self._z 
     
     ######
-    def set_atoms(self, debug: int=0):
-        ## Retrieves a list of atoms, extracted from the molecules in self.molecules.
-        ## The challenge is that the atoms do not necessarily appear in the same order as in labels/coord, so we need to reorder them
-        if not hasattr(self,"molecules"): 
-            if debug > 0: print(f"STATE.SET_ATOMS: generating molecules")
-            self.get_molecules(debug=debug)
+    #def set_atoms(self, debug: int=0):
+    #    ## Retrieves a list of atoms, extracted from the molecules in self.molecules.
+    #    ## The challenge is that the atoms do not necessarily appear in the same order as in labels/coord, so we need to reorder them
+    #    if not hasattr(self,"molecules"): 
+    #        if debug > 0: print(f"STATE.SET_ATOMS: generating molecules")
+    #        self.get_molecules(debug=debug)
 
-        self.atoms = []
-        tmp_indices = []
-        for mol in self.molecules:
-            for at in mol.atoms:
-                tmp_indices.append(at.get_parent_index(self._source.object_subtype))  ## We get the index of the atom in the source of this state
-                self.atoms.append(at)
-        self.atoms = [x for _, x in sorted(zip(tmp_indices, self.atoms), key=lambda pair: pair[0])]
-        return self.atoms
+    #    self.atoms = []
+    #    tmp_indices = []
+    #    for mol in self.molecules:
+    #        for at in mol.atoms:
+    #            tmp_indices.append(at.get_parent_index(self._source.object_subtype))  ## We get the index of the atom in the source of this state
+    #            self.atoms.append(at)
+    #    self.atoms = [x for _, x in sorted(zip(tmp_indices, self.atoms), key=lambda pair: pair[0])]
+    #    return self.atoms
 
     ######
     def get_occurrence(self, substructure: object, debug: int=0) -> int:
