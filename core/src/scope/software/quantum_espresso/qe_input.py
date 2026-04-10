@@ -5,7 +5,6 @@ from scope.classes_environment import set_user
 from scope.operations.dicts_and_lists import where_in_array
 from scope.other               import get_metal_idxs, get_metal_species
 from scope.elementdata         import ElementData 
-from scope.software.quantum_espresso.qe_functions import get_pp, get_qe_data
 elemdatabase = ElementData()
 
 #######################
@@ -20,7 +19,7 @@ def gen_qe_input(comp: object, debug: int=0):
     assert exists,                         f"istate = {comp.qc_data.istate} does not exist"
     assert hasattr(istate,"labels"),       f"istate = {comp.qc_data.istate} doesn't have labels"
     assert hasattr(istate,"coord"),        f"istate = {comp.qc_data.istate} doesn't have coordinates"
-    if not hasattr(istate,"atoms"):        istate.get_atoms()
+    #if not hasattr(istate,"atoms"):        istate.set_atoms(debug=debug)
 
     ## 2-Cell or Molecule?
     if   comp.source.object_type == "cell":   system_type = "cell"
@@ -47,9 +46,9 @@ def gen_qe_input(comp: object, debug: int=0):
     #########################
     ### DETERMINE SPECIES ###
     #########################
-    metal_indices            = get_metal_idxs(istate.labels)     ## Indices of metal atoms in the structure 
-    metal_species            = get_metal_species(istate.labels)  ## 
-    species                  = get_qe_data(istate)
+    metal_indices            = get_metal_idxs(istate.labels)            ## Indices of metal atoms in the state
+    metal_species            = get_metal_species(istate.labels)         ## 
+    species                  = get_label_spin_pairs(istate._source, debug=debug)    ## Spin information is taken from the original source of the state
     nspecies                 = len(species)
 
     if debug >= 1: 
@@ -186,21 +185,21 @@ def gen_qe_input(comp: object, debug: int=0):
             pp, cutoff_wfc, cutoff_rho = get_pp(spec[0], PP_path)
             print(f"{label} {weight:6.4f} {pp}", file=inp)
         
-        #///////////////////////////////////////////////////////////////////////////
-        #// Atom Coords, taken from the state object. Using the provided istate  ///
-        #///////////////////////////////////////////////////////////////////////////
+        #///////////////////////////////////////////////////////////////////////////////////////////////////////////////
+        #// Atom Coords, taken from istate, but spins taken from _source (state.atomic_spins just reads from source) ///
+        #///////////////////////////////////////////////////////////////////////////////////////////////////////////////
         print("ATOMIC_POSITIONS angstrom", file=inp)
         # First, it prints the metal atoms
         for idx, at in enumerate(istate.atoms):
             if idx in metal_indices:
-                if at.spin == 0: l = at.label
-                else:            l = at.get_decorated_label(typ="spin") 
+                if istate.atomic_spins[idx] == 0: l = at.label
+                else:                             l = at.get_decorated_label(typ="spin") 
                 print(f"{l:4}        {at.coord[0]:12.6f}   {at.coord[1]:12.6f}   {at.coord[2]:12.6f}", file=inp)
         # Then the rest
-        for idx, at in enumerate(istate.atoms):
+        for idx, at in enumerate(istate._source.atoms):
             if idx not in metal_indices:
-                if at.spin == 0: l = at.label
-                else:            l = at.get_decorated_label(typ="spin") 
+                if istate.atomic_spins[idx] == 0: l = at.label
+                else:                             l = at.get_decorated_label(typ="spin") 
                 print(f"{l:4}        {at.coord[0]:12.6f}   {at.coord[1]:12.6f}   {at.coord[2]:12.6f}", file=inp)
         print("K_POINTS gamma", file=inp)
 
@@ -264,4 +263,27 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
 
         os.chmod(comp.sub_path, 0o777)
 
-###################################################
+#####################
+## Other Functions ##
+#####################
+def get_label_spin_pairs(source: object, debug: int=0):
+    if not hasattr(source,"atoms"): source.set_atoms(debug=debug)
+    pairs = []
+    for at in source.atoms:
+        if tuple([at.label,at.spin]) not in pairs: pairs.append(tuple([at.label,at.spin]))
+    if debug > 0: print(f"GET_LABEL_SPIN_PAIRS. Pairs of label-spin found: {pairs}")
+    return pairs
+
+######
+def get_pp(elem: str, path: str):
+    import json
+    try: 
+        with open(path+"config.json", 'r') as cfg:
+            data = json.load(cfg)
+            elemdata = data[elem]
+            pp_name = elemdata["filename"]
+            cutoff_wfc = elemdata["cutoff_wfc"]
+            cutoff_rho = elemdata["cutoff_rho"]
+    except Exception as exc: 
+        raise ValueError(f"GET_PP: error reading JSON or parsing element {elem}. Printing Exception \n {exc}")
+    return pp_name, cutoff_wfc, cutoff_rho

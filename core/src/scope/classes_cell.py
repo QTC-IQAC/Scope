@@ -27,7 +27,7 @@ class Cell(object):
 
     Methods:
         get_molecules():                Split the cell into molecular fragments.
-        get_atoms():                    Collect atom objects from molecules.
+        set_atoms():                    Collect atom objects from molecules.
         get_z():                        Compute the stoichiometric multiplicity.
         set_spin_metals():              Assign spins to metal centers.
         associate_cif():                Link the cell to a CIF object.
@@ -66,25 +66,25 @@ class Cell(object):
     #####################
     @property
     def charge(self):
-        if not hasattr(self,"atoms"): self.get_atoms()
+        if not hasattr(self,"atoms"): self.set_atoms()
         if not all(hasattr(at,"charge") for at in self.atoms): return None
         return sum(at.charge for at in self.atoms)
 
     @property
     def atomic_charges(self):
-        if not hasattr(self,"atoms"): self.get_atoms()
+        if not hasattr(self,"atoms"): self.set_atoms()
         if not all(hasattr(at,"charge") for at in self.atoms): return None
         return [at.charge for at in self.atoms]
 
     @property
     def spin(self):
-        if not hasattr(self,"atoms"): self.get_atoms()
+        if not hasattr(self,"atoms"): self.set_atoms()
         if not all(hasattr(at,"spin") for at in self.atoms): return None
         return sum(at.spin for at in self.atoms)
 
     @property
     def atomic_spins(self):
-        if not hasattr(self,"atoms"): self.get_atoms()
+        if not hasattr(self,"atoms"): self.set_atoms()
         if not all(hasattr(at,"spin") for at in self.atoms): return None
         return [at.spin for at in self.atoms]
 
@@ -247,15 +247,21 @@ class Cell(object):
     #########################
     ## Atoms and Molecules ##
     #########################
-    def get_atoms(self, debug: int=0):
+    def set_atoms(self, debug: int=0):
         """Collect atom objects from the stored molecules."""
         if not hasattr(self,"molecules"): 
-            if debug > 0: print("CELL.GET_ATOMS: retrieving molecules")
+            if debug > 0: print("CELL.SET_ATOMS: retrieving molecules")
             self.get_molecules()
+
         self.atoms = []
+        tmp_indices = []
         for mol in self.molecules:
             for at in mol.atoms:
+                tmp_indices.append(at.get_parent_index(self._source.object_subtype))  ## We get the index of the atom in the source of this state
                 self.atoms.append(at)
+
+        # Reorders Atoms according to their original order in the cell, using the indices stored in the molecule objects
+        self.atoms = [x for _, x in sorted(zip(tmp_indices, self.atoms), key=lambda pair: pair[0])]
         return self.atoms
 
     ######

@@ -26,7 +26,7 @@ class State(object):
         set_geometry():                 Store labels and coordinates.
         set_cell():                     Attach unit-cell metadata.
         get_molecules():                Build molecular fragments from the geometry.
-        get_atoms():                    Collect atom objects from molecules.
+        set_atoms():                    Collect atom objects from molecules.
         set_VNMs():                     Register vibrational normal modes.
         get_thermal_data():             Compute thermodynamic quantities.
     """
@@ -62,9 +62,9 @@ class State(object):
                 self.coord.append(at.coord)
                 indices.append(mol.indices[idx])
         ## Below is to order the atoms as in the original cell, using the indices stored in the molecule object
-        self.labels = [x for _, x in sorted(zip(indices, self.labels), key=lambda pair: pair[0])]
-        self.coord = [x for _, x in sorted(zip(indices, self.coord), key=lambda pair: pair[0])]
-        self.natoms = len(self.labels)
+        self.labels  = [x for _, x in sorted(zip(indices, self.labels), key=lambda pair: pair[0])]
+        self.coord   = [x for _, x in sorted(zip(indices, self.coord), key=lambda pair: pair[0])]
+        self.natoms  = len(self.labels)
         self.formula = labels2formula(self.labels)
         assert len(self.labels) == len(self.coord)
          
@@ -218,11 +218,11 @@ class State(object):
         return self._z 
     
     ######
-    def get_atoms(self, debug: int=0):
-        ## Retrieves a list of atoms, extracted from the molecules in molecules.
+    def set_atoms(self, debug: int=0):
+        ## Retrieves a list of atoms, extracted from the molecules in self.molecules.
         ## The challenge is that the atoms do not necessarily appear in the same order as in labels/coord, so we need to reorder them
         if not hasattr(self,"molecules"): 
-            if debug > 0: print(f"STATE.GET_ATOMS: generating molecules")
+            if debug > 0: print(f"STATE.SET_ATOMS: generating molecules")
             self.get_molecules(debug=debug)
 
         self.atoms = []
