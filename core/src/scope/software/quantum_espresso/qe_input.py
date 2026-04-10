@@ -196,7 +196,7 @@ def gen_qe_input(comp: object, debug: int=0):
                 else:                             l = at.get_decorated_label(typ="spin") 
                 print(f"{l:4}        {at.coord[0]:12.6f}   {at.coord[1]:12.6f}   {at.coord[2]:12.6f}", file=inp)
         # Then the rest
-        for idx, at in enumerate(istate._source.atoms):
+        for idx, at in enumerate(istate.atoms):
             if idx not in metal_indices:
                 if istate.atomic_spins[idx] == 0: l = at.label
                 else:                             l = at.get_decorated_label(typ="spin") 
@@ -215,7 +215,7 @@ def gen_qe_input(comp: object, debug: int=0):
 def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: str="pw.x", version: float=7.0, debug: int=0): 
 
     if debug > 0: print(f"GEN_QE_SUBFILE: Creating submission file for {comp.name}")
-    if debug > 0: print(f"GEN_QE_SUBFILE: Using QE Module From Environment={module}") 
+    if debug > 0: print(f"GEN_QE_SUBFILE: Using QE Module From Environment: '{module}'") 
     if debug > 0: print(f"GEN_QE_SUBFILE: Requesting Cores={procs}")
     version = str(version)
     with open(comp.sub_path, 'w+') as sub:

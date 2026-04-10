@@ -1095,7 +1095,12 @@ class Computation(object):
             if debug > 0: print(f"COMPUTATION.RUN: Getting Resources for submission")
             askqueue = environment.get_best_queue(debug=debug)
             askprocs = environment.requested_procs 
-            if debug > 0: print(f"COMPUTATION.RUN: Found: {askprocs} processors and {askqueue} queue for submission")
+
+            if debug == 1:  print(f"COMPUTATION.RUN: Found: {askprocs} processors and {askqueue.name} queue for submission")
+            elif debug > 1: 
+                print(f"COMPUTATION.RUN: Found: {askprocs} processors")
+                print(f"COMPUTATION.RUN: Found Queue: {askqueue}")
+
             ## 1.1-Adds Resources
             self.add_submission_init(nprocs=askprocs, queue=askqueue)
             ## 1.2-Creates Files
