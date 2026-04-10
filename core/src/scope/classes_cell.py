@@ -140,25 +140,29 @@ class Cell(object):
         ## Function to simplify setting the spin for the Transition Metal Complexes of this cell
         if not hasattr(self,"molecules"): self.get_molecules(debug=debug)
         ncomplex = self.get_ncomplex(debug=debug) 
+        if debug > 0: print(f"CELL.SET_SPIN_METALS: Found {ncomplex} Transition Metal Complexes in this cell")
+
         if ncomplex == 0:
             print(f"CELL.SET_SPIN_METALS: there are no Transition Metal Complexes in this cell")
-            return None
+            return self.atomic_spins
+
         ## Checks
-        if isinstance(spins, int): spins = [spins] * ncomplex  ## If spin is an integer, then it assumes it aplies to all metals
-        ## Verbose
-        if debug > 0: 
-            print(f"CELL.SET_SPIN_METALS: Preparing Spin Configuration for Specie {self.formula}")
-            print(f"CELL.SET_SPIN_METALS: Received {spins=}")
+        if isinstance(spins, int): 
+            if ncomplex > 0: 
+                print(f"CELL.SET_SPIN_METALS: Provided {spins=} is a single value, but {ncomplex=} TMCs were found. Assuming it applies to all metals")
+            spins = [spins] * ncomplex  ## If spin is an integer, then it assumes it aplies to all metals
+        if debug > 0: print(f"CELL.SET_SPIN_METALS: Preparing Spin Configuration for Cell {self.formula} with {spins=}")
+
         ## Main
         pointer = 0
-        for mol in self.molecules:
+        for idx, mol in enumerate(self.molecules):
             if mol.iscomplex: 
                 if len(mol.metals) > 1: 
                     print(f"CELL.SET_SPIN_METALS: Molecule {mol.formula} has more than one metal atom.") 
                     print(f"Please set the spin for each molecule separately using mol.set_spin()")
                 else: 
                     met = mol.metals[0]
-                    if debug > 0: print(f"CELL.SET_SPIN_METALS: Setting spin={spins[pointer]} to metal atom {met.label}")
+                    if debug > 0: print(f"CELL.SET_SPIN_METALS: Setting spin={spins[pointer]} to metal atom {met.label} of molecule {idx}")
                     met.set_spin(spins[pointer]); pointer += 1
         return self.spin
 
@@ -253,13 +257,29 @@ class Cell(object):
             if debug > 0: print("CELL.SET_ATOMS: retrieving molecules")
             self.get_molecules()
 
-        self.atoms = []
+        self.atoms  = []
         tmp_indices = []
-        for mol in self.molecules:
-            for at in mol.atoms:
-                tmp_indices.append(at.get_parent_index(self._source.object_subtype))  ## We get the index of the atom in the source of this state
-                self.atoms.append(at)
+        if debug > 0: print("CELL.SET_ATOMS: retrieving atoms from molecules")
+        for idx, mol in enumerate(self.molecules):
+            if debug > 0: print(f"CELL.SET_ATOMS: doing molecule {idx} with formula {mol.formula}")
+            for jdx, at in enumerate(mol.atoms):
+                if at.check_parent(self.object_subtype):
+                    index = at.get_parent_index(self.object_subtype) ## We get the index of the atom in the Cell
+                    tmp_indices.append(index)  
+                    self.atoms.append(at)
+                else: 
+                    ## If it doesn't work, we attempt to get the cell index from the molecule
+                    if mol.check_parent(self.object_subtype):
+                        mol_in_cell  = mol.get_parent_indices(self.object_subtype)
+                        at_in_mol    = at.get_parent_index(mol.object_subtype)
+                        index = mol_in_cell[at_in_mol]
+                        tmp_indices.append(index)  
+                        self.atoms.append(at)
+                        at.add_parent(self, index) ## We add the cell as parent of the atom, with the index in the cell
+                    else:
+                        raise ValueError(f"CELL.SET_ATOMS: Atom {at.label} in molecule {mol.formula} does not have a parent index for cell. This should not happen.")
 
+        if debug > 0: print(f"CELL.SET_ATOMS: indices retrieved: {tmp_indices}. Now sorting")
         # Reorders Atoms according to their original order in the cell, using the indices stored in the molecule objects
         self.atoms = [x for _, x in sorted(zip(tmp_indices, self.atoms), key=lambda pair: pair[0])]
         return self.atoms
@@ -522,9 +542,9 @@ class Cell(object):
                 if debug > 0: print(f"CELL.RECONSTRUCT: Doing molecule {idx} with {mol.formula=}")
                 newmolec = Molecule(mol.labels, mol.coord)
                 newmolec.origin = "cell.reconstruct"
+                newmolec.add_parent(self, mol.cell_indices, debug=debug) 
                 newmolec.set_factors(cov_factor, metal_factor)
                 newmolec.set_atoms(create_adjacencies=True, debug=debug)
-                newmolec.add_parent(self, mol.cell_indices, debug=debug) 
                 if debug > 0: print(f"CELL.RECONSTRUCT: Setting fractional coordinates")
                 newmolec.set_fractional_coord(mol.frac_coord)
                 if newmolec.iscomplex: newmolec.split_complex()

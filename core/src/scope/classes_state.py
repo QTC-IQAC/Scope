@@ -133,8 +133,12 @@ class State(object):
             if debug > 0: print(f"STATE.GET_MOLECULES. Molecules already exist and default is overwrite=False")
             return self.molecules
         # Security
-        if not hasattr(self,"labels") or not hasattr(self,"coord"): return None
-        if len(self.labels) == 0 or len(self.coord) == 0: return None
+        if not hasattr(self,"labels") or not hasattr(self,"coord"): 
+            if debug > 0: print(f"STATE.GET_MOLECULES. State labels and coordinates not found. Returning None")
+            return None
+        if len(self.labels) == 0 or len(self.coord) == 0: 
+            if debug > 0: print(f"STATE.GET_MOLECULES. State labels and coordinates are empty. Returning None")
+            return None
         # Covalent Factor
         if hasattr(self._source,"factor"):       cov_factor = self._source.factor
         elif hasattr(self._source,"cov_factor"): cov_factor = self._source.cov_factor

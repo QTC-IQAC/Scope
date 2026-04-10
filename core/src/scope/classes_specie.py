@@ -335,6 +335,10 @@ class Specie(object):
             self.atoms = atomlist.copy()
             for idx, at in enumerate(self.atoms):
                 at.add_parent(self, index=idx)
+                for par in self.parents:
+                    parent_indices = self.get_parent_indices(par.object_subtype)
+                    if parent_indices is not None:
+                        at.add_parent(par, parent_indices[idx])
                 if debug > 1: print(f"SPECIE.SET_ATOMS: set parent {self.object_subtype} to atom, with index={idx}")
 
         ## If not, that is, if the atom objects must be created from scratch....
@@ -883,14 +887,14 @@ class Molecule(Specie):
             metal_idx = list([self.indices[idx] for idx in get_metal_idxs(self.labels, debug=debug)])
             non_transition_metals_idx = list([self.indices[idx] for idx in get_non_transition_metal_idxs(self.labels, debug=debug)])
             if len(non_transition_metals_idx) > 0:
-                print(f"MOLECULE.SPLIT COMPLEX: Found non-transition metals in the molecule {self.formula}")
-                print(f"MOLECULE.SPLIT COMPLEX: Non-transition metals found: {[self.labels[idx] for idx in non_transition_metals_idx]}")
+                print(f"MOLECULE.SPLIT_COMPLEX: Found non-transition metals in the molecule {self.formula}")
+                print(f"MOLECULE.SPLIT_COMPLEX: Non-transition metals found: {[self.labels[idx] for idx in non_transition_metals_idx]}")
                 metal_idx.extend(non_transition_metals_idx)
 
             rest_idx  = list(idx for idx in self.indices if idx not in metal_idx) 
-            if debug > 0 :  print(f"MOLECULE.SPLIT COMPLEX: labels={self.labels}")
-            if debug > 0 :  print(f"MOLECULE.SPLIT COMPLEX: metal_idx={metal_idx}")
-            if debug > 0 :  print(f"MOLECULE.SPLIT COMPLEX: rest_idx={rest_idx}")
+            if debug > 0 :  print(f"MOLECULE.SPLIT_COMPLEX: labels={self.labels}")
+            if debug > 0 :  print(f"MOLECULE.SPLIT_COMPLEX: metal_idx={metal_idx}")
+            if debug > 0 :  print(f"MOLECULE.SPLIT_COMPLEX: rest_idx={rest_idx}")
 
             # Split the "rest" to obtain the ligands
             rest_labels  = extract_from_list(rest_idx, self.labels, dimension=1)
@@ -900,18 +904,18 @@ class Molecule(Specie):
             rest_radii   = extract_from_list(rest_idx, self.radii, dimension=1)
             rest_atoms   = extract_from_list(rest_idx, self.atoms, dimension=1)
             if debug >= 2: 
-                print(f"SPLIT COMPLEX: rest labels: {rest_labels}")
-                print(f"SPLIT COMPLEX: rest indices: {rest_indices}")
-                print(f"SPLIT COMPLEX: rest radii: {rest_radii}")
+                print(f"MOLECULE.SPLIT_COMPLEX: rest labels: {rest_labels}")
+                print(f"MOLECULE.SPLIT_COMPLEX: rest indices: {rest_indices}")
+                print(f"MOLECULE.SPLIT_COMPLEX: rest radii: {rest_radii}")
 
-            if debug > 0: print(f"SPLIT COMPLEX: splitting species with {len(rest_labels)} atoms in block")
+            if debug > 0: print(f"MOLECULE.SPLIT_COMPLEX: splitting species with {len(rest_labels)} atoms in block")
             if hasattr(self,"cov_factor"): blocklist = split_species(rest_labels, rest_coord, radii=rest_radii, cov_factor=self.cov_factor, debug=debug)
             else:                          blocklist = split_species(rest_labels, rest_coord, radii=rest_radii, cov_factor=self.cov_factor, debug=debug)      
-            if debug > 0: print(f"SPLIT COMPLEX: received {len(blocklist)} blocks")
+            if debug > 0: print(f"MOLECULE.SPLIT_COMPLEX: received {len(blocklist)} blocks")
             
             ## Arranges Ligands
             for b in blocklist:
-                if debug > 0: print(f"PREPARING BLOCK: {b}")
+                if debug > 0: print(f"MOLECULE.SPLIT_COMPLEX: PREPARING BLOCK: {b}")
                 lig_indices = extract_from_list(b, rest_indices, dimension=1)
                 lig_labels  = extract_from_list(b, rest_labels, dimension=1) 
                 lig_coord   = extract_from_list(b, rest_coord, dimension=1) 
@@ -919,7 +923,7 @@ class Molecule(Specie):
                 lig_radii   = extract_from_list(b, rest_radii, dimension=1) 
                 lig_atoms   = extract_from_list(b, rest_atoms, dimension=1) 
                 
-                if debug > 0: print(f"CREATING LIGAND: {labels2formula(lig_labels)}")
+                if debug > 0: print(f"MOLECULE.SPLIT_COMPLEX:CREATING LIGAND: {labels2formula(lig_labels)}")
                 # Create Ligand Object
                 if hasattr(self,"frac_coord"): newligand   = Ligand(lig_labels, lig_coord, lig_frac_coord, radii=lig_radii)
                 else:                          newligand   = Ligand(lig_labels, lig_coord, radii=lig_radii)
@@ -928,9 +932,9 @@ class Molecule(Specie):
                 # Define the molecule as parent of the ligand. Bottom-Up hierarchy
                 newligand.add_parent(self, indices=lig_indices)
                 
-                if self.check_parent("unitcell"):
-                    cell_indices = [a.get_parent_index("unitcell") for a in lig_atoms]
-                    newligand.add_parent(self.get_parent("unitcell"), indices=cell_indices)
+                if self.check_parent("cell"):
+                    cell_indices = [a.get_parent_index("cell") for a in lig_atoms]
+                    newligand.add_parent(self.get_parent("cell"), indices=cell_indices)
 
                 if self.check_parent("reference"):
                     ref_indices = [a.get_parent_index("reference") for a in lig_atoms]
