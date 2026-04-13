@@ -63,10 +63,6 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   pip install scope-sco
   ```
 
-  Quantum Espresso pseudopotentials:
-  - `scope-qc` ships only the `Vanderbilt_USPP` library
-  - The larger `Efficiency` and `Precision` libraries are distributed separately through the GitHub releases page: <https://github.com/QTC-IQAC/Scope/releases>
-  - if you want to use them, download the corresponding release asset and extract the `Efficiency/` or `Precision/` folder into `scope/software/quantum_espresso/PP_Libraries/` inside your installed `scope-qc` package
 
   ### Option 2 (alternative): from repository
   ```bash
@@ -82,6 +78,11 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   pip install -e azo
   pip install -e sco
   ```
+
+  ### Optional Quantum Espresso pseudopotential Libraries:
+  - `scope-qc` ships only the `Vanderbilt_USPP` library
+  - The larger `Efficiency` and `Precision` libraries are distributed separately through the GitHub releases page: <https://github.com/QTC-IQAC/Scope/releases>
+  - if you want to use them, download the corresponding release asset and extract the `Efficiency/` or `Precision/` folder into `scope/software/quantum_espresso/PP_Libraries/` inside your installed `scope-qc` package
 
   ## Dependencies
 
