@@ -34,11 +34,6 @@ pip install -e core  # optional, otherwise the core package (scope-qc) will be i
 pip install -e sco
 ```
 
-### Option 3 (discouraged): from TestPyPi
-```bash
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-sco
-```
-
 ## Command Line Interface
 
 The package provides the `scope_sco` command. For help:

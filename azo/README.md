@@ -36,11 +36,6 @@ pip install -e core  # optional, otherwise the core package (scope-qc) will be i
 pip install -e azo
 ```
 
-### Option 3 (discouraged): from TestPyPi
-```bash
-pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-azo
-```
-
 ## Command Line Interface
 
 The package provides the `scope_azo` command. For help:
