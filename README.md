@@ -63,6 +63,11 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   pip install scope-sco
   ```
 
+  Quantum Espresso pseudopotentials:
+  - `scope-qc` ships only the `Vanderbilt_USPP` library
+  - The larger `Efficiency` and `Precision` libraries are distributed separately through the GitHub releases page: <https://github.com/QTC-IQAC/Scope/releases>
+  - if you want to use them, download the corresponding release asset and extract the `Efficiency/` or `Precision/` folder into `scope/software/quantum_espresso/PP_Libraries/` inside your installed `scope-qc` package
+
   ### Option 2 (alternative): from repository
   ```bash
   # 0-Download repo
@@ -76,17 +81,6 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   conda install openbabel -c conda-forge             # only needed for the azo add-on
   pip install -e azo
   pip install -e sco
-  ```
-
-  ### Option 3 (discouraged): from TestPyPI
-  ```bash
-  # 1-install core
-  pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-qc
-
-  # 2-install add-ons (optional) 
-  conda install openbabel -c conda-forge             # only needed for the azo add-on
-  pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-azo
-  pip install --index-url https://test.pypi.org/simple/ --extra-index-url https://pypi.org/simple/ scope-sco
   ```
 
   ## Dependencies
@@ -121,6 +115,9 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   ```bash
   scope config -h 
   ```
+
+  For Quantum Espresso runs, `pp_library = vanderbilt` works out of the box.
+  If you set `pp_library = efficiency` or `pp_library = precision`, make sure the corresponding library has first been downloaded from the GitHub releases page and extracted into `scope/software/quantum_espresso/PP_Libraries/`.
 
   ## Interactive
   Comprehensive Tutorials are available in their own github repository [here](https://github.com/QTC-IQAC/Scope_Tutorials.git):

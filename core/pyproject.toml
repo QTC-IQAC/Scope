@@ -29,9 +29,9 @@ where = ["src"]
 [tool.setuptools.package-data]
 "scope" = ["cshm.yaml"]
 "scope.software.quantum_espresso" = [
-    "PP_Libraries/*/*.UPF",
-    "PP_Libraries/*/*.upf",
-    "PP_Libraries/*/*.json",
+    "PP_Libraries/Vanderbilt_USPP/*.UPF",
+    "PP_Libraries/Vanderbilt_USPP/*.upf",
+    "PP_Libraries/Vanderbilt_USPP/*.json",
 ]
 
 [tool.setuptools]

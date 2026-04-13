@@ -6,6 +6,7 @@ from scope.operations.dicts_and_lists import where_in_array
 from scope.other               import get_metal_idxs, get_metal_species
 from scope.elementdata         import ElementData 
 elemdatabase = ElementData()
+QE_PP_RELEASES_URL = "https://github.com/QTC-IQAC/Scope/releases/tag/PP_Libraries"
 
 #######################
 def gen_qe_input(comp: object, debug: int=0):
@@ -43,13 +44,29 @@ def gen_qe_input(comp: object, debug: int=0):
     else: print(f"GEN_QE_input: unrecognised {comp.source.object_type=}")
 
     ## 3-Determines the PP_Library path
-    if not hasattr(comp.qc_data,"pp_library"): f"PP_Library could not be found. Please set it in the qc_data.section of the Job"
+    if not hasattr(comp.qc_data,"pp_library"): f"PP_Library could not be found. Please set it in the 'qc_data' section of the input. Options are: vanderbilt, efficiency and precision"
     import scope ## Trick to retrieve the relative path
-    PP_path = os.path.abspath(scope.__file__).replace("__init__.py","software/quantum_espresso/PP_Libraries/")
-    if   comp.qc_data.pp_library.lower() == "efficiency":  PP_path += "Efficiency/"
-    elif comp.qc_data.pp_library.lower() == "precision":   PP_path += "Precision/"
-    elif comp.qc_data.pp_library.lower() == "vanderbilt":  PP_path += "Vanderbilt_USPP/"
+    PP_root = os.path.abspath(scope.__file__).replace("__init__.py","software/quantum_espresso/PP_Libraries/")
+    if   comp.qc_data.pp_library.lower() == "efficiency":  PP_path = PP_root + "Efficiency/"
+    elif comp.qc_data.pp_library.lower() == "precision":   PP_path = PP_root + "Precision/"
+    elif comp.qc_data.pp_library.lower() == "vanderbilt":  PP_path = PP_root + "Vanderbilt_USPP/"
     else: raise ValueError(f"GEN_QE_INPUT: could not recognise PP_library: {comp.qc_data.pp_library}")
+
+    if comp.qc_data.pp_library.lower() in ["efficiency", "precision"]:
+        if not os.path.isdir(PP_path) or not os.path.isfile(os.path.join(PP_path, "config.json")):
+            lib_name = "Efficiency" if comp.qc_data.pp_library.lower() == "efficiency" else "Precision"
+            raise FileNotFoundError(
+                f"GEN_QE_INPUT: PP library '{lib_name}' could not be found in:\n"
+                f"  {PP_path}\n"
+                f"The scope-qc package only ships the Vanderbilt_USPP library.\n"
+                f"Please download the '{lib_name}' pseudopotential archive from:\n"
+                f"  {QE_PP_RELEASES_URL}\n"
+                f"and extract the '{lib_name}' folder inside:\n"
+                f"  {PP_root}\n"
+                f"so that the file\n"
+                f"  {os.path.join(PP_path, 'config.json')}\n"
+                f"is present."
+            )
 
     ## Checks requisites
     if system_type == "cell":     
