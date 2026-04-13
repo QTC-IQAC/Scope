@@ -1,0 +1,10 @@
+include README.md
+include pyproject.toml
+
+graft src/scope
+prune src/scope/software/quantum_espresso/PP_Libraries/Efficiency
+prune src/scope/software/quantum_espresso/PP_Libraries/Precision
+
+global-exclude __pycache__
+global-exclude *.py[cod]
+global-exclude .DS_Store
