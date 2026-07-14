@@ -477,6 +477,19 @@ def get_planar_distortion(theta: float) -> float:
     mod_theta = np.mod(theta, np.pi)
     return float(np.minimum(mod_theta, np.pi - mod_theta))
 
+################################
+## Complex Structural Metrics ##
+################################
+def get_CH_volume(coord: list):
+    from scipy.spatial import ConvexHull, QhullError
+    coords = np.asarray(coord, dtype=float)
+    if coords.shape[0] < 4: return np.nan
+    try:
+        ## Scipy returns a "hull" class. Here, we only report the volume
+        return float(ConvexHull(coords).volume)
+    except QhullError:
+        return np.nan
+
 #######################
 ## Rotation Matrices ##
 #######################
