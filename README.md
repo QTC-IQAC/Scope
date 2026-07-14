@@ -23,6 +23,7 @@
   For contributors and editor-based AI tools, the repository also includes:
   - [Architecture Notes](docs/architecture.md)
   - [Concepts And Terminology](docs/concepts.md)
+  - [Coding Style](docs/coding_style.md)
   - [Agent Guidance](AGENTS.md)
 
 ---
