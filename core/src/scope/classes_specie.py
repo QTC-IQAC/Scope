@@ -310,6 +310,12 @@ class Specie(object):
                 self.frac_coord = cart2frac(self.coord, par.cell_vector)
                 assert len(self.frac_coord) == len(self.coord)
             else:  print("SPECIE.GET_FRACTIONAL_COORD. Parent cell is missing the cell vector"); return None
+        elif self.check_parent("state", search_by="type"):
+            par = self.get_parent("state", search_by="type")
+            if hasattr(par,"cell_vector"):
+                self.frac_coord = cart2frac(self.coord, par.cell_vector)
+                assert len(self.frac_coord) == len(self.coord)
+            else: print("SPECIE.GET_FRACTIONAL_COORD. Parent state is missing the cell vector"); return None
         else:  
             if debug > 0: print("SPECIE.GET_FRACTIONAL_COORD. Fractional Coordinates could not be found"); return None
         return self.frac_coord
@@ -378,6 +384,9 @@ class Specie(object):
                 if not hasattr(self,"frac_coord"): 
                     if self.check_parent("cell"):
                        par = self.get_parent("cell")
+                       if hasattr(par,"cell_vector"): self.get_fractional_coord(debug=debug)
+                    elif self.check_parent("state", search_by="type"):
+                       par = self.get_parent("state", search_by="type")
                        if hasattr(par,"cell_vector"): self.get_fractional_coord(debug=debug)
                 # If it managed, then it established the frac_coord to atoms 
                 if hasattr(self,"frac_coord"):

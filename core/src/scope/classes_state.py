@@ -47,7 +47,9 @@ class State(object):
         self.natoms      = len(labels)
         self.formula     = labels2formula(self.labels)
         self.radii       = get_radii(labels)
-        self.get_molecules(debug=debug) ## Molecules require updated
+        if hasattr(self,"cell_vector"):
+            self.frac_coord = cart2frac(self.coord, self.cell_vector)
+        self.get_molecules(overwrite=True, debug=debug) ## Molecules require updated
 
     def set_geometry_from_molecules(self, overwrite: bool=False, debug: int=0):
         if not hasattr(self,"molecules"): self.get_molecules(overwrite=overwrite, debug=debug)
@@ -56,16 +58,24 @@ class State(object):
         indices         = []
         for mol in self.molecules:
             if not hasattr(mol,"atoms"): mol.set_atoms()
+            if mol.check_parent("state", search_by="type"):
+                mol_indices = mol.get_parent_indices("state", search_by="type")
+            elif hasattr(mol,"cell_indices"):
+                mol_indices = mol.cell_indices
+            else:
+                mol_indices = mol.indices
             for idx, at in enumerate(mol.atoms):
                 self.labels.append(at.label)
                 self.coord.append(at.coord)
-                indices.append(mol.indices[idx])
+                indices.append(mol_indices[idx])
         ## Below is to order the atoms as in the original cell, using the indices stored in the molecule object
         self.labels  = [x for _, x in sorted(zip(indices, self.labels), key=lambda pair: pair[0])]
         self.coord   = [x for _, x in sorted(zip(indices, self.coord), key=lambda pair: pair[0])]
         self.natoms  = len(self.labels)
         self.formula = labels2formula(self.labels)
         assert len(self.labels) == len(self.coord)
+        if hasattr(self,"cell_vector"):
+            self.frac_coord = cart2frac(self.coord, self.cell_vector)
          
     def set_cell(self, cell_vector: list=None, cell_param: list=None):
         if   cell_vector is None and cell_param is None:
@@ -81,6 +91,7 @@ class State(object):
             self.cell_param       = cell_param
         self.frac_coord           = cart2frac(self.coord, self.cell_vector)
         self.volume               = get_unit_cell_volume(*self.cell_param) 
+        self.get_molecules(overwrite=True)
 
     def set_forces(self, forces):
         self.forces      = forces
@@ -153,24 +164,19 @@ class State(object):
             if debug > 0: print(f"STATE.GET_MOLECULES: doing block={b}")
             mol_labels      = extract_from_list(b, self.labels, dimension=1)
             mol_coord       = extract_from_list(b, self.coord, dimension=1)
-            if hasattr(self,"frac_coord"): mol_frac_coord  = extract_from_list(b, self.frac_coord, dimension=1)
-            else:                          mol_frac_coord  = None
+            if hasattr(self,"frac_coord"):      mol_frac_coord = extract_from_list(b, self.frac_coord, dimension=1)
+            elif hasattr(self,"cell_vector"):  mol_frac_coord = cart2frac(mol_coord, self.cell_vector)
+            else:                               mol_frac_coord = None
             # Creates Molecule Object
             newmolec    = Molecule(mol_labels, mol_coord, mol_frac_coord)
             # For debugging
             newmolec.origin = "state.get_molecules"
             # Adds State as parent of the molecule, with indices b
-            newmolec.add_parent(self._source, indices=b, debug=debug)            
+            newmolec.add_parent(self, indices=b, debug=debug)
             # Store Adjacency Parameters
             newmolec.set_factors(cov_factor, metal_factor)
             # Creates The atom objects with adjacencies
             newmolec.set_atoms(create_adjacencies=True, debug=debug)
-            # Sets Fractional Coordinates
-            if hasattr(self,"frac_coord"): 
-                newmolec.set_fractional_coord(mol_frac_coord)
-            elif self._source.object_type == "cell": 
-                if debug > 0: print(f"STATE.GET_MOLECULES: getting frac_coord from _source of type=cell")
-                newmolec.get_fractional_coord(cell_vector = self._source.cell_vector)
             # The split_complex must be below the frac_coord, so they are carried on to the ligands    
             if newmolec.iscomplex: 
                 if debug > 0: print(f"STATE.GET_MOLECULES: splitting complex")
@@ -291,6 +297,16 @@ class State(object):
                 molecules, finalmols, Warning = fragments_reconstruct(molecules,fraglist,Hlist,ref_molecules,self.cell_vector,cov_factor,metal_factor, debug=debug)
                 molecules.extend(finalmols)
                 self.molecules = molecules
+                for mol in self.molecules:
+                    if hasattr(mol,"cell_indices"):
+                        mol_indices = mol.cell_indices
+                    elif mol.check_parent("state", search_by="type"):
+                        mol_indices = mol.get_parent_indices("state", search_by="type")
+                    else:
+                        mol_indices = mol.indices
+                    mol.add_parent(self, mol_indices, debug=debug)
+                    mol.set_atoms(atomlist=mol.atoms, debug=debug)
+                    if mol.iscomplex: mol.split_complex(debug=debug)
                 self.set_geometry_from_molecules()
                 finished = True
         if debug > 0 and finished: print("STATE.RECONSTRUCT: state reconstructed succesfully")

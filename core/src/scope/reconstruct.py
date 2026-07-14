@@ -240,7 +240,9 @@ def fragments_reconstruct(molecules: list, fraglist: list, Hlist: list, ref_mole
     # Here we homogenize the situation by adding the cell_indices variable to all molecules
     for mol in molecules:
         if not hasattr(mol,"cell_indices"): 
-            if mol.check_parent("cell"):
+            if mol.check_parent("state", search_by="type"):
+                mol.cell_indices = mol.get_parent_indices("state", search_by="type")
+            elif mol.check_parent("cell"):
                 mol.cell_indices = mol.get_parent_indices("cell")
 
     return molecules, Warning
