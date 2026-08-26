@@ -429,7 +429,9 @@ class Specie(object):
             if debug > 0: print(f"SPECIE.SET_BONDS: Can't set bonds, specie lacks an rdkit_object: {self.formula}")
             return False
         natoms_rdkit = self.rdkit_obj.GetNumAtoms() 
-        if debug >= 1: print(f"SPECIE.SET_BONDS: {self.formula=}, {self.object_subtype=} {self.smiles=}")
+        if debug >= 1: 
+            if hasattr(self,"smiles"): print(f"SPECIE.SET_BONDS: {self.formula=}, {self.object_subtype=} {self.smiles=}")
+            else:                      print(f"SPECIE.SET_BONDS: {self.formula=}, {self.object_subtype=}") 
 
         if self.natoms == natoms_rdkit:  
             if debug >= 2: print(f"\tNumber of atoms in {self.object_subtype} object and RDKit object are equal: {self.natoms} {natoms_rdkit}")

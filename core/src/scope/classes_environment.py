@@ -1,14 +1,11 @@
 import os
-import pwd
-import grp 
 import subprocess
 import numpy as np
-import readline
 import tempfile
 from dataclasses         import dataclass
 from pathlib             import Path
 from scope.classes_queue import Queue 
-from scope.read_write    import read_user_input, input_with_default
+from scope.read_write    import read_user_input, input_with_default, configure_path_completion
 from scope.read_write    import save_to_config, load_config 
 
 ###################
@@ -642,11 +639,8 @@ class Environment(object):
 ###  Paths  ###
 ###############
     def set_storage_path(self, debug: int=0):
-        from scope.read_write import complete_path
         # Configure readline to use tab completion
-        readline.set_completer_delims(' \t\n;')
-        readline.parse_and_bind("tab: complete")
-        readline.set_completer(complete_path)
+        configure_path_completion()
         self.storage_path = os.path.abspath(str(input("\tPlease specify path of storage folder (with autocomplete): ")))
         if not self.storage_path.endswith("/"):
             self.storage_path += "/"
@@ -658,16 +652,12 @@ class Environment(object):
     #    return self.storage_path
 
     def set_scope_program(self, debug: int=0):
-        from scope.read_write import complete_path
-        readline.set_completer_delims(' \t\n;')
-        readline.parse_and_bind("tab: complete")
-        readline.set_completer(complete_path)
+        configure_path_completion()
         self.scope_program = os.path.abspath(str(input("\tPlease Specify Main scope Folder (with autocomplete):")))
         if self.scope_program[-1] != '/': self.scope_program += '/'
         return self.scope_program
 
     def set_paths(self, create_folders: bool=True, debug: int=0):
-        from scope.read_write import complete_path
         print("\t--------------------------------------------------------------------------------------------------------------")
         print("\t Setting Paths")
         print("\t--------------------------------------------------------------------------------------------------------------")
@@ -691,9 +681,7 @@ class Environment(object):
             print("ENV.SET_PATHS: default read for computations:", default_computations_path)
 
         ## Reads user choices with autocomplete and defaults
-        readline.set_completer_delims(' \t\n;')
-        readline.parse_and_bind("tab: complete")
-        readline.set_completer(complete_path)
+        configure_path_completion()
         message1 = "\tPlease Specify SOURCES Path (with autocomplete): "
         message2 = "\tPlease Specify SYSTEMS Path (with autocomplete): "
         message3 = "\tPlease Specify COMPUTATIONS Path (with autocomplete): "
@@ -894,9 +882,15 @@ def run_command(cmd: str, timeout: int = 10) -> CommandResult:
 ### OTHER ###
 #############
 def set_user():
-    return pwd.getpwuid( os.getuid() ).pw_name
+    import getpass
+    return getpass.getuser()
 
 def set_group():
+    try:
+        import grp
+        import pwd
+    except ImportError:
+        return ""
     group_id = pwd.getpwnam(set_user()).pw_gid
     return grp.getgrgid(group_id).gr_name
 

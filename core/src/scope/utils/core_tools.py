@@ -1,7 +1,6 @@
 #!/usr/bin/env python3
 import sys
 import os
-import pwd
 
 def get_status(sys_path: str, core: str, branch_keyword, debug: int=0):
     if sys_path[-1] != '/' : sys_path += '/'
@@ -42,4 +41,3 @@ def get_status(sys_path: str, core: str, branch_keyword, debug: int=0):
 
     else: print("GET_STATUS: I could not understand branch_keyword:", branch_keyword)
     return "active"
-

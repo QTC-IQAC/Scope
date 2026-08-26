@@ -50,8 +50,8 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   conda install pip
 
   # 2-install external prerequisite
-  pip install git+https://github.com/lcmd-epfl/cell2mol.git
-  ```
+  pip install "cell2mol @ git+https://github.com/lcmd-epfl/cell2mol.git@55649ba5f444895846a5d049adcb056c01bb0421"
+  ``` 
   
   ### Option 1 (preferred): from pip
   ```bash

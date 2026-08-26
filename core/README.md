@@ -20,7 +20,7 @@ conda activate scope
 conda install pip
 
 # `cell2mol` is an external dependency and must currently be installed separately from its source repository.
-pip install git+https://github.com/lcmd-epfl/cell2mol.git
+pip install "cell2mol @ git+https://github.com/lcmd-epfl/cell2mol.git@55649ba5f444895846a5d049adcb056c01bb0421"
 ```
 
 ### Option 1: from PyPI 

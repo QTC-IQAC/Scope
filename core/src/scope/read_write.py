@@ -2,11 +2,15 @@ import os
 import sys
 import pickle
 import shutil
-import readline
 import json
 from ast          import literal_eval
 from typing       import Any, Callable, List, Optional, Type
 from platformdirs import user_config_dir
+
+try:
+    import readline
+except ImportError:  # readline is not included with standard Windows Python
+    readline = None
 
 ############
 ## Hidden ##
@@ -401,7 +405,9 @@ def prepare_specie_figure(specie, bond_thr):
 ## Autocompleter ##
 ###################
 def complete_path(text, state):
-    import glob, readline
+    import glob
+    if readline is None:
+        return None
     buffer = readline.get_line_buffer()
 
     # If buffer already has content and text is empty, do NOT override it
@@ -415,6 +421,15 @@ def complete_path(text, state):
     if state < len(matches):
         return matches[state]
     return None
+
+def configure_path_completion() -> bool:
+    """Enable interactive path completion when readline is available."""
+    if readline is None:
+        return False
+    readline.set_completer_delims(' \t\n;')
+    readline.parse_and_bind("tab: complete")
+    readline.set_completer(complete_path)
+    return True
 
 ######
 def input_with_default(prompt: str, default: str | None = None) -> str:

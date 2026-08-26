@@ -179,7 +179,7 @@ class System(object):
         return True
 
     def set_paths(self, create_folders: bool=True, debug: int=0) -> None: 
-        from scope.read_write import complete_path
+        from scope.read_write import configure_path_completion
         """
         Interactively set the paths associated with this system.
 
@@ -190,11 +190,8 @@ class System(object):
         Returns:
             None
         """
-        import readline
         # Set up autocomplete
-        readline.set_completer_delims(' \t\n;')
-        readline.parse_and_bind("tab: complete")
-        readline.set_completer(complete_path)
+        configure_path_completion()
 
         ## Reads User Choice for Paths
         self.system_path       = os.path.abspath(str(input("\tPlease Specify Systems Path for System (with autocomplete): ")).strip())
