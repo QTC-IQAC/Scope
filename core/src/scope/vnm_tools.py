@@ -158,7 +158,7 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
 
     # Stores the original adjacency matrix
     if check_adjacencies: 
-        isgood, original_adjmat, original_adjnum = get_adjmatrix(labels, coord, cov_factor=1.3, metal_factor=1.0, adjust_factor=True, debug=debug)
+        isgood, original_adjmat, original_adjnum = get_adjmatrix(labels, coord, smart=True, debug=debug)
         if not isgood: print("Warning: Initial adjacency matrix might have an issue")
 
     # Extract and manage data from input
@@ -226,7 +226,8 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
         displaced_coord   = displaced_coord.reshape((N_atoms, 3))
 
         if check_adjacencies: 
-            isgood, new_adjmat, new_adjnum = get_adjmatrix(labels, displaced_coord, cov_factor=1.3, metal_factor=1.0)
+            # Apply the same smart construction because its internal covalent factor is intentionally not exposed
+            isgood, new_adjmat, new_adjnum = get_adjmatrix(labels, displaced_coord, smart=True)
             if isgood and np.array_equal(original_adjmat, new_adjmat):
                 if debug > 0: print(f"Geometry {count} ACCEPTED")
                 geometries.append(displaced_coord)
@@ -292,7 +293,7 @@ def apply_q_displacement(x_ref, q_coords, freqs):
 
 ####
 def project_to_normal_modes(l1, x1, l2, x2, freqs, debug: int=0):
-    from scope.other import rmsd
+    from scope.overlap import rmsd
     """
     Aligns x_geom to x_ref and projects the displacement onto normal modes.
 

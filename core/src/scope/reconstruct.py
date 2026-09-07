@@ -505,10 +505,10 @@ def combine(tobemerged: list, references: list, cellvec: list, threshold_tmat: f
                     reordered_frac_cood = [newmolec.frac_coord[i] for i in map12]
                     reordered_cell_indices = [newmolec.cell_indices[i] for i in map12]
 
-                    reordered_newmolec = Molecule(reordered_labels, reordered_coord, reordered_radii)
+                    reordered_newmolec = Molecule(reordered_labels, reordered_coord, radii=reordered_radii)
                     reordered_newmolec.cell_indices = reordered_cell_indices
                     reordered_newmolec.set_fractional_coord(reordered_frac_cood)
-                    reordered_newmolec.set_adjacency_parameters(cov_factor, metal_factor)
+                    reordered_newmolec.get_adjmatrix(cov_factor=cov_factor, metal_factor=metal_factor)
                     reordered_newmolec.set_atoms(create_adjacencies=True, debug=2)
                     
                     if reordered_newmolec.iscomplex: 
@@ -563,22 +563,20 @@ def merge_fragments(frags: list, cellvec: list, cov_factor: float=1.3, metal_fac
         else:              reccoord.extend(translate(t, move_frag.coord, cellvec))
 
         ## Evaluate if we get only one fragment. If so, we're ok:
-        numspecs  = count_species(reclabels, reccoord, cov_factor=cov_factor, debug=debug)
+        numspecs  = count_species(reclabels, reccoord, cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
         if debug > 0: print("MERGE_FRAGMENTS: count_species found", numspecs)
         if numspecs != 1: continue
-        blocklist = split_species(reclabels, reccoord, cov_factor=cov_factor, debug=debug)
+        blocklist = split_species(reclabels, reccoord, cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
         if blocklist is None: continue
         else:
             if len(blocklist) != 1: continue
             if len(blocklist) == 1: 
                 newmolec = Molecule(reclabels, reccoord)
                 newmolec.cell_indices = blocklist[0]
-                newmolec.set_adjacency_parameters(cov_factor, metal_factor)
                 newmolec.set_adj_types()
                 newmolec.set_element_count()
-                newmolec.get_adjmatrix()
+                newmolec.get_adjmatrix(cov_factor=cov_factor, metal_factor=metal_factor)
                 newmolec.get_centroid()
-                newmolec.get_metal_adjmatrix()
                 return newmolec
     return None
 
@@ -613,7 +611,7 @@ def reorder_hungarian(z1, z2, coord1, coord2, metric: str='sqeuclidean', debug: 
         if debug > 0: print(f"REORDER_HUNGARIAN: {v=}")
         if len(v) == 0:  raise ValueError(f"REORDER_HUNGARIAN: Atom type {atom} could not be fonud in molecule 2")
         else:            map12[aidx1] = aidx2[v]
-        if debug > 0: 
+        if debug > 1:
             print(f"{map12=}")
             for i in range(len(map12)):
                 print(i, map12[i]) 
@@ -640,7 +638,7 @@ def test_reorder():
     za = ["O", "H", "H"]
     zb = ["H", "O", "H"]
     # We attempt to reorder them
-    zb2, B2, mapab = reorder(za, zb, A, B)
+    zb2, B2, mapab = reorder_hungarian(za, zb, A, B)
     assert za == zb2
     for i, idx in enumerate(mapab):
         print(za[i], zb2[i], zb[idx])

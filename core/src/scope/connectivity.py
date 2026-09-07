@@ -1,8 +1,7 @@
-import warnings
 import numpy as np
-from scipy import sparse
 from scipy.sparse import csr_matrix
-from scipy.sparse.csgraph import reverse_cuthill_mckee
+from scipy.sparse.csgraph import connected_components, reverse_cuthill_mckee
+from scipy.spatial.distance import pdist, squareform
 
 from typing import Tuple
 from scope.operations.dicts_and_lists import extract_from_list  
@@ -91,10 +90,7 @@ def get_radii(labels: list) -> np.ndarray:
     return np.array(radii)
 
 ######
-def get_adjmatrix(labels: list, coord: list, cov_factor: float=1.3, metal_factor: float=1.0, adjust_factor: bool=False, radii="default", metal_only: bool=False, debug: int=0) -> Tuple[bool, np.array, np.array]:
-    import numpy as np
-    import warnings
-    from scipy.spatial.distance import pdist, squareform
+def get_adjmatrix(labels: list, coord: list, cov_factor: float=1.3, metal_factor: float=1.0, smart: bool=False, radii="default", metal_only: bool=False, bond_margin: float=0.1, debug: int=0) -> Tuple[bool, np.ndarray, np.ndarray]:
     """
     Compute the adjacency matrix of a molecule based on atomic labels and coordinates.
 
@@ -108,18 +104,16 @@ def get_adjmatrix(labels: list, coord: list, cov_factor: float=1.3, metal_factor
         Scaling factor applied to the sum of covalent radii when defining a bond (default 1.3).
     metal_factor : float, optional
         Multiplier for covalent radii of metal atoms (d- or f-block elements). Default is 1.0.
+    smart : bool, optional
+        If True, diagnoses disconnected fragments, attempts a local interfragment repair, and increases cov_factor in steps of 0.02 up to 1.5 only as a fallback.
     radii : str, list, or np.ndarray, optional
         Covalent radii for atoms. If 'default', values are obtained from `get_radii(labels)`.
     metal_only : bool, optional
-        If True, only metal–metal or metal–nonmetal bonds are included.
-    adjust_factor : bool, optional
-        If True, adaptively increases cov_factor until all atoms have at least one neighbor.
+        If True, returns only metal–metal or metal–nonmetal bonds. Connectivity diagnosis and repair always use the complete covalent adjacency.
+    bond_margin : float, optional
+        Maximum relative excess over a pair bonding threshold accepted by the local interfragment repair. Default is 0.1 (10%).
     debug : int, optional
         Print extra diagnostic information if > 0.
-    max_factor : float, optional
-        Upper bound for adaptive cov_factor search (default 2.5).
-    factor_step : float, optional
-        Step size for incrementing cov_factor (default 0.05).
 
     Returns
     -------
@@ -129,72 +123,97 @@ def get_adjmatrix(labels: list, coord: list, cov_factor: float=1.3, metal_factor
         Symmetric adjacency matrix (1 = bonded, 0 = not bonded).
     adjnum : np.ndarray of shape (N,)
         Number of bonded neighbors for each atom.
-    cov_factor : float
-        Final cov_factor used (may be higher than initial if adjust_factor=True).
     """
-    isgood = True 
-    clash_threshold = 0.3
-    factor_step = 0.02
-    max_factor = 1.5
-    natoms = len(labels)
-    adjmat = np.zeros((natoms, natoms))
-    adjnum = np.zeros((natoms))
+    clash_threshold    = 0.3
+    factor_step        = 0.02
+    max_factor         = 1.5
+    initial_cov_factor = cov_factor
 
-    # --- Load or validate covalent radii ---
-    with warnings.catch_warnings():
-        warnings.simplefilter("ignore", category=FutureWarning)
-        if isinstance(radii, str) and radii == "default":
-            radii = get_radii(labels)
-        else:
-            radii = np.array(radii, dtype=float)
-    # --- Adjust radii for metal atoms ---
+    # Load or validate covalent radii
+    if isinstance(radii, str) and radii == "default": radii = get_radii(labels)
+    else:                                             radii = np.array(radii, dtype=float)
+
+    # Adjust radii for metal atoms
     if metal_factor != 1.0:
-        for i, elem in enumerate(labels):
-            block = elemdatabase.elementblock.get(elem, "")
-            if block in ("d", "f"):  # transition or f-block metals
-                radii[i] *= metal_factor
+        for index, label in enumerate(labels):
+            if elemdatabase.elementblock.get(label, "") in ("d", "f"): radii[index] *= metal_factor
 
-    # --- Precompute distance matrix ---
-    distmat = squareform(pdist(coord))
+    # Precompute quantities that do not depend on cov_factor
+    distmat   = squareform(pdist(coord))
+    sum_radii = radii[:, None] + radii[None, :]
+    clash     = np.any((distmat < clash_threshold) & (distmat > 0))
+    isgood    = not clash
+    if clash and debug > 0: print("GET_ADJMATRIX: Clash detected between atoms")
 
-    def compute_adjacency(cov_factor):
-        """Helper to compute adjacency given a specific cov_factor."""
-        # Compute the pairwise bonding distance threshold for each atom pair
-        sum_radii = radii[:, None] + radii[None, :]    # all combinations of radii
-        bond_threshold = cov_factor * sum_radii        # scale by cov_factor
-        # Determine which atom pairs are bonded
-        bonded = (distmat <= bond_threshold) & (distmat > clash_threshold)  ## Matrix of True/False
-        adjmat = bonded.astype(int)                                         ## Converted into Integers
-        # Handle metal-only case
-        if metal_only:
-            metal_mask = np.array([(elemdatabase.elementblock.get(lbl, "") in ("d", "f")) for lbl in labels],dtype=bool)
-            # A bond is valid if either atom is a metal
-            metal_bonds = np.logical_or.outer(metal_mask, metal_mask)
-            adjmat *= metal_bonds
-        # Zero diagonal
-        np.fill_diagonal(adjmat, 0)
-        # Check for clashes
-        clash = np.any((distmat < clash_threshold) & (distmat > 0))
-        return adjmat, clash
-
-    # --- Adjust cov_factor if needed ---
+    # Construct and diagnose the complete covalent adjacency
+    local_repair_attempted = False
     while True:
-        adjmat, clash = compute_adjacency(cov_factor)
-        adjnum = adjmat.sum(axis=1)
-        if not clash:
-            isgood = True
-        else:
-            isgood = False
-            if debug > 0: print(f"GET_ADJMATRIX: Clash detected at {cov_factor=:.2f}")
+        bond_threshold = cov_factor * sum_radii
+        bonded         = (distmat <= bond_threshold) & (distmat > clash_threshold)
+        full_adjmat     = bonded.astype(int)
+        np.fill_diagonal(full_adjmat, 0)
+        if not smart: break
+        nblocks, component_ids = connected_components(csr_matrix(full_adjmat), directed=False, return_labels=True)
+        if debug > 1: print(f"GET_ADJMATRIX: Found {nblocks} blocks at cov_factor={cov_factor:.2f}")
 
-        if adjust_factor and np.any(adjnum == 0) and cov_factor < max_factor:
-            cov_factor += factor_step
-            if debug > 0: print(f"GET_ADJMATRIX: Increasing cov_factor to {cov_factor:.2f} (some atoms have 0 neighbors)")
-            continue
-        break
-    if debug and adjust_factor:
-        if cov_factor >= max_factor: print(f"GET_ADJMATRIX: Reached max_factor={max_factor} but some atoms remain isolated.")
-    return isgood, adjmat, adjnum.astype(int)
+        # First try to connect all fragments through near-threshold atom pairs
+        if not clash and nblocks > 1 and not local_repair_attempted and bond_margin > 0:
+            local_repair_attempted = True
+            initial_nblocks        = nblocks
+            different_blocks      = component_ids[:, None] != component_ids[None, :]
+            within_margin         = (distmat > bond_threshold) & (distmat <= bond_threshold * (1.0 + bond_margin))
+            candidate_pairs       = np.argwhere(np.triu(different_blocks & within_margin, 1))
+            candidates            = sorted([(distmat[index1, index2] / bond_threshold[index1, index2] - 1.0, int(index1), int(index2)) for index1, index2 in candidate_pairs])
+            repaired_adjmat       = full_adjmat.copy()
+            repaired_nblocks      = nblocks
+            repaired_components   = component_ids
+            required_bonds        = []
+            additional_bonds      = []
+
+            if debug > 1:
+                print(f"GET_ADJMATRIX: Found {len(candidates)} inter-block candidate pairs within the {100.0*bond_margin:.1f}% margin; showing the best {min(10, len(candidates))}")
+                for candidate_number, (relative_excess, index1, index2) in enumerate(candidates[:10], start=1): print(f"GET_ADJMATRIX: Candidate {candidate_number}: {index1}:{labels[index1]}-{index2}:{labels[index2]}; distance={distmat[index1, index2]:.4f} Å; threshold={bond_threshold[index1, index2]:.4f} Å; excess={100.0*relative_excess:.2f}%")
+
+            for relative_excess, index1, index2 in candidates:
+                repaired_adjmat[index1, index2] = 1
+                repaired_adjmat[index2, index1] = 1
+                if repaired_components[index1] != repaired_components[index2]:
+                    required_bonds.append((index1, index2, relative_excess))
+                    repaired_nblocks, repaired_components = connected_components(csr_matrix(repaired_adjmat), directed=False, return_labels=True)
+                else:
+                    additional_bonds.append((index1, index2, relative_excess))
+
+            if repaired_nblocks == 1:
+                full_adjmat        = repaired_adjmat
+                nblocks            = repaired_nblocks
+                component_ids      = repaired_components
+                if debug > 0: print(f"GET_ADJMATRIX: Connected all {initial_nblocks} blocks; required local bonds={len(required_bonds)}; retained additional near-threshold adjacencies={len(additional_bonds)}; cov_factor remains {cov_factor:.2f}")
+                if debug > 1:
+                    for index1, index2, relative_excess in required_bonds: print(f"GET_ADJMATRIX: Added required local bond {index1}:{labels[index1]}-{index2}:{labels[index2]}; threshold excess={100.0*relative_excess:.2f}%")
+                    for index1, index2, relative_excess in additional_bonds: print(f"GET_ADJMATRIX: Added additional near-threshold adjacency {index1}:{labels[index1]}-{index2}:{labels[index2]}; threshold excess={100.0*relative_excess:.2f}%")
+
+        if nblocks <= 1 or clash: break
+        if cov_factor >= max_factor: break
+
+        new_cov_factor = round(min(cov_factor + factor_step, max_factor), 2)
+        if debug > 0: print(f"GET_ADJMATRIX: Found {nblocks} disconnected fragments at cov_factor={cov_factor:.2f}")
+        if debug > 0: print(f"GET_ADJMATRIX: Increasing cov_factor to {new_cov_factor:.2f}")
+        cov_factor = new_cov_factor
+
+    # Report unresolved or adjusted connectivity
+    if smart and debug > 0 and nblocks > 1: print(f"GET_ADJMATRIX: Smart connectivity repair stopped at cov_factor={cov_factor:.2f} with {nblocks} fragments")
+    if smart and debug > 0 and nblocks == 1 and cov_factor > initial_cov_factor:
+        print(f"GET_ADJMATRIX: Connectivity resolved at cov_factor={cov_factor:.2f}")
+
+    # Apply the metal-only mask after diagnosis and repair of the complete adjacency
+    adjmat = full_adjmat.copy()
+    if metal_only:
+        metal_mask  = np.array([elemdatabase.elementblock.get(label, "") in ("d", "f") for label in labels], dtype=bool)
+        metal_bonds = np.logical_or.outer(metal_mask, metal_mask)
+        adjmat     *= metal_bonds
+
+    adjnum = adjmat.sum(axis=1).astype(int)
+    return isgood, adjmat, adjnum
 
 ######
 def inv(perm: list) -> list:
@@ -242,13 +261,14 @@ def compute_centroid(coord: list) -> list:
 
 ######
 def count_species(labels: list, pos: list, radii: list=None, indices: list=None, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0) -> Tuple[bool, list]:
+    # FUTURE: This can use scipy.sparse.csgraph.connected_components directly, once the fragment ordering produced by the current RCM/get_blocks route is no longer required.
     # Gets the covalent radii
     if radii is None:    radii = get_radii(labels)
     if indices is None:  indices = [*range(0,len(labels),1)]
 
     # Computes the adjacency matrix of what is received
     # isgood indicates whether the adjacency matrix could be built normally, or errors were detected. Typically, those errors are steric clashes
-    isgood, adjmat, adjnum = get_adjmatrix(labels, pos, cov_factor, metal_factor, radii)
+    isgood, adjmat, adjnum = get_adjmatrix(labels, pos, cov_factor=cov_factor, metal_factor=metal_factor, radii=radii)
     if not isgood: return int(0)
 
     degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian
@@ -270,6 +290,7 @@ def count_species(labels: list, pos: list, radii: list=None, indices: list=None,
 ######
 def split_species(labels: list, pos: list, radii: list=None, indices: list=None, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0) -> Tuple[bool, list]:
     ## Function that identifies connected groups of atoms from their atomic coordinates and labels.
+    # FUTURE: This can use scipy.sparse.csgraph.connected_components directly, but its component ordering must first be reconciled with the ordering produced by the current RCM/get_blocks route.
 
     # Gets the covalent radii
     if radii is None:    radii = get_radii(labels)
@@ -343,8 +364,9 @@ def split_group(original_group, conn_idx, final_ligand_indices, debug: int=0):
     conn_atoms        = extract_from_list(conn_idx, original_group.atoms, dimension=1)
     if debug > 1: print(f"GROUP.SPLIT_GROUP: {conn_labels=}")
 
-    cov_factor=original_group.get_parent("ligand").cov_factor
-    blocklist = split_species(conn_labels, conn_coord, radii=conn_radii, cov_factor=cov_factor, debug=debug)      
+    conn_adjmat = original_group.adjmat[np.ix_(conn_idx, conn_idx)]
+    nblocks, component_ids = connected_components(csr_matrix(conn_adjmat), directed=False, return_labels=True)
+    blocklist = [np.where(component_ids == block)[0].tolist() for block in range(nblocks)]
     if debug > 0: print(f"GROUP.SPLIT_GROUP: {blocklist=}")
 
     ## Arranges Groups 
