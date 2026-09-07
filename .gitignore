@@ -8,3 +8,10 @@
 *.egg-info/
 dist/
 build/
+
+# Benchmark Files
+!benchmarks/2-Filtering_and_Execution/unique.npy
+!benchmarks/2-Filtering_and_Execution/unique_finished.npy
+benchmarks/2-Filtering_and_Execution/3-Computations
+benchmarks/3-Molecule_Overlap/overlap_comparison_tests
+benchmarks/SCOPE_connectivity_benchmark_notes.txt

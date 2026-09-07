@@ -1,4 +1,5 @@
 from scope.parse_general     import read_lines_file
+from scope                   import __version__
 from scope.software.quantum_espresso.qe_parse  import *
 
 class QE_output(object):
@@ -19,6 +20,7 @@ class QE_output(object):
         get_status_finished():          Check whether the run finished.
     """
     def __init__(self, lines: list, computation: object=None):
+        self.version        = __version__
         self._computation   = computation
         self.lines          = lines
         self.set_comp_type()

@@ -1,4 +1,5 @@
 import scope.constants 
+from   scope import __version__
 from   scope.parse_general import search_string, read_lines_file
 from   scope.software.gaussian.g16_parse import * 
 
@@ -20,6 +21,7 @@ class G16_output(object):
         get_status_finished():          Check whether the run finished.
     """
     def __init__(self, lines: list, computation: object=None):
+        self.version          = __version__
         self._computation     = computation
         self.lines            = lines
         if computation is not None:

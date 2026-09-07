@@ -2,15 +2,14 @@ import networkx as nx
 import numpy as np
 
 ####
-import networkx as nx
-
-def build_graph(adj_matrix, debug: int = 0, **node_features):
+def build_graph(adj_matrix, debug: int=0, edge_features: dict=None, **node_features):
     """
-    Build a NetworkX graph from an adjacency matrix and node features.
+    Build a NetworkX graph from an adjacency matrix and node and edge features.
 
     Parameters:
         adj_matrix:                     Adjacency matrix.
         debug (int):                    Verbosity level.
+        edge_features (dict | None):    Edge attributes stored as square matrices.
         **node_features:                Per-node attributes with one value per node.
 
     Returns:
@@ -18,10 +17,13 @@ def build_graph(adj_matrix, debug: int = 0, **node_features):
     """
     G = nx.Graph()
     N = len(adj_matrix)
+    if edge_features is None: edge_features = {}
 
     # Reads features and performs sanity checks
     for name, values in node_features.items():
         if len(values) != N: raise ValueError(f"Feature '{name}' has length {len(values)}, expected {N}")
+    for name, values in edge_features.items():
+        if np.shape(values) != (N, N): raise ValueError(f"Edge feature '{name}' has shape {np.shape(values)}, expected ({N}, {N})")
 
     # Add nodes with attributes
     for i in range(N):
@@ -36,9 +38,12 @@ def build_graph(adj_matrix, debug: int = 0, **node_features):
     for i in range(N):
         for j in range(i + 1, N):
             if adj_matrix[i, j] > 0:
-                G.add_edge(i, j)
+                attrs = {}
+                for name, values in edge_features.items():
+                    attrs[name] = values[i, j]
+                G.add_edge(i, j, **attrs)
                 if debug > 0:
-                    print(f"BUILD_GRAPH: edge {i}-{j} created from adjacency matrix")
+                    print(f"BUILD_GRAPH: edge {i}-{j} created with attrs {attrs}")
 
     if debug > 0:
         print(f"BUILD_GRAPH: {G.number_of_nodes()} nodes created")
@@ -128,12 +133,12 @@ def compare_graphs(G1, G2, debug: int=0):
         return False
 
     # 3.2) Compares signatures:
-    if not compare_signatures(sign1, sign2): 
+    from scope.operations.dicts_and_lists import same_dictionaries 
+    if not same_dictionaries(sign1, sign2): 
         if debug > 0: print(f"COMPARE_GRAPHS: different signatures")
         if debug > 0: print(f"\t {sign1}")
         if debug > 0: print(f"\t {sign2}")
         return False
-
     return True
 
 ####
@@ -185,19 +190,6 @@ def get_signatures(G, convergence_layers: int=2):
 
     # While is closed, get the results
     return n, n_neigh_x_layer, signatures
-
-####
-def compare_signatures(sign1: dict, sign2: dict):
-    from collections import Counter
-    """
-    Checks if two specific types of dictionaries, the signatures obtained in scope.operations.graphs.get_signatures() are equivalent:
-    """
-    # 1) Compare that they have the same layers
-    if not list(sign1.keys()) == list(sign2.keys()): return False
-    # 2) Compares the counter
-    for layer in list(sign1.keys()):
-        if not Counter(sign1[layer].values()) == Counter(sign2[layer].values()): return False
-    return True
 
 ####
 def compute_topological_distances(G, ref_atom: int) -> dict:

@@ -3,7 +3,17 @@ import numpy as np
 ####################
 ### Dictionaries ###
 ####################
-
+def same_dictionaries(dic1: dict, dic2: dict):
+    from collections import Counter
+    """
+    Checks if two specific types of dictionaries, the signatures obtained in scope.operations.graphs.get_signatures() are equivalent:
+    """
+    # 1) Compare that they have the same layers
+    if not list(dic1.keys()) == list(dic2.keys()): return False
+    # 2) Compares the counter
+    for layer in list(dic1.keys()):
+        if not Counter(dic1[layer].values()) == Counter(dic2[layer].values()): return False
+    return True
 
 #############
 ### Lists ###

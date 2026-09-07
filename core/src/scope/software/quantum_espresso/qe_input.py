@@ -128,8 +128,16 @@ def gen_qe_input(comp: object, debug: int=0):
         if comp.qc_data.comp_type == "vc-relax": min_cowfc *= 2; min_corho *= 2  ## In vc-relax it is convenient to minimize pulay stress
 
         print(" &system", file=inp)
-        if   system_type == "molecule": print(f"    ibrav=1, celldm(1)={comp.qc_data.cubeside}", file=inp)
-        elif system_type == "cell":     print(f"    ibrav=0,", file=inp)
+
+        ## For isolated molecules
+        if system_type == "molecule": 
+            if not hasattr(comp.qc_data,"cubeside"): 
+                raise ValueError(f"GEN_QE_INPUT: For molecules, the 'cubeside' parameter must be set in the qc_data section of the input. It is missing.") 
+            print(f"    ibrav=1, celldm(1)={comp.qc_data.cubeside}", file=inp)
+        ## For Crystals
+        elif system_type == "cell":     
+            print(f"    ibrav=0,", file=inp)
+
         print(f"    nat={istate.natoms}, ntyp={nspecies}, ecutwfc={int(min_cowfc)}, ecutrho={float(min_corho)}", file=inp)
         print(f"    nspin=2,", file=inp)
         print(f"    tot_charge={istate.charge}", file=inp)
