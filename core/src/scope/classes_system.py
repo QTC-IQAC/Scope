@@ -4,6 +4,7 @@
 import os
 from scope.read_write import save_binary
 from scope.classes_workflow import Branch
+from scope import __version__
 
 class System(object):
     """
@@ -25,7 +26,7 @@ class System(object):
         save():                         Serialize the system to disk.
     """
     def __init__(self, name: str) -> None:
-        self.version              = "1.0"
+        self.version              = __version__
         self.object_type          = "system"
         self.object_subtype       = "system"
         self.origin               = "created"
@@ -88,6 +89,8 @@ class System(object):
     ######
     def save(self, filepath: str=None):
         if filepath is None: filepath = self.system_file
+        if not hasattr(self, "system_file") or self.system_file is None:
+            self.system_file = filepath
         save_binary(self, filepath)
 
     ######
@@ -110,7 +113,7 @@ class System(object):
         name = name.lower()
         name = name.replace(" ","_")
         ## Sources Must Have a Name
-        if not hasattr(new_source,"name"): new_source.name = name
+        new_source.name = name
         ## Search if source with the same name already exists
         found, old_source = self.find_source(name, debug=debug)
         ## If not, it is added
@@ -150,6 +153,9 @@ class System(object):
     ### Paths ###
     #############
     def check_paths(self, debug: int=0) -> bool:
+        if not hasattr(self, "system_file") or not hasattr(self, "system_path") or not hasattr(self, "computations_path") or not hasattr(self, "sources_path"):
+            if debug > 0: print(f"SYSTEM.CHECK_PATHS: WARNING: System paths are not defined")
+            return False
         if not os.path.isfile(self.system_file) or not os.path.isdir(self.system_path) or not os.path.isdir(self.computations_path) or not os.path.isdir(self.sources_path):  
             if debug > 0: 
                 if not os.path.isfile(self.system_file):       print(f"SYSTEM.CHECK_PATHS: WARNING: System FILE does not exist {self.system_file=}")

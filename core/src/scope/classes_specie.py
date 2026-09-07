@@ -2,6 +2,8 @@
 ####  Contains the SPECIE Class and Sub-Classes ####
 ####################################################
 
+from multiprocessing.util import debug
+
 import numpy as np
 from scope.connectivity               import * 
 from scope.classes_atom               import *
@@ -9,6 +11,7 @@ from scope.other                      import get_metal_idxs
 from scope.operations.dicts_and_lists import extract_from_list 
 from scope.geometry                   import * 
 from scope.elementdata                import ElementData
+from scope                            import __version__
 elemdatabase = ElementData()
 
 ##############
@@ -29,7 +32,8 @@ class Specie(object):
 
     Methods:
         set_atoms():                    Build atom objects for the species.
-        get_adjmatrix():                Compute covalent connectivity.
+        get_adjmatrix():                Compute adjacency matrix (connectivity)
+        get_bond_order_matrix():        Return connectivity with available formal bond orders.
         get_graph():                    Build a graph representation.
         add_parent():                   Register a parent-child relation.
         save():                         Serialize the species to disk.
@@ -46,7 +50,7 @@ class Specie(object):
         if radii is not None:   self.radii   = radii                  ## Radii are used to obtain the adjacency matrix 
         else:                   self.radii   = get_radii(labels)
 
-        self.version              = "1.0"
+        self.version              = __version__
         self.object_type          = "specie"
         self.object_subtype       = "specie"
         self.origin               = "created"
@@ -63,10 +67,6 @@ class Specie(object):
         self.parents              = []
         self.parents_indices      = []
 
-        ## Default factors to compute the adjacency matrix and related stuff. 
-        self.cov_factor           = 1.3
-        self.metal_factor         = 1.0
-        
         ## Bonds
         self.has_bonds            = False
 
@@ -220,10 +220,31 @@ class Specie(object):
     ###########
     ## Other ##
     ###########
+    def get_bond_order_matrix(self):
+        """Return adjacency connectivity decorated with available bond orders."""
+        if not hasattr(self, "adjmat"): self.get_adjmatrix()
+        if self.adjmat is None:
+            return None
+
+        bond_orders = np.where(np.asarray(self.adjmat) > 0, 1.0, 0.0)
+        if self.madjmat is not None:
+            bond_orders[np.asarray(self.madjmat) > 0] = 0.5
+
+        if getattr(self, "has_bonds", False) and hasattr(self, "atoms"):
+            atom_indices = {id(atom): index for index, atom in enumerate(self.atoms)}
+            for atom in self.atoms:
+                for bond in getattr(atom, "bonds", []):
+                    index1 = atom_indices.get(id(bond.atom1))
+                    index2 = atom_indices.get(id(bond.atom2))
+                    if index1 is None or index2 is None:
+                        continue
+                    bond_orders[index1, index2] = bond.order
+                    bond_orders[index2, index1] = bond.order
+        return bond_orders
+
     def get_graph(self, debug: int=0):
         import networkx as nx
-        if not hasattr(self,"adjmat"):  self.get_adjmatrix(debug=debug)
-        if not hasattr(self,"madjmat"): self.get_metal_adjmatrix(debug=debug)
+        self.get_adjmatrix(debug=debug)
         if not hasattr(self,"bonds"):   self.set_bonds(debug=debug)
         if not hasattr(self,"atoms"):   self.set_atoms(create_adjacencies=True)
         # Create Empty Graph
@@ -242,6 +263,9 @@ class Specie(object):
                 for b in at.bonds:
                     idx1 = b.atom1.get_parent_index(self.object_subtype)
                     idx2 = b.atom2.get_parent_index(self.object_subtype)
+                    if idx1 is None or idx2 is None:
+                        if debug > 1: print(f"SPECIE.GET_GRAPH: Ignoring external bond {b.atom1.label}-{b.atom2.label}")
+                        continue
                     if idx2 > idx1: 
                         self.mol_graph.add_edge(idx1, idx2, order=b.order, distance=b.distance)
                         if debug > 0: print(f"SPECIE.GET_GRAPH: edge created between atoms {idx1}:{b.atom1.label} and {idx2}:{b.atom2.label} from Bonds")
@@ -251,8 +275,7 @@ class Specie(object):
             if not hasattr(self, "atoms"):
                 self.set_atoms(create_adjacencies=True, debug=debug)
             else:
-                if not hasattr(self, "adjmat"):  self.get_adjmatrix()
-                if not hasattr(self, "madjmat"): self.get_metal_adjmatrix()
+                self.get_adjmatrix()
                 if self.adjmat is not None and self.madjmat is not None:
                     for idx, at in enumerate(self.atoms):
                         at.set_adjacencies(self.adjmat[idx], self.madjmat[idx], self.adjnum[idx], self.madjnum[idx])
@@ -269,13 +292,20 @@ class Specie(object):
             print(f"SPECIE.GET_GRAPH: {self.mol_graph.number_of_edges()} edges created")
         return self.mol_graph
 
-    def rmsd(self, other, reorder=True, center_method='centroid', debug: int=0):
+    def rmsd(self, other, reorder=True, center_method='centroid', use_ext_info: bool=True, translate_to_ref: bool=True, max_iter: int=5,max_graph_mappings: int=1000, debug: int=0):
         ## Computes the RMSD between two species. Both species must be chemically the same
-        from scope.other import rmsd
+        from scope.overlap import rmsd
         if self != other: 
             print(f"SPECIE.RMSD: The two Species are not equivalent. The Hungarian reorder will likely fail, so stopping")
             return None 
-        value = rmsd(self.labels, self.coord, other.labels, other.coord, reorder=reorder, center_method=center_method, debug=debug)   
+        if reorder:
+            if not hasattr(self, "adjmat"):  self.get_adjmatrix()
+            if not hasattr(other, "adjmat"): other.get_adjmatrix()
+            bond_orders1 = self.get_bond_order_matrix()
+            bond_orders2 = other.get_bond_order_matrix()
+            value = rmsd(self.labels, self.coord, other.labels, other.coord, reorder=True, center_method=center_method, use_ext_info=use_ext_info, translate_to_ref=translate_to_ref, max_iter=max_iter, adjmat1=self.adjmat, adjmat2=other.adjmat, bond_orders1=bond_orders1, bond_orders2=bond_orders2, max_graph_mappings=max_graph_mappings, debug=debug)
+        else:
+            value = rmsd(self.labels, self.coord, other.labels, other.coord, reorder=False, center_method=center_method, use_ext_info=use_ext_info, translate_to_ref=translate_to_ref, max_iter=max_iter, adjmat1=self.adjmat, adjmat2=other.adjmat, bond_orders1=bond_orders1, bond_orders2=bond_orders2, max_graph_mappings=max_graph_mappings, debug=debug)
         return value
 
     def save(self, filepath):
@@ -317,7 +347,8 @@ class Specie(object):
                 assert len(self.frac_coord) == len(self.coord)
             else: print("SPECIE.GET_FRACTIONAL_COORD. Parent state is missing the cell vector"); return None
         else:  
-            if debug > 0: print("SPECIE.GET_FRACTIONAL_COORD. Fractional Coordinates could not be found"); return None
+            if debug > 0: print("SPECIE.GET_FRACTIONAL_COORD. Fractional Coordinates could not be found")
+            return None
         return self.frac_coord
 
     ######
@@ -415,8 +446,7 @@ class Specie(object):
         
         if create_adjacencies:
             ## Creates adjacency matrices if they do not exist, and sets the adjacencies in each atom
-            if not hasattr(self,"adjmat"):  self.get_adjmatrix()
-            if not hasattr(self,"madjmat"): self.get_metal_adjmatrix()
+            self.get_adjmatrix()
             if self.adjmat is not None and self.madjmat is not None: 
                 for idx, at in enumerate(self.atoms): 
                     at.set_adjacencies(self.adjmat[idx],self.madjmat[idx],self.adjnum[idx],self.madjnum[idx])
@@ -526,14 +556,6 @@ class Specie(object):
     ############################
     ## Connectivity Functions ##
     ############################
-    def set_factors(self, cov_factor: float=1.3, metal_factor: float=1.0) -> None:
-        self.cov_factor   = cov_factor
-        self.metal_factor = metal_factor
-        if hasattr(self,"atoms"):
-            for at in self.atoms:
-                at.set_factors(cov_factor=self.cov_factor, metal_factor=self.metal_factor)
-
-    ######
     def inherit_adjmatrix(self, parent_subtype: str, debug: int=0):
         exists  = self.check_parent(parent_subtype)
         if not exists: 
@@ -541,37 +563,49 @@ class Specie(object):
             return None
         parent  = self.get_parent(parent_subtype)
         indices = self.get_parent_indices(parent_subtype)
-        if not hasattr(parent,"adjnum"): 
-            if debug > 0: print(f"SPECIE.INHERIT. {parent_subtype=} does not have adjnum. computing it")
+        if not hasattr(parent,"adjnum") or not hasattr(parent,"madjnum"):
+            if debug > 0: print(f"SPECIE.INHERIT. {parent_subtype=} does not have complete adjacency data. Computing it")
             parent.get_adjmatrix(debug=debug)
-        if not hasattr(parent,"madjnum"): 
-            if debug > 0: print(f"SPECIE.INHERIT. {parent_subtype=} does not have madjnum. computing it")
-            parent.get_metal_adjmatrix(debug=debug)
         self.madjmat = np.stack(extract_from_list(indices, parent.madjmat, dimension=2), axis=0)
         self.madjnum = np.stack(extract_from_list(indices, parent.madjnum, dimension=1), axis=0)
         self.adjmat  = np.stack(extract_from_list(indices, parent.adjmat, dimension=2), axis=0)
         self.adjnum  = np.stack(extract_from_list(indices, parent.adjnum, dimension=1), axis=0)
 
     ######
-    def get_adjmatrix(self, adjust_factor: bool=False, debug: int=0):
-        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord, self.cov_factor, self.metal_factor, adjust_factor=adjust_factor, radii=self.radii, debug=debug)
+    def get_adjmatrix(self, smart: bool=False, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, bond_margin: float=0.1, debug: int=0):
+        if not overwrite and hasattr(self, "adjmat") and self.adjmat is not None:
+            self.adjmat = np.asarray(self.adjmat)
+            if not hasattr(self, "adjnum") or self.adjnum is None: self.adjnum = self.adjmat.sum(axis=1).astype(int)
+            if not hasattr(self, "madjmat") or self.madjmat is None:
+                metal_indices            = get_metal_idxs(self.labels, debug=debug)
+                metal_mask               = np.zeros(self.natoms, dtype=bool)
+                metal_mask[metal_indices] = True
+                metal_bonds              = np.logical_or.outer(metal_mask, metal_mask)
+                self.madjmat             = self.adjmat * metal_bonds
+            if not hasattr(self, "madjnum") or self.madjnum is None: self.madjnum = self.madjmat.sum(axis=1).astype(int)
+            return self.adjmat, self.adjnum
+        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord, cov_factor=cov_factor, metal_factor=metal_factor, smart=smart, radii=self.radii, bond_margin=bond_margin, debug=debug)
         if isgood:
-            self.adjmat = adjmat
-            self.adjnum = adjnum
+            metal_indices             = get_metal_idxs(self.labels, debug=debug)
+            metal_mask                = np.zeros(self.natoms, dtype=bool)
+            metal_mask[metal_indices] = True
+            metal_bonds               = np.logical_or.outer(metal_mask, metal_mask)
+            self.adjmat               = adjmat
+            self.adjnum               = adjnum
+            self.madjmat              = self.adjmat * metal_bonds
+            self.madjnum              = self.madjmat.sum(axis=1).astype(int)
+            if hasattr(self, "atoms"):
+                for index, atom in enumerate(self.atoms): atom.set_adjacencies(self.adjmat[index], self.madjmat[index], self.adjnum[index], self.madjnum[index])
         else:
-            self.adjmat = None
-            self.adjnum = None
+            self.adjmat  = None
+            self.adjnum  = None
+            self.madjmat = None
+            self.madjnum = None
         return self.adjmat, self.adjnum
 
     ######
-    def get_metal_adjmatrix(self, adjust_factor: bool=False, debug: int=0):
-        isgood, madjmat, madjnum = get_adjmatrix(self.labels, self.coord, self.cov_factor, self.metal_factor, adjust_factor=adjust_factor, radii=self.radii, metal_only=True, debug=debug)
-        if isgood:
-            self.madjmat = madjmat
-            self.madjnum = madjnum
-        else:
-            self.madjmat = None
-            self.madjnum = None
+    def get_metal_adjmatrix(self, smart: bool=False, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, bond_margin: float=0.1, debug: int=0):
+        if overwrite or not hasattr(self, "madjmat") or self.madjmat is None: self.get_adjmatrix(smart=smart, overwrite=overwrite, cov_factor=cov_factor, metal_factor=metal_factor, bond_margin=bond_margin, debug=debug)
         return self.madjmat, self.madjnum
 
     ######
@@ -619,10 +653,13 @@ class Specie(object):
         return occurrence
 
     ######
-    def check_fragmentation(self, cov_factor: float=1.3, metal_factor: float=None, debug: int=0):
-        blocklist = split_species(self.labels, self.coord, cov_factor=cov_factor)
-        if len(blocklist) > 1: self.isfragmented = True
-        else:                  self.isfragmented = False
+    def check_fragmentation(self, debug: int=0):
+        if not hasattr(self, "adjmat"): self.get_adjmatrix(debug=debug)
+        if self.adjmat is None: self.isfragmented = True
+        else:
+            nblocks = connected_components(csr_matrix(self.adjmat), directed=False, return_labels=False)
+            if nblocks > 1: self.isfragmented = True
+            else:           self.isfragmented = False
         return self.isfragmented
 
     #########################################
@@ -630,8 +667,9 @@ class Specie(object):
     #########################################
     def set_initial_state(self, name: str='initial', debug: int=0):
         """Create the initial state for this species."""
+        if not hasattr(self, "adjmat"): self.get_adjmatrix(smart=True, debug=debug)
         ini_state = self.add_state(name)
-        ini_state.set_geometry(self.labels, self.coord)
+        ini_state.set_geometry(self.labels, self.coord, debug=debug)
         return ini_state
 
     def add_state(self, name: str, debug: int=0):
@@ -721,7 +759,7 @@ class Specie(object):
                     'large': (800, 800, 10, 12), 'ultra': (1000, 1000, 11, 13)}
         width, height, marker_size, text_size = size_map.get(size.lower(), size_map['default'])
 
-        if not hasattr(self, "adjmat"): self.get_adjmatrix(adjust_factor=True)
+        if not hasattr(self, "adjmat"): self.get_adjmatrix(smart=True)
         fig = go.Figure()
         positions, symbols = np.array(self.coord), self.labels
         unique_bonds = {tuple(i) for i in np.argwhere(self.adjmat > 0)}
@@ -939,8 +977,10 @@ class Molecule(Specie):
                 print(f"MOLECULE.SPLIT_COMPLEX: rest radii: {rest_radii}")
 
             if debug > 0: print(f"MOLECULE.SPLIT_COMPLEX: splitting species with {len(rest_labels)} atoms in block")
-            if hasattr(self,"cov_factor"): blocklist = split_species(rest_labels, rest_coord, radii=rest_radii, cov_factor=self.cov_factor, debug=debug)
-            else:                          blocklist = split_species(rest_labels, rest_coord, radii=rest_radii, cov_factor=self.cov_factor, debug=debug)      
+            if not hasattr(self, "adjmat"): self.get_adjmatrix(debug=debug)
+            rest_adjmat = self.adjmat[np.ix_(rest_idx, rest_idx)]
+            nblocks, component_ids = connected_components(csr_matrix(rest_adjmat), directed=False, return_labels=True)
+            blocklist = [np.where(component_ids == block)[0].tolist() for block in range(nblocks)]
             if debug > 0: print(f"MOLECULE.SPLIT_COMPLEX: received {len(blocklist)} blocks")
             
             ## Arranges Ligands
@@ -970,8 +1010,6 @@ class Molecule(Specie):
                     ref_indices = [a.get_parent_index("reference") for a in lig_atoms]
                     newligand.add_parent(self.get_parent("reference"), indices=ref_indices)
 
-                # Update the ligand with the covalent and metal factors 
-                newligand.set_factors(self.cov_factor, self.metal_factor)
                 # Pass the molecule atoms to the ligand
                 newligand.set_atoms(atomlist=lig_atoms)
                 # Inherit the adjacencies from molecule
@@ -1194,8 +1232,10 @@ class Ligand(Specie):
         connatoms      = extract_from_list(connected_idx, self.atoms, dimension=1)
         if debug >= 2: print(f"\tLIGAND.SPLIT_LIGAND: {conn_labels=}")
 
-        if hasattr(self,"cov_factor"): blocklist = split_species(conn_labels, conn_coord, radii=conn_radii, cov_factor=self.cov_factor, debug=debug)
-        else:                          blocklist = split_species(conn_labels, conn_coord, radii=conn_radii, debug=debug)      
+        if not hasattr(self, "adjmat"): self.inherit_adjmatrix("molecule", debug=debug)
+        conn_adjmat = self.adjmat[np.ix_(connected_idx, connected_idx)]
+        nblocks, component_ids = connected_components(csr_matrix(conn_adjmat), directed=False, return_labels=True)
+        blocklist = [np.where(component_ids == block)[0].tolist() for block in range(nblocks)]
         if debug >= 2: print(f"\tLIGAND.SPLIT_LIGAND: {blocklist=}")
         ## Arranges Groups 
         for b in blocklist:
@@ -1755,8 +1795,7 @@ class Group(Specie):
             if hasattr(self,"is_haptic"):     self.get_hapticity()
             if hasattr(self,"centroid"):      self.get_centroid()
             if hasattr(self,"frac_coord"):    self.frac_coord.pop(index)
-            if hasattr(self,"adjmat"):        self.get_adjmatrix()
-            if hasattr(self,"madjmat"):       self.get_metal_adjmatrix()
+            if hasattr(self,"adjmat"):        self.get_adjmatrix(overwrite=True, debug=debug)
 
     ######
     def get_closest_metal(self, debug: int=0):
@@ -1828,7 +1867,8 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
 
     if mol.__class__.__module__.startswith("rdkit.Chem"):
         if debug > 0: print(f"IMPORT_MOLEC: Detected RDKit molecule, importing first via import_rdkit_molecule")
-        if debug > 0: print(f"IMPORT_MOLEC: Importing Labels, coordinates, rdkit_object and smiles. The rest will be evaluated normally")
+        if debug > 0: print(f"IMPORT_MOLEC: Importing Labels, coordinates, atomic charges and smiles. The rest will be evaluated normally")
+        if debug > 0: print(f"IMPORT_MOLEC: The RDKit object itself is stored as self.rdkit_obj.")
         mol = import_rdkit_molecule(mol, debug=debug)
 
     assert hasattr(mol,"labels") 
@@ -1846,26 +1886,23 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
     if   hasattr(mol,"radii"):             radii      = mol.radii
     else:                                  radii      = None          
 
-    ## 2) Imports Covalent and Metal factors for the construcion of the adjacency matrix
-    if hasattr(mol,"factor") and hasattr(mol,"metal_factor"): 
-        cov_factor   = mol.factor
-        metal_factor = mol.metal_factor
-    elif hasattr(mol,"cov_factor") and hasattr(mol,"metal_factor"): 
-        cov_factor   = mol.cov_factor
-        metal_factor = mol.metal_factor
-    else:
-        cov_factor   = 1.3
-        metal_factor = 1.0
-
-    ## 3) Creates basic molecule, and starts adding information
-    new_molec = Molecule(labels, coord, radii)
+    ## 2) Creates basic molecule, and starts adding information
+    new_molec = Molecule(labels, coord, radii=radii)
     new_molec.origin = "import_molecule"
-    new_molec.set_factors(cov_factor, metal_factor)
-    new_molec.get_adjmatrix()           ## Necessary when importing atoms
-    new_molec.get_metal_adjmatrix()     ## Necessary when importing atoms
+
+    ## Copies the adjacency matrix if available and of the right shape. Otherwise, it will be built from scratch
+    if hasattr(mol, "adjmat") and np.shape(mol.adjmat) == (new_molec.natoms, new_molec.natoms):
+        new_molec.adjmat = np.asarray(mol.adjmat).copy()
+    new_molec.get_adjmatrix(smart=not hasattr(new_molec, "adjmat"), debug=debug)   ## Necessary when importing atoms; also builds the metal-only adjacency
     if debug > 0: print(f"IMPORT MOLEC: importing molecule {new_molec.formula}")
 
-    ## 4) Imports Parents if available
+    ## Checks that the imported structure represents one valid molecule
+    if new_molec.adjmat is None:
+        raise ValueError("IMPORT_MOLECULE: A valid adjacency matrix could not be constructed.")
+    if new_molec.check_fragmentation(debug=debug):
+        raise ValueError("IMPORT_MOLECULE: The imported structure contains disconnected fragments. SCOPE Molecule objects must represent a single connected molecule.")
+
+    ## 3) Imports Parents if available
     if parent is not None:
         new_molec.add_parent(parent, indices, overwrite=False, debug=debug) 
         if debug > 0: print(f"IMPORT MOLEC: parent {parent.object_subtype=} added with {indices=}")
@@ -1895,25 +1932,29 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
     if debug > 0: print(f"IMPORT MOLEC: Importing Substructures")
     if not hasattr(mol,"ligandlist") or not hasattr(mol,"metalist"):
         if debug > 0: print(f"IMPORT MOLEC: splitting complex")
-        new_molec.split_complex()
+        new_molec.split_complex(debug=debug)
     else:
-        # Ligands
-        new_molec.ligands = []
-        for lig in mol.ligandlist: 
-            new_lig = import_ligand(lig, parent=new_molec, debug=debug)
-            new_molec.ligands.append(new_lig)
-            if debug > 0: print(f"-------")
-        # Metals         !! now, metals are taken from molecule.atoms. Otherwise it wasn't working
-        new_molec.metals = []
-        for at in new_molec.atoms:
-            if at.object_subtype == "metal": new_molec.metals.append(at)
+        if len(mol.ligandlist) == 0 or len(mol.metalist) == 0:
+            if debug > 0: print(f"IMPORT MOLEC: splitting complex")
+            new_molec.split_complex(debug=debug)
+        else:
+            # Ligands
+            new_molec.ligands = []
+            for lig in mol.ligandlist:
+                new_lig = import_ligand(lig, parent=new_molec, debug=debug)
+                new_molec.ligands.append(new_lig)
+                if debug > 0: print(f"-------")
+            # Metals         !! now, metals are taken from molecule.atoms. Otherwise it wasn't working
+            new_molec.metals = []
+            for at in new_molec.atoms:
+                if at.object_subtype == "metal": new_molec.metals.append(at)
 
-        # Checks and fixes ligands_rdkit_obj if necessary
-        try:
-            new_molec.fix_ligands_rdkit_obj(debug=debug)    
-        except Exception as exc:
-            if debug > 0: print(f"Error fixing rdkit objects of ligands. Preserving old ones. Exception below:")
-            if debug > 0: print(exc)
+            # Checks and fixes ligands_rdkit_obj if necessary
+            try:
+                new_molec.fix_ligands_rdkit_obj(debug=debug)
+            except Exception as exc:
+                if debug > 0: print(f"Error fixing rdkit objects of ligands. Preserving old ones. Exception below:")
+                if debug > 0: print(exc)
 
     ### Charges
     if hasattr(mol,"atcharge"):
@@ -2084,8 +2125,12 @@ def import_rdkit_molecule(mol, debug: int=0) -> object:
     # Check if molecule already has 3D coordinates
     has_3d = mol.GetNumConformers() > 0 and mol.GetConformer().Is3D()
 
-    # Initial preparation of the molecule if it lacks 3D coordinates
-    if not has_3d:
+    # Materialize implicit hydrogens. If coordinates already exist, RDKit places the new hydrogens around the existing geometry
+    implicit_hydrogens = sum(atom.GetNumImplicitHs() for atom in mol.GetAtoms())
+    if has_3d and implicit_hydrogens > 0:
+        if debug > 0: print(f"IMPORT_RDKIT_MOLECULE: Adding {implicit_hydrogens} implicit hydrogens to the existing 3D geometry")
+        mol = Chem.AddHs(mol, addCoords=True)
+    elif not has_3d:
         mol = Chem.AddHs(mol)
         Chem.SanitizeMol(mol)
         AllChem.EmbedMolecule(mol, AllChem.ETKDG())
@@ -2095,15 +2140,21 @@ def import_rdkit_molecule(mol, debug: int=0) -> object:
     conf = mol.GetConformer()
 
     # Extract atom labels and coordinates
-    coord  = []
-    labels = []
+    coord          = []
+    labels         = []
+    atomic_charges = []
     for atom in mol.GetAtoms():
         pos = conf.GetAtomPosition(atom.GetIdx())
         coord.append((pos.x, pos.y, pos.z))
         labels.append(atom.GetSymbol())
+        atomic_charges.append(atom.GetFormalCharge())
 
     # Create a new Scope molecule object
-    scope_mol = Molecule(labels, coord)       # Create Scope molecule with labels and coordinates
-    scope_mol.rdkit_obj = mol                 # Store the original RDKit molecule for reference
-    scope_mol.smiles = Chem.MolToSmiles(mol)  # Store the SMILES representation
+    scope_mol           = Molecule(labels, coord)                         # Create Scope molecule with labels and coordinates
+    scope_mol.adjmat    = Chem.GetAdjacencyMatrix(mol).astype(int)        # Import RDKit connectivity
+    scope_mol.rdkit_obj = mol                                             # Store the prepared RDKit molecule with explicit atoms
+    scope_mol.smiles    = Chem.MolToSmiles(mol)                           # Store the SMILES representation
+    if any(atomic_charges):
+        scope_mol.set_atomic_charges(atomic_charges)
+        if debug > 0: print(f"IMPORT_RDKIT_MOLECULE: Imported formal atomic charges: {atomic_charges}")
     return scope_mol

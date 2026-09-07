@@ -7,6 +7,8 @@ from scope.connectivity     import *
 from scope.geometry         import cellparam_2_cellvec, cellvec_2_cellparam, cart2frac, get_unit_cell_volume
 from scope.elementdata      import ElementData
 from scope.classes_specie   import Molecule
+from scope.other            import get_metal_idxs
+from scope                  import __version__
 elemdatabase = ElementData()
 
 ##############
@@ -34,7 +36,7 @@ class Cell(object):
     """
 
     def __init__(self, name: str, labels: list, coord: list, cell_vector: list=None, cell_param: list=None) -> None:
-        self.version              = "1.0"
+        self.version              = __version__
         self.object_type          = "cell"
         self.object_subtype       = "cell"
         self.origin               = "created"
@@ -345,12 +347,12 @@ class Cell(object):
                     print("CELL.GET_MOLECULES. NONE received from FIX_CELL_COORD. Stopping")
                     return None 
 
-        blocklist = split_species(self.labels, self.coord, cov_factor=cov_factor, debug=debug)
-        if blocklist is None: 
-            return None
-        else :
-            if debug > 0: print(f"CELL.GET_MOLECULES: found {len(blocklist)} blocks")
-            if debug > 0: print(f"CELL.GET_MOLECULES: {blocklist=}")
+        self.get_adjmatrix(overwrite=overwrite, cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
+        if self.adjmat is None: return None
+        nblocks, component_ids = connected_components(csr_matrix(self.adjmat), directed=False, return_labels=True)
+        blocklist = [np.where(component_ids == block)[0].tolist() for block in range(nblocks)]
+        if debug > 0: print(f"CELL.GET_MOLECULES: found {len(blocklist)} blocks")
+        if debug > 0: print(f"CELL.GET_MOLECULES: {blocklist=}")
         
         self.molecules = []
         for b in blocklist:
@@ -364,8 +366,9 @@ class Cell(object):
             newmolec.origin = "cell.get_molecules"
             # Adds cell as parent of the molecule, with indices b
             newmolec.add_parent(self, indices=b)            
-            # Store Adjacency Parameters
-            newmolec.set_factors(cov_factor, metal_factor)
+            # Inherit the stored cell adjacency and derive the metal-only matrix from it
+            newmolec.adjmat = self.adjmat[np.ix_(b, b)].copy()
+            newmolec.get_adjmatrix(debug=debug)
             # Creates The atom objects with adjacencies
             newmolec.set_atoms(create_adjacencies=True, debug=debug)
             # The split_complex must be below the frac_coord, so they are carried on to the ligands
@@ -399,7 +402,7 @@ class Cell(object):
         if not hasattr(self,"molecules"): self.get_molecules(debug=debug)
 
         ## Case of Species inside self
-        if hasattr(substructure,"type"):
+        if hasattr(substructure,"object_type"):
             if substructure.object_type == 'specie':
                 for mol in self.molecules:
                     if mol.__eq__(substructure, with_graph=True): occurrence += 1
@@ -408,15 +411,34 @@ class Cell(object):
     ##################
     ## Connectivity ##
     ##################
-    def get_adjmatrix(self, adjust_factor: bool=False, debug: int=0):
-        """Compute and cache the cell adjacency matrix."""
-        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord, adjust_factor=adjust_factor, debug=debug)
+    def get_adjmatrix(self, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
+        """Compute and cache the regular and metal-only cell adjacency matrices."""
+        if not overwrite and hasattr(self, "adjmat") and self.adjmat is not None:
+            self.adjmat = np.asarray(self.adjmat)
+            if not hasattr(self, "adjnum") or self.adjnum is None: self.adjnum = self.adjmat.sum(axis=1).astype(int)
+            if not hasattr(self, "madjmat") or self.madjmat is None:
+                metal_indices            = get_metal_idxs(self.labels, debug=debug)
+                metal_mask               = np.zeros(self.natoms, dtype=bool)
+                metal_mask[metal_indices] = True
+                metal_bonds              = np.logical_or.outer(metal_mask, metal_mask)
+                self.madjmat             = self.adjmat * metal_bonds
+            if not hasattr(self, "madjnum") or self.madjnum is None: self.madjnum = self.madjmat.sum(axis=1).astype(int)
+            return self.adjmat, self.adjnum
+        isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord, cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
         if isgood:
-            self.adjmat = adjmat
-            self.adjnum = adjnum
+            metal_indices            = get_metal_idxs(self.labels, debug=debug)
+            metal_mask               = np.zeros(self.natoms, dtype=bool)
+            metal_mask[metal_indices] = True
+            metal_bonds              = np.logical_or.outer(metal_mask, metal_mask)
+            self.adjmat              = adjmat
+            self.adjnum              = adjnum
+            self.madjmat             = self.adjmat * metal_bonds
+            self.madjnum             = self.madjmat.sum(axis=1).astype(int)
         else:
-            self.adjmat = None
-            self.adjnum = None
+            self.adjmat  = None
+            self.adjnum  = None
+            self.madjmat = None
+            self.madjnum = None
         return self.adjmat, self.adjnum
 
     ######
@@ -497,15 +519,17 @@ class Cell(object):
         self.labels = [x for _, x in sorted(zip(indices, self.labels), key=lambda pair: pair[0])]
         self.coord  = [x for _, x in sorted(zip(indices, self.coord), key=lambda pair: pair[0])]
         assert len(self.labels) == len(self.coord)
+        for attribute in ["adjmat", "adjnum", "madjmat", "madjnum"]:
+            if hasattr(self, attribute): delattr(self, attribute)
         return self.coord
 
     ######
-    def reconstruct(self, cov_factor: float=None, metal_factor: float=None, debug: int=0):
+    def reconstruct(self, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
         """Reconstruct fragmented molecules in the periodic cell.
 
         Parameters:
-            cov_factor (float | None):   Covalent radii scaling factor.
-            metal_factor (float | None): Metal-specific scaling factor.
+            cov_factor (float):          Starting covalent radii scaling factor.
+            metal_factor (float):        Metal-specific scaling factor.
             debug (int):                 Verbosity level.
 
         Returns:
@@ -519,9 +543,6 @@ class Cell(object):
             return self.molecules
 
         if not hasattr(self,"ref_molecules"): print("CELL.RECONSTRUCT. CELL missing list of reference molecules"); return
-        if cov_factor is None:   cov_factor   = self.ref_molecules[0].cov_factor
-        if metal_factor is None: metal_factor = self.ref_molecules[0].metal_factor
-
         ## Get the fragments, which is the molecules of a fragmented cell
         fragments = self.get_molecules(cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
         if fragments is None: self.error_get_fragments = True; return  
@@ -561,7 +582,7 @@ class Cell(object):
                 newmolec = Molecule(mol.labels, mol.coord)
                 newmolec.origin = "cell.reconstruct"
                 newmolec.add_parent(self, mol.cell_indices, debug=debug) 
-                newmolec.set_factors(cov_factor, metal_factor)
+                newmolec.get_adjmatrix(cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
                 newmolec.set_atoms(create_adjacencies=True, debug=debug)
                 if debug > 0: print(f"CELL.RECONSTRUCT: Setting fractional coordinates")
                 newmolec.set_fractional_coord(mol.frac_coord)
@@ -574,8 +595,9 @@ class Cell(object):
     #########################################
     def set_initial_state(self, name: str='initial', debug: int=0):
         """Create the initial state for this cell."""
+        if not hasattr(self, "adjmat") or self.adjmat is None: self.get_adjmatrix(debug=debug)
         ini_state = self.add_state(name)
-        ini_state.set_geometry(self.labels, self.coord)
+        ini_state.set_geometry(self.labels, self.coord, debug=debug)
         ini_state.set_cell(self.cell_vector, self.cell_param)
         ini_state.get_molecules(debug=debug)
         return ini_state
@@ -655,7 +677,7 @@ class Cell(object):
                     'large': (800, 800, 10, 12), 'ultra': (1000, 1000, 11, 13)}
         width, height, marker_size, text_size = size_map.get(size.lower(), size_map['default'])
 
-        if not hasattr(self, "adjmat"): self.get_adjmatrix(adjust_factor=True)
+        if not hasattr(self, "adjmat") or self.adjmat is None: self.get_adjmatrix()
         fig = go.Figure()
         positions, symbols = np.array(self.coord), self.labels
         unique_bonds = {tuple(i) for i in np.argwhere(self.adjmat > 0)}
@@ -759,7 +781,7 @@ def import_cell(old_cell: object, debug: int=0) -> object:
     for mol in old_molecules: 
         new_mol = import_molecule(mol, parent=new_cell, debug=debug)
         new_mol.set_bonds()
-        new_mol.fix_ligands_rdkit_obj(debug=debug)
+        #new_mol.fix_ligands_rdkit_obj(debug=debug)
         new_molecules.append(new_mol)
 
     if debug > 0: 

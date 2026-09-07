@@ -7,6 +7,7 @@ from scope.connectivity               import *
 from scope.geometry                   import get_dist
 from scope.elementdata                import ElementData
 from scope.operations.dicts_and_lists import extract_from_list 
+from scope                            import __version__
 elemdatabase = ElementData()
 
 ############
@@ -34,7 +35,7 @@ class Atom(object):
     def __init__(self, label: str, coord: list, frac_coord: list=None, radii: float=None) -> None:
         self.object_type          = "atom"
         self.object_subtype       = "atom"
-        self.version              = "1.0"
+        self.version              = __version__
         self.origin               = "created"
         self.label                = label
         self.coord                = coord
@@ -181,7 +182,7 @@ class Atom(object):
         if not isinstance(other, type(self)): return False
         labels = list([self.label,other.label]) 
         coords = list([self.coord,other.coord]) 
-        isgood, adjmat, adjnum = get_adjmatrix(labels, coords)
+        isgood, adjmat, adjnum, = get_adjmatrix(labels, coords)
         if isgood and adjnum[0] > 0: return True
         else:                        return False
 
@@ -204,7 +205,7 @@ class Atom(object):
             tmpcoord  = self.coord.copy()
             tmplabels.append(met.label)
             tmpcoord.append(met.coord)
-            isgood, tmpadjmat, tmpadjnum = get_adjmatrix(tmplabels, tmpcoord, metal_only=True)
+            isgood, tmpadjmat, tmpadjnum, = get_adjmatrix(tmplabels, tmpcoord, metal_only=True)
             if isgood and any(tmpadjnum) > 0: self.metals.append(met)
         return self.metals
 
@@ -219,11 +220,6 @@ class Atom(object):
             dist.append(np.linalg.norm(apos - bpos))
         self.closest_metal = mol.metals[np.argmin(dist)]
         return self.closest_metal
-
-    ######
-    def set_factors(self, cov_factor: float=1.3, metal_factor: float=1.0) -> None:
-        self.cov_factor   = cov_factor
-        self.metal_factor = metal_factor
 
     ######
     def reset_madjnum(self, met, diff: int=-1, debug: int=0):
@@ -495,7 +491,7 @@ class Metal(Atom):
                 tmpcoord.append(self.coord)
                 tmplabels.extend(group.labels)
                 tmpcoord.extend(group.coord)
-                isgood, tmpadjmat, tmpadjnum = get_adjmatrix(tmplabels, tmpcoord, metal_only=True)
+                isgood, tmpadjmat, tmpadjnum, = get_adjmatrix(tmplabels, tmpcoord, metal_only=True)
                 # if isgood and any(tmpadjnum) > 0: self.groups.append(group)
                 if isgood:
                     if all(tmpadjnum[1:]): 
@@ -525,7 +521,7 @@ class Metal(Atom):
             tmpcoord.append(self.coord)
             tmplabels.append(met.label)
             tmpcoord.append(met.coord)
-            isgood, tmpadjmat, tmpadjnum = get_adjmatrix(tmplabels, tmpcoord, metal_only=True)
+            isgood, tmpadjmat, tmpadjnum, = get_adjmatrix(tmplabels, tmpcoord, metal_only=True)
             if isgood:
                 if all(tmpadjnum[1:]): 
                     self.metals.append(met)
@@ -582,7 +578,7 @@ class Bond(object):
     def __init__(self, atom1: object, atom2: object, bond_order: int=1, subtype: str="intraspecie"):
         self.object_type = "bond"
         self.object_subtype = subtype
-        self.version    = "1.0"
+        self.version    = __version__
         self.atom1      = atom1
         self.atom2      = atom2
         self.order      = bond_order
@@ -672,28 +668,4 @@ def import_atom(old_atom: object, parent: object=None, index: int=None, debug: i
     if index is not None: new_atom.inherit_connectivity("molecule", debug=debug)
     else:         print(f"IMPORT ATOM: connectivity could not be imported since Index=None")
 
-    ## Factors for connectivity calculation
-    ## In cell2mol version 1, atoms do not carry factors. Metals do
-    if   hasattr(old_atom,"metal_factor") and hasattr(old_atom,"factor"): 
-        cov_factor   = old_atom.factor
-        metal_factor = old_atom.metal_factor
-    elif hasattr(old_atom,"metal_factor") and hasattr(old_atom,"cov_factor"): 
-        cov_factor   = old_atom.cov_factor
-        metal_factor = old_atom.metal_factor
-    elif new_atom.check_parent("molecule"):
-        par = new_atom.get_parent("molecule")
-        if   hasattr(par,"metal_factor") and hasattr(par,"factor"):
-            cov_factor   = par.factor
-            metal_factor = par.metal_factor
-        elif hasattr(par,"metal_factor") and hasattr(par,"cov_factor"):
-            cov_factor   = par.cov_factor
-            metal_factor = par.metal_factor
-        else:
-            cov_factor   = 1.3 
-            metal_factor = 1.0 
-    else:
-        cov_factor   = 1.3 
-        metal_factor = 1.0 
-    new_atom.set_factors(cov_factor, metal_factor)
-            
     return new_atom

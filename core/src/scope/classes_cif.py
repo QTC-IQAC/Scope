@@ -3,6 +3,7 @@
 #################################
 import sys
 from scope.parse_general import search_string, read_lines_file 
+from scope               import __version__
 
 ###########
 ### CIF ###
@@ -26,7 +27,7 @@ class Cif(object):
     """
     def __init__(self, name: str, path: str) -> None:
         self.object_type       = "cif" 
-        self.version           = "1.0" 
+        self.version           = __version__
         self.origin            = "created"
         self.name              = name
         self.path              = path

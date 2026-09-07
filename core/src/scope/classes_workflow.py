@@ -6,6 +6,7 @@ from scope.classes_state              import State, find_state
 from scope.operations.dicts_and_lists import where_in_array
 from scope.register_data              import reg_general, reg_optimization, reg_frequencies, reg_energy, reg_excited_states
 from scope.parse_general              import read_lines_file
+from scope                            import __version__
 
 ##########################
 ###### BRANCH CLASS ######
@@ -29,6 +30,7 @@ class Branch(object):
         set_status():                   Update branch status markers.
     """
     def __init__(self, path: str, name: str, _system: object, debug: int=0) -> None:
+        self.version          = __version__
         self.object_type      = "branch"
         self.path             = path
         self.name             = name
@@ -46,6 +48,22 @@ class Branch(object):
 
         ## Corrects self.path in case the user forgets to add '/' 
         if self.path[-1] != '/': self.path += '/'
+
+    @property
+    def nworkflows(self):
+        return len(self.workflows)
+
+    @property
+    def njobs(self):
+        return np.sum([wf.njobs for wf in self.workflows])
+
+    @property
+    def ncomputations(self):
+        return np.sum([wf.ncomputations for wf in self.workflows])
+
+    @property
+    def elapsed_time(self):
+        return np.sum([wf.elapsed_time for wf in self.workflows])
 
     ###############
     ### Results ### 
@@ -196,6 +214,7 @@ class Workflow(object):
         register():                     Register contained jobs.
     """
     def __init__(self, name: str, source: object, _branch: object, debug: int=0) -> None:
+        self.version          = __version__
         self.object_type      = "workflow"
         self._branch          = _branch
         self.path             = _branch.path
@@ -206,6 +225,18 @@ class Workflow(object):
         self.isgood           = False
         self.isfinished       = False
         self.results          = dict()
+
+    @property
+    def elapsed_time(self):
+        return np.sum([jb.elapsed_time for jb in self.jobs])
+
+    @property
+    def njobs(self):
+        return len(self.jobs)
+
+    @property
+    def ncomputations(self):
+        return np.sum([jb.ncomputations for jb in self.jobs])
 
     ###############
     ### Results ###
@@ -349,6 +380,7 @@ class Job(object):
         register():                     Register all computations.
     """
     def __init__(self, job_data: object, _workflow: object):        
+        self.version          = __version__
         self.object_type      = "job"
         self._workflow        = _workflow
         self.source           = _workflow.source
@@ -375,6 +407,14 @@ class Job(object):
         ## Corrects self.job_setup in case the user forgets to change
         if self.type == 'findiff' or self.type == 'findif': self.job_setup = 'findiff'
         
+    @property
+    def elapsed_time(self):
+        return np.sum([comp.elapsed_time if hasattr(comp, "elapsed_time") else 0.0 for comp in self.computations])
+
+    @property
+    def ncomputations(self):
+        return len(self.computations)
+
     def check_job_data(self, inp_path: str, debug: int=0):
         from scope.classes_input import set_input_data
         if debug > 0: print(f"CHECK_JOB_DATA: reading job_data from path: {inp_path}")
@@ -798,6 +838,7 @@ class Computation(object):
         register():                     Parse and register output data.
     """
     def __init__(self, _job: object, qc_data: object, step: int, path: str, keyword: str, is_update: bool=False, debug: int=0):        
+        self.version          = __version__
         self.object_type      = "computation"
         self._job             = _job       
         self.qc_data          = qc_data
