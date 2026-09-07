@@ -1,0 +1,37 @@
+
+&environment
+   max_jobs         = 1000
+   max_procs        = 1000
+   requested_procs  = 12
+/
+
+&options
+/
+
+&job_data
+   branch       = 'bench'
+   workflow     = 'all_sources' 
+   job          = 'relax'
+
+   hierarchy    = 2
+   requisites   = ['scf']
+   constrains   = ['self']
+
+   istate       = 'initial'
+   fstate       = 'opt'
+/
+
+&qc_data
+   software     = 'qe'
+   comp_type    = 'relax'
+   version      = '7.0'
+   functional   = 'pbe'
+   is_grimme    = True
+   grimme_type  = 'd3bj'
+   mix_beta     = 0.7
+   elec_conv    = 1e-4
+   pseudo       = 'vanderbilt'
+   cubeside     = 30
+   ## If "spin" is not specified, a default will be taken
+/
+
