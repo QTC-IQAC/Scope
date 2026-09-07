@@ -8,7 +8,7 @@ Optional add-ons such as `scope-azo` and `scope-sco` build on top of this core p
 ## Documentation
 
 - Repository and source code: <https://github.com/QTC-IQAC/Scope>
-- Preprint: <https://doi.org/10.26434/chemrxiv.15001415/v1>
+- Preprint: <https://doi.org/10.26434/chemrxiv.15001415/v2>
 - Tutorials: <https://github.com/QTC-IQAC/Scope_Tutorials>
 
 ## Installation
@@ -28,7 +28,7 @@ pip install "cell2mol @ git+https://github.com/lcmd-epfl/cell2mol.git@55649ba5f4
 pip install scope-qc    # Core Modules
 ```
 
-Quantum Espresso pseudopotentials:
+Quantum ESPRESSO pseudopotentials:
 - `scope-qc` ships only the `Vanderbilt_USPP` library
 - `Efficiency` and `Precision` are distributed separately through the GitHub releases page: <https://github.com/QTC-IQAC/Scope/releases>
 - To use either of them, download the corresponding release asset and extract the `Efficiency/` or `Precision/` folder into `scope/software/quantum_espresso/PP_Libraries/` inside your installed `scope-qc` package
@@ -59,6 +59,7 @@ The core package depends on:
 - `jupyter`
 - `matplotlib`
 - `platformdirs`
+- `PyYAML >= 6.0.1`
 
 External prerequisite:
 
@@ -85,7 +86,7 @@ SCOPE is typically used through the command line to:
 - create systems:         `scope create_single` and `scope create_many`
 - execute workflows:      `scope run`
 
-For Quantum Espresso jobs, `pp_library = vanderbilt` is available by default.
+For Quantum ESPRESSO jobs, `pp_library = vanderbilt` is available by default.
 If you select `efficiency` or `precision`, install that library first from the GitHub releases page above.
 
 `System` objects are saved in binary files that can then be inspected later in notebooks or other interactive sessions.

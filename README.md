@@ -1,8 +1,8 @@
-[![DOI](https://img.shields.io/badge/10.26434/chemrxiv.15001415/v1-blue)](https://doi.org/10.26434/chemrxiv.15001415/v1) ![SLURM Compatible](https://img.shields.io/badge/HPC%20scheduler-SLURM-green)
+[![DOI](https://img.shields.io/badge/10.26434/chemrxiv.15001415/v2-blue)](https://doi.org/10.26434/chemrxiv.15001415/v2) ![SLURM Compatible](https://img.shields.io/badge/HPC%20scheduler-SLURM-green)
 
 # SCOPE: A Chemically-Aware Workflow-Automation Software for Molecules and Molecular Crystals
 
-  This repository contains the tutorials associated with SCOPE, a Python package designed to orchestrate computational chemistry workflows. SCOPE prepares, submits, and analyses quantum chemistry computations of individual molecules or molecule-based crystals, and organizes the results to simplify analysis.  
+  This repository contains the SCOPE core package, its optional add-ons, benchmarks, and development material. SCOPE is a Python package designed to orchestrate computational chemistry workflows: it prepares, submits, and analyses quantum chemistry computations of individual molecules or molecule-based crystals, and organizes the results to simplify analysis.
   
   SCOPE has four core pillars.
   1) Chemical Species:        Dedicated to encode the chemistry of the systems of interest. It can be expanded through add-ons
@@ -14,7 +14,7 @@
 
 # Documentation
 
-  - The associated manuscript is under preparation. Preprint available [here](https://doi.org/10.26434/chemrxiv.15001415/v1)
+  - The associated preprint is available [here](https://doi.org/10.26434/chemrxiv.15001415/v2)
   - Repository and source [here](https://github.com/QTC-IQAC/Scope)
   - Tutorials are available [here](https://github.com/QTC-IQAC/Scope_Tutorials)
 
@@ -24,6 +24,8 @@
   - [Architecture Notes](docs/architecture.md)
   - [Concepts And Terminology](docs/concepts.md)
   - [Coding Style](docs/coding_style.md)
+  - [Bug-fixing Procedure](docs/bug_fixing.md)
+  - [Benchmarks](benchmarks/README.md)
   - [Agent Guidance](AGENTS.md)
 
 ---
@@ -31,7 +33,7 @@
 # Features
 
   - Configure computational environments for your projects, storing paths, software, and queues  
-  - Run quantum chemistry workflows for molecules or periodic structures, using Quantum Espresso (v7.0) or Gaussian16
+  - Run quantum chemistry workflows for molecules or periodic structures, using Quantum ESPRESSO (v7.0) or Gaussian16
   - Parse and analyse results of computations, and connect the data with SCOPE's molecule- and cell-class objects
   - Integration with [cell2mol](https://github.com/lcmd-epfl/cell2mol)  
   - Optional `sco` and `azo` add-ons extend SCOPE with additional capabilities
@@ -80,7 +82,7 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   pip install -e sco
   ```
 
-  ### Optional Quantum Espresso pseudopotential Libraries:
+  ### Optional Quantum ESPRESSO pseudopotential Libraries:
 
   - `scope-qc` ships only the `Vanderbilt_USPP` library
   - The larger `Efficiency` and `Precision` libraries are distributed separately through the GitHub releases page: <https://github.com/QTC-IQAC/Scope/releases>
@@ -88,13 +90,27 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
 
   ## Dependencies
 
-  - python 3.12
-  - numpy
-  - networkx < 3.3
-  - rdkit
-  - PyYAML >= 6.0.1
-  - platformdirs
-  - [cell2mol](https://github.com/lcmd-epfl/cell2mol.git)
+  The core package depends on:
+
+  - `numpy`
+  - `networkx < 3.3`
+  - `scipy`
+  - `rdkit`
+  - `ipykernel`
+  - `plotly`
+  - `nbformat`
+  - `jupyter`
+  - `matplotlib`
+  - `platformdirs`
+  - `PyYAML >= 6.0.1`
+
+  External prerequisite:
+
+  - `cell2mol`, installed separately from <https://github.com/lcmd-epfl/cell2mol.git>
+
+  Python requirement:
+
+  - Python 3.12
 
 ---
 
@@ -122,11 +138,11 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
 
   ## Quantum ESPRESSO
 
-  For Quantum Espresso runs, `pp_library = vanderbilt` works out of the box.
+  For Quantum ESPRESSO runs, `pp_library = vanderbilt` works out of the box.
   If you set `pp_library = efficiency` or `pp_library = precision`, make sure the corresponding library has first been downloaded from the GitHub releases page and extracted into `scope/software/quantum_espresso/PP_Libraries/`.
 
   ## Interactive
-  Comprehensive Tutorials are available in their own github repository [here](https://github.com/QTC-IQAC/Scope_Tutorials.git):
+  Comprehensive tutorials are available in their own GitHub repository [here](https://github.com/QTC-IQAC/Scope_Tutorials.git):
 
 ---
 
