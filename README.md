@@ -92,6 +92,7 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   - numpy
   - networkx < 3.3
   - rdkit
+  - PyYAML >= 6.0.1
   - platformdirs
   - [cell2mol](https://github.com/lcmd-epfl/cell2mol.git)
 
