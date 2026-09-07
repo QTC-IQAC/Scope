@@ -55,10 +55,17 @@ The repository is split into a core package and two optional add-ons:
 ## Coding Guidance
 - Prefer small, local, backward-compatible edits unless a broader refactor is requested.
 - Follow the existing naming style and object model.
+- Before creating a new helper function, search the repository for existing functions with the same or closely related behavior. Pay particular attention to shared modules such as `other.py`, `connectivity.py`, and `operations/`.
+- Reuse or extend an existing function when its responsibility and semantics match the required behavior. Do not create private wrappers that duplicate existing SCOPE functions or standard-library/dependency utilities.
+- When a new helper is necessary, ensure that it represents a distinct operation rather than merely renaming or forwarding another function. After implementing it, audit the new private functions against the rest of the repository.
+- Prefer single-line function calls, function signatures, and assignments, even when the resulting line is long. Do not split an argument list across several lines solely to satisfy a conventional line-length limit.
+- Keep logically complete operations visible on one physical line whenever practical. Use multiline formatting only for structures whose contents are genuinely easier to understand vertically, such as large dictionaries, lists, or matrices.
+- When successive assignments have the same structure or purpose, align their equal signs and corresponding values into visual columns. Preserve this alignment when modifying an existing block, but do not force column alignment across unrelated statements.
 - Keep docstrings concise.
   Preferred sections are `Parameters:`, `Returns:`, `Attributes:`, and `Methods:` when useful.
 - Avoid rewriting stable scientific logic just to make it look cleaner.
 - If you add a new public concept, place it near the relevant package layer instead of creating parallel abstractions.
+- `debug` must be the last optional attribute to be passed to a function, and it must default to 0
 
 ## Validation
 - For touched Python files, a lightweight check is:   `python -m py_compile <files>`
