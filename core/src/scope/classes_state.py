@@ -135,7 +135,7 @@ class State(object):
 ###################################
 #### Operations with Molecules ####
 ###################################
-    def get_molecules(self, overwrite: bool=False, debug: int=0):
+    def get_molecules(self, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, bond_margin: float=0.1, debug: int=0):
         from scope.classes_specie import Molecule
 
         # Overwrite
@@ -149,16 +149,15 @@ class State(object):
         if len(self.labels) == 0 or len(self.coord) == 0: 
             if debug > 0: print(f"STATE.GET_MOLECULES. State labels and coordinates are empty. Returning None")
             return None
-        # Covalent Factor
-        if hasattr(self._source,"factor"):       cov_factor = self._source.factor
-        elif hasattr(self._source,"cov_factor"): cov_factor = self._source.cov_factor
-        else: cov_factor = 1.3
-        # Metal Factor
-        if hasattr(self._source,"metal_factor"):   metal_factor = self._source.metal_factor
-        else: metal_factor = 1.0
-
-        if debug > 0: print(f"STATE.GET_MOLECULES. Sending split_species with {cov_factor=} and {metal_factor=}") 
-        blocklist = split_species(self.labels, self.coord, cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
+        # Preserve stored source connectivity when atom ordering is unchanged; otherwise construct it from the state geometry
+        source_adjacency_available = hasattr(self._source, "adjmat") and self._source.adjmat is not None and np.shape(self._source.adjmat) == (self.natoms, self.natoms)
+        if source_adjacency_available:
+            nblocks, component_ids = connected_components(csr_matrix(self._source.adjmat), directed=False, return_labels=True)
+            blocklist = [np.where(component_ids == block)[0].tolist() for block in range(nblocks)]
+            if debug > 0: print(f"STATE.GET_MOLECULES: Using stored source adjacency; found {nblocks} blocks")
+        else:
+            if debug > 0: print(f"STATE.GET_MOLECULES: Constructing connectivity with {cov_factor=} and {metal_factor=}")
+            blocklist = split_species(self.labels, self.coord, cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
         self.molecules = [] 
         for b in blocklist:
             if debug > 0: print(f"STATE.GET_MOLECULES: doing block={b}")
@@ -173,8 +172,12 @@ class State(object):
             newmolec.origin = "state.get_molecules"
             # Adds State as parent of the molecule, with indices b
             newmolec.add_parent(self, indices=b, debug=debug)
-            # Store Adjacency Parameters
-            newmolec.set_factors(cov_factor, metal_factor)
+            # Store or construct both regular and metal-only adjacency matrices
+            if source_adjacency_available:
+                newmolec.adjmat = self._source.adjmat[np.ix_(b, b)].copy()
+                newmolec.get_adjmatrix(debug=debug)
+            else:
+                newmolec.get_adjmatrix(smart=True, cov_factor=cov_factor, metal_factor=metal_factor, bond_margin=bond_margin, debug=debug)
             # Creates The atom objects with adjacencies
             newmolec.set_atoms(create_adjacencies=True, debug=debug)
             # The split_complex must be below the frac_coord, so they are carried on to the ligands    
@@ -277,7 +280,7 @@ class State(object):
 ########################
 #### Reconstruction ####
 ########################
-    def reconstruct(self, debug: int=0):
+    def reconstruct(self, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
         from scope.reconstruct import classify_fragments, fragments_reconstruct 
         if not self._source.object_type == "cell":    raise ValueError(f"STATE_RECONSTRUCT: state's source should by a CELL object") 
         if not hasattr(self,"cell_vector"):           raise ValueError(f"STATE_RECONSTRUCT: state should have a cell vector") 
@@ -290,8 +293,6 @@ class State(object):
             import itertools
             blocklist    = self.molecules.copy()
             ref_molecules = self._source.ref_molecules.copy()
-            cov_factor   = ref_molecules[0].cov_factor
-            metal_factor = ref_molecules[0].metal_factor
             molecules, fraglist, Hlist = classify_fragments(blocklist, ref_molecules, debug=debug) 
             if len(fraglist) > 0 or len(Hlist) > 0: 
                 molecules, finalmols, Warning = fragments_reconstruct(molecules,fraglist,Hlist,ref_molecules,self.cell_vector,cov_factor,metal_factor, debug=debug)
@@ -688,15 +689,48 @@ class State(object):
 ################################
 #### Get Thermodynamic Data ####
 ################################
-    def get_thermal_data(self, temp: float=298.15, Helec=None, Selec=None, Hvib=None, Svib=None, Gtot=None, overwrite: bool=False, debug: int=0):
+    def get_thermal_data(self, temp: float=298.15, Helec=None, Selec=None, Hvib=None, Svib=None, Gtot=None, overwrite: bool=False, vib_options: dict=None, debug: int=0):
         from scope.thermodynamics import get_Selec, get_Hvib, get_Svib, get_Gibbs
         ## Computes and Stores Helec, Selec as Data in self.results
         ## Computes and Stores Hvib, Svib and Gtot as Collection in self.results. These will always be collections even with only one data point
 
+        ############## Input Validation ##############
+        # Validate and normalize the vibrational options. QRRHO parameters are ignored for HO calculations
+        if vib_options is None: vib_options = {}
+        if not isinstance(vib_options, dict): raise TypeError(f"STATE.GET_THERMAL_DATA: vib_options must be a dictionary. It is {type(vib_options)}")
+        allowed_vib_options   = {'typ', 'FR_cutoff', 'FR_alpha', 'imaginary'}
+        unknown_vib_options   = set(vib_options) - allowed_vib_options
+        requested_vib_options = {'typ': 'HO', 'FR_cutoff': 100.0, 'FR_alpha': 4.0, 'imaginary': 'ignore'}
+        if len(unknown_vib_options) > 0: raise ValueError(f"STATE.GET_THERMAL_DATA: Unknown vibrational options: {sorted(unknown_vib_options)}. Choose from {sorted(allowed_vib_options)}")
+        requested_vib_options.update(vib_options)
+
+        Svib_typ = requested_vib_options['typ']
+        if not isinstance(Svib_typ, str): raise TypeError(f"STATE.GET_THERMAL_DATA: Svib_typ must be 'HO' or 'QRRHO'. It is {type(Svib_typ)}")
+        if   Svib_typ.lower() == 'ho':    Svib_typ = 'HO'
+        elif Svib_typ.lower() == 'qrrho': Svib_typ = 'QRRHO'
+        else: raise ValueError(f"STATE.GET_THERMAL_DATA: can't understand vibrational entropy model: {Svib_typ}. Choose 'HO' or 'QRRHO'")
+        imaginary = requested_vib_options['imaginary']
+        if not isinstance(imaginary, str): raise TypeError(f"STATE.GET_THERMAL_DATA: imaginary must be 'ignore', 'absolute', or 'raise'. It is {type(imaginary)}")
+        imaginary = imaginary.lower()
+        if imaginary not in ['ignore', 'absolute', 'raise']: raise ValueError(f"STATE.GET_THERMAL_DATA: can't understand imaginary-frequency treatment: {imaginary}. Choose 'ignore', 'absolute', or 'raise'")
+        FR_cutoff = requested_vib_options['FR_cutoff']
+        FR_alpha  = requested_vib_options['FR_alpha']
+        if Svib_typ == 'QRRHO':
+            try:
+                FR_cutoff = float(FR_cutoff)
+                FR_alpha  = float(FR_alpha)
+            except (TypeError, ValueError) as exc:
+                raise TypeError(f"STATE.GET_THERMAL_DATA: FR_cutoff and FR_alpha must be numeric. They are {FR_cutoff} and {FR_alpha}") from exc
+            if FR_cutoff <= 0: raise ValueError(f"STATE.GET_THERMAL_DATA: FR_cutoff must be larger than zero. It is {FR_cutoff}")
+            if FR_alpha <= 0:  raise ValueError(f"STATE.GET_THERMAL_DATA: FR_alpha must be larger than zero. It is {FR_alpha}")
+        Hvib_options = {'imaginary': imaginary}
+        Svib_options = {'typ': Svib_typ, 'FR_cutoff': float(FR_cutoff) if Svib_typ == 'QRRHO' else None, 'FR_alpha': float(FR_alpha) if Svib_typ == 'QRRHO' else None, 'imaginary': imaginary}
+
+        # Checks Z
         if not hasattr(self,"z"): self.get_z(debug=debug)
         if debug > 0:           print(f"STATE.GET_THERMAL_DATA: found {self.z} stoichiometric units")
 
-        # temp can a single number, range, list, or any iterable of numeric temperatures.
+        # Checks T. It can be a single number, range, list, or any iterable of numeric temperatures.
         if isinstance(temp, (int, float)):       temperatures = [temp]
         elif isinstance(temp, range):            temperatures = list(temp)
         else:
@@ -709,7 +743,8 @@ class State(object):
         if not all(isinstance(t, (int, float)) for t in temperatures):
             raise TypeError("STATE.GET_THERMAL_DATA: all entries in temp must be numeric")
 
-        if Hvib is None and Svib is None:
+        # Svib and Hvib can be provided as Collection Objects, for cases in which the user wants to provide specific values.
+        if Hvib is None or Svib is None:
             if not hasattr(self,"VNMs"): raise ValueError(f"STATE.GET_THERMAL_DATA: I can't compute thermal data on this state. Missing VNMs")
         if not self.results["energy"]:   raise ValueError(f"STATE.GET_THERMAL_DATA: missing State energy value")
     
@@ -718,7 +753,8 @@ class State(object):
             if overwrite or not "Helec" in self.results.keys():
                 self.add_result(Data("Helec",self.results["energy"].value/self.z,self.results["energy"].units,"state.get_thermal_data()"), overwrite=overwrite)
         else: 
-            if not isinstance(Helec, Data):                raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Helec should be a Data class object. It is {type(Helec)}")
+            if not isinstance(Helec, Data):
+                raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Helec should be a Data class object. It is {type(Helec)}")
             if overwrite or not "Helec" in self.results.keys():
                 self.add_result(Data("Helec",Helec.value,Helec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
         if debug > 0: print(f"Helec is {self.results['Helec']}")
@@ -738,16 +774,19 @@ class State(object):
             if overwrite or not "Hvib" in self.results.keys():
                 Hvib = Collection("Hvib", "temperature")
                 for temp in temperatures:
-                    Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
+                    Hvib.add_data(get_Hvib(self.freqs_cm, temp, freq_units='cm', outunits='au', nmol=self.z, **Hvib_options, debug=debug))
                 self.add_result(Hvib, overwrite=overwrite)
             elif not overwrite and "Hvib" in self.results.keys():  ## Checks that all temperatures requested exist in Hvib
                 Hvib = self.results["Hvib"]
+                for data in Hvib.datas:
+                    stored_Hvib_options = getattr(data, 'vib_options', None)
+                    if stored_Hvib_options != Hvib_options: raise ValueError(f"STATE.GET_THERMAL_DATA: Stored Hvib data use {stored_Hvib_options}, while the requested settings are {Hvib_options}. Use overwrite=True to replace Hvib and Gtot")
                 missing_data = False
                 for temp in temperatures:
                     result = Hvib.find_value_with_property('temperature', temp)
                     if result is None:
                         missing_data = True
-                        Hvib.add_data(get_Hvib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
+                        Hvib.add_data(get_Hvib(self.freqs_cm, temp, freq_units='cm', outunits='au', nmol=self.z, **Hvib_options, debug=debug))
                 if missing_data: self.add_result(Hvib, overwrite=True)
         else: 
             if not isinstance(Hvib, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Hvib should be a Collection class object. It is {type(Hvib)}")
@@ -763,16 +802,19 @@ class State(object):
             if overwrite or not "Svib" in self.results.keys():
                 Svib = Collection("Svib", "temperature")
                 for temp in temperatures:
-                    Svib.add_data(get_Svib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
+                    Svib.add_data(get_Svib(self.freqs_cm, temp, freq_units='cm', outunits='au', nmol=self.z, **Svib_options, debug=debug))
                 self.add_result(Svib, overwrite=overwrite)
             elif not overwrite and "Svib" in self.results.keys():  ## Checks that all temperatures requested exist in Svib
                 Svib = self.results["Svib"]
+                for data in Svib.datas:
+                    stored_Svib_options = getattr(data, 'vib_options', None)
+                    if stored_Svib_options != Svib_options: raise ValueError(f"STATE.GET_THERMAL_DATA: Stored Svib data use {stored_Svib_options}, while the requested settings are {Svib_options}. Use overwrite=True to replace Svib and Gtot")
                 missing_data = False
                 for temp in temperatures:
                     result = Svib.find_value_with_property('temperature', temp)
                     if result is None:
                         missing_data = True
-                        Svib.add_data(get_Svib(np.abs(self.freqs_cm), temp, freq_units='cm', outunits='au', nmol=self.z))
+                        Svib.add_data(get_Svib(self.freqs_cm, temp, freq_units='cm', outunits='au', nmol=self.z, **Svib_options, debug=debug))
                 if missing_data: self.add_result(Svib, overwrite=True)
         else: 
             if not isinstance(Svib, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Svib should be a Collection class object. It is {type(Svib)}")
@@ -800,6 +842,14 @@ class State(object):
                     function = "state.get_thermal_data()"
                     new_data = Data(key, value, units, function)
                     new_data.add_property("temperature", temp, overwrite=overwrite)
+                    Gtot_Svib_typ = str(getattr(Svib_i, 'svib_typ', 'HO')).upper()
+                    new_data.add_setting("svib_typ", Gtot_Svib_typ, overwrite=True)
+                    Gtot_vib_options = Svib_i.vib_options.copy() if hasattr(Svib_i, 'vib_options') else None
+                    if Gtot_Svib_typ == 'QRRHO':
+                        new_data.add_setting("fr_cutoff", Svib_i.fr_cutoff, overwrite=True)
+                        new_data.add_setting("fr_alpha", Svib_i.fr_alpha, overwrite=True)
+                    new_data.add_setting("imaginary", getattr(Svib_i, 'imaginary', None), overwrite=True)
+                    new_data.vib_options = Gtot_vib_options
                     Gtot.add_data(new_data)
                 self.add_result(Gtot, overwrite=overwrite)
             elif not overwrite and "Gtot" in self.results.keys():  ## Checks that all temperatures requested exist in Gtot. And Computes it if not
@@ -807,12 +857,16 @@ class State(object):
                 missing_data = False
                 for temp in temperatures:
                     result = Gtot.find_value_with_property('temperature', temp)
-                    if result is None: 
+                    Svib_i = Svib.find_value_with_property("temperature", temp)
+                    current_vib_options = getattr(Svib_i, 'vib_options', None)
+                    if result is not None:
+                        stored_vib_options = getattr(result, 'vib_options', None)
+                        if stored_vib_options != current_vib_options: raise ValueError(f"STATE.GET_THERMAL_DATA: Stored Gtot data use {stored_vib_options}, while the current vibrational settings are {current_vib_options}. Use overwrite=True to replace Gtot")
+                    if result is None:
                         missing_data = True
                         Helec = self.results["Helec"]
                         Selec = self.results["Selec"]
                         Hvib_i = Hvib.find_value_with_property("temperature", temp)
-                        Svib_i = Svib.find_value_with_property("temperature", temp)
                         assert Helec.units == Selec.units == Hvib_i.units == Svib_i.units, f"{Helec.units=}, {Selec.units=}, {Hvib_i.units=}, {Svib_i.units=}"
                         key = "Gtot"
                         value = get_Gibbs(Helec.value, Hvib_i.value, Selec.value, Svib_i.value, temp)
@@ -820,6 +874,14 @@ class State(object):
                         function = "state.get_thermal_data()"
                         new_data = Data(key, value, units, function)
                         new_data.add_property("temperature", temp, overwrite=overwrite)
+                        Gtot_Svib_typ = str(getattr(Svib_i, 'svib_typ', 'HO')).upper()
+                        new_data.add_setting("svib_typ", Gtot_Svib_typ, overwrite=True)
+                        Gtot_vib_options = Svib_i.vib_options.copy() if hasattr(Svib_i, 'vib_options') else None
+                        if Gtot_Svib_typ == 'QRRHO':
+                            new_data.add_setting("fr_cutoff", Svib_i.fr_cutoff, overwrite=True)
+                            new_data.add_setting("fr_alpha", Svib_i.fr_alpha, overwrite=True)
+                        new_data.add_setting("imaginary", getattr(Svib_i, 'imaginary', None), overwrite=True)
+                        new_data.vib_options = Gtot_vib_options
                         Gtot.add_data(new_data)
                 if missing_data: self.add_result(Gtot, overwrite=True)  # Notice overwrite=true
         else: 

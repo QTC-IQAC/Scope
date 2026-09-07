@@ -623,7 +623,7 @@ class System_azo(System):
                     continue
 
             # Searches Gtot entry
-            energy = state.get_gtot_eff(temp, p_sh=p_sh, debug=debug).convert_to_units('au').value
+            energy = state.get_gtot_eff(temp, p_sh=p_sh, overwrite=force, debug=debug).convert_to_units('au').value
             if energy is None: 
                 raise Exception (f'SYSTEM_AZO.GET_METS: Could not fint Gtot_eff({temp}) for {sou.name}.')
             ts_names.append(sou.name)
@@ -678,12 +678,12 @@ class System_azo(System):
         if not found_state: raise Exception(f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Target state: {target_state} not found.')
 
         # Getting the energy of the Trans and Cis isomers
-        gtot_trans = ground_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
+        gtot_trans = ground_state.get_gtot_eff(temp=temp, p_sh=p_sh, debug=debug).convert_to_units('au').value
 
         # Getting the energy of the METS (Minimum Energy Transition State)
         mets = self.get_mets(temp=temp, target_state=target_state, skip_triplets=skip_triplets, p_sh=p_sh, debug=debug)
         found, mets_state = mets.find_state(target_state)
-        gtot_mets = mets_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
+        gtot_mets = mets_state.get_gtot_eff(temp=temp, p_sh=p_sh, debug=debug).convert_to_units('au').value
         
         #Computing halflife time (t05) and kinetic constant (k)
         t05, k_th = eyring_equation(gtot_trans, gtot_mets, temp)
@@ -719,12 +719,12 @@ class System_azo(System):
         if not found_state: raise Exception(f'SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Target state: {target_state} not found.')
 
         # Getting the energy of the Trans and Cis isomers
-        gtot_cis = ground_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
+        gtot_cis = ground_state.get_gtot_eff(temp=temp, p_sh=p_sh, debug=debug).convert_to_units('au').value
 
         # Getting the energy of the METS (Minimum Energy Transition State)
         mets = self.get_mets(temp=temp, target_state=target_state, skip_triplets=skip_triplets, p_sh=p_sh, debug=debug)
         found, mets_state = mets.find_state(target_state)
-        gtot_mets = mets_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
+        gtot_mets = mets_state.get_gtot_eff(temp=temp, p_sh=p_sh, debug=debug).convert_to_units('au').value
         
         #Computing halflife time (t05) and kinetic constant (k)
         t05, k_th = eyring_equation(gtot_cis, gtot_mets, temp)
@@ -1340,7 +1340,7 @@ class State_azo(State):
     ################################
     ## Thermal Properties for Azo ##
     ################################
-    def get_gtot_eff(self, temp: float=298.15, p_sh: float=0.0002, debug:int=0):
+    def get_gtot_eff(self, temp: float=298.15, p_sh: float=0.0002, overwrite: bool=False, debug: int=0):
         from math import log as ln
         '''
         Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
@@ -1349,8 +1349,8 @@ class State_azo(State):
         Parameters
         ----------
         temp : float, optional         The temperature in Kelvin. The default is 298.15 K.
-        overwrite : bool, optional     Whether to overwrite the existing Gtot_corr value. The default is False.
         p_sh : float, optional         The probability of surface hopping. The default is 0.0002.
+        overwrite : bool, optional     Whether to overwrite the existing Gtot_eff value. The default is False.
         debug : int, optional          The debug level. The default is 0
         '''
         # Verifies it has VNMs
@@ -1358,26 +1358,29 @@ class State_azo(State):
             print(f'STATE_AZO.GET_Gtot_EFF: State {self.name} does not have VNMs, returning None.')
             return None 
 
-        # Searches Gtot_eff entry,  in case it already exists
-        if 'Gtot_eff' in self.results:
-            gtot_eff_col = self.results['Gtot_eff']
-            if isinstance(gtot_eff_col, Collection):
-                gtot_eff_data = gtot_eff_col.find_value_with_property("temperature", temp)
-                if gtot_eff_data is not None: return gtot_eff_data
-            else:
-                gtot_eff_col = Collection("Gtot_eff", "temperature")
-        else:
-            gtot_eff_col = Collection("Gtot_eff", "temperature")
-
-        if not 'Gtot' in self.results: self.get_thermal_data(temp=temp)
-        # Searches specific Gtot(T) entry
-        gtot = self.results['Gtot'].find_value_with_property("temperature", temp)
-        if gtot is None: self.get_thermal_data(temp=temp)
-        # Now it should exists for sure
+        # Computes or retrieves Gtot using the default SCOPE thermochemistry settings
+        self.get_thermal_data(temp=temp, overwrite=overwrite, debug=debug)
         gtot = self.results['Gtot'].find_value_with_property("temperature", temp)
         if gtot is None: raise Exception (f'STATE_AZO.GET_Gtot_EFF: Gtot for State {self.name} at {temp=} not found.')
-        # Gets Value (energy) is a Data class
-        gtot = self.results['Gtot'].find_value_with_property("temperature", temp).convert_to_units("au")
+        gtot = gtot.convert_to_units("au")
+
+        # Gtot_eff must use the same thermochemistry settings as Gtot. The surface-hopping probability is relevant only for triplets
+        gtot_eff_settings = {setting: getattr(gtot, setting) for setting in getattr(gtot, "settings", [])}
+        if self._source.spin == 2:
+            try: p_sh = float(p_sh)
+            except (TypeError, ValueError) as exc: raise TypeError(f'STATE_AZO.GET_GTOT_EFF: p_sh must be numeric. It is {p_sh}') from exc
+            if p_sh <= 0.0 or p_sh > 1.0: raise ValueError(f'STATE_AZO.GET_GTOT_EFF: p_sh must be larger than zero and no larger than one. It is {p_sh}')
+            gtot_eff_settings['p_sh'] = p_sh
+
+        # Reuses a result only when all calculation settings coincide
+        if not overwrite and 'Gtot_eff' in self.results and isinstance(self.results['Gtot_eff'], Collection):
+            gtot_eff_col = self.results['Gtot_eff']
+            stored_settings = {setting: getattr(gtot_eff_col, setting) for setting in getattr(gtot_eff_col, "settings", [])}
+            if stored_settings != gtot_eff_settings: raise ValueError(f'STATE_AZO.GET_GTOT_EFF: Stored Gtot_eff data use {stored_settings}, while the requested settings are {gtot_eff_settings}. Use overwrite=True to replace Gtot_eff')
+            gtot_eff_data = gtot_eff_col.find_value_with_property("temperature", temp)
+            if gtot_eff_data is not None: return gtot_eff_data
+        else:
+            gtot_eff_col = Collection("Gtot_eff", "temperature")
 
         if self._source.spin == 2:
             # Compute the Penalty, based on Surface Hopping Probability (p_sh)
@@ -1389,9 +1392,10 @@ class State_azo(State):
             dx = 0
 
         # Create a Collection, with a single data entry, that of Gtot_eff at the requested temperature
-#        gtot_eff_col  = Collection("Gtot_eff", "temperature")
-        gtot_eff_data = Data("Gtot_eff", float(gtot.value + dx), "au", "state_azo.get_gtot_eff()") 
+        gtot_eff_data = Data("Gtot_eff", float(gtot.value + dx), "au", "state_azo.get_gtot_eff()")
         gtot_eff_data.add_property("temperature", temp, overwrite=True)
+        for setting, value in gtot_eff_settings.items(): gtot_eff_data.add_setting(setting, value, overwrite=True)
+        gtot_eff_data.vib_options = gtot.vib_options.copy() if hasattr(gtot, 'vib_options') else None
         gtot_eff_col.add_data(gtot_eff_data)
 
         # Add the Gtot_eff Collection as a result

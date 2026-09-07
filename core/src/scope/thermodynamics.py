@@ -4,16 +4,15 @@ from scope.classes_data               import *
 from scope.operations.dicts_and_lists import range2list
 
 ######
-def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', typ: str='default', FR_cutoff: int=100, FR_alpha: int=4, nmol: int=1, debug: int=0):
+def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', typ: str='HO', FR_cutoff: float=100.0, FR_alpha: float=4.0, nmol: int=1, imaginary: str='ignore', debug: int=0):
     ## Temperature must be provided in K
 
-    ## If typ = 'free-rotor' or 'fr': 
+    ## If typ = 'QRRHO':
         # it uses the Quasi Rigid Rotor Harmonic Oscillator approach of Grimme...
         # Described in: Grimme, S. Chem. Eur. J., 2012, 18, 9955–9964.
         # Equations of this manuscript are references along the function
         # With Chai and Head-Gordon's damping function, using FR_cutoff and FR_alpha 
         # FR_cutoff must be provided in cm-1 units
-
     ## else, it uses the Harmonic Oscillator expressions
 
     ## Function works with freqs in s-1 first, and then au
@@ -23,17 +22,40 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     elif freq_units.lower() == 's_1': freqs_mod = np.array(freqs)
     else: raise ValueError(f"GET_Svib: can't understand input units of frequencies {freq_units}")
 
-    ## Prepare the parameter
-    FR_cutoff *= constants.cm2s_1
+    ## Validate the vibrational entropy model and prepare the QRRHO parameters, if necessary
+    if not isinstance(typ, str): raise TypeError(f"GET_Svib: typ must be 'HO' or 'QRRHO'. It is {type(typ)}")
+    if   typ.lower() in ['default', 'ho']: Svib_typ = 'HO'       # 'default' preserves compatibility with previous versions
+    elif typ.lower() == 'qrrho':           Svib_typ = 'QRRHO'
+    else: raise ValueError(f"GET_Svib: can't understand vibrational entropy model: {typ}. Choose 'HO' or 'QRRHO'")
+    if not isinstance(imaginary, str): raise TypeError(f"GET_Svib: imaginary must be 'ignore', 'absolute', or 'raise'. It is {type(imaginary)}")
+    imaginary = imaginary.lower()
+    if imaginary not in ['ignore', 'absolute', 'raise']: raise ValueError(f"GET_Svib: can't understand imaginary-frequency treatment: {imaginary}. Choose 'ignore', 'absolute', or 'raise'")
+    if Svib_typ == 'QRRHO':
+        try:
+            FR_cutoff = float(FR_cutoff)
+            FR_alpha  = float(FR_alpha)
+        except (TypeError, ValueError) as exc:
+            raise TypeError(f"GET_Svib: FR_cutoff and FR_alpha must be numeric. They are {FR_cutoff} and {FR_alpha}") from exc
+        if FR_cutoff <= 0: raise ValueError(f"GET_Svib: FR_cutoff must be larger than zero. It is {FR_cutoff}")
+        if FR_alpha <= 0:  raise ValueError(f"GET_Svib: FR_alpha must be larger than zero. It is {FR_alpha}")
+        FR_cutoff_s = FR_cutoff * constants.cm2s_1
         
     total=0.0
-    if debug > 0: print(f"GET_Svib: Computing Svib with {len(freqs)} frequencies, and first: {freqs[0]} {freq_units}")
+    if debug > 0: print(f"GET_Svib: Computing Svib with the {Svib_typ} model, {len(freqs)} frequencies, and first: {freqs[0]} {freq_units}")
     for idx, f in enumerate(freqs_mod):                                                  # Freqs in au
-        if f < 0.0: f = np.abs(f)                                                        # Converts Negative frequencies to positive
+        if f < 0.0:
+            if imaginary == 'ignore':
+                if debug > 0: print(f"\tGET_Svib: Ignoring imaginary frequency {freqs[idx]:.4f} {freq_units}")
+                continue
+            elif imaginary == 'absolute':
+                if debug > 0: print(f"\tGET_Svib: Using the absolute value of imaginary frequency {freqs[idx]:.4f} {freq_units}")
+                f = np.abs(f)
+            else:
+                raise ValueError(f"GET_Svib: Found imaginary frequency {freqs[idx]} {freq_units}")
         if np.abs(f) < 1.0*constants.cm2s_1: continue                                    # Ignores frequencies below 1 cm-1
 
         ## Free Rotor Term
-        if typ.lower() == 'qrrho':
+        if Svib_typ == 'QRRHO':
             bav=1.0000E-44                                                               # Kg·m2, parameter in manuscript
             mu=constants.planck_Js/(8*(np.pi)**2*f)                                      # [J·s]/[s_1] = J·s2 = Kg·m2, equation 4
             mu_prime=(mu*bav)/(mu+bav)                                                   # Kg·m2, equation 5 
@@ -41,7 +63,7 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
             b=np.sqrt(a)                                                                 # Dimensionless, equation 6, square root
             c=np.log(b)                                                                  # Dimensionless, equation 6, ln()
             Svib_FR=constants.boltz_au*(c+0.5)                                           # Hartree/K/molecule, equation 6
-            weight_FR = 1-(1/(1+(FR_cutoff/f)**FR_alpha))                                # Dimensionless
+            weight_FR = 1-(1/(1+(FR_cutoff_s/f)**FR_alpha))                              # Dimensionless
             if debug > 1: 
                 print(f"\tGET_Svib: FR Term: {idx=} {f=}: {mu=}, {mu_prime=}, {a=}, {Svib_FR=}, {weight_FR=}")
             elif debug == 1: 
@@ -78,11 +100,19 @@ def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     ## Creates data-class object
     new_data = Data("Svib", float(total), outunits.lower(), "scope.thermodynamics.get_Svib()")
     new_data.add_property("temperature", temp, overwrite=True)
+    Svib_options = {"typ": Svib_typ, "FR_cutoff": float(FR_cutoff) if Svib_typ == 'QRRHO' else None, "FR_alpha": float(FR_alpha) if Svib_typ == 'QRRHO' else None, "imaginary": imaginary}
+    new_data.add_setting("svib_typ", Svib_typ, overwrite=True)
+    if Svib_typ == 'QRRHO':
+        new_data.add_setting("fr_cutoff", float(FR_cutoff), overwrite=True)
+        new_data.add_setting("fr_alpha", float(FR_alpha), overwrite=True)
+    new_data.add_setting("imaginary", imaginary, overwrite=True)
+    new_data.imaginary_frequencies = [float(f) for f in freqs if f < 0.0]
+    new_data.vib_options            = Svib_options
 
     return new_data
 
 ######
-def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', nmol: int=1, debug: int=0):
+def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', nmol: int=1, imaginary: str='ignore', debug: int=0):
     # temperature in K
     # function works with freqs in au, so we adapt if needed
 
@@ -91,10 +121,23 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     elif freq_units.lower() == 'ev':  freqs_mod = np.array(freqs) * constants.eV2har
     elif freq_units.lower() == 's_1': freqs_mod = np.array(freqs) * constants/har2s_1
     else: raise ValueError("GET_Hvib: can't understand input units of frequencies")
+
+    if not isinstance(imaginary, str): raise TypeError(f"GET_Hvib: imaginary must be 'ignore', 'absolute', or 'raise'. It is {type(imaginary)}")
+    imaginary = imaginary.lower()
+    if imaginary not in ['ignore', 'absolute', 'raise']: raise ValueError(f"GET_Hvib: can't understand imaginary-frequency treatment: {imaginary}. Choose 'ignore', 'absolute', or 'raise'")
     
     total=0.0
     if debug > 0: print(f"GET_Hvib: Computing Hvib with {len(freqs)} frequencies, and first: {freqs[0]} {freq_units}")
     for idx, f in enumerate(freqs_mod):
+        if f < 0.0:
+            if imaginary == 'ignore':
+                if debug > 0: print(f"\tGET_Hvib: Ignoring imaginary frequency {freqs[idx]:.4f} {freq_units}")
+                continue
+            elif imaginary == 'absolute':
+                if debug > 0: print(f"\tGET_Hvib: Using the absolute value of imaginary frequency {freqs[idx]:.4f} {freq_units}")
+                f = np.abs(f)
+            else:
+                raise ValueError(f"GET_Hvib: Found imaginary frequency {freqs[idx]} {freq_units}")
         if f > 0.0:
             if temp > 0: exponential = np.exp(-f/(constants.boltz_au*temp))  # Dimensionless
             else:        exponential = float(0.0)                            # Dimensionless
@@ -110,6 +153,9 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
     ## Creates data-class object
     new_data = Data("Hvib", float(total), outunits, "scope.thermodynamics.get_Hvib()")
     new_data.add_property("temperature", temp, overwrite=True)
+    new_data.add_setting("imaginary", imaginary, overwrite=True)
+    new_data.imaginary_frequencies = [float(f) for f in freqs if f < 0.0]
+    new_data.vib_options            = {"imaginary": imaginary}
     return new_data
 
 ######

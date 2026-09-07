@@ -17,6 +17,7 @@ class Collection(object):
 
     Methods:
         add_data():                     Append a compatible data point.
+        add_setting():                  Register a setting shared by the collection.
         get_values():                   Return stored values as an array.
         get_variables():                Return scanned variables as an array.
         find_min():                     Retrieve the minimum-value entry.
@@ -28,6 +29,7 @@ class Collection(object):
         self.key            = key
         self.variable       = variable
         self.datas          = []
+        self.settings       = []
 
     def get_values(self):
         return np.asarray([data.value for data in self.datas])
@@ -36,11 +38,29 @@ class Collection(object):
         return np.asarray([getattr(d,self.variable) for d in self.datas])
 
     def add_data(self, data: object):
+        if not hasattr(self, "settings"): self.settings = []
         if not hasattr(self,"units"):    self.units    = data.units
         if not hasattr(self,"function"): self.function = data.function
-        if hasattr(self,"units") and self.units == data.units: 
+        for setting in getattr(data, "settings", []):
+            if not hasattr(self, setting): self.add_setting(setting, getattr(data, setting))
+            elif getattr(self, setting) != getattr(data, setting): raise ValueError(f"COLLECTION.ADD_DATA: Data setting {setting}={getattr(data, setting)} differs from Collection setting {setting}={getattr(self, setting)}")
+        for setting in self.settings:
+            data.add_setting(setting, getattr(self, setting))
+        if hasattr(self,"units") and self.units == data.units:
             data._collection = self
             self.datas.append(data)
+
+    def add_setting(self, name: str, value, overwrite: bool=False):
+        if not hasattr(self, "settings"): self.settings = []
+        if name not in self.settings: self.settings.append(name)
+        if not hasattr(self, name):
+            setattr(self, name, value)
+        elif overwrite:
+            setattr(self, name, value)
+        elif getattr(self, name) != value:
+            print(f"COLLECTION.ADD_SETTING: Setting {name} already exists")
+            return None
+        for data in self.datas: data.add_setting(name, value, overwrite=overwrite)
 
     def find_value_with_property(self, condition_name: str, condition_value):
         for idx, data in enumerate(self.datas):
@@ -156,6 +176,7 @@ class Data(object):
     Methods:
         set_subtype():                  Infer the subtype from units.
         add_property():                 Attach metadata to the result.
+        add_setting():                  Attach a calculation setting to the result.
         format():                       Build a formatted string representation.
         convert_to_units():             Convert supported energy units.
         print_in_units():               Print the value in alternate units.
@@ -172,6 +193,7 @@ class Data(object):
         self.notes         = notes
         self.subtype       = self.set_subtype()
         self.properties    = [] # List of variable names
+        self.settings      = [] # List of calculation-setting names
 
     def set_subtype(self):
         energy_units = ['kj', 'au', 'ry', 'ev', 'cm']
@@ -182,10 +204,19 @@ class Data(object):
         return self.subtype
 
     def add_property(self, name: str, value, overwrite: bool=False):
-        self.properties.append(name)
+        if name not in self.properties: self.properties.append(name)
         if not hasattr(self, name):               setattr(self, name, value)
         elif   hasattr(self, name) and overwrite: setattr(self, name, value)
-        else:  print("DATA.add_property: property already exists")
+        else:  print("DATA.ADD_PROPERTY: Property already exists")
+        if hasattr(self, "formatted"): del self.formatted
+
+    def add_setting(self, name: str, value, overwrite: bool=False):
+        if not hasattr(self, "settings"): self.settings = []
+        if name not in self.settings: self.settings.append(name)
+        if not hasattr(self, name):               setattr(self, name, value)
+        elif   hasattr(self, name) and overwrite: setattr(self, name, value)
+        elif   getattr(self, name) != value:      print(f"DATA.ADD_SETTING: Setting {name} already exists")
+        if hasattr(self, "formatted"): del self.formatted
 
     def format(self):
         if self.units == 'kj': units = 'kJ/mol'
@@ -198,6 +229,12 @@ class Data(object):
         if hasattr(self,"properties"):
             for prop in self.properties:
                 self.formatted += f' (at {prop}={getattr(self,prop)})'
+
+        settings = [f'{setting}={getattr(self, setting)}' for setting in getattr(self, "settings", [])]
+        if   len(settings) == 1: formatted_settings = settings[0]
+        elif len(settings) == 2: formatted_settings = " and ".join(settings)
+        elif len(settings) > 2:  formatted_settings = ", ".join(settings[:-1]) + f" and {settings[-1]}"
+        if len(settings) > 0: self.formatted += f' (with {formatted_settings})'
 
     def get_best_time_format(self):
         """
@@ -285,7 +322,7 @@ class Data(object):
     ## Dunder Methods ##
     ####################
     def __repr__(self) -> None:
-        if not hasattr(self,"formatted"): self.format()
+        self.format()
         to_print =  f'{self.formatted}'
         return to_print
 
@@ -308,29 +345,3 @@ class Data(object):
         function = "data.__sub__()"
         new_data = Data(key, value, units, function)
         return new_data
-
-###################
-#### OPERATIONS ###
-###################
-#def substract_collections(name: str, col1: object, col2: object, prop=None):
-#    ## Another substraction function, complementary of the dunder method
-#    assert col1.variable.lower() == col2.variable.lower()
-#    new_col = Collection(name, col1.variable)
-#    for idx, data1 in enumerate(col1.datas):
-#        for jdx, data2 in enumerate(col2.datas):
-#            if prop is not None: 
-#                if type(prop) != str: print("Substract_Collections: prop must be a string if not None"); return None
-#                prop1 = getattr(data1,prop)
-#                prop2 = getattr(data2,prop)
-#                if data1.units == data2.units and prop1 == prop2:
-#                    key = name
-#                    value = data1.value - data2.value
-#                    units = data1.units
-#                    function = "scope.Classes_Data.substract_collections()" 
-#                    new_data = Data(key, value, units, function)
-#                    new_data.add_property(prop, prop1, overwrite=True)
-#                    new_col.add_data(new_data)
-#    return new_col                
-#  
-#
-#
