@@ -885,14 +885,14 @@ def set_user():
     import getpass
     return getpass.getuser()
 
-def set_group():
+def set_group() -> str:
+    if not hasattr(os, "getegid"):
+        return ""
     try:
         import grp
-        import pwd
-    except ImportError:
+        return grp.getgrgid(os.getegid()).gr_name
+    except (ImportError, KeyError, OSError):
         return ""
-    group_id = pwd.getpwnam(set_user()).pw_gid
-    return grp.getgrgid(group_id).gr_name
 
 def is_slurm_active():
     return run_command("scontrol show config").ok
