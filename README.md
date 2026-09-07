@@ -31,7 +31,7 @@
 # Features
 
   - Configure computational environments for your projects, storing paths, software, and queues  
-  - Run quantum chemistry workflows for molecules or periodic structures, using Quantum Espresso or Gaussian16
+  - Run quantum chemistry workflows for molecules or periodic structures, using Quantum Espresso (v7.0) or Gaussian16
   - Parse and analyse results of computations, and connect the data with SCOPE's molecule- and cell-class objects
   - Integration with [cell2mol](https://github.com/lcmd-epfl/cell2mol)  
   - Optional `sco` and `azo` add-ons extend SCOPE with additional capabilities
@@ -81,6 +81,7 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   ```
 
   ### Optional Quantum Espresso pseudopotential Libraries:
+
   - `scope-qc` ships only the `Vanderbilt_USPP` library
   - The larger `Efficiency` and `Precision` libraries are distributed separately through the GitHub releases page: <https://github.com/QTC-IQAC/Scope/releases>
   - if you want to use them, download the corresponding release asset and extract the `Efficiency/` or `Precision/` folder into `scope/software/quantum_espresso/PP_Libraries/` inside your installed `scope-qc` package
@@ -128,8 +129,14 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
 
   # License
 
-This project is licensed under the Creative Commons Attribution-NonCommercial-NoDerivatives 4.0 International license (`CC BY-NC-ND 4.0`). See the [LICENSE](LICENSE) file for the full text.
-
+  SCOPE is source-available software distributed under the PolyForm Noncommercial License 1.0.0.
+  
+  The license permits use, modification, and redistribution for non-commercial purposes, including use by educational institutions and public research organizations. Commercial use is not permitted under this license and requires separate authorization from the copyright holder, the Spanish National Research Council (CSIC)
+  
+  Users developing new functionality are encouraged to contribute to the official SCOPE repository or to distribute functionality through independent SCOPE add-ons. Modified distributions of the core should be clearly distinguished from the official SCOPE distribution.
+  
+  See [LICENSE](LICENSE) and [BRANDING](BRANDING.md) for details.
+  
 ---
 
   # Acknowledgements
