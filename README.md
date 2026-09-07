@@ -119,6 +119,8 @@ Python 3.12 is a strict requirement for SCOPE and its add-ons.
   scope config -h 
   ```
 
+  ## Quantum ESPRESSO
+
   For Quantum Espresso runs, `pp_library = vanderbilt` works out of the box.
   If you set `pp_library = efficiency` or `pp_library = precision`, make sure the corresponding library has first been downloaded from the GitHub releases page and extracted into `scope/software/quantum_espresso/PP_Libraries/`.
 
