@@ -4,13 +4,13 @@ This folder contains three reproducible benchmarks covering molecular import, li
 
 ## Available benchmarks
 
-| Benchmark | Purpose | Main retained artifacts |
+| Benchmark | Purpose | Main Files |
 | --- | --- | --- |
 | [1 – Import](1-Import/1-Import.ipynb) | Imports and validates cell2mol `Cell` objects, FORMED XYZ structures, and GEOM-QM9 RDKit molecules. | Three `selected_*.txt` files and three `*_import_results.csv` reports. |
 | [2 – Filtering and Execution](2-Filtering_and_Execution/2-Filtering_and_Execution.ipynb) | Finds unique ligands in cell2mol Cells, collects them in one SCOPE `System`, and prepares and inspects Quantum ESPRESSO calculations. | `selected_cell_paths.txt`, `unique.npy`, `task1.scope`, `task2.scope`, and `unique_finished.npy`. |
 | [3 – Molecule Overlap](3-Molecule_Overlap/3-Molecule_Comparison.ipynb) | Compares the SCOPE overlap routine with RDKit constructions with and without bond information, recording timing and structural metrics. | `selected_cell_paths.txt`, `molecule_comparison_results.csv`, and optional XYZ files in `overlap_comparison_tests/`. |
 
-Shared utilities that are not part of the SCOPE package are kept in [benchmark_functions.py](benchmark_functions.py). The two RDKit construction functions used specifically by Benchmark 3 remain in that notebook.
+Shared utilities that are not part of the SCOPE package are kept in [benchmark_functions.py](benchmark_functions.py).
 
 ## 1. Install SCOPE
 
