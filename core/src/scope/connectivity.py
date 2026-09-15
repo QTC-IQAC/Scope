@@ -288,7 +288,7 @@ def count_species(labels: list, pos: list, radii: list=None, indices: list=None,
     return nblocks
 
 ######
-def split_species(labels: list, pos: list, radii: list=None, indices: list=None, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0) -> Tuple[bool, list]:
+def split_species(labels: list, pos: list, radii: list=None, indices: list=None, cov_factor: float=1.3, metal_factor: float=1.0, smart: bool=False, bond_margin: float=0.1, debug: int=0) -> Tuple[bool, list]:
     ## Function that identifies connected groups of atoms from their atomic coordinates and labels.
     # FUTURE: This can use scipy.sparse.csgraph.connected_components directly, but its component ordering must first be reconciled with the ordering produced by the current RCM/get_blocks route.
 
@@ -298,7 +298,7 @@ def split_species(labels: list, pos: list, radii: list=None, indices: list=None,
 
     # Computes the adjacency matrix of what is received
     # isgood indicates whether the adjacency matrix could be built normally, or errors were detected. Typically, those errors are steric clashes
-    isgood, adjmat, adjnum = get_adjmatrix(labels, pos, cov_factor, metal_factor, radii=radii)
+    isgood, adjmat, adjnum = get_adjmatrix(labels, pos, cov_factor=cov_factor, metal_factor=metal_factor, smart=smart, radii=radii, bond_margin=bond_margin, debug=debug)
     if not isgood: return None
 
     degree = np.diag(adjnum)  # creates a matrix with adjnum as diagonal values. Needed for the laplacian

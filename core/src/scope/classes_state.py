@@ -135,7 +135,7 @@ class State(object):
 ###################################
 #### Operations with Molecules ####
 ###################################
-    def get_molecules(self, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, bond_margin: float=0.1, debug: int=0):
+    def get_molecules(self, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, smart: bool=False, bond_margin: float=0.1, debug: int=0):
         from scope.classes_specie import Molecule
 
         # Overwrite
@@ -149,22 +149,19 @@ class State(object):
         if len(self.labels) == 0 or len(self.coord) == 0: 
             if debug > 0: print(f"STATE.GET_MOLECULES. State labels and coordinates are empty. Returning None")
             return None
-        # Preserve stored source connectivity when atom ordering is unchanged; otherwise construct it from the state geometry
-        source_adjacency_available = hasattr(self._source, "adjmat") and self._source.adjmat is not None and np.shape(self._source.adjmat) == (self.natoms, self.natoms)
-        if source_adjacency_available:
-            nblocks, component_ids = connected_components(csr_matrix(self._source.adjmat), directed=False, return_labels=True)
-            blocklist = [np.where(component_ids == block)[0].tolist() for block in range(nblocks)]
-            if debug > 0: print(f"STATE.GET_MOLECULES: Using stored source adjacency; found {nblocks} blocks")
-        else:
-            if debug > 0: print(f"STATE.GET_MOLECULES: Constructing connectivity with {cov_factor=} and {metal_factor=}")
-            blocklist = split_species(self.labels, self.coord, cov_factor=cov_factor, metal_factor=metal_factor, debug=debug)
+
+        # State connectivity must describe the current geometry, which may differ from the source after optimization.
+        if debug > 0: print(f"STATE.GET_MOLECULES: Constructing connectivity with {cov_factor=} and {metal_factor=}")
+        blocklist = split_species(self.labels, self.coord, cov_factor=cov_factor, metal_factor=metal_factor, smart=smart, bond_margin=bond_margin, debug=debug)
         self.molecules = [] 
+
+        # Creates a molecule for each disconnected fragment
         for b in blocklist:
             if debug > 0: print(f"STATE.GET_MOLECULES: doing block={b}")
             mol_labels      = extract_from_list(b, self.labels, dimension=1)
             mol_coord       = extract_from_list(b, self.coord, dimension=1)
             if hasattr(self,"frac_coord"):      mol_frac_coord = extract_from_list(b, self.frac_coord, dimension=1)
-            elif hasattr(self,"cell_vector"):  mol_frac_coord = cart2frac(mol_coord, self.cell_vector)
+            elif hasattr(self,"cell_vector"):   mol_frac_coord = cart2frac(mol_coord, self.cell_vector)
             else:                               mol_frac_coord = None
             # Creates Molecule Object
             newmolec    = Molecule(mol_labels, mol_coord, mol_frac_coord)
@@ -172,12 +169,8 @@ class State(object):
             newmolec.origin = "state.get_molecules"
             # Adds State as parent of the molecule, with indices b
             newmolec.add_parent(self, indices=b, debug=debug)
-            # Store or construct both regular and metal-only adjacency matrices
-            if source_adjacency_available:
-                newmolec.adjmat = self._source.adjmat[np.ix_(b, b)].copy()
-                newmolec.get_adjmatrix(debug=debug)
-            else:
-                newmolec.get_adjmatrix(smart=True, cov_factor=cov_factor, metal_factor=metal_factor, bond_margin=bond_margin, debug=debug)
+            # Construct both regular and metal-only adjacency matrices from the State geometry.
+            newmolec.get_adjmatrix(smart=smart, cov_factor=cov_factor, metal_factor=metal_factor, bond_margin=bond_margin, debug=debug)
             # Creates The atom objects with adjacencies
             newmolec.set_atoms(create_adjacencies=True, debug=debug)
             # The split_complex must be below the frac_coord, so they are carried on to the ligands    
