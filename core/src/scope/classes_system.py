@@ -2,8 +2,10 @@
 ##### Contains the SYSTEM Class #####
 #####################################
 import os
+from copy import deepcopy
 from scope.read_write import save_binary
-from scope.classes_workflow import Branch
+from scope.classes_workflow import Branch, Computation, Job, Workflow
+from scope.classes_state import State
 from scope import __version__
 
 class System(object):
@@ -108,7 +110,7 @@ class System(object):
         return False, None
 
     ######
-    def add_source(self, name: str, new_source: object, overwrite: bool=False, debug: int=0):
+    def add_source(self, name: str, new_source: object, overwrite: bool=False, set_initial_state: bool=True, debug: int=0):
         ## Source names are de-capitalized and spaces replaced by underscores
         name = name.lower()
         name = name.replace(" ","_")
@@ -119,12 +121,12 @@ class System(object):
         ## If not, it is added
         if not found: 
             new_source._sys = self ## Links the system to the source 
-            new_source.set_initial_state(debug=debug)
+            if set_initial_state: new_source.set_initial_state(debug=debug)
             self.sources.append(new_source)
         ## If it exists, it is overwritten if specified 
         elif found and overwrite: 
             new_source._sys = self ## Links the system to the source 
-            new_source.set_initial_state(debug=debug)
+            if set_initial_state: new_source.set_initial_state(debug=debug)
             self.sources = [s for s in self.sources if s.name.lower() != name.lower()]
             self.sources.append(new_source)
         else: 
