@@ -1881,6 +1881,7 @@ def import_molecule(mol: object, parent: object=None, debug: int=0) -> object:
 
     if   hasattr(mol,"parent_indices"):    indices    = mol.parent_indices
     elif hasattr(mol,"atlist"):            indices    = mol.atlist
+    elif hasattr(mol,"indices"):           indices    = mol.indices
     else:                                  indices    = None
 
     if   hasattr(mol,"radii"):             radii      = mol.radii
