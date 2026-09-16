@@ -366,7 +366,11 @@ class Specie(object):
 
     ######
     def set_adj_types(self):
-        if not hasattr(self,"adjmat"): self.get_adjmatrix()
+        if not hasattr(self, "adjmat") or self.adjmat is None:
+            if self.object_subtype == "ligand" and self.check_parent("molecule"):
+                self.inherit_adjmatrix("molecule")
+            else:
+                self.get_adjmatrix()
         self.adj_types = get_adjacency_types(self.labels, self.adjmat)
         return self.adj_types
 
@@ -556,7 +560,7 @@ class Specie(object):
     ############################
     ## Connectivity Functions ##
     ############################
-    def inherit_adjmatrix(self, parent_subtype: str, debug: int=0):
+    def inherit_adjmatrix(self, parent_subtype: str, force: bool=False, debug: int=0):
         exists  = self.check_parent(parent_subtype)
         if not exists: 
             print(f"SPECIE.INHERIT. {parent_subtype=} does not exist")
@@ -564,8 +568,13 @@ class Specie(object):
         parent  = self.get_parent(parent_subtype)
         indices = self.get_parent_indices(parent_subtype)
         if not hasattr(parent,"adjnum") or not hasattr(parent,"madjnum"):
-            if debug > 0: print(f"SPECIE.INHERIT. {parent_subtype=} does not have complete adjacency data. Computing it")
-            parent.get_adjmatrix(debug=debug)
+            if force: 
+                print(f"SPECIE.INHERIT. {parent_subtype=} does not have complete adjacency data. Computing it")
+                parent.get_adjmatrix(debug=debug)
+            else:
+                print(f"SPECIE.INHERIT. {parent_subtype=} does not have complete adjacency data. You can compute it with force=True")
+
+        # Excises the data from the parent's adjmat and adjnum
         self.madjmat = np.stack(extract_from_list(indices, parent.madjmat, dimension=2), axis=0)
         self.madjnum = np.stack(extract_from_list(indices, parent.madjnum, dimension=1), axis=0)
         self.adjmat  = np.stack(extract_from_list(indices, parent.adjmat, dimension=2), axis=0)
@@ -573,6 +582,7 @@ class Specie(object):
 
     ######
     def get_adjmatrix(self, smart: bool=False, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, bond_margin: float=0.1, debug: int=0):
+        ## If not overwrite but, for some reason, adjmat or madjmat do not exist, they are recovered
         if not overwrite and hasattr(self, "adjmat") and self.adjmat is not None:
             self.adjmat = np.asarray(self.adjmat)
             if not hasattr(self, "adjnum") or self.adjnum is None: self.adjnum = self.adjmat.sum(axis=1).astype(int)
@@ -584,6 +594,8 @@ class Specie(object):
                 self.madjmat             = self.adjmat * metal_bonds
             if not hasattr(self, "madjnum") or self.madjnum is None: self.madjnum = self.madjmat.sum(axis=1).astype(int)
             return self.adjmat, self.adjnum
+
+        ## If overwrite or adjmat or madjmat do not exist, they are computed 
         isgood, adjmat, adjnum = get_adjmatrix(self.labels, self.coord, cov_factor=cov_factor, metal_factor=metal_factor, smart=smart, radii=self.radii, bond_margin=bond_margin, debug=debug)
         if isgood:
             metal_indices             = get_metal_idxs(self.labels, debug=debug)
@@ -594,9 +606,11 @@ class Specie(object):
             self.adjnum               = adjnum
             self.madjmat              = self.adjmat * metal_bonds
             self.madjnum              = self.madjmat.sum(axis=1).astype(int)
-            if hasattr(self, "atoms"):
-                for index, atom in enumerate(self.atoms): atom.set_adjacencies(self.adjmat[index], self.madjmat[index], self.adjnum[index], self.madjnum[index])
+            # Reverted Change until properly checked 
+            #if hasattr(self, "atoms"):
+            #    for index, atom in enumerate(self.atoms): atom.set_adjacencies(self.adjmat[index], self.madjmat[index], self.adjnum[index], self.madjnum[index])
         else:
+            # If it ended up here, is because the evaluated adjacency matrix is incorrect
             self.adjmat  = None
             self.adjnum  = None
             self.madjmat = None
@@ -796,9 +810,9 @@ class Specie(object):
         return self.natoms
 
     def __eq__(self, other, with_graph: bool=True, debug: int=0):
-        ## Function to compare two molecules based on their chemical composition and connectivity
+        ## Function to compare two Species based on their chemical composition and connectivity
         ## It should be able to discriminate up to isomers. Cannot differentiate conformers
-        ## To select 'with_graph', it must be run as: mol1.__eq__(mol2,with_graph=False)
+        ## To change the default selection of 'with_graph', it must be run as: mol1.__eq__(mol2, with_graph=False)
         if not isinstance(other, type(self)): return False
         elems = elemdatabase.elementnr.keys()
         
@@ -821,7 +835,7 @@ class Specie(object):
                 if debug > 0: print(f"SPECIE.__EQ__: found different element count for element {kdx}: {elem} vs. {other.element_count[kdx]}")
                 return False       
         # 4) the number of adjacencies between each pair of element types
-        if not hasattr(self,"adj_types"):     self.set_adj_types()
+        if not hasattr(self,"adj_types"):      self.set_adj_types()
         if not hasattr(other,"adj_types"):     other.set_adj_types()
         count = 0
         for kdx, (elem, row1) in enumerate(zip(elems, self.adj_types)):
@@ -1217,9 +1231,10 @@ class Ligand(Specie):
         # Split the "ligand to obtain the groups
         self.groups = []
         # Identify Connected and Unconnected atoms (to the metal)
-        if not hasattr(self,"connected_idx"): self.get_connected_idx()
+        if not hasattr(self, "adjmat"):       self.inherit_adjmatrix("molecule", debug=debug)
+        connected_idx = self.get_connected_idx(debug=debug)
 
-        ## Creates the list of variables
+        ## Creates the list of variables associated with ligand atoms connected to the metal
         connected_idx     = self.connected_idx
         if debug > 0: print(f"\nLIGAND.SPLIT_LIGAND: splitting {self.formula} into groups")
         if debug >= 2:
@@ -1231,18 +1246,19 @@ class Ligand(Specie):
         conn_radii      = extract_from_list(connected_idx, self.radii, dimension=1)
         connatoms      = extract_from_list(connected_idx, self.atoms, dimension=1)
         if debug >= 2: print(f"\tLIGAND.SPLIT_LIGAND: {conn_labels=}")
-
-        if not hasattr(self, "adjmat"): self.inherit_adjmatrix("molecule", debug=debug)
         conn_adjmat = self.adjmat[np.ix_(connected_idx, connected_idx)]
+
+        # Identifies number of independent blocks in these atoms, which will eventually be Groups
         nblocks, component_ids = connected_components(csr_matrix(conn_adjmat), directed=False, return_labels=True)
         blocklist = [np.where(component_ids == block)[0].tolist() for block in range(nblocks)]
         if debug >= 2: print(f"\tLIGAND.SPLIT_LIGAND: {blocklist=}")
+
         ## Arranges Groups 
         for b in blocklist:
             if debug >= 2 : print(f"\tLIGAND.SPLIT_LIGAND: block={b}")
-            gr_indices = extract_from_list(b, connected_idx, dimension=1, debug=debug)
+            gr_indices = extract_from_list(b, connected_idx, dimension=1)
             if debug > 1: print(f"\tLIGAND.SPLIT_LIGAND: {gr_indices=}")
-            gr_labels       = extract_from_list(b, conn_labels, dimension=1, debug=debug)
+            gr_labels       = extract_from_list(b, conn_labels, dimension=1)
             gr_coord        = extract_from_list(b, conn_coord, dimension=1)
             if hasattr(self,"frac_coord"): gr_frac_coord   = extract_from_list(b, conn_frac_coord, dimension=1)
             gr_radii        = extract_from_list(b, conn_radii, dimension=1)
@@ -1281,7 +1297,8 @@ class Ligand(Specie):
 
     ######
     def get_denticity(self, debug: int=0):
-        if not hasattr(self,"groups"):      self.split_ligand(debug=debug)
+        if not hasattr(self,"groups"):        self.split_ligand(debug=debug)
+        if not hasattr(self,"connected_idx"): self.get_connected_idx(debug=debug)
         if debug > 1: print(f"LIGAND.Get_denticity: checking connectivity of ligand {self.formula}")
         if debug > 1: print(f"LIGAND.Get_denticity: initial connectivity is {len(self.connected_idx)}")
         self.denticity = 0
@@ -1854,10 +1871,8 @@ class Group(Specie):
 
     ######
     def get_denticity(self, debug: int=0):
-        self.denticity = 0
-        for a in self.atoms: 
-            if debug > 0: print(f"GROUP.GET_DENTICITY. Evaluating Atom with {a.madjnum=} and so far {self.denticity=}")
-            self.denticity += a.madjnum      
+        if not hasattr(self, "madjnum"): self.inherit_adjmatrix("ligand", debug=debug)
+        self.denticity = int(np.sum(self.madjnum))
         return self.denticity
 
 ###############
