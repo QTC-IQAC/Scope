@@ -18,23 +18,29 @@ def same_dictionaries(dic1: dict, dic2: dict):
 #############
 ### Lists ###
 #############
-def extract_from_list(entrylist: list, old_array: list, dimension: int=2, debug: int=0) -> list:
-    if debug >= 1: print(f"EXTRACT_FROM_LIST. received: {entrylist=}")
-    if debug >= 1: print(f"EXTRACT_FROM_LIST. received: {old_array=}")
-    if debug >= 1: print(f"EXTRACT_FROM_LIST. maximum value received in entrylist: {np.max(entrylist)+1}")
-    if debug >= 1: print(f"EXTRACT_FROM_LIST. length of old_array: {len(old_array)}")
-    assert len(old_array) >= np.max(entrylist)+1
-    length = len(entrylist)
+def extract_from_list(entrylist: list, old_array: list, dimension: int=2) -> list:
+    """
+    Extract selected entries from an atom-indexed sequence or square matrix.
+
+    Parameters
+    ----------
+    entrylist:  Indices to retain from the array.
+    old_array:  With ``dimension=1``, a sequence whose entries may themselves be vectors or objects, such as labels, coordinates, or Atom objects.
+                With ``dimension=2``, a square matrix indexed by atom along both axes, such as an adjacency matrix.
+    dimension:  1 selects entries along the first axis. 2 selects the same indices along both axes (x,y) of a square matrix.
+    """
+    assert dimension in (1, 2), f"Unsupported dimension: {dimension}"
+    assert all(0 <= index < len(old_array) for index in entrylist), \
+        "entrylist contains indices outside old_array"
+
+    # Case of dimension == 2
     if dimension == 2:
-        new_array = np.empty((length, length), dtype=object)
-        for idx, row in enumerate(entrylist):
-            for jdx, col in enumerate(entrylist):
-                new_array[idx, jdx] = old_array[row][col]
-    elif dimension == 1:
-        new_array = np.empty((length), dtype=object)
-        for idx, val in enumerate(entrylist):
-            new_array[idx] = old_array[val]
-    return list(new_array)
+        assert all(len(row) == len(old_array) for row in old_array), \
+            "dimension=2 requires a square matrix"
+        return [[old_array[row][col] for col in entrylist] for row in entrylist]
+
+    # Case of dimension == 1
+    return [old_array[index] for index in entrylist]
 
 def where_in_array(array,condition) -> list:
     results = []
