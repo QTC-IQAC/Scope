@@ -1,4 +1,5 @@
 import unittest
+from unittest.mock import patch
 
 import numpy as np
 
@@ -89,10 +90,15 @@ class TestVNM(unittest.TestCase):
         weighted_mode = VNM(2, 100.0)
         weighted_mode.set_mode([1, 2], [1, 8], expected_weighted[:, 0], expected_weighted[:, 1], expected_weighted[:, 2], is_mass_weighted=True)
 
-        mappings = map_vnms([self.mode], [weighted_mode])
+        labels = np.asarray(["H", "O"])
+        coords = np.asarray([[0.0, 0.0, 0.0], [1.0, 0.0, 0.0]])
+        alignment = (True, labels, coords, labels, coords, [0, 1], np.eye(3))
+        with patch("scope.overlap.overlap_molecules", return_value=alignment):
+            orderedA, orderedB, results = map_vnms([self.mode], [weighted_mode], labels, coords, labels, coords)
         displaced = displace_coords_with_vnm([self.mode], np.zeros((2, 3)), amplitude=1)
 
-        self.assertAlmostEqual(mappings[0]["overlap"], 1.0)
+        self.assertAlmostEqual(results["mappings"][0]["overlap"], 1.0)
+        self.assertAlmostEqual(orderedA[0].overlap(orderedB[0]), 1.0)
         self.assertTrue(np.allclose(displaced, expected_weighted * 0.1))
         self.assertFalse(self.mode.is_mass_weighted)
         self.assertTrue(np.array_equal(self.mode.mode, original_mode))
