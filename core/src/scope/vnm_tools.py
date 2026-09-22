@@ -8,52 +8,201 @@ def displace_neg_freqs(ini_coord, VNMs: object, debug: int=0) -> list:
     return disp_coord
 
 ####
-def map_vnms(vnmsA, vnmsB, debug: int=0):
+def map_vnms(vnmsA,vnmsB,labelsA,coordsA,labelsB,coordsB,f_weight: float=1.00,f_scale: float=100.0,center_method: str="centroid",use_ext_info: bool=True,adjmatA=None,adjmatB=None,bond_ordersA=None,bond_ordersB=None,max_graph_mappings: int=1000,debug: int=0):
     """
-    Map vibrational normal modes (VNMs) between two sets, without
-    dividing into degenerate blocks.
+    Align two molecular geometries and map their vibrational normal modes.
 
-    Parameters
-    ----------
-    vnmsA, vnmsB : arrays (n_modes)
-        Lists of VNM-class objects
+    Geometry A defines the reference atom ordering and Cartesian frame.
+    Geometry B and its modes are reordered and rotated into that frame before
+    calculating mass-weighted eigenvector overlaps.
 
-    Returns
-    -------
-    mappings : list of dict
-        Each dict has:
-        - modeA: index in A
-        - modeB: matched index in B
-        - overlap: absolute dot product after weighting/normalization
-        - freqA, freqB: the corresponding frequencies
+    The assignment cost combines eigenvector disagreement and frequency
+    separation:
+
+        cost = (1 - overlap) + f_weight * (delta_freq/f_scale)^2
+
+    Parameters:
+        vnmsA, vnmsB (list):            VNM collections to map.
+        labelsA, labelsB (list):        Atomic labels in geometry order.
+        coordsA, coordsB (array):       Cartesian coordinates with shape `(natoms, 3)`.
+        f_weight (float):               Strength of the frequency penalty.
+        f_scale (float):                Characteristic frequency difference in cm-1.
+        center_method (str):            Centering method used for molecular alignment.
+        use_ext_info (bool):            Whether extended chemical data are used for atom mapping.
+        adjmatA, adjmatB:               Optional adjacency matrices.
+        bond_ordersA, bond_ordersB:     Optional bond-order matrices.
+        max_graph_mappings (int):       Maximum graph mappings checked during alignment.
+        debug (int):                    Verbosity level.
+
+    Returns:
+        tuple:
+            vnmsA_ordered (list):       Modes from A ordered by their assignment rows.
+            vnmsB_ordered (list):       Aligned copies of the matched modes from B.
+            results (dict):             Mapping, alignment, and assignment matrices.
     """
-
-    # Extracts data from VNMs
-    modesA = [v.mass_weight_mode(permanent=False).reshape(-1) for v in vnmsA]
-    modesB = [v.mass_weight_mode(permanent=False).reshape(-1) for v in vnmsB]
-    freqsA = [v.freq_cm for v in vnmsA]
-    freqsB = [v.freq_cm for v in vnmsB] 
-
-    # Normalize the temporary mass-weighted modes
-    from scope.operations.vecs_and_mats import normalize
-    modesA_proc = normalize(modesA)
-    modesB_proc = normalize(modesB)
-
-    nA, nB = modesA_proc.shape[0], modesB_proc.shape[0]
-    if nA != nB: raise ValueError("Number of modes in A and B must be equal.")
-
-    # Overlap matrix (absolute values)
-    S = np.abs(modesA_proc @ modesB_proc.T)
-
-    # Hungarian algorithm (maximize total overlap → minimize -S)
+    from copy import deepcopy
+    import numpy as np
     from scipy.optimize import linear_sum_assignment
-    row_ind, col_ind = linear_sum_assignment(-S)
+    from scope.overlap  import overlap_molecules
 
-    # Build mapping list
+    # 0) Checks and arranges arrays
+    if len(vnmsA) == 0 or len(vnmsB) == 0: raise ValueError("MAP_VNMS: VNM collections cannot be empty")
+    if len(vnmsA) != len(vnmsB):           raise ValueError("MAP_VNMS: VNM collections must contain the same number of modes")
+    if f_weight < 0.0:                     raise ValueError("MAP_VNMS: f_weight cannot be negative")
+    if f_scale <= 0.0:                     raise ValueError("MAP_VNMS: f_scale must be positive")
+    if any(not vnm.has_mode for vnm in [*vnmsA, *vnmsB]):  raise ValueError("MAP_VNMS: All VNMs must contain eigenvectors")
+
+    labelsA = np.asarray(labelsA)
+    labelsB = np.asarray(labelsB)
+    coordsA = np.asarray(coordsA, dtype=float)
+    coordsB = np.asarray(coordsB, dtype=float)
+    natoms = len(labelsA)
+
+    if len(labelsB) != natoms:                                         raise ValueError("MAP_VNMS: Geometries must contain the same number of atoms")
+    if coordsA.shape != (natoms, 3) or coordsB.shape != (natoms, 3):   raise ValueError("MAP_VNMS: Coordinates must have shape (natoms, 3)")
+    if any(vnm.mode.shape != (natoms, 3) for vnm in [*vnmsA, *vnmsB]): raise ValueError("MAP_VNMS: VNM dimensions do not match the geometries")
+    if any(list(vnm.labels) != list(labelsA) for vnm in vnmsA):        raise ValueError("MAP_VNMS: VNM set A does not follow geometry A's atom order")
+    if any(list(vnm.labels) != list(labelsB) for vnm in vnmsB):        raise ValueError("MAP_VNMS: VNM set B does not follow geometry B's atom order")
+
+    # 1) Overlaps molecules. Needed to get the rotation
+    overlap_debug = max(debug - 1, 0)
+    isgood, labelsA_aligned, coordsA_aligned, labelsB_aligned, coordsB_aligned, atom_mapping, rotation = overlap_molecules(labelsA,coordsA,labelsB,coordsB,center_method=center_method,use_ext_info=use_ext_info,translate_to_ref=True,adjmat1=adjmatA,adjmat2=adjmatB,bond_orders1=bond_ordersA,bond_orders2=bond_ordersB,max_graph_mappings=max_graph_mappings,return_rotation=True,debug=overlap_debug)
+    if not isgood: raise ValueError("MAP_VNMS: Molecular alignment failed")
+
+    atom_mapping = np.asarray(atom_mapping, dtype=int)
+    rotation     = np.asarray(rotation, dtype=float)
+
+    if atom_mapping.shape != (natoms,):                        raise ValueError("MAP_VNMS: Invalid atom mapping")
+    if rotation.shape != (3, 3):                               raise ValueError("MAP_VNMS: Invalid rotation matrix")
+    if not np.array_equal(labelsA_aligned, labelsB_aligned):   raise ValueError("MAP_VNMS: Reordered atom labels do not match")
+
+    # 2) Mass-weights modes and expresses set B in A's atom order and frame
+    # A already defines the reference atom ordering and Cartesian frame.
+    modesA = np.asarray([vnm.mass_weight_mode(permanent=False).reshape(-1) for vnm in vnmsA])
+    # Apply the molecular atom mapping and rotation to every mode from B.
+    modesB = []
+    for vnm in vnmsB:
+        mode = vnm.mass_weight_mode(permanent=False)
+        mode = mode[atom_mapping]
+        mode = (rotation @ mode.T).T
+        modesB.append(mode.reshape(-1))
+    modesB = np.asarray(modesB)
+    if not np.all(np.isfinite(modesA)) or not np.all(np.isfinite(modesB)):  raise ValueError("MAP_VNMS: Mode vectors contain non-finite values")
+
+    normsA = np.linalg.norm(modesA, axis=1)
+    normsB = np.linalg.norm(modesB, axis=1)
+    if np.any(normsA <= 0.0) or np.any(normsB <= 0.0):   raise ValueError("MAP_VNMS: Mode vectors must have nonzero norms")
+
+    modesA_normalized = modesA / normsA[:, np.newaxis]
+    modesB_normalized = modesB / normsB[:, np.newaxis]
+
+    # 3) Calculates mode overlaps and frequency penalties
+    # Absolute value removes the arbitrary sign of each eigenvector.
+    overlap_matrix = np.abs(modesA_normalized @ modesB_normalized.T)
+
+    freqsA = np.asarray([vnm.freq_cm for vnm in vnmsA], dtype=float)
+    freqsB = np.asarray([vnm.freq_cm for vnm in vnmsB], dtype=float)
+
+    frequency_difference = np.abs(freqsA[:, np.newaxis] - freqsB[np.newaxis, :])
+    frequency_penalty    = f_weight * (frequency_difference / f_scale)**2
+
+    # 4) Solves the one-to-one mode assignment
+    cost_matrix      = (1.0 - overlap_matrix) + frequency_penalty
+    row_ind, col_ind = linear_sum_assignment(cost_matrix)
+
+    assignment = sorted(zip(row_ind, col_ind), key=lambda pair: pair[0])
+
+    # 5) Stores mapping and molecular-alignment information
     mappings = []
-    for i, j in zip(row_ind, col_ind):
-        mappings.append({"modeA": int(i),"modeB": int(j),"overlap": float(S[i, j]),"freqA": float(freqsA[i]),"freqB": float(freqsB[j])})
-    return mappings
+    for i, j in assignment:
+        mappings.append({
+            # Positions in the supplied lists
+            "modeA": int(i),
+            "modeB": int(j),
+
+            # Stored VNM indices
+            "indexA": int(vnmsA[i].index),
+            "indexB": int(vnmsB[j].index),
+
+            # Assignment information
+            "overlap": float(overlap_matrix[i, j]),
+            "freqA": float(freqsA[i]),
+            "freqB": float(freqsB[j]),
+            "frequency_difference": float(frequency_difference[i, j]),
+            "frequency_penalty": float(frequency_penalty[i, j]),
+            "cost": float(cost_matrix[i, j]),
+        })
+
+    alignment_rmsd = np.sqrt(np.mean(np.sum((coordsA_aligned - coordsB_aligned)**2, axis=1)))
+    alignment = {
+        # Each reference position in A maps to this original position in B.
+        "atom_mapping": atom_mapping.tolist(),
+        "rotation": rotation,
+        "labelsA": labelsA_aligned,
+        "labelsB": labelsB_aligned,
+        "coordsA": coordsA_aligned,
+        "coordsB": coordsB_aligned,
+        "rmsd": float(alignment_rmsd),
+    }
+
+    # 6) Builds ordered VNMs without modifying the input objects
+    # B modes are independent copies expressed in A's atom ordering and frame.
+    vnmsA_ordered = []
+    vnmsB_ordered = []
+    for i, j in assignment:
+        vnmB_aligned  = deepcopy(vnmsB[j])
+        modeB_aligned = modesB[j].reshape(natoms, 3)
+        vnmB_aligned.set_mode(vnmsA[i].atomidxs, vnmsA[i].atnums, modeB_aligned[:, 0], modeB_aligned[:, 1], modeB_aligned[:, 2], is_mass_weighted=True)
+        vnmsA_ordered.append(vnmsA[i])
+        vnmsB_ordered.append(vnmB_aligned)
+
+    # 7) Groups supplementary mapping and alignment results
+    results = {
+        "mappings": mappings,
+        "alignment": alignment,
+        "overlap_matrix": overlap_matrix,
+        "frequency_difference_matrix": frequency_difference,
+        "frequency_penalty_matrix": frequency_penalty,
+        "cost_matrix": cost_matrix,
+    }
+
+    # 8) Prints diagnostics
+    if debug > 0:
+        assigned_overlaps         = np.asarray([mapping["overlap"] for mapping in mappings])
+        assigned_freq_differences = np.asarray([mapping["frequency_difference"] for mapping in mappings])
+        assigned_costs            = np.asarray([mapping["cost"] for mapping in mappings])
+
+        print("MAP_VNMS: Mapping completed")
+        print(f"  atoms                 = {natoms}")
+        print(f"  modes                 = {len(mappings)}")
+        print(f"  alignment RMSD        = {alignment_rmsd:.6f}")
+        print(f"  overlap mean/median   = {np.mean(assigned_overlaps):.4f} / {np.median(assigned_overlaps):.4f}")
+        print(f"  overlap min/max       = {np.min(assigned_overlaps):.4f} / {np.max(assigned_overlaps):.4f}")
+        print(f"  overlap >= 0.8        = {np.mean(assigned_overlaps >= 0.8):.1%}")
+        print(f"  frequency MAE/RMSE    = {np.mean(assigned_freq_differences):.2f} / {np.sqrt(np.mean(assigned_freq_differences**2)):.2f} cm-1")
+        print(f"  frequency max error   = {np.max(assigned_freq_differences):.2f} cm-1")
+        print(f"  assignment mean cost  = {np.mean(assigned_costs):.4f}")
+
+    if debug > 1:
+        weakest_mappings = sorted(mappings, key=lambda mapping: mapping["cost"], reverse=True)[:10]
+        print("MAP_VNMS: Weakest assignments")
+        print("  modeA  modeB    overlap    freqA    freqB    delta     cost")
+        for mapping in weakest_mappings:
+            print(f"  {mapping['indexA']:5d}  {mapping['indexB']:5d}    {mapping['overlap']:7.4f}  {mapping['freqA']:7.2f}  {mapping['freqB']:7.2f}  {mapping['frequency_difference']:7.2f}  {mapping['cost']:7.4f}")
+
+    if debug > 2:
+        print("MAP_VNMS: Atom mapping")
+        print(atom_mapping.tolist())
+        print("MAP_VNMS: Rotation matrix")
+        print(np.round(rotation, 6))
+        print("MAP_VNMS: Overlap matrix")
+        print(np.round(overlap_matrix, 4))
+        print("MAP_VNMS: Frequency-difference matrix (cm-1)")
+        print(np.round(frequency_difference, 2))
+        print("MAP_VNMS: Cost matrix")
+        print(np.round(cost_matrix, 4))
+
+    return vnmsA_ordered, vnmsB_ordered, results
 
 ######
 def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], which_side: str='positive', amplitude: int=6, debug: int=0):
