@@ -29,12 +29,12 @@ def map_vnms(vnmsA, vnmsB, debug: int=0):
     """
 
     # Extracts data from VNMs
-    modesA = [v.mode_format2 for v in vnmsA]
-    modesB = [v.mode_format2 for v in vnmsB] 
+    modesA = [v.mass_weight_mode(permanent=False).reshape(-1) for v in vnmsA]
+    modesB = [v.mass_weight_mode(permanent=False).reshape(-1) for v in vnmsB]
     freqsA = [v.freq_cm for v in vnmsA]
     freqsB = [v.freq_cm for v in vnmsB] 
 
-    # Normalize (mass-weight should not be needed)
+    # Normalize the temporary mass-weighted modes
     from scope.operations.vecs_and_mats import normalize
     modesA_proc = normalize(modesA)
     modesB_proc = normalize(modesB)
@@ -77,6 +77,7 @@ def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], wh
     ## Applies Displacement
     for vnm in VNMs:
         assert vnm.has_mode and len(vnm.labels) == natoms
+        mode = vnm.mass_weight_mode(permanent=False)
         ## The actual amount of displacement depends on the amplitude defined by the user
         ## ... and the freq_factor, which depends on the frequency
         if   vnm.freq < 20:   freq_factor = 0.1
@@ -86,8 +87,8 @@ def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], wh
             if debug >= 1: print(f"using factor={amplitude*freq_factor}")
             
             for idx in range(natoms):
-                ## Evaluate the vector, here it expects to receive a mass-weighted eigenvector, as in Gaussian
-                vector = vnm.mode[idx]
+                ## Evaluate a temporary mass-weighted vector without modifying the VNM
+                vector = mode[idx]
 
                 ## Apply displacement to coordinates
                 if   which_side.lower() == 'positive': displacement = vector*amplitude*freq_factor
@@ -116,7 +117,7 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
         List of frequency objects, each with attributes:
             - freq_cm: frequency in cm^-1
             - freq: frequency in atomic units
-            - mode: mass-weighted eigenvector with shape `(N_atoms, 3)`
+            - mode: eigenvector with shape `(N_atoms, 3)`
             - has_mode: boolean indicating presence of the eigenvector
             - is_mass_weighted: boolean describing the stored eigenvector
     qini  : list
@@ -143,7 +144,7 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
         Array of harmonic energies (in atomic units) for each sampled geometry.
     Notes
     -----
-    - The function assumes that the input frequencies and eigenvectors are mass-weighted and in atomic units.
+    - Modes are converted to mass-weighted coordinates locally without modifying the VNM objects.
     - The sampling is performed using a normal distribution for each mode, with width determined by thermal fluctuations.
     - If `check_adjacencies` is True, geometries that change the molecular connectivity are discarded.
     - Large unphysical displacements are discarded, which breaks the expected energy distribution of the resulting geometries. (np.mean(energies) should approach ZPE/2) 
@@ -156,8 +157,6 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
     ## Frequencies must have eigenvectors stored
     if any(not freq.has_mode for freq in freqs): 
         raise ValueError("One or more VNMs do not have eigenvectors. Stopping")
-    if any(not getattr(freq, "is_mass_weighted", False) for freq in freqs):
-        raise ValueError("All VNMs must be mass weighted before geometry sampling")
 
     # Stores the original adjacency matrix
     if check_adjacencies: 
@@ -166,7 +165,7 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
 
     # Extract and manage data from input
     coord   = np.array(coord) 
-    modes   = np.array([freq.mode.reshape(-1) for freq in freqs])
+    modes   = np.asarray([freq.mass_weight_mode(permanent=False).reshape(-1) for freq in freqs])
     N_atoms = len(coord)    
     N_modes = len(freqs)
     if qini is None: qini = np.zeros((N_modes))

@@ -11,7 +11,11 @@ elemdatabase = ElementData()
 ######################
 class VNM(object):
     """
-    Represent a vibrational normal mode.
+    Represent one vibrational normal mode and its optional displacement vectors.
+
+    The authoritative mode array has shape `(natoms, 3)`. Its coordinate
+    convention is recorded by `is_mass_weighted`; conversion methods can either
+    update the stored representation or return an independent converted array.
 
     Attributes:
         object_type (str):              Object category (`"vnm"`).
@@ -43,6 +47,17 @@ class VNM(object):
         self.is_mass_weighted = False
 
     def set_mode(self, atomidxs: list, atnums: list, xs: list, ys: list, zs: list, is_mass_weighted: bool):
+        """Store displacement vectors and their mass-weighting convention.
+
+        Parameters:
+            atomidxs (list):            Atom identifiers in mode order.
+            atnums (list):              Atomic numbers in mode order.
+            xs, ys, zs (list):          Cartesian components for every atom.
+            is_mass_weighted (bool):    Whether the supplied vectors are mass weighted.
+
+        Returns:
+            np.ndarray: Stored mode with shape `(natoms, 3)`.
+        """
         if not isinstance(is_mass_weighted, (bool, np.bool_)): raise TypeError("VNM.SET_MODE: is_mass_weighted must be a boolean")
         if not len(atomidxs) == len(atnums) == len(xs) == len(ys) == len(zs): raise ValueError("VNM.SET_MODE: Atom and mode-component arrays must have the same length")
         self.atomidxs         = list(atomidxs)
@@ -56,30 +71,54 @@ class VNM(object):
 
     @property
     def mode_format2(self) -> np.ndarray:
-        """Return the mode as a flat view for compatibility."""
+        """Return a flattened view of the authoritative mode array."""
         return self.mode.reshape(-1)
 
-    def mass_weight_mode(self):
+    def mass_weight_mode(self, permanent: bool=True) -> np.ndarray:
+        """Return the mass-weighted mode, optionally storing the conversion.
+
+        Parameters:
+            permanent (bool):           Whether to replace `mode` and update its convention.
+
+        Returns:
+            np.ndarray: Mass-weighted mode. A copy is returned when `permanent=False`.
+        """
         if not self.has_mode: raise ValueError("VNM.MASS_WEIGHT_MODE: No mode is stored")
-        if self.is_mass_weighted: return self.mode
-        mass_factors = np.sqrt(np.asarray(self.masses, dtype=float))[:, np.newaxis]
-        self.mode = self.mode * mass_factors
+        if not isinstance(permanent, (bool, np.bool_)): raise TypeError("VNM.MASS_WEIGHT_MODE: permanent must be a boolean")
+        if self.is_mass_weighted: return self.mode if permanent else self.mode.copy()
+        weighted_mode = self.mode * np.sqrt(np.asarray(self.masses, dtype=float))[:, np.newaxis]
+        if not permanent: return weighted_mode
+        self.mode             = weighted_mode
         self.is_mass_weighted = True
         return self.mode
 
-    def unweight_mode(self):
+    def unweight_mode(self, permanent: bool=True) -> np.ndarray:
+        """Return the Cartesian mode, optionally storing the conversion.
+
+        Parameters:
+            permanent (bool):           Whether to replace `mode` and update its convention.
+
+        Returns:
+            np.ndarray: Cartesian mode. A copy is returned when `permanent=False`.
+        """
         if not self.has_mode: raise ValueError("VNM.UNWEIGHT_MODE: No mode is stored")
-        if not self.is_mass_weighted: return self.mode
-        mass_factors = np.sqrt(np.asarray(self.masses, dtype=float))[:, np.newaxis]
-        self.mode = self.mode / mass_factors
+        if not isinstance(permanent, (bool, np.bool_)): raise TypeError("VNM.UNWEIGHT_MODE: permanent must be a boolean")
+        if not self.is_mass_weighted: return self.mode if permanent else self.mode.copy()
+        unweighted_mode = self.mode / np.sqrt(np.asarray(self.masses, dtype=float))[:, np.newaxis]
+        if not permanent: return unweighted_mode
+        self.mode             = unweighted_mode
         self.is_mass_weighted = False
         return self.mode
 
     def get_atomic_participation(self) -> np.ndarray:
-        """Return normalized kinetic-energy contributions for all atoms."""
+        """Return each atom's normalized contribution to the mode's kinetic-energy norm.
+
+        Returns:
+            np.ndarray: Atomic contributions in mode order, summing to one.
+        """
         if not self.has_mode: raise ValueError("VNM.GET_ATOMIC_PARTICIPATION: No mode is stored")
-        contributions = np.sum(self.mode**2, axis=1)
-        if not self.is_mass_weighted: contributions *= np.asarray(self.masses, dtype=float)
+        weighted_mode = self.mass_weight_mode(permanent=False)
+        contributions = np.sum(weighted_mode**2, axis=1)
         norm = np.sum(contributions)
         if not np.isfinite(norm) or norm <= 0.0: raise ValueError("VNM.GET_ATOMIC_PARTICIPATION: Mode has an invalid norm")
         return contributions / norm
@@ -104,12 +143,12 @@ class VNM(object):
             write_xyz(outfolder+filename, labels, coords, append=True) 
 
     def overlap(self, other: object) -> float:
+        """Return the absolute normalized overlap in mass-weighted coordinates."""
         if not isinstance(other, type(self)):       return None
         if not self.has_mode or not other.has_mode: return None
-        if getattr(self, "is_mass_weighted", False) != getattr(other, "is_mass_weighted", False): raise ValueError("VNM.OVERLAP: Modes must use the same mass-weighting convention")
         from scope.operations.vecs_and_mats import normalize
-        vnm_a = normalize(self.mode_format2)
-        vnm_b = normalize(other.mode_format2)
+        vnm_a = normalize(self.mass_weight_mode(permanent=False).reshape(-1))
+        vnm_b = normalize(other.mass_weight_mode(permanent=False).reshape(-1))
         ov    = float(np.abs(np.dot(vnm_a, vnm_b)))
         return ov
 
