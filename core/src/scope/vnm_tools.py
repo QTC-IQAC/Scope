@@ -116,8 +116,9 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
         List of frequency objects, each with attributes:
             - freq_cm: frequency in cm^-1
             - freq: frequency in atomic units
-            - mode_format2: mass-weighted eigenvector (array)
+            - mode: mass-weighted eigenvector with shape `(N_atoms, 3)`
             - has_mode: boolean indicating presence of the eigenvector
+            - is_mass_weighted: boolean describing the stored eigenvector
     qini  : list
         initial Q coordinates associated with the cartesian coordinates provided as coord
     T : float, optional
@@ -155,6 +156,8 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
     ## Frequencies must have eigenvectors stored
     if any(not freq.has_mode for freq in freqs): 
         raise ValueError("One or more VNMs do not have eigenvectors. Stopping")
+    if any(not getattr(freq, "is_mass_weighted", False) for freq in freqs):
+        raise ValueError("All VNMs must be mass weighted before geometry sampling")
 
     # Stores the original adjacency matrix
     if check_adjacencies: 
@@ -163,7 +166,7 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
 
     # Extract and manage data from input
     coord   = np.array(coord) 
-    modes   = np.array([freq.mode_format2 for freq in freqs])   # Extract Eigenvectors from frequencies. [units? Assuming Bohr/sqrt(amu)]
+    modes   = np.array([freq.mode.reshape(-1) for freq in freqs])
     N_atoms = len(coord)    
     N_modes = len(freqs)
     if qini is None: qini = np.zeros((N_modes))

@@ -20,38 +20,69 @@ class VNM(object):
         freq (float):                   Frequency in atomic units.
         red_mass (float):               Reduced mass.
         has_mode (bool):                Whether eigenvectors are available.
+        is_mass_weighted (bool):        Whether the stored mode is mass weighted.
 
     Methods:
         set_mode():                     Store eigenvector data for the mode.
-        mass_weight_mode():             Build the mass-weighted mode.
+        mass_weight_mode():             Convert the stored mode to mass-weighted coordinates.
+        unweight_mode():                Convert the stored mode to Cartesian coordinates.
+        get_atomic_participation():     Calculate each atom's contribution to the mode.
         write_dyn():                    Export a displacement trajectory.
         overlap():                      Compute overlap with another mode.
     """
     def __init__(self, index: int, freq: float, red_mass: float=1.0, force_cnt: float=0.0, IR_int: float=0.0, sym: str='A'):
-        self.object_type  = "vnm"
-        self.index        = index 
-        self.freq_cm      = freq                     ## In cm-1
-        self.freq         = freq*constants.cm2har    ## In atomic units 
-        self.red_mass     = red_mass                 ## In AMU     as in Gaussian
-        self.force_cnt    = force_cnt                ## In mDyne/A as in Gaussian
-        self.IR_int       = IR_int                   ## In KM/Mole as in Gaussian
-        self.sym          = sym
-        self.has_mode     = False
+        self.object_type      = "vnm"
+        self.index            = index
+        self.freq_cm          = freq                     ## In cm-1
+        self.freq             = freq*constants.cm2har    ## In atomic units
+        self.red_mass         = red_mass                 ## In AMU     as in Gaussian
+        self.force_cnt        = force_cnt                ## In mDyne/A as in Gaussian
+        self.IR_int           = IR_int                   ## In KM/Mole as in Gaussian
+        self.sym              = sym
+        self.has_mode         = False
+        self.is_mass_weighted = False
 
-    def set_mode(self, atomidxs: list, atnums: list, xs: list, ys: list, zs: list):
-        self.atomidxs     = atomidxs
-        self.atnums       = atnums
-        self.labels       = [elemdatabase.elementsym[atnum] for atnum in atnums]
-        self.masses       = [elemdatabase.elementweight[l] for l in self.labels]
-        self.mode         = np.column_stack([xs, ys, zs])
-        self.mode_format2 = np.column_stack([xs, ys, zs]).reshape(-1)
-        self.has_mode     = True
+    def set_mode(self, atomidxs: list, atnums: list, xs: list, ys: list, zs: list, is_mass_weighted: bool):
+        if not isinstance(is_mass_weighted, (bool, np.bool_)): raise TypeError("VNM.SET_MODE: is_mass_weighted must be a boolean")
+        if not len(atomidxs) == len(atnums) == len(xs) == len(ys) == len(zs): raise ValueError("VNM.SET_MODE: Atom and mode-component arrays must have the same length")
+        self.atomidxs         = list(atomidxs)
+        self.atnums           = list(atnums)
+        self.labels           = [elemdatabase.elementsym[atnum] for atnum in atnums]
+        self.masses           = [elemdatabase.elementweight[l] for l in self.labels]
+        self.mode             = np.asarray(np.column_stack([xs, ys, zs]), dtype=float)
+        self.has_mode         = True
+        self.is_mass_weighted = bool(is_mass_weighted)
+        return self.mode
+
+    @property
+    def mode_format2(self) -> np.ndarray:
+        """Return the mode as a flat view for compatibility."""
+        return self.mode.reshape(-1)
 
     def mass_weight_mode(self):
-        if not self.has_mode: return None
-        mw = np.repeat(np.sqrt(self.masses), 3)
-        self.mode_mw      = self.mode * mw[np.newaxis, :]         ## Mass_Weighted Version of the Mode
-        return self.mode_mw
+        if not self.has_mode: raise ValueError("VNM.MASS_WEIGHT_MODE: No mode is stored")
+        if self.is_mass_weighted: return self.mode
+        mass_factors = np.sqrt(np.asarray(self.masses, dtype=float))[:, np.newaxis]
+        self.mode = self.mode * mass_factors
+        self.is_mass_weighted = True
+        return self.mode
+
+    def unweight_mode(self):
+        if not self.has_mode: raise ValueError("VNM.UNWEIGHT_MODE: No mode is stored")
+        if not self.is_mass_weighted: return self.mode
+        mass_factors = np.sqrt(np.asarray(self.masses, dtype=float))[:, np.newaxis]
+        self.mode = self.mode / mass_factors
+        self.is_mass_weighted = False
+        return self.mode
+
+    def get_atomic_participation(self) -> np.ndarray:
+        """Return normalized kinetic-energy contributions for all atoms."""
+        if not self.has_mode: raise ValueError("VNM.GET_ATOMIC_PARTICIPATION: No mode is stored")
+        contributions = np.sum(self.mode**2, axis=1)
+        if not self.is_mass_weighted: contributions *= np.asarray(self.masses, dtype=float)
+        norm = np.sum(contributions)
+        if not np.isfinite(norm) or norm <= 0.0: raise ValueError("VNM.GET_ATOMIC_PARTICIPATION: Mode has an invalid norm")
+        return contributions / norm
     
     def write_dyn(self, initial_coord: list, amplitude: int=10, outfolder: str='./', labels: None=list, name: str=None):
         ## Writes a file with a trajectory representing the displacement of the VNM
@@ -75,6 +106,7 @@ class VNM(object):
     def overlap(self, other: object) -> float:
         if not isinstance(other, type(self)):       return None
         if not self.has_mode or not other.has_mode: return None
+        if getattr(self, "is_mass_weighted", False) != getattr(other, "is_mass_weighted", False): raise ValueError("VNM.OVERLAP: Modes must use the same mass-weighting convention")
         from scope.operations.vecs_and_mats import normalize
         vnm_a = normalize(self.mode_format2)
         vnm_b = normalize(other.mode_format2)
@@ -105,6 +137,7 @@ class VNM(object):
         to_print += f' Reduced Mass (AMU)     = {self.red_mass}\n'
         if hasattr(self,"has_mode"): to_print += f' Has Mode               = {self.has_mode}\n'
         else:                        to_print += f' Has Mode               = False\n'
+        if self.has_mode:            to_print += f' Is Mass Weighted       = {getattr(self, "is_mass_weighted", False)}\n'
         return to_print
 
 ####################################################
@@ -114,7 +147,7 @@ def import_vnm(old_vnm):
     new_vnm = VNM(old_vnm.index, old_vnm.freq_cm, old_vnm.red_mass, old_vnm.force_cnt, old_vnm.IR_int, old_vnm.sym)
     if hasattr(old_vnm,"haseigenvec"):
         if old_vnm.haseigenvec:
-            new_vnm.set_mode(old_vnm.atomidxs, old_vnm.atnums, old_vnm.xs, old_vnm.ys, old_vnm.zs)
+            new_vnm.set_mode(old_vnm.atomidxs, old_vnm.atnums, old_vnm.xs, old_vnm.ys, old_vnm.zs, is_mass_weighted=getattr(old_vnm, "is_mass_weighted", False))
     return new_vnm
 
 ##############

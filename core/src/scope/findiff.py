@@ -186,11 +186,10 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
         xs = evec[:,0]
         ys = evec[:,1]
         zs = evec[:,2]
-        new_VNM.set_mode(atomidxs,atnums,xs,ys,zs)
+        new_VNM.set_mode(atomidxs, atnums, xs, ys, zs, is_mass_weighted=True)
         VNMs.append(new_VNM)
 
     # So far, VNMs have been created in reverse order (from largest to smallest frequency). Here we reverse
     VNMs.reverse()
 
     return VNMs
-
