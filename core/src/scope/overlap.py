@@ -377,7 +377,7 @@ def _run_hungarian_search(labels1, coords1, data1, adjmat1, bond_orders1, labels
 ######################
 ## Public Interface ##
 ######################
-def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="centroid", use_ext_info: bool=True, translate_to_ref: bool=True, max_iter: int=5, adjmat1=None, adjmat2=None, bond_orders1=None, bond_orders2=None, max_graph_mappings: int=1000, rmsd_convergence: float=1e-8, debug: int=0):
+def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="centroid", use_ext_info: bool=True, translate_to_ref: bool=True, max_iter: int=5, adjmat1=None, adjmat2=None, bond_orders1=None, bond_orders2=None, max_graph_mappings: int=1000, rmsd_convergence: float=1e-8, return_rotation: bool=False, debug: int=0):
     """Overlap equivalent molecules using topology-aware atom mappings.
 
     Parameters:
@@ -391,12 +391,10 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
     """
     from scope.read_write import print_xyz, write_xyz
 
-    if len(labels1) != len(labels2):
-        raise ValueError("OVERLAP_MOLECULES: molecules must contain the same number of atoms")
-    if max_iter < 1:
-        raise ValueError("OVERLAP_MOLECULES: max_iter must be at least 1")
-    if max_graph_mappings < 0:
-        raise ValueError("OVERLAP_MOLECULES: max_graph_mappings cannot be negative")
+    # 0) Checks and arranges arrays
+    if len(labels1) != len(labels2):  raise ValueError("OVERLAP_MOLECULES: molecules must contain the same number of atoms")
+    if max_iter < 1:                  raise ValueError("OVERLAP_MOLECULES: max_iter must be at least 1")
+    if max_graph_mappings < 0:        raise ValueError("OVERLAP_MOLECULES: max_graph_mappings cannot be negative")
 
     labels1 = np.asarray(labels1)
     labels2 = np.asarray(labels2)
@@ -423,8 +421,7 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
     # 4) Search alternative graph-valid mappings. If the fast path found no
     # valid result, one graph mapping is still required as a repair step.
     mappings_to_check = max_graph_mappings
-    if mappings_to_check == 0 and best_indices is None:
-        mappings_to_check = 1
+    if mappings_to_check == 0 and best_indices is None: mappings_to_check = 1
     if mappings_to_check > 0:
         graph_rmsd, graph_indices, graph_coords, mappings_checked = _search_graph_mappings(labels1, coords1_centered, adjmat1, labels2, coords2_centered, adjmat2, bond_orders1, bond_orders2, center_method, mappings_to_check, max_iter, debug=debug)
         if graph_rmsd < best_rmsd:
@@ -437,7 +434,17 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
     if best_indices is None:
         raise ValueError("OVERLAP_MOLECULES: no chemically valid atom mapping was found")
 
-    # 5) Restore the reference position and return the original mobile indices.
+    # 5) Optionally, recover the complete rotation that transforms the original reordered geometry 2 into the aligned geometry stored in best_coords.
+    final_rotation = None
+    if return_rotation:
+        labels2_reordered = labels2[best_indices]
+        coords2_reordered = coords2_centered[best_indices]
+        final_rotation, _, reproduced_coords2, _ = kabsch_align(labels2_reordered, coords2_reordered, labels2_reordered, best_coords, center_method=center_method, debug=debug)
+
+        if not np.allclose(reproduced_coords2, best_coords, atol=1e-8):
+            raise ValueError("OVERLAP_MOLECULES: could not reproduce the final alignment rotation")
+
+    # 6) Restore the reference position and return the original mobile indices.
     labels2_reordered = labels2[best_indices]
     if translate_to_ref:
         coords1_final = coords1_centered + center1
@@ -457,7 +464,8 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         write_xyz(output_folder + "final1.xyz", labels1, coords1_final)
         write_xyz(output_folder + "final2.xyz", labels2_reordered, coords2_final)
 
-    return True, labels1, coords1_final, labels2_reordered, coords2_final, best_indices.tolist()
+    if return_rotation: return True, labels1, coords1_final, labels2_reordered, coords2_final, best_indices.tolist(), final_rotation
+    else:               return True, labels1, coords1_final, labels2_reordered, coords2_final, best_indices.tolist()
 
 
 def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, center_method="centroid", atom_idxs: list=None, use_ext_info: bool=True, translate_to_ref: bool=True, max_iter: int=5, adjmat1=None, adjmat2=None, bond_orders1=None, bond_orders2=None, max_graph_mappings: int=1000, debug: int=0):
