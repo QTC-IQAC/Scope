@@ -798,6 +798,133 @@ class Specie(object):
         set_scene(fig, positions, width=width, height=height)
         fig.show()
 
+    #def view_test(self, show_indices: bool=False, size: str='default', color=None, colorscale='Viridis', color_range=None, colorbar_title: str=None):
+    #    """
+    #    Visualize the species with Plotly.
+
+    #    Parameters:
+    #        show_indices (bool):            Show atom indices instead of element symbols.
+    #        size (str):                     Figure size preset.
+    #        color:                          One numerical value or explicit color per atom.
+    #                                        Numerical example: `[0.1, 0.5, 0.9]`.
+    #                                        Explicit-color example: `["red", "#20A020", "rgb(0,0,255)"]`.
+    #                                        If `None`, standard CPK element colors are used.
+    #        colorscale:                     Plotly colorscale used when `color` is numerical.
+    #                                        It may be a named scale such as `"Viridis"`,
+    #                                        `"Plasma"` or `"RdBu"`, or a custom scale such as
+    #                                        `[[0.0, "blue"], [0.5, "white"], [1.0, "red"]]`.
+    #        color_range:                    Optional `(minimum, maximum)` range used to map
+    #                                        numerical values onto the colorscale. `minimum`
+    #                                        receives the color at position `0.0` of the scale,
+    #                                        while `maximum` receives the color at position
+    #                                        `1.0`. Intermediate values are interpolated.
+    #                                        Values outside this range are clipped to the
+    #                                        corresponding endpoint color. For example,
+    #                                        `(0.0, 1.0)` applies a common scale to atomic
+    #                                        contributions from zero to one.
+    #        colorbar_title (str):           Optional title for the continuous colorbar.
+
+    #    Returns:
+    #        None
+
+    #    Examples:
+    #        Display the default CPK atom colors:
+
+    #        `specie.view()`
+
+    #        Color atoms using numerical mode participation:
+
+    #        `specie.view(color=participation, colorscale="Plasma",
+    #        color_range=(0.0, 1.0), colorbar_title="Mode participation")`
+
+    #        Supply explicit colors directly:
+
+    #        `specie.view(color=["red", "#20A020", "rgb(0,0,255)"])`
+    #    """
+
+    #    import plotly.graph_objects as go
+    #    from scope.read_write import set_scene
+    #    from scope.elementdata import ElementData
+    #    elemdatabase = ElementData()
+
+    #    size_map = {'default': (600, 600, 8, 9), 'small': (400, 400, 6, 7),
+    #                'large': (800, 800, 10, 12), 'ultra': (1000, 1000, 11, 13)}
+    #    width, height, marker_size, text_size = size_map.get(size.lower(), size_map['default'])
+
+    #    if not hasattr(self, "adjmat"): self.get_adjmatrix(smart=True)
+
+    #    positions   = np.asarray(self.coord)
+    #    symbols     = self.labels
+    #    unique_bonds = {tuple(indices) for indices in np.argwhere(self.adjmat > 0)}
+
+    #    # Selects either the default CPK colors, a numerical property or explicit colors.
+    #    if color is None:
+    #        marker_color   = [elemdatabase.cpk_colors[label] for label in symbols]
+    #        numerical_color = False
+    #    else:
+    #        marker_color = np.asarray(color)
+    #        if marker_color.ndim != 1 or len(marker_color) != self.natoms:
+    #            raise ValueError("SPECIE.VIEW: color must contain one numerical value or explicit color per atom")
+    #        numerical_color = np.issubdtype(marker_color.dtype, np.number)
+
+    #    marker = {
+    #        "size": marker_size,
+    #        "color": marker_color,
+    #        "line": {"color": "black", "width": 1},
+    #    }
+
+    #    # Numerical values are mapped onto the requested continuous colorscale.
+    #    if numerical_color:
+    #        marker["colorscale"] = colorscale
+    #        marker["showscale"]  = True
+
+    #        if colorbar_title is not None:
+    #            marker["colorbar"] = {"title": colorbar_title}
+
+    #        if color_range is not None:
+    #            if len(color_range) != 2:
+    #                raise ValueError("SPECIE.VIEW: color_range must contain a minimum and maximum value")
+    #            marker["cmin"] = color_range[0]
+    #            marker["cmax"] = color_range[1]
+
+    #    fig = go.Figure()
+
+    #    fig.add_trace(go.Scatter3d(
+    #        x=positions[:, 0],
+    #        y=positions[:, 1],
+    #        z=positions[:, 2],
+    #        mode='markers',
+    #        marker=marker,
+    #        hoverinfo='text',
+    #        text=symbols,
+    #        showlegend=False,
+    #    ))
+
+    #    fig.add_trace(go.Scatter3d(
+    #        x=positions[:, 0],
+    #        y=positions[:, 1],
+    #        z=positions[:, 2],
+    #        mode='text',
+    #        text=[str(index) for index in range(len(positions))] if show_indices else symbols,
+    #        textfont=dict(color='black', size=text_size),
+    #        hoverinfo='none',
+    #        showlegend=False,
+    #    ))
+
+    #    for i, j in unique_bonds:
+    #        fig.add_trace(go.Scatter3d(
+    #            x=[positions[i, 0], positions[j, 0]],
+    #            y=[positions[i, 1], positions[j, 1]],
+    #            z=[positions[i, 2], positions[j, 2]],
+    #            mode='lines',
+    #            line=dict(color='gray', width=5),
+    #            hoverinfo='none',
+    #            showlegend=False,
+    #        ))
+
+    #    set_scene(fig, positions, width=width, height=height)
+    #    fig.show()
+
     ###########################
     ### Other Dunder Methods ##
     ###########################
