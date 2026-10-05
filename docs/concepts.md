@@ -41,6 +41,7 @@ This usually means updating states, computations, or data containers so later st
 ## Data, Collection, And VNM
 These classes organize results after or alongside registration.
 They store parsed quantities, derived values, and grouped analysis data.
+`Data` and `Collection` record calculation settings and expose `check_settings(dictionary)` to compare complete setting names and values.
 
 ## Scope Input Files
 Scope input files describe tasks that `scope run` should carry out on a system.

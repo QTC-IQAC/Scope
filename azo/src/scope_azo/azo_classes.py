@@ -552,7 +552,7 @@ class System_azo(System):
     #######################
     ## Thermal Stability ##
     #######################
-    def get_mets(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, force: bool=False, p_sh: float=0.0002, debug: int=0):
+    def get_mets(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, p_sh: float=0.0002, force: bool=False, vib_options: dict=None, debug: int=0):
         '''
         Find the minimum-energy transition structure (METS) for thermal isomerization (cis-to-trans).
 
@@ -576,9 +576,10 @@ class System_azo(System):
         temp : float, default=298.15           Temperature in Kelvin used to retrieve/compute thermal free energies.
         target_state : str, default='opt'      Name of the state to inspect in each source (for example, `'opt'`).
         skip_triplets : bool, default=False    If `True`, triplet minima are ignored and only singlet TS candidates are used.
-        force : bool, default=False            If `False` and `self.mets` already exists, the cached value is returned.
-                                               If `True`, candidates are recomputed from current sources/results.         
         p_sh : float, optional                 The probability of surface hopping. The default is 0.0002.
+        force : bool, default=False            Force recomputation of candidate thermal properties.
+                                               Candidates are always scanned and METS is reselected.
+        vib_options : dict, optional           model, FR_cutoff (cm-1), FR_alpha, and imaginary treatment.
         debug : int, default=0                 Verbosity level for diagnostic prints.
 
         Returns
@@ -592,7 +593,9 @@ class System_azo(System):
         ValueError
             If no valid candidates are found (for example, empty candidate list).
         '''
-        if hasattr(self,"mets") and not force: return self.mets
+        from scope.thermodynamics import normalize_vib_options
+        vib_options = normalize_vib_options(vib_options)
+        child_debug = max(debug - 1, 0)
 
         ts_names    = []
         ts_energies = []
@@ -622,8 +625,11 @@ class System_azo(System):
                     if debug > 0: print(f'SYSTEM_AZO.GET_METS: The target state in source {sou.name} has no VNMs. Skipping')
                     continue
 
+            else:
+                continue
+
             # Searches Gtot entry
-            energy = state.get_gtot_eff(temp, p_sh=p_sh, overwrite=force, debug=debug).convert_to_units('au').value
+            energy = state.get_gtot_eff(temp, p_sh=p_sh, overwrite=force, vib_options=vib_options, debug=child_debug).convert_to_units('au').value
             if energy is None: 
                 raise Exception (f'SYSTEM_AZO.GET_METS: Could not fint Gtot_eff({temp}) for {sou.name}.')
             ts_names.append(sou.name)
@@ -637,6 +643,7 @@ class System_azo(System):
                 print(f'\t{ts_names[idx]} {ts_energies[idx]}')        
             
         # Choosing Minimum Energy TS (mets)
+        if not ts_energies: raise ValueError("SYSTEM_AZO.GET_METS: No eligible transition structures found")
         min_idx     = int(np.argmin(ts_energies)) 
         mets        = ts_names[min_idx]        
         self.mets   = self.find_source(mets)[1]
@@ -644,7 +651,14 @@ class System_azo(System):
         return self.mets
 
     ######
-    def get_thermal_stability(self, target_state: str, temp: float=298.15, debug: int=0):
+    def get_thermal_stability(self, target_state: str, temp: float=298.15, overwrite: bool=False, vib_options: dict=None, debug: int=0):
+        """Calculate cis/trans thermal stability with consistent vibrational options.
+
+        Parameters:
+            vib_options (dict):         model, FR_cutoff, FR_alpha, and imaginary treatment.
+            overwrite (bool):           Force recomputation of contributing thermal results.
+            debug (int):                Verbosity; child functions receive debug - 1.
+        """
         # Finds Trans and Target State
         found, trans = self.find_source('trans')
         if not found:       raise Exception('SYSTEM_AZO.get_thermal_stability: Trans source not found.')
@@ -658,8 +672,8 @@ class System_azo(System):
         if not found_state: raise Exception(f'SYSTEM_AZO.get_thermal_stability: Target state: {target_state} not found.')
 
         # Getting the energy of the Trans and Cis isomers
-        gtot_trans = trans_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
-        gtot_cis   = cis_state.get_gtot_eff(temp=temp, debug=debug).convert_to_units('au').value
+        gtot_trans = trans_state.get_gtot_eff(temp=temp, overwrite=overwrite, vib_options=vib_options, debug=max(debug - 1, 0)).convert_to_units('au').value
+        gtot_cis   = cis_state.get_gtot_eff(temp=temp, overwrite=overwrite, vib_options=vib_options, debug=max(debug - 1, 0)).convert_to_units('au').value
 
         dE = (gtot_cis - gtot_trans) * constants.har2kJmol/constants.kcalmol2kJmol ## Returns value in Kcal/mol
         dE_data = Data("dG_cis-trans",dE,'kcal/mol',"system_azo.get_thermal_stability()")
@@ -667,23 +681,27 @@ class System_azo(System):
         return dE_data
 
     ######
-    def get_trans_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, p_sh: float=0.0002, debug: int=0):
+    def get_trans_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, p_sh: float=0.0002, overwrite: bool=False, vib_options: dict=None, debug: int=0):
+        """Calculate thermal half-life with consistent vibrational options.
+
+        Parameters:
+            vib_options (dict):         model, FR_cutoff, FR_alpha, and imaginary treatment.
+            overwrite (bool):           Force recomputation of contributing thermal results.
+            debug (int):                Verbosity; child functions receive debug - 1.
+        """
         from scope.thermodynamics import eyring_equation
-        '''
-        
-        '''
         found, source = self.find_source('trans')
         if not found:       raise Exception('SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Trans source not found.')
         found_state, ground_state = source.find_state(target_state)
         if not found_state: raise Exception(f'SYSTEM_AZO.GET_TRANS_HALFLIFE_TIME: Target state: {target_state} not found.')
 
         # Getting the energy of the Trans and Cis isomers
-        gtot_trans = ground_state.get_gtot_eff(temp=temp, p_sh=p_sh, debug=debug).convert_to_units('au').value
+        gtot_trans = ground_state.get_gtot_eff(temp=temp, p_sh=p_sh, overwrite=overwrite, vib_options=vib_options, debug=max(debug - 1, 0)).convert_to_units('au').value
 
         # Getting the energy of the METS (Minimum Energy Transition State)
-        mets = self.get_mets(temp=temp, target_state=target_state, skip_triplets=skip_triplets, p_sh=p_sh, debug=debug)
+        mets = self.get_mets(temp=temp, target_state=target_state, skip_triplets=skip_triplets, p_sh=p_sh, force=overwrite, vib_options=vib_options, debug=max(debug - 1, 0))
         found, mets_state = mets.find_state(target_state)
-        gtot_mets = mets_state.get_gtot_eff(temp=temp, p_sh=p_sh, debug=debug).convert_to_units('au').value
+        gtot_mets = mets_state.get_gtot_eff(temp=temp, p_sh=p_sh, overwrite=overwrite, vib_options=vib_options, debug=max(debug - 1, 0)).convert_to_units('au').value
         
         #Computing halflife time (t05) and kinetic constant (k)
         t05, k_th = eyring_equation(gtot_trans, gtot_mets, temp)
@@ -708,23 +726,27 @@ class System_azo(System):
         return self.results['trans_halflife_time']
         
     ######
-    def get_cis_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, p_sh: float=0.0002, debug: int=0):
+    def get_cis_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, p_sh: float=0.0002, overwrite: bool=False, vib_options: dict=None, debug: int=0):
+        """Calculate thermal half-life with consistent vibrational options.
+
+        Parameters:
+            vib_options (dict):         model, FR_cutoff, FR_alpha, and imaginary treatment.
+            overwrite (bool):           Force recomputation of contributing thermal results.
+            debug (int):                Verbosity; child functions receive debug - 1.
+        """
         from scope.thermodynamics import eyring_equation
-        '''
-        
-        '''
         found, source = self.find_source('cis')
         if not found:       raise Exception('SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: cis source not found.')
         found_state, ground_state = source.find_state(target_state)
         if not found_state: raise Exception(f'SYSTEM_AZO.GET_CIS_HALFLIFE_TIME: Target state: {target_state} not found.')
 
         # Getting the energy of the Trans and Cis isomers
-        gtot_cis = ground_state.get_gtot_eff(temp=temp, p_sh=p_sh, debug=debug).convert_to_units('au').value
+        gtot_cis = ground_state.get_gtot_eff(temp=temp, p_sh=p_sh, overwrite=overwrite, vib_options=vib_options, debug=max(debug - 1, 0)).convert_to_units('au').value
 
         # Getting the energy of the METS (Minimum Energy Transition State)
-        mets = self.get_mets(temp=temp, target_state=target_state, skip_triplets=skip_triplets, p_sh=p_sh, debug=debug)
+        mets = self.get_mets(temp=temp, target_state=target_state, skip_triplets=skip_triplets, p_sh=p_sh, force=overwrite, vib_options=vib_options, debug=max(debug - 1, 0))
         found, mets_state = mets.find_state(target_state)
-        gtot_mets = mets_state.get_gtot_eff(temp=temp, p_sh=p_sh, debug=debug).convert_to_units('au').value
+        gtot_mets = mets_state.get_gtot_eff(temp=temp, p_sh=p_sh, overwrite=overwrite, vib_options=vib_options, debug=max(debug - 1, 0)).convert_to_units('au').value
         
         #Computing halflife time (t05) and kinetic constant (k)
         t05, k_th = eyring_equation(gtot_cis, gtot_mets, temp)
@@ -751,7 +773,7 @@ class System_azo(System):
     ########################
     ## Optical Properties ##
     ########################
-    def get_PSS(self, lamp_name: str="default", target_state: str = 'opt', temp: float=298.15, phi_EZ: float=0.3, phi_ZE: float=0.5, pw_int: float=1.0, trans_k=None, cis_k=None, lmin: float=200, lmax: float=1000, debug=0):
+    def get_PSS(self, lamp_name: str="default", target_state: str = 'opt', temp: float=298.15, phi_EZ: float=0.3, phi_ZE: float=0.5, pw_int: float=1.0, trans_k=None, cis_k=None, lmin: float=200, lmax: float=1000, vib_options: dict=None, debug: int=0):
         """
         Creates and initializes a PSS object for this azo system using thermal and
         photochemical rates.
@@ -766,8 +788,8 @@ class System_azo(System):
         - Finds cis/trans sources and the requested target state in each source.
         - Computes absorption spectra for both isomers in the same wavelength range.
         - Resolves thermal rates:
-          - Uses existing 'trans_k'/'cis_k' rates if provided and consistent with 'temp'.
-          - Otherwise computes/retrieves them from system results.
+          - Uses explicitly provided 'trans_k'/'cis_k' rates directly.
+          - Otherwise evaluates them at 'temp' with the requested vibrational options.
         - Builds a `PSS` object and attaches the selected lamp profile.
         - Applies lamp power/intensity scaling with `pw_int`.
         - Computes and stores PSS spectra for all lamp wavelengths.
@@ -780,10 +802,11 @@ class System_azo(System):
         phi_EZ       : float, optional   Quantum yield for trans -> cis photoisomerization. Default is 0.3.
         phi_ZE       : float, optional   Quantum yield for cis -> trans photoisomerization. Default is 0.5.
         pw_int       : float, optional   Lamp power/intensity scaling factor, used to adjust the lamp power intensity. Default is 1.0 (100%).        
-        trans_k      : float, optional   Thermal rate constant for trans -> cis (s^-1). If `None`, it is computed or retrieved from stored results.
-        cis_k        : float, optional   Thermal rate constant for cis -> trans (s^-1). If `None`, it is computed or retrieved from stored results.
+        trans_k      : float, optional   Thermal rate constant for trans -> cis (s^-1). If `None`, it is evaluated with vib_options.
+        cis_k        : float, optional   Thermal rate constant for cis -> trans (s^-1). If `None`, it is evaluated with vib_options.
         lmin         : float, optional   Minimum wavelength (nm) for absorption spectra. Default is 200.
         lmax         : float, optional   Maximum wavelength (nm) for absorption spectra. Default is 1000.
+        vib_options  : dict, optional    model, FR_cutoff (cm-1), FR_alpha, and imaginary treatment for thermal rates.
         debug        : int, optional     Debug level. 0: silent, >0: verbose.
 
         Returns
@@ -804,24 +827,15 @@ class System_azo(System):
         assert all(trans_x == cis_x)
         if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Spectra of cis and trans computed") 
 
-        # Thermal rates are normally extracted, but can be provided as well
-        if trans_k is None: 
-            if not 'rate_thermal_trans2cis' in self.results: self.get_trans_halflife_time(temp=temp, target_state=target_state, debug=debug) # Computed if not exists 
+        # Reuses state thermochemistry when compatible; explicitly supplied rates are used directly.
+        if trans_k is None:
+            self.get_trans_halflife_time(temp=temp, target_state=target_state, vib_options=vib_options, debug=max(debug - 1, 0))
             trans_k = self.results['rate_thermal_trans2cis'].value
-        else:
-            if self.results['rate_thermal_trans2cis'].temperature == temp:
-                trans_k = float(trans_k)
-            else:
-                trans_k = self.get_trans_halflife_time(temp=temp, target_state=target_state, debug=debug).value  # Computed if exists, but wrong temperature
-
-        if cis_k is None: 
-            if not 'rate_thermal_cis2trans'   in self.results: self.get_cis_halflife_time(temp=temp, target_state=target_state, debug=debug) # Computed if not exists 
-            cis_k   = self.results['rate_thermal_cis2trans'].value
-        else:
-            if self.results['rate_thermal_cis2trans'].temperature == temp:
-                cis_k = float(cis_k)
-            else:
-                cis_k = self.get_cis_halflife_time(temp=temp, target_state=target_state, debug=debug).value # Computed if exists, but wrong temperature 
+        else: trans_k = float(trans_k)
+        if cis_k is None:
+            self.get_cis_halflife_time(temp=temp, target_state=target_state, vib_options=vib_options, debug=max(debug - 1, 0))
+            cis_k = self.results['rate_thermal_cis2trans'].value
+        else: cis_k = float(cis_k)
 
         if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Obtained Cis and Trans halflife times")
         if debug > 0: print(f"SYSTEM_AZO.GET_PSS: Creating PSS-Class object")
@@ -838,7 +852,8 @@ class System_azo(System):
         return self.PSS
 
     ######
-    def plot_energy_profile(self, target_state: str='opt', temperature: float=298.15):
+    def plot_energy_profile(self, target_state: str='opt', temperature: float=298.15, vib_options: dict=None, debug: int=0):
+        """Plot effective free energies using common model and imaginary-frequency options."""
         import matplotlib.pyplot as plt
 
         #####################
@@ -854,10 +869,10 @@ class System_azo(System):
         found_cis_state, cis_state = cis.find_state(target_state)
         if not found_cis_state: raise Exception(f"SYSTEM_AZO.PLOT_ENERGY_PROFILE: target_state='{target_state}' not found in cis.")
 
-        g_trans = trans_state.get_gtot_eff(temp=temperature)
+        g_trans = trans_state.get_gtot_eff(temp=temperature, vib_options=vib_options, debug=max(debug - 1, 0))
         if g_trans is None:
             raise ValueError(f"SYSTEM_AZO.PLOT_ENERGY_PROFILE: Gibbs Free Energy cannot be computed for the target_state='{target_state}' of {trans_state._source.name}.")
-        g_cis   = cis_state.get_gtot_eff(temp=temperature)
+        g_cis   = cis_state.get_gtot_eff(temp=temperature, vib_options=vib_options, debug=max(debug - 1, 0))
         if g_cis is None:
             raise ValueError(f"SYSTEM_AZO.PLOT_ENERGY_PROFILE: Gibbs Free Energy cannot be computed for the target_state='{target_state}' of {cis_state._source.name}.")
         g_trans = g_trans.convert_to_units('au').value
@@ -876,13 +891,13 @@ class System_azo(System):
             elif source.spin == 0:   include_as_ts = hasattr(state, "is_ts") and state.is_ts
             if not include_as_ts: continue
 
-            energy = state.get_gtot_eff(temp=temperature)
+            energy = state.get_gtot_eff(temp=temperature, vib_options=vib_options, debug=max(debug - 1, 0))
             if energy is not None:
                 ts_names.append(source.name)
                 ts_energies.append(energy.convert_to_units('au').value)
 
         if len(ts_energies) == 0: raise ValueError("SYSTEM_AZO.PLOT_ENERGY_PROFILE: No TS-like sources found for the requested target_state.")
-        mets = self.get_mets(temp=temperature, target_state=target_state)
+        mets = self.get_mets(temp=temperature, target_state=target_state, vib_options=vib_options, debug=max(debug - 1, 0))
         mets_name = mets.name
 
         conv = constants.har2kJmol * constants.kJmol2kcalmol
@@ -1340,47 +1355,57 @@ class State_azo(State):
     ################################
     ## Thermal Properties for Azo ##
     ################################
-    def get_gtot_eff(self, temp: float=298.15, p_sh: float=0.0002, overwrite: bool=False, debug: int=0):
-        from math import log as ln
+    def get_gtot_eff(self, temp: float=298.15, p_sh: float=0.0002, overwrite: bool=False, vib_options: dict=None, debug: int=0):
         '''
-        Corrects the Gtot of a triplet Molecule_azo object using the Gtot of the parent Molecule_azo object. 
-        Correction is done considering the increase of energy due to surface hopping between the singlet and triplet PESs. 
+        Corrects the Gtot of a Triplet State to account for the surface hopping probability (p_sh) between the singlet and triplet PESs.
 
         Parameters
         ----------
         temp : float, optional         The temperature in Kelvin. The default is 298.15 K.
         p_sh : float, optional         The probability of surface hopping. The default is 0.0002.
-        overwrite : bool, optional     Whether to overwrite the existing Gtot_eff value. The default is False.
+        overwrite : bool, optional     Force recomputation even when settings match.
+        vib_options : dict, optional   model ('HO' or 'QRRHO'), FR_cutoff (cm-1), FR_alpha, and imaginary treatment.
+                                       Changed settings automatically replace affected results.
         debug : int, optional          The debug level. The default is 0
         '''
+        from math import log as ln
+        from scope.thermodynamics import normalize_vib_options
+        vib_options = normalize_vib_options(vib_options)
+
         # Verifies it has VNMs
         if not hasattr(self,"VNMs"): 
             print(f'STATE_AZO.GET_Gtot_EFF: State {self.name} does not have VNMs, returning None.')
             return None 
 
-        # Computes or retrieves Gtot using the default SCOPE thermochemistry settings
-        self.get_thermal_data(temp=temp, overwrite=overwrite, debug=debug)
+        # Validate triplet hopping before changing thermal results
+        if self._source.spin == 2:
+            try: p_sh = float(p_sh)
+            except (TypeError, ValueError) as exc: raise TypeError("STATE_AZO.GET_GTOT_EFF: p_sh must be numeric") from exc
+            if not np.isfinite(p_sh) or p_sh <= 0.0 or p_sh > 1.0: raise ValueError("STATE_AZO.GET_GTOT_EFF: p_sh must be finite, larger than zero and no larger than one")
+
+        # Computes or retrieves Gtot using the requested thermochemistry settings
+        self.get_thermal_data(temp=temp, overwrite=overwrite, vib_options=vib_options, debug=max(debug - 1, 0))
         gtot = self.results['Gtot'].find_value_with_property("temperature", temp)
         if gtot is None: raise Exception (f'STATE_AZO.GET_Gtot_EFF: Gtot for State {self.name} at {temp=} not found.')
         gtot = gtot.convert_to_units("au")
 
         # Gtot_eff must use the same thermochemistry settings as Gtot. The surface-hopping probability is relevant only for triplets
         gtot_eff_settings = {setting: getattr(gtot, setting) for setting in getattr(gtot, "settings", [])}
-        if self._source.spin == 2:
-            try: p_sh = float(p_sh)
-            except (TypeError, ValueError) as exc: raise TypeError(f'STATE_AZO.GET_GTOT_EFF: p_sh must be numeric. It is {p_sh}') from exc
-            if p_sh <= 0.0 or p_sh > 1.0: raise ValueError(f'STATE_AZO.GET_GTOT_EFF: p_sh must be larger than zero and no larger than one. It is {p_sh}')
-            gtot_eff_settings['p_sh'] = p_sh
+        if self._source.spin == 2: gtot_eff_settings['p_sh'] = p_sh
 
-        # Reuses a result only when all calculation settings coincide
-        if not overwrite and 'Gtot_eff' in self.results and isinstance(self.results['Gtot_eff'], Collection):
-            gtot_eff_col = self.results['Gtot_eff']
-            stored_settings = {setting: getattr(gtot_eff_col, setting) for setting in getattr(gtot_eff_col, "settings", [])}
-            if stored_settings != gtot_eff_settings: raise ValueError(f'STATE_AZO.GET_GTOT_EFF: Stored Gtot_eff data use {stored_settings}, while the requested settings are {gtot_eff_settings}. Use overwrite=True to replace Gtot_eff')
+        # Reuses only compatible results derived from the current Gibbs energies
+        gtot_eff_col = self.results.get('Gtot_eff')
+        replace = overwrite or not isinstance(gtot_eff_col, Collection) or not gtot_eff_col.check_settings(gtot_eff_settings)
+        if not replace:
+            for data in gtot_eff_col.datas:
+                current_gtot = self.results['Gtot'].find_value_with_property("temperature", data.temperature)
+                if getattr(data, '_gtot', None) is not current_gtot:
+                    replace = True
+                    break
+        if replace: gtot_eff_col = Collection("Gtot_eff", "temperature")
+        else:
             gtot_eff_data = gtot_eff_col.find_value_with_property("temperature", temp)
             if gtot_eff_data is not None: return gtot_eff_data
-        else:
-            gtot_eff_col = Collection("Gtot_eff", "temperature")
 
         if self._source.spin == 2:
             # Compute the Penalty, based on Surface Hopping Probability (p_sh)
@@ -1396,6 +1421,7 @@ class State_azo(State):
         gtot_eff_data.add_property("temperature", temp, overwrite=True)
         for setting, value in gtot_eff_settings.items(): gtot_eff_data.add_setting(setting, value, overwrite=True)
         gtot_eff_data.vib_options = gtot.vib_options.copy() if hasattr(gtot, 'vib_options') else None
+        gtot_eff_data._gtot = gtot
         gtot_eff_col.add_data(gtot_eff_data)
 
         # Add the Gtot_eff Collection as a result

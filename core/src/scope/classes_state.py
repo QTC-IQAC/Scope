@@ -223,25 +223,6 @@ class State(object):
         return self._z 
     
     ######
-    #def set_atoms(self, debug: int=0):
-    #    """
-    #    Collect atom objects from the stored molecules.
-    #    It is similar from set_atoms() in Cell, but differs in the search for parent structures
-    #    """
-    #    if not hasattr(self,"molecules"): 
-    #        if debug > 0: print(f"STATE.SET_ATOMS: generating molecules")
-    #        self.get_molecules(debug=debug)
-
-    #    self.atoms = []
-    #    tmp_indices = []
-    #    for mol in self.molecules:
-    #        for at in mol.atoms:
-    #            tmp_indices.append(at.get_parent_index(self._source.object_subtype))  ## We get the index of the atom in the source of this state
-    #            self.atoms.append(at)
-    #    self.atoms = [x for _, x in sorted(zip(tmp_indices, self.atoms), key=lambda pair: pair[0])]
-    #    return self.atoms
-
-    ######
     def get_occurrence(self, substructure: object, debug: int=0) -> int:
         """
         Count how many times a substructure appears in the state.
@@ -683,208 +664,116 @@ class State(object):
 #### Get Thermodynamic Data ####
 ################################
     def get_thermal_data(self, temp: float=298.15, Helec=None, Selec=None, Hvib=None, Svib=None, Gtot=None, overwrite: bool=False, vib_options: dict=None, debug: int=0):
-        from scope.thermodynamics import get_Selec, get_Hvib, get_Svib, get_Gibbs
-        ## Computes and Stores Helec, Selec as Data in self.results
-        ## Computes and Stores Hvib, Svib and Gtot as Collection in self.results. These will always be collections even with only one data point
+        """Computes and Handles Thermochemistry results
 
-        ############## Input Validation ##############
-        # Validate and normalize the vibrational options. QRRHO parameters are ignored for HO calculations
-        if vib_options is None: vib_options = {}
-        if not isinstance(vib_options, dict): raise TypeError(f"STATE.GET_THERMAL_DATA: vib_options must be a dictionary. It is {type(vib_options)}")
-        allowed_vib_options   = {'typ', 'FR_cutoff', 'FR_alpha', 'imaginary'}
-        unknown_vib_options   = set(vib_options) - allowed_vib_options
-        requested_vib_options = {'typ': 'HO', 'FR_cutoff': 100.0, 'FR_alpha': 4.0, 'imaginary': 'ignore'}
-        if len(unknown_vib_options) > 0: raise ValueError(f"STATE.GET_THERMAL_DATA: Unknown vibrational options: {sorted(unknown_vib_options)}. Choose from {sorted(allowed_vib_options)}")
-        requested_vib_options.update(vib_options)
+        Parameters:
+            temp:                       Temperature (in K) as a float or an iterable of temperatures.
+            Helec, Selec:               Optional enforced Data objects.
+            Hvib, Svib, Gtot:           Optional enforced Collections with Temperature as variable.
+            overwrite (bool):           Force replacement, including unchanged settings.
+            vib_options (dict):         model ('HO' or 'QRRHO'), FR_cutoff (cm-1), FR_alpha, and imaginary treatment.
+            debug (int):                Verbosity; child functions receive debug - 1.
 
-        Svib_typ = requested_vib_options['typ']
-        if not isinstance(Svib_typ, str): raise TypeError(f"STATE.GET_THERMAL_DATA: Svib_typ must be 'HO' or 'QRRHO'. It is {type(Svib_typ)}")
-        if   Svib_typ.lower() == 'ho':    Svib_typ = 'HO'
-        elif Svib_typ.lower() == 'qrrho': Svib_typ = 'QRRHO'
-        else: raise ValueError(f"STATE.GET_THERMAL_DATA: can't understand vibrational entropy model: {Svib_typ}. Choose 'HO' or 'QRRHO'")
-        imaginary = requested_vib_options['imaginary']
-        if not isinstance(imaginary, str): raise TypeError(f"STATE.GET_THERMAL_DATA: imaginary must be 'ignore', 'absolute', or 'raise'. It is {type(imaginary)}")
-        imaginary = imaginary.lower()
-        if imaginary not in ['ignore', 'absolute', 'raise']: raise ValueError(f"STATE.GET_THERMAL_DATA: can't understand imaginary-frequency treatment: {imaginary}. Choose 'ignore', 'absolute', or 'raise'")
-        FR_cutoff = requested_vib_options['FR_cutoff']
-        FR_alpha  = requested_vib_options['FR_alpha']
-        if Svib_typ == 'QRRHO':
-            try:
-                FR_cutoff = float(FR_cutoff)
-                FR_alpha  = float(FR_alpha)
-            except (TypeError, ValueError) as exc:
-                raise TypeError(f"STATE.GET_THERMAL_DATA: FR_cutoff and FR_alpha must be numeric. They are {FR_cutoff} and {FR_alpha}") from exc
-            if FR_cutoff <= 0: raise ValueError(f"STATE.GET_THERMAL_DATA: FR_cutoff must be larger than zero. It is {FR_cutoff}")
-            if FR_alpha <= 0:  raise ValueError(f"STATE.GET_THERMAL_DATA: FR_alpha must be larger than zero. It is {FR_alpha}")
-        Hvib_options = {'imaginary': imaginary}
-        Svib_options = {'typ': Svib_typ, 'FR_cutoff': float(FR_cutoff) if Svib_typ == 'QRRHO' else None, 'FR_alpha': float(FR_alpha) if Svib_typ == 'QRRHO' else None, 'imaginary': imaginary}
+        The option "imaginary" in vib_options sets the policy towards imaginary frequencies. 
+        It applies when computing both Hvib and Svib:
+        - 'ignore' (default): excludes negative frequencies from vibrational terms;
+          the usual treatment for a transition-state reaction coordinate.
+        - 'absolute': uses their absolute values as real, positive frequencies;
+          a diagnostic comparison, not the usual transition-state treatment.
+        - 'raise': stops with ValueError upon encountering a negative frequency;
+          useful for checking intended minima, but expected to reject transition
+          states with imaginary modes. It does not simply skip the offending mode.
 
-        # Checks Z
-        if not hasattr(self,"z"): self.get_z(debug=debug)
-        if debug > 0:           print(f"STATE.GET_THERMAL_DATA: found {self.z} stoichiometric units")
+        Settings changes replace affected collections automatically. Gibbs energies
+        are refreshed when contributing results are replaced. Use overwrite=True
+        after changing source energies or frequencies without replacing results.
+        """
+        from scope.thermodynamics import get_Selec, get_Hvib, get_Svib, get_Gibbs, normalize_vib_options
+        Svib_options  = normalize_vib_options(vib_options)
+        Hvib_options  = {'imaginary': Svib_options['imaginary']}
+        Svib_settings = {'model': Svib_options['model']}
+        if Svib_options['model'] == 'QRRHO':
+            Svib_settings.update(fr_cutoff=Svib_options['FR_cutoff'], fr_alpha=Svib_options['FR_alpha'])
+        Svib_settings['imaginary'] = Svib_options['imaginary']
+        child_debug = max(debug - 1, 0)
 
-        # Checks T. It can be a single number, range, list, or any iterable of numeric temperatures.
-        if isinstance(temp, (int, float)):       temperatures = [temp]
-        elif isinstance(temp, range):            temperatures = list(temp)
+        # 0) Checks inputs before changing stored results
+        if isinstance(temp, (int, float)): temperatures = [temp]
         else:
-            try:
-                temperatures = list(temp)
-            except TypeError:
-                raise TypeError("STATE.GET_THERMAL_DATA: temp must be a number, range, list, or iterable of temperatures")
-        if len(temperatures) == 0:
-            raise ValueError("STATE.GET_THERMAL_DATA: temp cannot be empty")
-        if not all(isinstance(t, (int, float)) for t in temperatures):
-            raise TypeError("STATE.GET_THERMAL_DATA: all entries in temp must be numeric")
+            try: temperatures = list(temp)
+            except TypeError as exc: raise TypeError("STATE.GET_THERMAL_DATA: temp must be numeric or an iterable of temperatures") from exc
+        if not temperatures: raise ValueError("STATE.GET_THERMAL_DATA: temp cannot be empty")
+        if not all(isinstance(t, (int, float)) for t in temperatures): raise TypeError("STATE.GET_THERMAL_DATA: all temperatures must be numeric")
+        if (Hvib is None or Svib is None) and not hasattr(self, "VNMs"): raise ValueError("STATE.GET_THERMAL_DATA: Missing VNMs")
+        if 'energy' not in self.results or self.results['energy'] is None: raise ValueError("STATE.GET_THERMAL_DATA: Missing State energy")
+        for key, supplied in [('Helec', Helec), ('Selec', Selec)]:
+            if supplied is not None and not isinstance(supplied, Data): raise TypeError(f"STATE.GET_THERMAL_DATA: Provided {key} must be a Data object")
+        for key, supplied in [('Hvib', Hvib), ('Svib', Svib), ('Gtot', Gtot)]:
+            if supplied is None: continue
+            if not isinstance(supplied, Collection): raise TypeError(f"STATE.GET_THERMAL_DATA: Provided {key} must be a Collection")
+            if supplied.variable.lower() != 'temperature': raise ValueError(f"STATE.GET_THERMAL_DATA: Provided {key} must scan temperature")
+            for temperature in temperatures:
+                if supplied.find_value_with_property('temperature', temperature) is None: raise ValueError(f"STATE.GET_THERMAL_DATA: Provided {key} lacks temperature {temperature}")
+        if not hasattr(self, "z"): self.get_z(debug=child_debug)
 
-        # Svib and Hvib can be provided as Collection Objects, for cases in which the user wants to provide specific values.
-        if Hvib is None or Svib is None:
-            if not hasattr(self,"VNMs"): raise ValueError(f"STATE.GET_THERMAL_DATA: I can't compute thermal data on this state. Missing VNMs")
-        if not self.results["energy"]:   raise ValueError(f"STATE.GET_THERMAL_DATA: missing State energy value")
-    
-        ############## Helec ##############
-        if Helec is None:   ### One can provide specific values for Helec, Selec, Hvib, Svib and Gtot 
-            if overwrite or not "Helec" in self.results.keys():
-                self.add_result(Data("Helec",self.results["energy"].value/self.z,self.results["energy"].units,"state.get_thermal_data()"), overwrite=overwrite)
-        else: 
-            if not isinstance(Helec, Data):
-                raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Helec should be a Data class object. It is {type(Helec)}")
-            if overwrite or not "Helec" in self.results.keys():
-                self.add_result(Data("Helec",Helec.value,Helec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
-        if debug > 0: print(f"Helec is {self.results['Helec']}")
+        # 1) Stores electronic contributions
+        if overwrite or 'Helec' not in self.results:
+            if Helec is None: Helec = Data('Helec', self.results['energy'].value/self.z, self.results['energy'].units, 'state.get_thermal_data()')
+            else: Helec = Data('Helec', Helec.value, Helec.units, 'enforced in state.get_thermal_data()')
+            self.add_result(Helec, overwrite=True)
+        if overwrite or 'Selec' not in self.results:
+            if Selec is None: Selec = get_Selec(self.spin_multiplicity, outunits='au', nmol=self.z)
+            else: Selec = Data('Selec', Selec.value, Selec.units, 'enforced in state.get_thermal_data()')
+            self.add_result(Selec, overwrite=True)
 
-        ############## Selec ##############
-        if Selec is None:
-            if overwrite or not "Selec" in self.results.keys():
-                self.add_result(get_Selec(self.spin_multiplicity, outunits='au', nmol=self.z), overwrite=overwrite)
-        else: 
-            if not isinstance(Selec, Data):                raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Selec should be a Data class object. It is {type(Selec)}")
-            if overwrite or not "Selec" in self.results.keys():
-                self.add_result(Data("Selec",Selec.value,Selec.units,"enforced in state.get_thermal_data()"), overwrite=overwrite)
-        if debug > 0: print(f"Selec is {self.results['Selec']}")
+        # 2) Reuses compatible vibrational results and fills missing temperatures
+        for key, supplied, settings, options, calculate in [('Hvib', Hvib, Hvib_options, Hvib_options, get_Hvib), ('Svib', Svib, Svib_settings, Svib_options, get_Svib)]:
+            stored = self.results.get(key)
+            if supplied is not None:
+                if overwrite or stored is None: self.add_result(supplied, overwrite=True)
+                continue
+            replace = overwrite or not isinstance(stored, Collection) or not stored.check_settings(settings)
+            if replace:
+                stored = Collection(key, 'temperature')
+                if debug > 0: print(f"STATE.GET_THERMAL_DATA: Computing {key} with {settings}")
+            for temperature in temperatures:
+                if stored.find_value_with_property('temperature', temperature) is None:
+                    stored.add_data(calculate(self.freqs_cm, temperature, freq_units='cm', outunits='au', nmol=self.z, **options, debug=child_debug))
+            self.add_result(stored, overwrite=True)
 
-        ############## Hvib ##############
-        if Hvib is None:
-            if overwrite or not "Hvib" in self.results.keys():
-                Hvib = Collection("Hvib", "temperature")
-                for temp in temperatures:
-                    Hvib.add_data(get_Hvib(self.freqs_cm, temp, freq_units='cm', outunits='au', nmol=self.z, **Hvib_options, debug=debug))
-                self.add_result(Hvib, overwrite=overwrite)
-            elif not overwrite and "Hvib" in self.results.keys():  ## Checks that all temperatures requested exist in Hvib
-                Hvib = self.results["Hvib"]
-                for data in Hvib.datas:
-                    stored_Hvib_options = getattr(data, 'vib_options', None)
-                    if stored_Hvib_options != Hvib_options: raise ValueError(f"STATE.GET_THERMAL_DATA: Stored Hvib data use {stored_Hvib_options}, while the requested settings are {Hvib_options}. Use overwrite=True to replace Hvib and Gtot")
-                missing_data = False
-                for temp in temperatures:
-                    result = Hvib.find_value_with_property('temperature', temp)
-                    if result is None:
-                        missing_data = True
-                        Hvib.add_data(get_Hvib(self.freqs_cm, temp, freq_units='cm', outunits='au', nmol=self.z, **Hvib_options, debug=debug))
-                if missing_data: self.add_result(Hvib, overwrite=True)
-        else: 
-            if not isinstance(Hvib, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Hvib should be a Collection class object. It is {type(Hvib)}")
-            if not Hvib.variable.lower() == "temperature": raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Hvib Collection has {Hvib.variable}, while it should be 'temperature'")
-            for temp in temperatures:
-                if not Hvib.find_value_with_property('temperature', temp): raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Hvib Collection lacks value for the requested temperature {temp}")
-            if overwrite or not "Hvib" in self.results.keys():
-                self.add_result(Hvib, overwrite=overwrite)
-        if debug > 0: print(f"Hvib is {self.results['Hvib']}")
-
-        ############## Svib ##############
-        if Svib is None:
-            if overwrite or not "Svib" in self.results.keys():
-                Svib = Collection("Svib", "temperature")
-                for temp in temperatures:
-                    Svib.add_data(get_Svib(self.freqs_cm, temp, freq_units='cm', outunits='au', nmol=self.z, **Svib_options, debug=debug))
-                self.add_result(Svib, overwrite=overwrite)
-            elif not overwrite and "Svib" in self.results.keys():  ## Checks that all temperatures requested exist in Svib
-                Svib = self.results["Svib"]
-                for data in Svib.datas:
-                    stored_Svib_options = getattr(data, 'vib_options', None)
-                    if stored_Svib_options != Svib_options: raise ValueError(f"STATE.GET_THERMAL_DATA: Stored Svib data use {stored_Svib_options}, while the requested settings are {Svib_options}. Use overwrite=True to replace Svib and Gtot")
-                missing_data = False
-                for temp in temperatures:
-                    result = Svib.find_value_with_property('temperature', temp)
-                    if result is None:
-                        missing_data = True
-                        Svib.add_data(get_Svib(self.freqs_cm, temp, freq_units='cm', outunits='au', nmol=self.z, **Svib_options, debug=debug))
-                if missing_data: self.add_result(Svib, overwrite=True)
-        else: 
-            if not isinstance(Svib, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Svib should be a Collection class object. It is {type(Svib)}")
-            if not Svib.variable.lower() == "temperature": raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Svib Collection has {Svib.variable}, while it should be 'temperature'")
-            for temp in temperatures:
-                if not Svib.find_value_with_property('temperature', temp): raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Svib Collection lacks value for the requested temperature {temp}")
-            if overwrite or not "Svib" in self.results.keys():
-                self.add_result(Svib, overwrite=overwrite)
-        if debug > 0: print(f"Svib is {self.results['Svib']}")
-
-        ############## Gtot ##############
-        if Gtot is None:
-            if overwrite or not "Gtot" in self.results.keys():
-                Gtot = Collection("Gtot", "temperature")
-                for temp in temperatures:
-                    # Retrieve data (not value)
-                    Helec = self.results["Helec"]
-                    Selec = self.results["Selec"]
-                    Hvib_i = Hvib.find_value_with_property("temperature", temp)
-                    Svib_i = Svib.find_value_with_property("temperature", temp)
-                    assert Helec.units == Selec.units == Hvib_i.units == Svib_i.units, f"{Helec.units=}, {Selec.units=}, {Hvib_i.units=}, {Svib_i.units=}"
-                    key = "Gtot"
-                    value = get_Gibbs(Helec.value, Hvib_i.value, Selec.value, Svib_i.value, temp)
-                    units = Helec.units
-                    function = "state.get_thermal_data()"
-                    new_data = Data(key, value, units, function)
-                    new_data.add_property("temperature", temp, overwrite=overwrite)
-                    Gtot_Svib_typ = str(getattr(Svib_i, 'svib_typ', 'HO')).upper()
-                    new_data.add_setting("svib_typ", Gtot_Svib_typ, overwrite=True)
-                    Gtot_vib_options = Svib_i.vib_options.copy() if hasattr(Svib_i, 'vib_options') else None
-                    if Gtot_Svib_typ == 'QRRHO':
-                        new_data.add_setting("fr_cutoff", Svib_i.fr_cutoff, overwrite=True)
-                        new_data.add_setting("fr_alpha", Svib_i.fr_alpha, overwrite=True)
-                    new_data.add_setting("imaginary", getattr(Svib_i, 'imaginary', None), overwrite=True)
-                    new_data.vib_options = Gtot_vib_options
-                    Gtot.add_data(new_data)
-                self.add_result(Gtot, overwrite=overwrite)
-            elif not overwrite and "Gtot" in self.results.keys():  ## Checks that all temperatures requested exist in Gtot. And Computes it if not
-                Gtot = self.results["Gtot"]
-                missing_data = False
-                for temp in temperatures:
-                    result = Gtot.find_value_with_property('temperature', temp)
-                    Svib_i = Svib.find_value_with_property("temperature", temp)
-                    current_vib_options = getattr(Svib_i, 'vib_options', None)
-                    if result is not None:
-                        stored_vib_options = getattr(result, 'vib_options', None)
-                        if stored_vib_options != current_vib_options: raise ValueError(f"STATE.GET_THERMAL_DATA: Stored Gtot data use {stored_vib_options}, while the current vibrational settings are {current_vib_options}. Use overwrite=True to replace Gtot")
-                    if result is None:
-                        missing_data = True
-                        Helec = self.results["Helec"]
-                        Selec = self.results["Selec"]
-                        Hvib_i = Hvib.find_value_with_property("temperature", temp)
-                        assert Helec.units == Selec.units == Hvib_i.units == Svib_i.units, f"{Helec.units=}, {Selec.units=}, {Hvib_i.units=}, {Svib_i.units=}"
-                        key = "Gtot"
-                        value = get_Gibbs(Helec.value, Hvib_i.value, Selec.value, Svib_i.value, temp)
-                        units = Helec.units
-                        function = "state.get_thermal_data()"
-                        new_data = Data(key, value, units, function)
-                        new_data.add_property("temperature", temp, overwrite=overwrite)
-                        Gtot_Svib_typ = str(getattr(Svib_i, 'svib_typ', 'HO')).upper()
-                        new_data.add_setting("svib_typ", Gtot_Svib_typ, overwrite=True)
-                        Gtot_vib_options = Svib_i.vib_options.copy() if hasattr(Svib_i, 'vib_options') else None
-                        if Gtot_Svib_typ == 'QRRHO':
-                            new_data.add_setting("fr_cutoff", Svib_i.fr_cutoff, overwrite=True)
-                            new_data.add_setting("fr_alpha", Svib_i.fr_alpha, overwrite=True)
-                        new_data.add_setting("imaginary", getattr(Svib_i, 'imaginary', None), overwrite=True)
-                        new_data.vib_options = Gtot_vib_options
-                        Gtot.add_data(new_data)
-                if missing_data: self.add_result(Gtot, overwrite=True)  # Notice overwrite=true
-        else: 
-            if not isinstance(Gtot, Collection):           raise TypeError(f"STATE.GET_THERMAL_DATA: Provided Gtot should be a Collection class object. It is {type(Gtot)}")
-            if not Gtot.variable.lower() == "temperature": raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Gtot Collection has {Gtot.variable}, while it should be 'temperature'")
-            for temp in temperatures:
-                if not Gtot.find_value_with_property('temperature', temp): raise ValueError(f"STATE.GET_THERMAL_DATA: Provided Gtot Collection lacks value for the requested temperature {temp}")
-            if overwrite or not "Gtot" in self.results.keys():
-                self.add_result(Gtot, overwrite=overwrite)
-        if debug > 0: print(f"Gtot is {self.results['Gtot']}")
+        # 3) Refreshes Gibbs energies when settings or contributing results change
+        if Gtot is not None:
+            if overwrite or 'Gtot' not in self.results: self.add_result(Gtot, overwrite=True)
+        else:
+            Helec = self.results['Helec']
+            Selec = self.results['Selec']
+            Hvib  = self.results['Hvib']
+            Svib  = self.results['Svib']
+            Gtot_settings = {setting: getattr(Svib, setting) for setting in getattr(Svib, 'settings', [])}
+            stored_Gtot = self.results.get('Gtot')
+            replace = overwrite or not isinstance(stored_Gtot, Collection) or not stored_Gtot.check_settings(Gtot_settings)
+            if not replace:
+                for data in stored_Gtot.datas:
+                    inputs = (Helec, Selec, Hvib.find_value_with_property('temperature', data.temperature), Svib.find_value_with_property('temperature', data.temperature))
+                    previous = getattr(data, '_thermal_inputs', ())
+                    if len(previous) != len(inputs) or any(old is not current for old, current in zip(previous, inputs)):
+                        replace = True
+                        break
+            if replace: stored_Gtot = Collection('Gtot', 'temperature')
+            for temperature in temperatures:
+                if stored_Gtot.find_value_with_property('temperature', temperature) is not None: continue
+                Hvib_i = Hvib.find_value_with_property('temperature', temperature)
+                Svib_i = Svib.find_value_with_property('temperature', temperature)
+                assert Helec.units == Selec.units == Hvib_i.units == Svib_i.units, f"{Helec.units=}, {Selec.units=}, {Hvib_i.units=}, {Svib_i.units=}"
+                value = get_Gibbs(Helec.value, Hvib_i.value, Selec.value, Svib_i.value, temperature)
+                data = Data('Gtot', value, Helec.units, 'state.get_thermal_data()')
+                data.add_property('temperature', temperature)
+                for setting, setting_value in Gtot_settings.items(): data.add_setting(setting, setting_value)
+                data.vib_options = Svib_i.vib_options.copy() if hasattr(Svib_i, 'vib_options') else None
+                data._thermal_inputs = (Helec, Selec, Hvib_i, Svib_i)
+                stored_Gtot.add_data(data)
+            self.add_result(stored_Gtot, overwrite=True)
+        if debug > 0: print(f"STATE.GET_THERMAL_DATA: Thermal results available at {temperatures} K")
 
     ######
     def compute_PV_term(self, pressure: float = 101.325, overwrite: bool=False, debug: int=0):

@@ -18,6 +18,7 @@ class Collection(object):
     Methods:
         add_data():                     Append a compatible data point.
         add_setting():                  Register a setting shared by the collection.
+        check_settings():               Compare the complete recorded calculation settings.
         get_values():                   Return stored values as an array.
         get_variables():                Return scanned variables as an array.
         find_min():                     Retrieve the minimum-value entry.
@@ -61,6 +62,17 @@ class Collection(object):
             print(f"COLLECTION.ADD_SETTING: Setting {name} already exists")
             return None
         for data in self.datas: data.add_setting(name, value, overwrite=overwrite)
+
+    def check_settings(self, settings: dict) -> bool:
+        """Return whether all recorded settings and all entries match the dictionary.
+
+        Missing or additional settings return False. Temperature availability is
+        checked separately by the caller. This method does not modify results.
+        """
+        if not isinstance(settings, dict): raise TypeError("COLLECTION.CHECK_SETTINGS: settings must be a dictionary")
+        if set(getattr(self, "settings", [])) != set(settings): return False
+        if not all(hasattr(self, key) and np.array_equal(getattr(self, key), value) for key, value in settings.items()): return False
+        return all(data.check_settings(settings) for data in self.datas)
 
     def find_value_with_property(self, condition_name: str, condition_value):
         for idx, data in enumerate(self.datas):
@@ -177,6 +189,7 @@ class Data(object):
         set_subtype():                  Infer the subtype from units.
         add_property():                 Attach metadata to the result.
         add_setting():                  Attach a calculation setting to the result.
+        check_settings():               Compare the complete recorded calculation settings.
         format():                       Build a formatted string representation.
         convert_to_units():             Convert supported energy units.
         print_in_units():               Print the value in alternate units.
@@ -217,6 +230,15 @@ class Data(object):
         elif   hasattr(self, name) and overwrite: setattr(self, name, value)
         elif   getattr(self, name) != value:      print(f"DATA.ADD_SETTING: Setting {name} already exists")
         if hasattr(self, "formatted"): del self.formatted
+
+    def check_settings(self, settings: dict) -> bool:
+        """
+        Return whether external settings (settings) match the current ones in self
+        Missing or additional settings return False; no metadata are changed.
+        """
+        if not isinstance(settings, dict): raise TypeError("DATA.CHECK_SETTINGS: settings must be a dictionary")
+        if set(getattr(self, "settings", [])) != set(settings): return False
+        return all(hasattr(self, key) and np.array_equal(getattr(self, key), value) for key, value in settings.items())
 
     def format(self):
         if self.units == 'kj': units = 'kJ/mol'
