@@ -118,10 +118,10 @@ class VNM(object):
         """
         if not self.has_mode: raise ValueError("VNM.GET_ATOMIC_PARTICIPATION: No mode is stored")
         weighted_mode = self.mass_weight_mode(permanent=False)
-        contributions = np.sum(weighted_mode**2, axis=1)
-        norm = np.sum(contributions)
+        participation = np.sum(weighted_mode**2, axis=1)
+        norm          = np.sum(participation)
         if not np.isfinite(norm) or norm <= 0.0: raise ValueError("VNM.GET_ATOMIC_PARTICIPATION: Mode has an invalid norm")
-        return contributions / norm
+        return participation / norm
     
     def write_dyn(self, initial_coord: list, amplitude: int=10, outfolder: str='./', labels: None=list, name: str=None):
         ## Writes a file with a trajectory representing the displacement of the VNM
