@@ -4,6 +4,9 @@
 *.gz
 .pypirc
 
+# Temporary
+/core/src/scope/import_system.py
+
 # Editable install / build artifacts
 *.egg-info/
 dist/
