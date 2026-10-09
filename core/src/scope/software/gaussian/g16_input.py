@@ -184,7 +184,7 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
             print(f"", file=sub)
             print(f"JOBDIR=$PWD", file=sub)
             print(f"cd $TMPDIR", file=sub)
-            print(f"export GAUSS_SCRDIR $TMPDIR", file=sub)
+            print('export GAUSS_SCRDIR="$TMPDIR"', file=sub)
             print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
             print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
             print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
@@ -209,7 +209,7 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
             print(f"", file=sub)
             print(f"JOBDIR=$PWD", file=sub)
             print(f"cd $TMPDIR", file=sub)
-            print(f"export GAUSS_SCRDIR $TMPDIR", file=sub)
+            print('export GAUSS_SCRDIR="$TMPDIR"', file=sub)
             print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
             print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
             print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
@@ -302,7 +302,6 @@ def check_g16(module: str, debug: int=0) -> dict:
     commands = {
         'executable': 'command -v g16',
         'runtime': 'printf "g16root=%s\\nGAUSS_EXEDIR=%s\\nGAUSS_SCRDIR=%s\\n" "$g16root" "$GAUSS_EXEDIR" "$GAUSS_SCRDIR"',
-        'scratch': 'test -n "$GAUSS_SCRDIR" && test -d "$GAUSS_SCRDIR" && test -w "$GAUSS_SCRDIR"',
     }
     checks = run_module_checks(module, commands, debug=max(debug - 1, 0))
 
@@ -310,7 +309,6 @@ def check_g16(module: str, debug: int=0) -> dict:
     module_check = checks.get('module')
     executable   = checks.get('executable')
     runtime      = checks.get('runtime')
-    scratch      = checks.get('scratch')
     status       = 'inconclusive'
     warnings     = []
     if module_check is None or not module_check.ok:
@@ -321,7 +319,6 @@ def check_g16(module: str, debug: int=0) -> dict:
             if not executable.ok: warnings.append('g16 not found.')
 
         # 1) Inspect runtime settings. Batch jobs may supply these later.
-        if scratch is not None and not scratch.ok: warnings.append('GAUSS_SCRDIR unset/unwritable here; check batch-job setup.')
         if runtime is not None and 'GAUSS_EXEDIR=\n' in runtime.stdout + '\n': warnings.append('GAUSS_EXEDIR unset; check batch-job setup.')
     if 'session' in checks: warnings.append('Inspection incomplete.')
 
