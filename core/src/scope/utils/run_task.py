@@ -159,7 +159,10 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                         if debug > 0: print("RUN_TASK, step 3.2a: ignore_submitted=", options.ignore_submitted)
                         if debug > 0: print("RUN_TASK, step 3.2a: initial state is", comp.qc_data.istate)
                         if not comp.isrunning or options.ignore_submitted:       ## options.ignore_submitted will also be checked in comp.run 
-                            #comp.check_qc_data(inp_path=inp_path, debug=debug)
+                            # A stored completion flag cannot replace the required geometry.
+                            if not comp.verify_state(comp.qc_data.istate):
+                                if debug > 0: print(f"RUN_TASK, step 3.2a: initial state '{comp.qc_data.istate}' is missing or lacks geometry")
+                                continue
                             comp.run(global_env, options, debug=debug); updated = True
                     else: 
                         if debug > 0: print("RUN_TASK, step 3.2a: want_submit is False or comp.has_update")

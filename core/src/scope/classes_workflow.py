@@ -163,8 +163,8 @@ class Branch(object):
         else: 
             allgood  = False
             allfinished = False
-        if allgood:     self.isgood     = True
-        if allfinished: self.isfinished = True
+        self.isgood     = allgood
+        self.isfinished = allfinished
         self.isregistered = True
         if debug > 1: print("Registered Branch:", self.name, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
 
@@ -318,8 +318,8 @@ class Workflow(object):
         else: 
             allgood     = False
             allfinished = False
-        if allgood:                 self.isgood       = True
-        if allfinished:             self.isfinished   = True
+        self.isgood     = allgood
+        self.isfinished = allfinished
         self.isregistered = True
         if debug > 0: print("WORKFLOW.REGISTER: Registered Workflow:", self.name, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
 
@@ -484,7 +484,8 @@ class Job(object):
                 if to_delete.subfile_exists: os.remove(to_delete.sub_path) 
             del self.computations[found_idx]
             
-    def check_requisites(self, debug: int=0) -> None:
+    def check_requisites(self, debug: int=0) -> bool:
+        """Refresh related jobs and evaluate dependencies from their current status."""
         self.requisites_fulfilled = False
         self.constrains_fulfilled = False
         requisites_fulfilled = np.zeros((len(self.requisites)))  ## To be correct, all must be 1
@@ -499,8 +500,8 @@ class Job(object):
                 if debug > 1: print("JOB.CHECK_REQUISITES: Evaluating Job, isregistered:", job.isregistered)
                 if debug > 1: print("JOB.CHECK_REQUISITES: Evaluating Job, isgood:", job.isgood)
                 if debug > 1: print("JOB.CHECK_REQUISITES: Evaluating Job, isfinished:", job.isfinished)
-                if (job.name in self.requisites or job.name in self.constrains) and not job.isregistered: 
-                    if debug > 1: print("JOB.CHECK_REQUISITES: Registering Previous Unregistered Job", job.name)
+                if job.name in self.requisites or job.name in self.constrains:
+                    if debug > 1: print("JOB.CHECK_REQUISITES: Refreshing Previous Job", job.name)
                     job.register(debug=debug)
                     if debug > 1: print("JOB.CHECK_REQUISITES: Registered Job while checking requisites", job.name)
                     if debug > 1: print(job.name, job.isregistered, job.isgood, job.isfinished)
@@ -751,9 +752,12 @@ class Job(object):
         ##########################################################################
         allgood     = True
         allfinished = True
+        ncurrent    = 0
         if len(self.computations) > 0:
             for idx, comp in enumerate(self.computations):
+                comp.check_updates(debug=max(debug - 1, 0))
                 if not comp.has_update:    # if has_update means that there is another computation of the same type with a different run_number
+                    ncurrent += 1
                     if debug > 1: print("Registering Job: Evaluating computation with run_number:", comp.run_number)
                     comp.check_files()
                     if comp.output_exists:
@@ -767,6 +771,9 @@ class Job(object):
         else:                            
             allgood     = False 
             allfinished = False
+        if ncurrent == 0:
+            allgood     = False
+            allfinished = False
 
 #        ############################################################
 #        ## Findiff Setup: we extract frequencies at the job level ##
@@ -779,8 +786,8 @@ class Job(object):
 #            worked = reg_findiff(self)
 #            if not worked: allgood = False
 
-        if allgood:                                           self.isgood       = True
-        if allfinished:                                       self.isfinished   = True
+        self.isgood       = allgood
+        self.isfinished   = allfinished
         self.isregistered = True
         if debug > 1: print("Registered Job:", self.name, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
 
@@ -950,13 +957,13 @@ class Computation(object):
         ## 2-Checks for newer files with a similar filename in self.path
         if not self.has_update:
             inp, out, sub = self.set_file_extension()
-            for rn in range(self.run_number, max_run_number):
+            for rn in range(self.run_number + 1, max_run_number):
                 if debug > 1: print(f"COMP.CHECK_UPDATES: in part 2, trying: {rn=}")
                 mod_filename = self.get_mod_filename(list(["run_number"]),list([rn]), debug=debug)  ## This creates a new version of the filename
                 mod_name     = mod_filename.get_name()
                 if debug > 1: print(f"COMP.CHECK_UPDATES: in part 2, searching: {mod_name=}")
                 mod_path     = mod_filename.set_path(self.path)
-                mod_outfile  = ''.join([mod_path,".out"])
+                mod_outfile  = ''.join([mod_path, out])
                 mod_exists   = os.path.isfile(mod_outfile)
                 if mod_exists: 
                     self.has_update = True
