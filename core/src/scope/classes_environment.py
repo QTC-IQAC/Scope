@@ -814,13 +814,17 @@ class Environment(object):
             self.software_checks[software] = report
 
             if debug > 0:
-                print(f'\tCHECK_SOFTWARE: {software.upper()}: {report["status"]} (static only; runtime untested)')
+                print(f'\tChecking Software: {software.upper()}:')
                 executable = report['checks'].get('executable')
-                if executable is not None and executable.ok: print(f'\t    Executable: {executable.stdout}')
-                if report.get('mpi_family'): print(f'\t    MPI: {report["mpi_family"]} (inferred)')
+                if executable is not None and executable.ok: 
+                    print(f'\t    Executable: {executable.stdout}')
+                if report.get('mpi_family'): 
+                    print(f'\t    MPI: {report["mpi_family"]} (inferred)')
                 print(f'\t    Launcher: {launcher or "not selected"}')
                 if 'launcher_candidates' in report: print(f'\t    Candidates: {", ".join(report["launcher_candidates"]) or "none"}')
                 for warning in report['warnings']: print(f'\t    Warning: {warning}')
+                print('')
+
         return self.software_checks
 
 ########################

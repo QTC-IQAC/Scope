@@ -40,7 +40,7 @@ def config(args):
     print(f"     1) To change Paths:                         env.set_paths():")
     print(f"     2) To change Software Modules:              env.set_software():")
     print(f"     3) To change Available Queues/Partitions:   env.set_queues():")
-    print(f"     4) To repeat static software checks:      env.check_software(debug=1)")
+    print(f"     4) To repeat static software checks:        env.check_software()")
     #print(f"     4) To change Storage Path:                  env.set_storage_path():")
     print("")
     if env.scheduler != 'local': 
