@@ -151,7 +151,16 @@ def gen_g16_input(comp, debug: int=0):
         print("", file=inp) 
 
 ###################################################
-def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, savechk: bool=False, debug: int=0):
+def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, savechk: bool=False, launcher: str=None, debug: int=0):
+    """Write a Gaussian submission script; launcher is the direct driver command.
+
+    None retains 'g16' for older Environments. Gaussian is not wrapped in an
+    MPI launcher; a configured site wrapper may replace the driver command.
+    """
+    import shlex
+
+    launch_command = shlex.join(shlex.split('g16' if launcher is None else launcher))
+    if not launch_command: raise ValueError('GEN_G16_SUBFILE: Launcher cannot be empty')
 
     if debug > 0: print(f"GEN_G16_SUBFILE: Creating submission file for {comp.name}")
     if debug > 0: print(f"GEN_G16_SUBFILE: Using G16 Module From Environment: '{module}'") 
@@ -180,7 +189,7 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
             print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
             print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
             print(f"cat tmp1 {comp.inp_name} > tmp2 | mv -f tmp2 {comp.inp_name}", file=sub)
-            print(f"g16 < {comp.inp_name} > {comp.out_name}", file=sub)
+            print(f"{launch_command} < {comp.inp_name} > {comp.out_name}", file=sub)
             print(f"cp -pr *.log $JOBDIR/", file=sub)
             if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)  ## This option must be tested
 
@@ -205,7 +214,7 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
             print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
             print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
             print(f"cat tmp1 {comp.inp_name} > tmp2 | mv -f tmp2 {comp.inp_name}", file=sub)
-            print(f"g16 < {comp.inp_name} > {comp.out_name}", file=sub)
+            print(f"{launch_command} < {comp.inp_name} > {comp.out_name}", file=sub)
             print(f"cp -pr *.log $JOBDIR", file=sub)
             if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)
 
@@ -319,4 +328,5 @@ def check_g16(module: str, debug: int=0) -> dict:
     # 2) Return findings without changing execution settings.
     if debug > 0:
         for name, check in checks.items(): print(f'CHECK_G16: {name}: {"OK" if check.ok else "FAILED"}')
-    return {'module': module, 'status': status, 'runtime_validated': False, 'checks': checks, 'warnings': warnings}
+    launcher = 'g16' if status == 'available' else None
+    return {'module': module, 'status': status, 'runtime_validated': False, 'checks': checks, 'launcher': launcher, 'warnings': warnings}

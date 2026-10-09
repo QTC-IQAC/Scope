@@ -27,6 +27,8 @@ class Environment(object):
         selected_queues (list):         Queues selected for submission.
         method (str):                   Queue scoring strategy.
         software_checks (dict):        Most recent static checks of configured software modules.
+        qe_launcher (str):              Preferred QE MPI launcher, configurable by the user.
+        g16_launcher (str):             Gaussian driver command (normally 'g16').
 
     Methods:
         set_scheduler():                Detect and store the active scheduler.
@@ -787,8 +789,10 @@ class Environment(object):
             'available' means an executable was found, not that it runs correctly.
 
         Each module is loaded in an isolated Bash login shell. No allocations or
-        calculations are started, and submission commands remain unchanged.
-        Rerun after changing modules; runtime MPI validation is not implemented.
+        calculations are started. Stores each preferred command in
+        self.{software}_launcher, preserving an existing user/site choice.
+        Set that attribute to None to select a fresh default after a module
+        change. Runtime MPI validation is not implemented.
         """
         from scope.software.gaussian.g16_input import check_g16
         from scope.software.quantum_espresso.qe_input import check_qe
@@ -802,15 +806,21 @@ class Environment(object):
                 report = check_g16(module, debug=max(debug - 1, 0))
             elif software == 'qe':
                 report = check_qe(module, scheduler=getattr(self, 'scheduler', 'local'), debug=max(debug - 1, 0))
+            launcher_attribute = f'{software}_launcher'
+            launcher = getattr(self, launcher_attribute, None) or report['launcher']
+            setattr(self, launcher_attribute, launcher)
+            report['launcher'] = launcher
+            if software == 'qe' and launcher and launcher not in report['launcher_candidates']: report['warnings'].append('Configured launcher not detected; retained as a site override.')
             self.software_checks[software] = report
 
             if debug > 0:
-                print(f'CHECK_SOFTWARE: {software.upper()}: {report["status"]} (static only; runtime untested)')
+                print(f'\tCHECK_SOFTWARE: {software.upper()}: {report["status"]} (static only; runtime untested)')
                 executable = report['checks'].get('executable')
-                if executable is not None and executable.ok: print(f'    Executable: {executable.stdout}')
-                if report.get('mpi_family'): print(f'    MPI: {report["mpi_family"]} (inferred)')
-                if 'launcher_candidates' in report: print(f'    Candidates: {", ".join(report["launcher_candidates"]) or "none"}')
-                for warning in report['warnings']: print(f'    Warning: {warning}')
+                if executable is not None and executable.ok: print(f'\t    Executable: {executable.stdout}')
+                if report.get('mpi_family'): print(f'\t    MPI: {report["mpi_family"]} (inferred)')
+                print(f'\t    Launcher: {launcher or "not selected"}')
+                if 'launcher_candidates' in report: print(f'\t    Candidates: {", ".join(report["launcher_candidates"]) or "none"}')
+                for warning in report['warnings']: print(f'\t    Warning: {warning}')
         return self.software_checks
 
 ########################

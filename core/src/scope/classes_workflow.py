@@ -1152,8 +1152,8 @@ class Computation(object):
                 elif self.software == 'qe': gen_qe_input(self, debug=debug)
             if not self.subfile_exists or options.overwrite_inputs:
                 if debug > 0: print(f"COMPUTATION.RUN: Creating Submission File")
-                if self.software == 'g16':  gen_g16_subfile(self, queue=askqueue, module=environment.g16_module, procs=askprocs, savechk=False, debug=debug)
-                elif self.software == 'qe': gen_qe_subfile(self, queue=askqueue, module=environment.qe_module, procs=askprocs, debug=debug)
+                if self.software == 'g16':  gen_g16_subfile(self, queue=askqueue, module=environment.g16_module, procs=askprocs, savechk=False, launcher=getattr(environment, 'g16_launcher', None), debug=debug)
+                elif self.software == 'qe': gen_qe_subfile(self, queue=askqueue, module=environment.qe_module, procs=askprocs, launcher=getattr(environment, 'qe_launcher', None), debug=debug)
 
         ## 2-If output exists, prompts for registration
         if self.output_exists and not self.isregistered:

@@ -253,7 +253,18 @@ def gen_qe_input(comp: object, debug: int=0):
                 if spec[1] != 0: print(f"U {spec[0]}-3d {comp.qc_data.uterm}", file=inp)
 
 ###################################################
-def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: str="pw.x", version: float=7.0, debug: int=0): 
+def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: str="pw.x", version: float=7.0, launcher: str=None, debug: int=0):
+    # Write a QE submission script using the Environment's preferred launcher.
+    import shlex
+
+    # Retrieve the preferred launcher from the queue's environment if not provided.
+    if launcher is None: launcher = 'srun' if queue._environment.scheduler == 'slurm' else 'mpirun'
+    launcher_args = shlex.split(launcher)
+    if not launcher_args: raise ValueError('GEN_QE_SUBFILE: Launcher cannot be empty')
+    launcher_name = os.path.basename(launcher_args[0])
+    if launcher_name == 'srun': launcher_args += ['-n', str(procs)]
+    elif launcher_name in ['mpirun', 'mpiexec']: launcher_args += ['-np', str(procs)]
+    launch_command = f'{shlex.join(launcher_args)} {shlex.quote(exe)}'
 
     if debug > 0: print(f"GEN_QE_SUBFILE: Creating submission file for {comp.name}")
     if debug > 0: print(f"GEN_QE_SUBFILE: Using QE Module From Environment: '{module}'") 
@@ -279,8 +290,8 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
             print(f"JOBDIR=$PWD", file=sub)
             print(f"cd $TMPDIR", file=sub)
             print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
-            if procs >= 128: print(f"srun pw.x < {comp.inp_name} > {comp.out_name} -pd .true.", file=sub)
-            else:            print(f"srun pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
+            if procs >= 128: print(f"{launch_command} < {comp.inp_name} > {comp.out_name} -pd .true.", file=sub)
+            else:            print(f"{launch_command} < {comp.inp_name} > {comp.out_name}", file=sub)
             print(f"cp -pr {comp.out_name} $JOBDIR", file=sub)
 
         elif queue._environment.scheduler == 'sge':
@@ -303,7 +314,7 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
             print(f"JOBDIR=$PWD", file=sub)
             print(f"cd $TMPDIR", file=sub)
             print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
-            print(f"mpirun -np {procs} pw.x < {comp.inp_name} > {comp.out_name}", file=sub)
+            print(f"{launch_command} < {comp.inp_name} > {comp.out_name}", file=sub)
             print(f"cp -pr {comp.out_name} $JOBDIR", file=sub)
 
         os.chmod(comp.sub_path, 0o777)
@@ -341,7 +352,11 @@ def check_qe(module: str, scheduler: str='slurm', debug: int=0) -> dict:
 
     Returns:
         Static availability, probe results, MPI clues, launcher candidates, and
-        warnings. Candidates are not validated or automatically selected.
+        warnings and a preferred launcher. Preference is not runtime validation.
+
+    Open MPI prioritizes mpirun, then mpiexec, then direct Slurm launch. Intel
+    MPI prioritizes Slurm PMI-2 when available. Other/unknown implementations
+    prefer mpirun/mpiexec before direct Slurm launch; site settings may override.
 
     Only inspection commands run. Static executables and wrapper scripts can
     hide MPI dependencies; launcher version output does not establish a match
@@ -399,7 +414,11 @@ def check_qe(module: str, scheduler: str='slurm', debug: int=0) -> dict:
         if not launchers: warnings.append('No launcher candidates found.')
     if 'session' in checks: warnings.append('Inspection incomplete.')
 
-    # 3) Return findings without selecting a launcher.
+    # 3) Rank candidates and choose a default only when pw.x is available.
+    if mpi_family == 'Intel MPI' and 'srun --mpi=pmi2' in launchers:
+        launchers.remove('srun --mpi=pmi2')
+        launchers.insert(0, 'srun --mpi=pmi2')
+    preferred_launcher = launchers[0] if status == 'available' and launchers else None
     if debug > 0:
         for name, check in checks.items(): print(f'CHECK_QE: {name}: {"OK" if check.ok else "FAILED"}')
-    return {'module': module, 'status': status, 'runtime_validated': False, 'checks': checks, 'mpi_libraries': mpi_libraries, 'mpi_family': mpi_family, 'launcher_candidates': launchers, 'warnings': warnings}
+    return {'module': module, 'status': status, 'runtime_validated': False, 'checks': checks, 'mpi_libraries': mpi_libraries, 'mpi_family': mpi_family, 'launcher_candidates': launchers, 'launcher': preferred_launcher, 'warnings': warnings}
