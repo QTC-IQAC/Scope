@@ -42,6 +42,8 @@ The CLI command `scope run` and the underlying `run_task` logic traverse this hi
 ## Runtime Layer
 The runtime layer describes where and how computations are executed. The `Environment` class manages paths, software configuration, and scheduler-specific settings for HPC usage. `Queue` and `Node` are mainly used for queue selection (if more than one is available) when submitting jobs.
 
+During `scope config`, `Environment.check_software()` performs static checks for each configured Gaussian16/QE module in a separate Bash login shell. Software-specific inspection uses `check_g16()` and `check_qe()` alongside the input generators, with shared shell inspection in `classes_environment.run_module_checks()`. Reports are stored in `Environment.software_checks` and can be refreshed with `env.check_software(debug=1)`. Executable availability and QE launcher candidates are not runtime validation: no jobs or MPI ranks are launched, no launcher is automatically selected, and submission behaviour is unchanged. MPI-only testing is a possible future extension, not part of these static checks.
+
 ## Parsing And Registration
 Software-specific modules under `core/src/scope/software/` generate inputs and parse outputs for Gaussian and Quantum Espresso.
 Parsed results are then registered back into SCOPE objects, typically through states and workflow objects.

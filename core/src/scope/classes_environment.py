@@ -26,6 +26,7 @@ class Environment(object):
         available_queues (list):        Queues discovered for this environment.
         selected_queues (list):         Queues selected for submission.
         method (str):                   Queue scoring strategy.
+        software_checks (dict):        Most recent static checks of configured software modules.
 
     Methods:
         set_scheduler():                Detect and store the active scheduler.
@@ -33,6 +34,7 @@ class Environment(object):
         set_queues():                   Collect and configure available queues.
         set_paths():                    Store shared project paths.
         set_software():                 Sets software modules for Gaussian16 and Quantum Espresso 7.0.
+        check_software():               Inspect configured modules without launching computations.
         get_best_queue():               Select the best queue for submission.
         get_user_requested():           Summarize requested jobs and CPUs.
         check_submitted():              Check whether a job is already queued.
@@ -646,11 +648,6 @@ class Environment(object):
             self.storage_path += "/"
         return self.storage_path
 
-    #def set_storage_path(self, debug: int=0):
-    #    self.storage_path = str(input("Please Specify Path of Storage Folder (e.g. user scratch):"))
-    #    if self.storage_path[-1] != '/': self.storage_path += '/'
-    #    return self.storage_path
-
     def set_scope_program(self, debug: int=0):
         configure_path_completion()
         self.scope_program = os.path.abspath(str(input("\tPlease Specify Main scope Folder (with autocomplete):")))
@@ -775,10 +772,46 @@ class Environment(object):
         print("")
 
         ## Stores modules data in config_file, for future defaults
-        data = {
-            "last_g16_module": self.g16_module,
-            "last_qe_module": self.qe_module} 
+        data = {"last_g16_module": self.g16_module, "last_qe_module": self.qe_module}
         save_to_config(data)
+
+    def check_software(self, debug: int=0) -> dict:
+        """Run software-specific static checks for each configured non-empty module.
+
+        Parameters:
+            debug: 1 prints summaries and warnings; higher values expose nested
+                software checks and shell diagnostics.
+
+        Returns:
+            Reports keyed by software, also stored in self.software_checks.
+            'available' means an executable was found, not that it runs correctly.
+
+        Each module is loaded in an isolated Bash login shell. No allocations or
+        calculations are started, and submission commands remain unchanged.
+        Rerun after changing modules; runtime MPI validation is not implemented.
+        """
+        from scope.software.gaussian.g16_input import check_g16
+        from scope.software.quantum_espresso.qe_input import check_qe
+
+        self.software_checks = {}
+        for software in ['g16', 'qe']:
+            module = getattr(self, f"{software}_module", '')
+            if not module or not module.strip(): continue
+
+            if software == 'g16':
+                report = check_g16(module, debug=max(debug - 1, 0))
+            elif software == 'qe':
+                report = check_qe(module, scheduler=getattr(self, 'scheduler', 'local'), debug=max(debug - 1, 0))
+            self.software_checks[software] = report
+
+            if debug > 0:
+                print(f'CHECK_SOFTWARE: {software.upper()}: {report["status"]} (static only; runtime untested)')
+                executable = report['checks'].get('executable')
+                if executable is not None and executable.ok: print(f'    Executable: {executable.stdout}')
+                if report.get('mpi_family'): print(f'    MPI: {report["mpi_family"]} (inferred)')
+                if 'launcher_candidates' in report: print(f'    Candidates: {", ".join(report["launcher_candidates"]) or "none"}')
+                for warning in report['warnings']: print(f'    Warning: {warning}')
+        return self.software_checks
 
 ########################
 ###  Dunder Methods  ###
@@ -920,3 +953,59 @@ def write_test_job(scheduler: str):
             print("#$ -l h_rt=00:01:00", file=f)
             print("echo test", file=f)
         return Path(f.name)
+
+##############
+### Checks ###
+##############
+def run_module_checks(module: str, commands: dict, timeout: int=10, debug: int=0) -> dict:
+    """Load a module in an isolated Bash login shell and collect static probes.
+
+    Parameters:
+        module: Module name(s), separated by spaces, as used by module load.
+        commands: Named shell inspection commands; must not launch calculations.
+        timeout: Maximum duration of the complete inspection, in seconds.
+        debug: Verbosity; 1 reports shell failures.
+
+    Returns:
+        Named CommandResult objects, including 'module'. Probe stderr is merged
+        into stdout. 'session' reports timeouts or incomplete shell execution.
+
+    Module names are quoted, not interpreted as shell commands. Each software
+    gets a fresh shell; its modules cannot alter the parent SCOPE environment.
+    """
+    import shlex
+    from scope.classes_environment import CommandResult, run_command
+
+    try: module_names = shlex.split(module)
+    except ValueError as error: return {'module': CommandResult('module load', 1, '', str(error))}
+    if not module_names: return {}
+    commands = {'module': 'module load ' + shlex.join(module_names), **commands}
+    marker   = '__SCOPE_SOFTWARE_CHECK__:'
+    script   = f'''scope_check() {{
+    printf '\\n{marker}%s\\n' "$1"
+    shift
+    eval "$1" 2>&1
+    scope_check_status=$?
+    printf '\\n{marker}status:%s\\n' "$scope_check_status"
+    return "$scope_check_status"
+}}
+'''
+    for name, command in commands.items():
+        script += f'scope_check {shlex.quote(name)} {shlex.quote(command)}'
+        script += ' || exit 1\n' if name == 'module' else '\n'
+    result = run_command('bash -lc ' + shlex.quote(script), timeout=timeout)
+
+    checks = {}
+    name   = None
+    output = []
+    for line in result.stdout.splitlines():
+        if line.startswith(marker + 'status:') and name is not None:
+            checks[name] = CommandResult(commands[name], int(line.rsplit(':', 1)[1]), '\n'.join(output).strip(), '')
+            name = None
+        elif line.startswith(marker) and line[len(marker):] in commands:
+            name   = line[len(marker):]
+            output = []
+        elif name is not None: output.append(line)
+    if result.returncode < 0 or not checks or name is not None: checks['session'] = result
+    if debug > 0 and 'session' in checks: print(f'CHECK_SOFTWARE: Shell inspection incomplete: {result.stderr or result.stdout}')
+    return checks

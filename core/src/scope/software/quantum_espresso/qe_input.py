@@ -332,3 +332,74 @@ def get_pp(elem: str, path: str):
     except Exception as exc: 
         raise ValueError(f"GET_PP: error reading JSON or parsing element {elem}. Printing Exception \n {exc}")
     return pp_name, cutoff_wfc, cutoff_rho
+
+################
+### Check QE ###
+################
+def check_qe(module: str, scheduler: str='slurm', debug: int=0) -> dict:
+    """Inspect QE's executable, MPI libraries, and possible external launchers.
+
+    Returns:
+        Static availability, probe results, MPI clues, launcher candidates, and
+        warnings. Candidates are not validated or automatically selected.
+
+    Only inspection commands run. Static executables and wrapper scripts can
+    hide MPI dependencies; launcher version output does not establish a match
+    with pw.x. No allocation, MPI ranks, or QE calculations are started.
+    """
+    from scope.classes_environment import run_module_checks
+
+    commands = {
+        'executable': 'command -v pw.x',
+        'libraries': 'qe_executable=$(command -v pw.x) && command -v ldd >/dev/null && ldd "$qe_executable"',
+        'mpirun': 'command -v mpirun && mpirun --version',
+        'mpiexec': 'command -v mpiexec && mpiexec --version',
+    }
+    if scheduler == 'slurm': commands['slurm_mpi'] = 'srun --mpi=list'
+    checks = run_module_checks(module, commands, debug=max(debug - 1, 0))
+    # 0) Check that the module loads and pw.x is available.
+    module_check  = checks.get('module')
+    executable    = checks.get('executable')
+    libraries     = checks.get('libraries')
+    slurm_mpi     = checks.get('slurm_mpi')
+    status        = 'inconclusive'
+    mpi_libraries = []
+    mpi_family    = None
+    launchers     = []
+    warnings      = []
+    if module_check is None or not module_check.ok:
+        warnings.append('Module check failed; verify Bash module setup.')
+    else:
+        if executable is not None:
+            status = 'available' if executable.ok else 'unavailable'
+            if not executable.ok: warnings.append('pw.x not found.')
+
+        # 1) Identify MPI clues from dependencies, not the module name.
+        if libraries is not None and libraries.ok:
+            for line in libraries.stdout.splitlines():
+                if any(word in line.lower() for word in ['libmpi', 'libmpich', 'libpmi']): mpi_libraries.append(line.strip())
+            library_text = '\n'.join(mpi_libraries).lower()
+            if 'openmpi' in library_text or 'open-mpi' in library_text: mpi_family = 'Open MPI'
+            elif 'intel' in library_text and 'libmpi' in library_text: mpi_family = 'Intel MPI'
+            elif 'mpich' in library_text: mpi_family = 'MPICH-family'
+            if 'not found' in libraries.stdout: warnings.append('Unresolved shared libraries.')
+            if not mpi_libraries: warnings.append('MPI libraries not visible; build type unknown.')
+            elif mpi_family is None: warnings.append('MPI implementation unknown.')
+        else: warnings.append('Dependencies unavailable; check ldd, static build, or wrapper.')
+
+        # 2) Collect launcher candidates. Compatibility remains untested.
+        for launcher in ['mpirun', 'mpiexec']:
+            launcher_check = checks.get(launcher)
+            if launcher_check is not None and launcher_check.ok: launchers.append(launcher)
+        if slurm_mpi is not None and slurm_mpi.ok:
+            plugins = slurm_mpi.stdout.split()
+            if 'pmix' in plugins and mpi_family in [None, 'Open MPI', 'MPICH-family']: launchers.append('srun --mpi=pmix')
+            if 'pmi2' in plugins and mpi_family in [None, 'Intel MPI', 'MPICH-family']: launchers.append('srun --mpi=pmi2')
+        elif scheduler == 'slurm': warnings.append('Slurm MPI plugins unknown.')
+        if not launchers: warnings.append('No launcher candidates found.')
+    if 'session' in checks: warnings.append('Inspection incomplete.')
+
+    # 3) Return findings without selecting a launcher.
+    if debug > 0:
+        for name, check in checks.items(): print(f'CHECK_QE: {name}: {"OK" if check.ok else "FAILED"}')
+    return {'module': module, 'status': status, 'runtime_validated': False, 'checks': checks, 'mpi_libraries': mpi_libraries, 'mpi_family': mpi_family, 'launcher_candidates': launchers, 'warnings': warnings}

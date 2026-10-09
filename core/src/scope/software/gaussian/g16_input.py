@@ -277,3 +277,46 @@ BASIS_ALIASES = {
 }
 
 SUPPORTED_BASIS_NAMES = ", ".join(BASIS_ALIASES.keys())
+
+#################
+### Check G16 ###
+#################
+def check_g16(module: str, debug: int=0) -> dict:
+    """Inspect a Gaussian module without executing g16 or testing Linda.
+
+    Returns:
+        Static availability, probe results, and warnings. Runtime validation is
+        always False; scratch and Linda settings may only be set inside jobs.
+    """
+    from scope.classes_environment import run_module_checks
+
+    commands = {
+        'executable': 'command -v g16',
+        'runtime': 'printf "g16root=%s\\nGAUSS_EXEDIR=%s\\nGAUSS_SCRDIR=%s\\n" "$g16root" "$GAUSS_EXEDIR" "$GAUSS_SCRDIR"',
+        'scratch': 'test -n "$GAUSS_SCRDIR" && test -d "$GAUSS_SCRDIR" && test -w "$GAUSS_SCRDIR"',
+    }
+    checks = run_module_checks(module, commands, debug=max(debug - 1, 0))
+
+    # 0) Check that the module loads and g16 is available.
+    module_check = checks.get('module')
+    executable   = checks.get('executable')
+    runtime      = checks.get('runtime')
+    scratch      = checks.get('scratch')
+    status       = 'inconclusive'
+    warnings     = []
+    if module_check is None or not module_check.ok:
+        warnings.append('Module check failed; verify Bash module setup.')
+    else:
+        if executable is not None:
+            status = 'available' if executable.ok else 'unavailable'
+            if not executable.ok: warnings.append('g16 not found.')
+
+        # 1) Inspect runtime settings. Batch jobs may supply these later.
+        if scratch is not None and not scratch.ok: warnings.append('GAUSS_SCRDIR unset/unwritable here; check batch-job setup.')
+        if runtime is not None and 'GAUSS_EXEDIR=\n' in runtime.stdout + '\n': warnings.append('GAUSS_EXEDIR unset; check batch-job setup.')
+    if 'session' in checks: warnings.append('Inspection incomplete.')
+
+    # 2) Return findings without changing execution settings.
+    if debug > 0:
+        for name, check in checks.items(): print(f'CHECK_G16: {name}: {"OK" if check.ok else "FAILED"}')
+    return {'module': module, 'status': status, 'runtime_validated': False, 'checks': checks, 'warnings': warnings}
