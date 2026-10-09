@@ -18,9 +18,10 @@ class G16_output(object):
         get_requisites():               Define required parsed sections.
         get_last_complete_block():      Retrieve the latest valid block.
         get_last_geometry():            Extract the latest geometry.
+        get_MO_energies_last_complete_block(): Extract the latest MO energies.
         get_status_finished():          Check whether the run finished.
     """
-    def __init__(self, lines: list, computation: object=None):
+    def __init__(self, lines: list, computation: object=None, comp_type: str=None):
         self.version          = __version__
         self._computation     = computation
         self.lines            = lines
@@ -28,6 +29,9 @@ class G16_output(object):
             if hasattr(computation,"type"):                self.comp_type      = computation.type
             elif hasattr(computation.qc_data,"comp_type"): self.comp_type      = computation.qc_data.comp_type
             self.requisites       = self.get_requisites()
+        elif comp_type is not None:
+            self.comp_type  = comp_type
+            self.requisites = self.get_requisites()
         else: 
             print(f"G16_OUTPUT: output created without Computation.")
             print(f"G16_OUTPUT: Please specify comp_type doing set_comp_type()")
@@ -347,6 +351,16 @@ class G16_output(object):
             if debug > 0: print("get_energy_last_complete_block: energy is None")
             self.last_energy = None
         return self.last_energy
+
+###################
+### MO ENERGIES ###
+###################
+    def get_MO_energies_last_complete_block(self, debug: int=0):
+        if not hasattr(self,"last_complete_block"): self.get_last_complete_block(debug=debug)
+        if self.last_complete_block is None: return None
+        self.MO_energies = parse_MO_energies_from_step(self.last_complete_block, debug=debug)
+        if self.MO_energies is None and debug > 0: print("GET_MO_ENERGIES_LAST_COMPLETE_BLOCK: MO energies are None")
+        return self.MO_energies
 
 ###################
 ### FREE ENERGY ###

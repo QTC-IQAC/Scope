@@ -1,5 +1,6 @@
 import scope.constants 
 from   scope.parse_general import search_string, read_lines_file
+import re
 
 ##############
 ### STATUS ###
@@ -122,6 +123,63 @@ def parse_energy(lines, typ: str='last', debug: int=0):
     else: 
         print("G16_PARSE: Energy not found in lines.")
         return None
+
+#############################
+## PARSING ORBITAL ENERGIES ##
+#############################
+def parse_MO_energies_from_step(lines: list, debug: int=0):
+    """Parse molecular-orbital energies from the supplied Gaussian step lines.
+
+    If eigenvalues are printed more than once, retain the last complete set of
+    spin channels. Selecting SCOPE's last complete computation step is the
+    caller's responsibility; this function returns energies, not step lines.
+
+    Returns:
+        A dictionary of alpha/beta occupied/virtual energies in Hartree, or None
+        if no complete energy set exists or an eigenvalue line cannot be parsed.
+        Restricted outputs leave the beta lists empty.
+    """
+    prefixes = {
+        "Alpha  occ. eigenvalues --": "alpha_occupied",
+        "Alpha virt. eigenvalues --": "alpha_virtual",
+        "Beta  occ. eigenvalues --": "beta_occupied",
+        "Beta virt. eigenvalues --": "beta_virtual",
+    }
+    # 0) Locate the occupied/virtual eigenvalue lines for each spin channel.
+    orbital_lines = {}
+    for prefix, key in prefixes.items():
+        ldx, found = search_string(prefix, lines, typ='all', debug=max(debug - 1, 0))
+        if found:
+            for l in ldx: orbital_lines.setdefault(l, key)
+    ldx = sorted(orbital_lines)
+
+    # 1) Separate contiguous eigenvalue blocks (e.g. successive SCF iterations).
+    blocks = []
+    for idx, l in enumerate(ldx):
+        if idx == 0 or l > ldx[idx - 1] + 1: blocks.append([])
+        blocks[-1].append(l)
+
+    # 2) Parse each block and retain the last complete set of spin channels.
+    MO_energies = None
+    for block in blocks:
+        current_block = {key: [] for key in prefixes.values()}
+        for l in block:
+            try:
+                value_strings = re.findall(r"[+-]?(?:\d+(?:\.\d*)?|\.\d+)(?:[DEde][+-]?\d+)?", lines[l].split("--", 1)[1])
+                values = [float(value.replace("D", "E").replace("d", "e")) for value in value_strings]
+                if not values: raise ValueError
+            except (IndexError, ValueError):
+                if debug > 0: print(f"PARSE_MO_ENERGIES_FROM_STEP: could not parse line {l}: {lines[l].rstrip()}")
+                return None
+            current_block[orbital_lines[l]].extend(values)
+        alpha_complete = bool(current_block["alpha_occupied"] and current_block["alpha_virtual"])
+        beta_present = bool(current_block["beta_occupied"] or current_block["beta_virtual"])
+        beta_complete = bool(current_block["beta_occupied"] and current_block["beta_virtual"])
+        if alpha_complete and (not beta_present or beta_complete): MO_energies = current_block
+
+    if MO_energies is None:
+        if debug > 0: print("PARSE_MO_ENERGIES_FROM_STEP: no complete MO-energy set found")
+    return MO_energies
 
 #########################
 ## PARSING FREE ENERGY ##
