@@ -1,6 +1,6 @@
 [project]
 name = "scope-azo"
-version = "0.9.6"
+version = "1.0.0"
 description = "Azo add-on for SCOPE"
 readme = "README.md"
 authors = [{ name = "Sergi Vela", email = "sergi.vela@iqac.csic.es" }]
