@@ -180,6 +180,13 @@ def load_environment(name: str):
 ##########
 ## Text ##
 ##########
+def read_lines_file(filepath: str, flat: bool=False):
+    with open(filepath, 'r') as info:
+        lines = [line.replace('\x00', '') for line in info]
+    if flat:
+        lines = [line.rstrip('\n') for line in lines]
+    return lines
+
 def save_text(variable, pathfile):
     dir_name = os.path.dirname(pathfile)
     os.makedirs(dir_name, exist_ok=True)

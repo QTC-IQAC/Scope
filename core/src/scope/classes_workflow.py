@@ -5,7 +5,7 @@ from scope.classes_environment        import *
 from scope.classes_state              import State, find_state
 from scope.operations.dicts_and_lists import where_in_array
 from scope.register_data              import reg_general, reg_optimization, reg_frequencies, reg_energy, reg_excited_states
-from scope.parse_general              import read_lines_file
+from scope.read_write                import read_lines_file
 from scope                            import __version__
 
 ##########################

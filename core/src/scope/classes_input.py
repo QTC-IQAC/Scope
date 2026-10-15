@@ -51,7 +51,7 @@ class Input_data(object):
 
         ## Reads from file or content string
         if isfile: 
-            from scope.parse_general import read_lines_file 
+            from scope.read_write import read_lines_file
             lines    = read_lines_file(os.path.abspath(source)) 
         else:
             lines    = source.strip().split('\n')

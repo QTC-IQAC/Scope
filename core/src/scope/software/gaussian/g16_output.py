@@ -1,6 +1,7 @@
 import scope.constants 
 from   scope import __version__
-from   scope.parse_general import search_string, read_lines_file
+from   scope.parse_general import search_string
+from   scope.read_write import read_lines_file
 from   scope.software.gaussian.g16_parse import * 
 
 class G16_output(object):

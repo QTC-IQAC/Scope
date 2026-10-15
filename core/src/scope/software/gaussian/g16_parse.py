@@ -1,5 +1,5 @@
 import scope.constants 
-from   scope.parse_general import search_string, read_lines_file
+from   scope.parse_general import search_string
 import re
 
 ##############

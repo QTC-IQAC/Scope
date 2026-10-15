@@ -1,4 +1,4 @@
-from scope.parse_general     import read_lines_file
+from scope.read_write        import read_lines_file
 from scope                   import __version__
 from scope.software.quantum_espresso.qe_parse  import *
 

@@ -1,5 +1,3 @@
-import numpy as np
-
 def search_string(string: str, lines: list, typ: str='all', lowlim: int=None, uplim: int=None, debug: int=0):
     #if type(lines) != list: lines = list([lines])
     if debug > 0: print(f"SEARCH STRING: searching {string} in file")
@@ -21,15 +19,6 @@ def search_string(string: str, lines: list, typ: str='all', lowlim: int=None, up
         elif typ.lower() == 'last': return list_of_results[-1], True
         else: print("Incorrect variable 'typ' in search_string call")
     else: return [], False
-
-def read_lines_file(filepath: str, flat: bool=False):
-    info = open(filepath, 'r')
-    lines = info.readlines()
-    if flat: 
-        for idx, l in enumerate(lines):
-            lines[idx] = l.strip('\n')
-    info.close() 
-    return np.array(lines)
 
 def slurm_time_to_seconds(sl_time: str | None):
     if sl_time is None or sl_time == 'infinite':                 ## Infinite 
