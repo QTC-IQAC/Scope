@@ -1,4 +1,4 @@
-[![DOI](https://img.shields.io/badge/10.26434/chemrxiv.15001415/v2-blue)](https://doi.org/10.26434/chemrxiv.15001415/v2) ![SLURM Compatible](<https://img.shields.io/badge/HPC%20scheduler-SLURM-green>)
+[![DOI](https://img.shields.io/badge/DOI-10.1039%2FD6DD00236F-blue)](https://doi.org/10.1039/D6DD00236F) ![SLURM Compatible](<https://img.shields.io/badge/HPC%20scheduler-SLURM-green>)
 
 # SCOPE: A Chemically-Aware Workflow-Automation Software for Molecules and Molecular Crystals
 
@@ -15,7 +15,7 @@ SCOPE has four core pillars.
 
 # Documentation
 
-- The associated preprint is available [here](https://doi.org/10.26434/chemrxiv.15001415/v2)
+- The published SCOPE manuscript is available [here](https://doi.org/10.1039/D6DD00236F)
 - Repository and source [here](https://github.com/QTC-IQAC/Scope)
 - Tutorials are available [here](https://github.com/QTC-IQAC/Scope_Tutorials)
 
@@ -29,6 +29,17 @@ SCOPE has four core pillars.
 - [Bug-fixing Procedure](docs/bug_fixing.md)
 - [Benchmarks](benchmarks/README.md)
 - [Agent Guidance](AGENTS.md)
+
+---
+
+# How to Cite
+
+If SCOPE contributes to your work, please cite both the manuscript and the software repository:
+
+1. S. Vela and M. Serrano, *SCOPE: A Chemically-Aware Workflow Automation Software for Molecules and Molecular Crystals*, **Digital Discovery** (2026), [DOI: 10.1039/D6DD00236F](https://doi.org/10.1039/D6DD00236F).
+2. *SCOPE software repository*, Zenodo, [DOI: 10.5281/zenodo.23337435](https://doi.org/10.5281/zenodo.23337435).
+
+The Zenodo DOI is the concept DOI for SCOPE and represents all archived versions of the software.
 
 ---
 

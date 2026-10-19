@@ -7,7 +7,7 @@ This add-on is intended for users who already work with SCOPE's core chemistry a
 ## Documentation
 
 - Repository and source code: <https://github.com/QTC-IQAC/Scope>
-- Preprint: <https://doi.org/10.26434/chemrxiv.15001415/v2>
+- Publication: <https://doi.org/10.1039/D6DD00236F>
 - Tutorials: <https://github.com/QTC-IQAC/Scope_Tutorials>
 
 ## Installation
