@@ -54,10 +54,10 @@ def run(args):
 
     print("")
     print("#################################") 
-    print("### SUMMARY OF ERRORS/ACTIONS ###")
+    print("### MANUAL ATTENTION REQUIRED ###")
     print("#################################")
     if len(summary) > 0: print(summary)
-    else:                print("No actions to report, and nothing to investigate. All good")
+    else:                print("No manual action required")
     print("#################################")
 
 if __name__ == "__main__":

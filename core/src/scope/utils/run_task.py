@@ -19,7 +19,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
         debug (int):                   Verbosity level.
 
     Returns:
-        str: Report string summarizing actions and issues.
+        str: Report string summarizing unresolved issues that require manual attention.
     """
 
     report = ''
@@ -169,8 +169,9 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
 
                 ## Step 3.2b-Warns if output exists but not input
                 elif comp.output_exists and not comp.input_exists:  
-                    report += f"Investigate {comp.out_path}: Missing Input \n"
-                    print(f"Investigate {comp.out_path}")
+                    if not comp.has_update:
+                        report += f"Missing input for current attempt: {comp.out_path}. Inspect the computation files.\n"
+                    if debug > 0: print(f"RUN_TASK: Missing input for {comp.out_path}")
 
                 ############################
                 ### STEP 4: REGISTRATION ###
@@ -238,11 +239,11 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                                 comp.read_lines()
                                 if len(comp.output_lines) > 0: comp.store(debug=debug)  # Creates Copy of output 
                                 else:                          this_job.remove_computation(comp_index=comp.index)
-                                report += f"Errors handled for {comp.out_path}. Please Re-Submit \n"
-                                print(f"RUN_TASK: Errors handled for {comp.out_path}")
+                                if not comp.has_update: report += f"Retry pending for {comp.out_path}. Run SCOPE again to prepare and submit the next attempt.\n"
+                                if debug > 0: print(f"RUN_TASK: Errors handled for {comp.out_path}")
                             else:
-                                report += f"Error registering {comp.out_path} . Please Re-Submit \n"
-                                print(f"RUN_TASK: Error registering {comp.out_path}")
+                                if not comp.has_update: report += f"Registration failed for current attempt: {comp.out_path}. Inspect the output or rerun with automatic error handling (-e).\n"
+                                if debug > 0: print(f"RUN_TASK: Error registering {comp.out_path}")
                         updated = True
                         if debug > 0: print("")
 
