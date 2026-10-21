@@ -1,3 +1,4 @@
+from math                    import log
 from scope.read_write        import read_lines_file
 from scope                   import __version__
 from scope.software.quantum_espresso.qe_parse  import *
@@ -15,6 +16,7 @@ class QE_output(object):
     Methods:
         set_comp_type():                Set or infer the computation type.
         get_requisites():               Define required parsed sections.
+        assess_scf_convergence():       Classify the final SCF convergence trend.
         get_last_complete_block():      Retrieve the latest valid block.
         get_last_geometry():            Extract the latest geometry.
         get_status_finished():          Check whether the run finished.
@@ -72,6 +74,29 @@ class QE_output(object):
     def get_scf_finished(self, debug: int=0):
         self.scf_finished = parse_scf_status(self.lines)
         return self.scf_finished
+
+    def assess_scf_convergence(self, debug: int=0) -> str:
+        """Return the convergence behavior of the final QE SCF cycle."""
+        lines      = self.get_lines_last_scf_block(debug=debug)
+        accuracies = [] if lines is None else [value for value in parse_scf_accuracies_from_step(lines, debug=debug) if value > 0]
+        if len(accuracies) < 10: return "unknown"
+
+        # Fits exponential convergence to the last 30 SCF cycles
+        accuracies = accuracies[-30:]
+        xvalues    = list(range(len(accuracies)))
+        yvalues    = [log(value) for value in accuracies]
+        xmean      = sum(xvalues) / len(xvalues)
+        ymean      = sum(yvalues) / len(yvalues)
+        sxx        = sum((value - xmean) ** 2 for value in xvalues)
+        syy        = sum((value - ymean) ** 2 for value in yvalues)
+        slope      = sum((xvalue - xmean) * (yvalue - ymean) for xvalue, yvalue in zip(xvalues,yvalues)) / sxx
+        intercept  = ymean - slope * xmean
+        residual   = sum((yvalue - (intercept + slope * xvalue)) ** 2 for xvalue, yvalue in zip(xvalues,yvalues))
+        r_squared  = max(0.0,1.0 - residual / syy) if syy > 0 else 0.0
+        behavior   = "slow" if slope < 0 and r_squared >= 0.7 else "oscillating"
+
+        if debug > 0: print(f"QE_OUTPUT.ASSESS_SCF_CONVERGENCE: behavior={behavior}, iterations={len(accuracies)}, slope={slope}, r_squared={r_squared}")
+        return behavior
 
     def get_last_block_status(self, debug: int=0):
         lines_last_opt_block = self.get_lines_last_opt_block()

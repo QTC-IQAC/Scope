@@ -668,12 +668,11 @@ class Job(object):
 ## Continuation Computations ##
 ###############################
     def set_continuation_computation(self, comp: object, typ: str, debug: int=0):
-        comp.has_update = True
         if debug > 1: print("Set_Continuation_Comp: Creating new computation to continue job. Type:", typ, "Path:", comp.path)
     
         # 0-We make sure that the new_run does not exist. If so, we return it directly:
         exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step, run_number=comp.run_number+1)
-        if exists: print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
+        if exists: comp.has_update = True; print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
 
         ###############################
         ## Operates Depending on typ ##
@@ -696,21 +695,75 @@ class Job(object):
             update_fstate = False ## In TS searches, it is preferable to retry from istate, rather than continuing from fstate
 
         elif typ == "scf":
+            qe_settings = None
+            if comp.qc_data.software == "qe":
+
+                # SCF recovery uses at most five runs after changing the mixing mode.
+                local_tf_attempts = sum(1 for old_comp in self.computations if old_comp.keyword == comp.keyword and old_comp.step == comp.step and getattr(old_comp.qc_data,"mix_mode","plain").lower() == "local-tf")
+                if local_tf_attempts >= 5:
+                    comp.has_update = False
+                    if debug > 0: print("JOB.SET_CONTINUATION_COMP: Maximum number of automatic local-TF QE SCF attempts reached")
+                    return None
+
+                # Evaluates the scf behavior of the current job
+                if not hasattr(comp,"output"): comp.create_output(debug=max(debug - 1, 0))
+                behavior       = comp.output.assess_scf_convergence(debug=max(debug - 1, 0))
+                # In case default values were not set up by fill_qc_data()
+                old_mix_beta   = getattr(comp.qc_data,"mix_beta",0.7)
+                old_mix_mode   = getattr(comp.qc_data,"mix_mode","plain")
+                old_mix_ndim   = getattr(comp.qc_data,"mix_ndim",8)
+                old_maxstep    = getattr(comp.qc_data,"elec_maxstep",200)
+                new_mix_beta   = old_mix_beta
+                new_mix_mode   = old_mix_mode
+                new_mix_ndim   = old_mix_ndim
+                new_maxstep    = old_maxstep
+
+                # Use the alternative mixing mode after at most ten attempts.
+                if comp.run_number >= 10 and old_mix_mode.lower() != "local-tf":
+                    new_mix_beta = min(old_mix_beta,0.10)
+                    new_mix_mode = "local-TF"
+                    new_mix_ndim = max(old_mix_ndim,12)
+                elif behavior == "oscillating":
+                    new_mix_beta = max(0.05,round(min(old_mix_beta * 0.5,0.20),2))
+                    new_mix_ndim = min(max(old_mix_ndim + 4,12),20)
+                    new_maxstep  = min(old_maxstep,100)
+                elif behavior == "slow":
+                    new_maxstep = min(max(old_maxstep + 100,int(old_maxstep * 1.5)),500)
+                else:
+                    new_mix_beta = max(0.05,min(old_mix_beta,0.10))
+                    new_mix_ndim = max(old_mix_ndim,12)
+
+                # Do not submit the same ineffective settings again. Change mode early when possible.
+                old_settings = (old_mix_beta, old_mix_mode, old_mix_ndim, old_maxstep)
+                new_settings = (new_mix_beta, new_mix_mode, new_mix_ndim, new_maxstep)
+                if new_settings == old_settings:
+                    if old_mix_mode.lower() != "local-tf":
+                        new_mix_beta = min(old_mix_beta,0.10)
+                        new_mix_mode = "local-TF"
+                        new_mix_ndim = max(old_mix_ndim,12)
+                    else:
+                        comp.has_update = False
+                        if debug > 0: print("JOB.SET_CONTINUATION_COMP: QE SCF recovery settings exhausted")
+                        return None
+                qe_settings = (behavior, old_settings, (new_mix_beta, new_mix_mode, new_mix_ndim, new_maxstep))
+
             new_comp = self.add_computation(comp.qc_data, comp.step, comp.path, comp_keyword=comp.keyword, is_update=True, debug=debug)
             new_comp.qc_data = deepcopy(comp.qc_data)
             new_comp.set_name()
             new_comp.set_paths()
             update_fstate = True
-            # If scf has failed with quantum espresso, it is worth trying a different mixing_beta value 
-            if new_comp.qc_data.software == "qe":
-                import random
-                updated = False
-                old_value = new_comp.qc_data.mix_beta
-                while not updated: 
-                    new_value = round(random.uniform(0.2,0.8), 2)
-                    if new_value != old_value: updated = True
-                new_comp.qc_data._mod_attr("mix_beta",new_value)
-                print("JOB.SET_CONTINUATION_COMP: Mixing Beta changed to:", new_comp.qc_data.mix_beta)
+            if qe_settings is not None:
+                behavior, old_settings, new_settings = qe_settings
+                new_comp.qc_data._mod_attr("mix_beta",new_settings[0])
+                new_comp.qc_data._mod_attr("mix_mode",new_settings[1])
+                new_comp.qc_data._mod_attr("mix_ndim",new_settings[2])
+                new_comp.qc_data._mod_attr("elec_maxstep",new_settings[3])
+                if debug > 0:
+                    print(f"JOB.SET_CONTINUATION_COMP: QE SCF behavior: {behavior}")
+                    print(f"JOB.SET_CONTINUATION_COMP: mixing_beta: {old_settings[0]} -> {new_settings[0]}")
+                    print(f"JOB.SET_CONTINUATION_COMP: mixing_mode: {old_settings[1]} -> {new_settings[1]}")
+                    print(f"JOB.SET_CONTINUATION_COMP: mixing_ndim: {old_settings[2]} -> {new_settings[2]}")
+                    print(f"JOB.SET_CONTINUATION_COMP: electron_maxstep: {old_settings[3]} -> {new_settings[3]}")
 
         elif typ == "rep_opt":
             new_comp            = self.add_computation(comp.qc_data, comp.step+1, comp.path, comp_keyword=comp.keyword, is_update=False, debug=debug)
@@ -1007,8 +1060,9 @@ class Computation(object):
         self.qc_data         += old_qc_data
         self.type             = self.qc_data.comp_type
         ## Exceptions
-        if self.is_update and self.software == 'qe' and old_qc_data.mix_beta != new_qc_data.mix_beta:
-            self.qc_data._mod_attr("mix_beta",old_qc_data.mix_beta)
+        if self.is_update and self.software == 'qe':
+            for setting in ["mix_beta", "mix_mode", "mix_ndim", "elec_maxstep"]:
+                if hasattr(old_qc_data,setting): self.qc_data._mod_attr(setting,getattr(old_qc_data,setting))
         return self.qc_data
 
     ##################################

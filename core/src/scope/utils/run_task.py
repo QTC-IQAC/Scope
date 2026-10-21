@@ -190,10 +190,14 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                         if debug > 0: print(f"RUN_TASK, step 4.1: {options.overwrite_inputs=}")
 
                         ## 4.2 sets continuation computations. These are added to JOB object 
+                        continuation_stopped = False
                         if comp.status == 'no_scf_convergence': 
                             if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=scf")  
                             new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
-                            if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path}: Run Number > 10 \n"
+                            if new_comp is None:
+                                continuation_stopped = True
+                                report += f"Automatic QE SCF recovery exhausted: {comp.out_path}. Review the electronic and SCF settings.\n"
+                            elif new_comp.qc_data.software != "qe" and new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path}: Run Number > 10 \n"
                         elif not comp.isgood and this_job.must_be_good:
                             if comp.type == 'opt':
                                 if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=opt")  
@@ -235,7 +239,9 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                         # Checks for common stupid errors and handles files
                         if debug > 0: print(f"RUN_TASK, step 4.4: registration {worked=}")  
                         if not worked:
-                            if handle_errors:          # ...takes default action 
+                            if continuation_stopped:
+                                if debug > 0: print(f"RUN_TASK: Preserving {comp.out_path} for manual inspection")
+                            elif handle_errors:          # ...takes default action
                                 comp.read_lines()
                                 if len(comp.output_lines) > 0: comp.store(debug=debug)  # Creates Copy of output 
                                 else:                          this_job.remove_computation(comp_index=comp.index)

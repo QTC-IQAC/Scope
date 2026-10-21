@@ -16,6 +16,18 @@ def parse_end_scf(lines, debug=0):
     end_SCF, found  = search_string("End of self-consistent calculation", lines)
     return end_SCF, found
 
+def parse_scf_accuracies_from_step(lines: list, debug: int=0) -> list:
+    """Return the estimated SCF accuracies reported within one QE step."""
+    linenums, found = search_string("estimated scf accuracy", lines)
+    if not found: return []
+
+    accuracies = []
+    for linenum in linenums:
+        try:                  accuracies.append(float(lines[linenum].split()[-2]))
+        except (ValueError, IndexError):
+            if debug > 0: print(f"PARSE_SCF_ACCURACIES: could not read line: {lines[linenum].rstrip()}")
+    return accuracies
+
 def parse_geometry_from_step(lines, debug=0):
     init_str = "ATOMIC_POSITIONS"
     last_str = "output data"
