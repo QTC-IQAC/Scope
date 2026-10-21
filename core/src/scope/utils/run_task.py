@@ -245,7 +245,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                                 comp.read_lines()
                                 if len(comp.output_lines) > 0: comp.store(debug=debug)  # Creates Copy of output 
                                 else:                          this_job.remove_computation(comp_index=comp.index)
-                                if not comp.has_update: report += f"Retry pending for {comp.out_path}. Run SCOPE again to prepare and submit the next attempt.\n"
+                                if not comp.has_update: report += f"Retry pending for {comp.out_path} --> Run SCOPE again to prepare and submit the next attempt.\n"
                                 if debug > 0: print(f"RUN_TASK: Errors handled for {comp.out_path}")
                             else:
                                 if not comp.has_update: report += f"Registration failed for current attempt: {comp.out_path}. Inspect the output or rerun with automatic error handling (-e).\n"
