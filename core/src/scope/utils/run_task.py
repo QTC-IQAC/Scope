@@ -243,9 +243,22 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                                 if debug > 0: print(f"RUN_TASK: Preserving {comp.out_path} for manual inspection")
                             elif handle_errors:          # ...takes default action
                                 comp.read_lines()
-                                if len(comp.output_lines) > 0: comp.store(debug=debug)  # Creates Copy of output 
-                                else:                          this_job.remove_computation(comp_index=comp.index)
-                                if not comp.has_update: report += f"Retry pending for {comp.out_path} --> Run SCOPE again to prepare and submit the next attempt.\n"
+                                if len(comp.output_lines) > 0:
+                                    comp.store(debug=debug)  # Creates Copy of output
+                                    if not comp.has_update: report += f"Retry pending for {comp.out_path} --> Run SCOPE again to prepare and submit the next attempt.\n"
+                                else:
+                                    # empty outputs (0 lines) are typical of erroneous submissions
+                                    if os.path.isfile(comp.out_path): os.remove(comp.out_path)
+                                    comp.delete_lines()
+                                    comp.delete_output()
+                                    comp.check_files()
+                                    if options.want_submit and comp.verify_state(comp.qc_data.istate):
+                                        comp.run(global_env, options, debug=debug)
+                                        if debug > 0: print(f"RUN_TASK: Empty output removed and retry passed to submission logic: {comp.out_path}")
+                                    elif options.want_submit:
+                                        report += f"Retry pending for {comp.out_path}: initial state '{comp.qc_data.istate}' is missing or lacks geometry.\n"
+                                    else:
+                                        report += f"Retry pending for {comp.out_path}: automatic submission is disabled.\n"
                                 if debug > 0: print(f"RUN_TASK: Errors handled for {comp.out_path}")
                             else:
                                 if not comp.has_update: report += f"Registration failed for current attempt: {comp.out_path}. Inspect the output or rerun with automatic error handling (-e).\n"
