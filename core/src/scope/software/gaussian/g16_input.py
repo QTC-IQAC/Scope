@@ -112,7 +112,8 @@ def gen_g16_input(comp, debug: int=0):
             if not is_unrestricted:  commandline.append(f" tda=({comp.qc_data.td_type},nstates={comp.qc_data.td_nstates})")
             else:                    commandline.append(f" tda=(nstates={comp.qc_data.td_nstates})")
 
-        elif comp_type == "scf": pass
+        elif comp_type == "scf":
+            if comp.qc_data.print_forces: commandline.append(" Force")
         else: 
             raise ValueError("G16_INPUT: comp_type", comp_type, "not recognized. Implemented are opt, opt&freq, freq, td, tda and scf")
 

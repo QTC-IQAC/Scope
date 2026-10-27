@@ -216,6 +216,7 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"loose_opt"):      data._add_attr("loose_opt", False)
         if not hasattr(data,"tight_opt"):      data._add_attr("tight_opt", False)
         if not hasattr(data,"ultrafine_grid"): data._add_attr("ultrafine_grid", False)
+        if not hasattr(data,"print_forces"):   data._add_attr("print_forces", False)
 
         # Grimme Dispersion Corrections
         if not hasattr(data,"is_grimme"):      
