@@ -461,8 +461,8 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
         output_folder = "./test_overlap/"
         import os
         os.makedirs(output_folder, exist_ok=True)
-        write_xyz(output_folder + "final1.xyz", labels1, coords1_final)
-        write_xyz(output_folder + "final2.xyz", labels2_reordered, coords2_final)
+        write_xyz(output_folder + "final1.xyz", labels1, coords1_final, overwrite=True)
+        write_xyz(output_folder + "final2.xyz", labels2_reordered, coords2_final, overwrite=True)
 
     if return_rotation: return True, labels1, coords1_final, labels2_reordered, coords2_final, best_indices.tolist(), final_rotation
     else:               return True, labels1, coords1_final, labels2_reordered, coords2_final, best_indices.tolist()

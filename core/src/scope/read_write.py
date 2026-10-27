@@ -238,10 +238,15 @@ def read_xyz(xyz_file):
         else: print("I can't read the xyz. It has =/ than 4 columns")
     return labels, coords
 
-def write_xyz(path, labels, coords, charge: int=0, spin: int=1, append: bool=False):
+def write_xyz(path: str, labels: list, coords: list, charge: int=0, spin: int=1, append: bool=False, overwrite: bool=False):
+    """Write an XYZ structure. Existing files remain unchanged unless append or overwrite is selected."""
     assert len(labels) == len(coords)
-    if append:     mode = "a"
-    else:          mode = "w"
+    if append and overwrite: raise ValueError("WRITE_XYZ: append and overwrite cannot both be True")
+    if os.path.isfile(path) and not append and not overwrite:
+        print(f"WRITE_XYZ: File already exists and was not modified: {path}. Use overwrite=True or append=True")
+        return
+    if append: mode = "a"
+    else:      mode = "w"
     with open(path, mode) as fil:
         print(len(labels), file=fil)
         print(charge, spin, file=fil)
