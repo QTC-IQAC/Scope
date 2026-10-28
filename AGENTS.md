@@ -78,4 +78,6 @@ The repository is split into a core package and two optional add-ons:
 
 ## Documentation
 - The main user-facing overview lives in `README.md`.
-- Keep architecture and concept docs aligned with the code when introducing new abstractions.
+- `docs/concepts.md` is reserved for the project's enduring core philosophy and conceptual object model. Update it only when those concepts change; do not add implementation details, numerical conventions, parameter documentation, bug-fix notes, or change history there.
+- Document function behavior, units, and numerical conventions in the relevant docstrings or focused technical documentation. Record bug investigations and fixes under `bug_fixes/`, following `docs/bug_fixing.md`.
+- Keep architecture docs aligned with the code when introducing new abstractions.
