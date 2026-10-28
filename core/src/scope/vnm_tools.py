@@ -2,10 +2,11 @@ import numpy as np
 from scope import constants
 
 ####
-def displace_neg_freqs(ini_coord, VNMs: object, debug: int=0) -> list:
-    neg_VNMs = list([vnm for vnm in VNMs if vnm.freq_cm < 0.0])
-    disp_coord = displace_coords_with_vnm(neg_VNMs, ini_coord)
-    return disp_coord
+def displace_neg_freqs(ini_coord, VNMs: object, amplitude: float=10, debug: int=0) -> np.ndarray:
+    """Displace each imaginary mode by amplitude in sqrt(electron mass)*Bohr (default 10); return Angstrom coordinates."""
+    neg_VNMs = [vnm for vnm in VNMs if vnm.freq_cm < 0.0]
+    if debug > 0: print(f"DISPLACE_NEG_FREQS: Displacing {len(neg_VNMs)} imaginary modes with Q={amplitude:.5g}")
+    return displace_coords_with_vnm(neg_VNMs, ini_coord, amplitude=amplitude, debug=max(debug - 1, 0))
 
 ####
 def map_vnms(vnmsA,vnmsB,labelsA,coordsA,labelsB,coordsB,f_weight: float=1.00,f_scale: float=100.0,center_method: str="centroid",use_ext_info: bool=True,adjmatA=None,adjmatB=None,bond_ordersA=None,bond_ordersB=None,max_graph_mappings: int=1000,debug: int=0):
@@ -205,202 +206,189 @@ def map_vnms(vnmsA,vnmsB,labelsA,coordsA,labelsB,coordsB,f_weight: float=1.00,f_
     return vnmsA_ordered, vnmsB_ordered, results
 
 ######
-def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=[], which_side: str='positive', amplitude: int=6, debug: int=0):
-    ### This function applies a displacement from the initial geometry 
-    ### Using either 'all' VNMs provided, or only those whose index is in 'which'
+def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=None, which_side: str='positive', amplitude: float=10, debug: int=0):
+    """Displace a geometry by a fixed atomic-unit Q along each selected mode.
 
-    ## Frequencies must have eigenvectors (normal modes) stored
-    if any(not vnm.has_mode for vnm in VNMs): 
-        if debug > 0: print("One or more VNMs do not have mode. Stopping")
-        return None
+    Parameters:
+        VNMs (list):                   Modes in the geometry's atom order and frame, including imaginary modes.
+        initial_coord (array):         Cartesian coordinates in Angstrom with shape (natoms, 3).
+        which (list | None):           VNM indices to displace; None or an empty list selects all.
+        which_side (str):              'positive' or 'negative', relative to the stored eigenvector phase.
+        amplitude (float):             Q per selected mode in sqrt(electron mass)*Bohr, without frequency scaling.
+        debug (int):                   Verbosity level.
 
-    ## Store Initial Coord
-    new_coord = initial_coord.copy()    
-    new_coord = np.array(new_coord)
-    natoms    = len(initial_coord)
-    if debug >= 1: print("initial coord:", new_coord[0])
+    Returns:
+        np.ndarray: New floating-point Cartesian coordinates in Angstrom.
 
-    ## If empty which, then takes all
-    if len(which) == 0: which = [vnm.index for vnm in VNMs]
+    Notes:
+        Both stored mode representations are normalized locally in mass-weighted coordinates,
+        divided by sqrt(mass in electron masses), and converted from Bohr to Angstrom.
+        Input coordinates and VNMs are not modified. Modes must share atom order and masses.
+        No thermal distribution or harmonic energy is assigned to this fixed displacement.
+        The former amplitude*frequency_factor*sqrt(mass)*mode rule had no consistent Q convention.
+    """
+    # 0) Checks the geometry and mode selection
+    coord = np.array(initial_coord, dtype=float, copy=True)
+    VNMs  = list(VNMs)
+    if coord.ndim != 2 or coord.shape[1] != 3 or len(coord) == 0 or not np.all(np.isfinite(coord)): raise ValueError("DISPLACE_COORDS_WITH_VNM: Expected finite coordinates with shape (natoms, 3)")
+    if not isinstance(which_side, str) or which_side.lower() not in ("positive", "negative"): raise ValueError("DISPLACE_COORDS_WITH_VNM: which_side must be 'positive' or 'negative'")
+    if not np.isfinite(amplitude): raise ValueError("DISPLACE_COORDS_WITH_VNM: amplitude must be finite")
+    available_indices = [vnm.index for vnm in VNMs]
+    if which is not None and any(index not in available_indices for index in which): raise ValueError("DISPLACE_COORDS_WITH_VNM: A requested VNM index was not found")
+    selected = VNMs if which is None or len(which) == 0 else [vnm for vnm in VNMs if vnm.index in which]
+    sign     = 1.0 if which_side.lower() == "positive" else -1.0
 
-    ## Applies Displacement
-    for vnm in VNMs:
-        assert vnm.has_mode and len(vnm.labels) == natoms
-        mode = vnm.mass_weight_mode(permanent=False)
-        ## The actual amount of displacement depends on the amplitude defined by the user
-        ## ... and the freq_factor, which depends on the frequency
-        if   vnm.freq < 20:   freq_factor = 0.1
-        else:                 freq_factor = 0.2
-        if vnm.index in which:
-            if debug >= 1: print("displacing VNM with frequency:", vnm.freq_cm)
-            if debug >= 1: print(f"using factor={amplitude*freq_factor}")
-            
-            for idx in range(natoms):
-                ## Evaluate a temporary mass-weighted vector without modifying the VNM
-                vector = mode[idx]
+    # 1) Converts each selected direction to Angstrom per atomic-unit Q
+    displacement      = np.zeros_like(coord)
+    ref_labels  = None
+    ref_indices = None
+    ref_masses  = None
+    for vnm in selected:
+        if not getattr(vnm, "has_mode", False): 
+            raise ValueError("DISPLACE_COORDS_WITH_VNM: A selected VNM has no eigenvector")
+        if len(vnm.labels) != len(coord):       
+            raise ValueError("DISPLACE_COORDS_WITH_VNM: VNM atom count does not match the geometry")
+        if ref_labels is not None and (list(vnm.labels) != ref_labels or list(vnm.atomidxs) != ref_indices): 
+            raise ValueError("DISPLACE_COORDS_WITH_VNM: VNMs must share the same atom order")
+        masses = np.asarray(vnm.masses, dtype=float)
+        if masses.shape != (len(coord),) or not np.all(np.isfinite(masses)) or np.any(masses <= 0): 
+            raise ValueError("DISPLACE_COORDS_WITH_VNM: Atomic masses must be finite and positive")
+        if ref_masses is not None and not np.allclose(masses, ref_masses, rtol=1e-12, atol=0): 
+            raise ValueError("DISPLACE_COORDS_WITH_VNM: VNMs must use the same atomic masses")
 
-                ## Apply displacement to coordinates
-                if   which_side.lower() == 'positive': displacement = vector*amplitude*freq_factor
-                elif which_side.lower() == 'negative': displacement = -vector*amplitude*freq_factor
-                new_coord[idx] = new_coord[idx]+displacement
-                if idx == 0 and debug >= 1: print("displaced coord:", new_coord[idx])
-        new_coord.reshape(natoms,3)
-    return new_coord
+        ref_labels  = list(vnm.labels)
+        ref_indices = list(vnm.atomidxs)
+        ref_masses  = masses
+        mode_mw = vnm.mass_weight_mode(permanent=False)
+        if mode_mw.shape != coord.shape or not np.all(np.isfinite(mode_mw)): 
+            raise ValueError("DISPLACE_COORDS_WITH_VNM: Invalid mode shape or components")
+        mode_norm = np.linalg.norm(mode_mw)
+        if not np.isfinite(mode_norm) or mode_norm <= 0: 
+            raise ValueError("DISPLACE_COORDS_WITH_VNM: Mode norm must be finite and positive")
+        cart_mode = constants.bohr2angs * (mode_mw / mode_norm) / np.sqrt(masses[:, None] * constants.amu2au)
+        displacement += sign * amplitude * cart_mode
+        if debug > 1: 
+            print(f"DISPLACE_COORDS_WITH_VNM: Mode {vnm.index}: Q={sign * amplitude:.5g}")
+    if debug > 0: 
+        print(f"DISPLACE_COORDS_WITH_VNM: Displaced {len(selected)} modes with Q={sign * amplitude:.5g} each")
+    
+    return coord + displacement
 
 ####
-def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, n_samples: int=10, sigma_damp_factor: float=1, freq_bottom_limit: float=80, check_adjacencies: bool=True, debug: int=0):
-    from scope.connectivity             import get_adjmatrix
-    from scope.operations.vecs_and_mats import normalize
+def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, n_samples: int=10, sigma_damp_factor: float=0, freq_bottom_limit: float=0, freq_top_limit: float=None, check_adjacencies: bool=True, debug: int=0):
+    """Sample Cartesian geometries from harmonic normal coordinates.
+
+    Parameters:
+        labels, coord:                 Atom symbols and coordinates in Angstrom, in mode order and frame.
+        freqs (list):                  VNMs; only positive frequencies are sampled.
+        qini (list):                   Parent normal coordinates in sqrt(electron mass)*Bohr, one per VNM.
+                                       coord must already include these displacements from the reference geometry.
+        T (float):                     Temperature in K; zero includes zero-point position fluctuations.
+        n_samples (int):               Number of accepted geometries requested.
+        sigma_damp_factor (float):      Optional exponent dividing sigma by freq_cm**exponent; zero disables it.
+        freq_bottom_limit (float):      Optional smooth taper midpoint in cm^-1; nonpositive disables it.
+        check_adjacencies (bool):       Reject changed connectivity; at most 100*n_samples attempts.
+        freq_top_limit (float | None):  Smooth upper taper midpoint in cm^-1; None disables it.
+        debug (int):                   Verbosity; child functions receive debug - 1.
+
+    Returns:
+        tuple: Geometries (n, natoms, 3) in Angstrom, cumulative Q (n, nmodes), and
+               harmonic potential increments (n,) in Hartree, including the parent Q.
+
+    Notes:
+        Mass-weighted mode directions are normalized locally, divided by sqrt(mass in
+        electron masses), and converted from Bohr to Angstrom. VNMs are not modified.
+        Exact quantitative conversion requires the masses used by the frequency calculation.
+        No Q or sigma cap is applied. The quantum variance is coth(omega/(2*kB*T))/(2*omega).
+        Without attenuation or rejection, the mean potential at T=0 is half the zero-point energy.
+        The taper multiplies variance by 0.5*(1+tanh((freq_cm-midpoint)/10)); it is not a hard cutoff.
+        Frequency damping, tapering, connectivity rejection and subsequent FPS change the distribution.
+        Skipped nonpositive modes must have zero qini. Seeding numpy.random reproduces draws.
+        The upper taper multiplies variance by 0.5*(1-tanh((freq_cm-midpoint)/10)).
+        Both taper weights multiply; parent Q and its cumulative energy remain included.
+        Labels detect element-order mismatches; the caller must preserve repeated-atom order and frame.
     """
-    Generates a set of geometries by sampling along vibrational normal modes (VNM) of a molecule.
-    This function perturbs the input geometry along its vibrational normal modes, producing a set of 
-    geometries that represent possible thermal fluctuations. Optionally, it checks that 
-    the molecular connectivity (adjacency matrix) is preserved in the sampled geometries.
-    Parameters
-    ----------
-    labels : list of str
-        Atomic labels (element symbols) for each atom in the molecule.
-    coord : array-like, shape (N_atoms, 3)
-        Cartesian coordinates of the atoms (in Bohr).
-    freqs : list
-        List of frequency objects, each with attributes:
-            - freq_cm: frequency in cm^-1
-            - freq: frequency in atomic units
-            - mode: eigenvector with shape `(N_atoms, 3)`
-            - has_mode: boolean indicating presence of the eigenvector
-            - is_mass_weighted: boolean describing the stored eigenvector
-    qini  : list
-        initial Q coordinates associated with the cartesian coordinates provided as coord
-    T : float, optional
-        Temperature in Kelvin for thermal sampling. If 0, only zero-point motion is considered.
-    n_samples : int, optional
-        Number of geometries to generate.
-    sigma_damp_factor: float, optional
-        Reduces large unphysical displacements. Specially important for low-frequency modes
-    freq_bottom_limit : float, optional
-        Minimum frequency (in cm^-1) to include in sampling. Modes below this are ignored.
-    check_adjacencies : bool, optional
-        If True, only accept geometries that preserve the original adjacency matrix.
-    debug : int, optional
-        Debug verbosity level. Higher values print more information.
-    Returns
-    -------
-    geometries : np.ndarray, shape (n_samples, N_atoms, 3)
-        Array of sampled geometries (Cartesian coordinates in Bohr).
-    q_coords : np.ndarray, shape (n_samples, N_modes)
-        Array of sampled normal mode displacements for each geometry.
-    energies : np.ndarray, shape (n_samples,)
-        Array of harmonic energies (in atomic units) for each sampled geometry.
-    Notes
-    -----
-    - Modes are converted to mass-weighted coordinates locally without modifying the VNM objects.
-    - The sampling is performed using a normal distribution for each mode, with width determined by thermal fluctuations.
-    - If `check_adjacencies` is True, geometries that change the molecular connectivity are discarded.
-    - Large unphysical displacements are discarded, which breaks the expected energy distribution of the resulting geometries. (np.mean(energies) should approach ZPE/2) 
-    - The function may return fewer than `n_samples` geometries if the adjacency check fails frequently.
-    """
-    def taper_weight(freq_cm, f0=50.0, width=10.0):
-        x = (freq_cm - f0) / width
-        return 0.5 * (1 + np.tanh(x))
+    from scope.connectivity import get_adjmatrix
 
-    ## Frequencies must have eigenvectors stored
-    if any(not freq.has_mode for freq in freqs): 
-        raise ValueError("One or more VNMs do not have eigenvectors. Stopping")
-
-    # Stores the original adjacency matrix
-    if check_adjacencies: 
-        isgood, original_adjmat, original_adjnum = get_adjmatrix(labels, coord, smart=True, debug=debug)
-        if not isgood: print("Warning: Initial adjacency matrix might have an issue")
-
-    # Extract and manage data from input
-    coord   = np.array(coord) 
-    modes   = np.asarray([freq.mass_weight_mode(permanent=False).reshape(-1) for freq in freqs])
-    N_atoms = len(coord)    
+    # 0) Checks and arranges arrays
+    labels  = list(labels)
+    coord   = np.asarray(coord, dtype=float)
+    freqs   = list(freqs)
+    N_atoms = len(labels)
     N_modes = len(freqs)
-    if qini is None: qini = np.zeros((N_modes))
-    else:            qini = np.asarray(qini)
-    if debug > 1: print("Number of modes:", len(modes))
-    if debug > 1: print("First mode:", modes[0])
-    if debug > 1: print("First mode norm:", normalize(modes[0]))
+    if coord.shape != (N_atoms, 3) or N_atoms == 0 or not np.all(np.isfinite(coord)): raise ValueError("GEOM_SAMPLING_FROM_VNM: Expected finite coordinates with shape (natoms, 3)")
+    if not isinstance(n_samples, (int, np.integer)) or isinstance(n_samples, (bool, np.bool_)) or n_samples < 0: raise ValueError("GEOM_SAMPLING_FROM_VNM: n_samples must be a nonnegative integer")
+    if not np.isfinite(T) or T < 0: raise ValueError("GEOM_SAMPLING_FROM_VNM: T must be finite and nonnegative")
+    if not np.isfinite(sigma_damp_factor) or not np.isfinite(freq_bottom_limit): raise ValueError("GEOM_SAMPLING_FROM_VNM: Attenuation settings must be finite")
+    if freq_top_limit is not None and (not np.isfinite(freq_top_limit) or freq_top_limit < 0): raise ValueError("GEOM_SAMPLING_FROM_VNM: freq_top_limit must be None or finite and nonnegative")
+    if N_modes == 0: raise ValueError("GEOM_SAMPLING_FROM_VNM: No VNMs were provided")
 
-    # Initializes and Runs Main While loop
-    geometries = []
-    q_coords   = []
-    energies   = []
-    maxcount   = n_samples * 100
-    count      = 0
-    while len(geometries) < n_samples or count >= maxcount:
-        displacement = np.zeros(3 * N_atoms)
+    qini    = np.zeros(N_modes) if qini is None else np.array(qini, dtype=float, copy=True)
+    freq_cm = np.asarray([freq.freq_cm for freq in freqs], dtype=float)
+    omegas  = np.asarray([freq.freq for freq in freqs], dtype=float)
+    if qini.shape != (N_modes,) or not np.all(np.isfinite(qini)): raise ValueError("GEOM_SAMPLING_FROM_VNM: qini must contain one finite amplitude per VNM")
+    if not np.all(np.isfinite(freq_cm)) or not np.all(np.isfinite(omegas)): raise ValueError("GEOM_SAMPLING_FROM_VNM: Frequencies must be finite")
+    positive = np.flatnonzero(freq_cm > 0)
+    if np.any(omegas[positive] <= 0): raise ValueError("GEOM_SAMPLING_FROM_VNM: Positive modes require positive atomic-unit frequencies")
+    if np.any(qini[freq_cm <= 0] != 0): raise ValueError("GEOM_SAMPLING_FROM_VNM: Skipped nonpositive modes require zero qini")
+    if n_samples == 0: return np.empty((0, N_atoms, 3)), np.empty((0, N_modes)), np.empty(0)
 
+    # 1) Converts normalized mass-weighted eigenvectors to Angstrom per atomic-unit Q
+    modes             = np.zeros((N_modes, 3 * N_atoms))
+    sigmas            = np.zeros(N_modes)
+    reference_masses  = None
+    reference_indices = None
+    for i in positive:
+        freq = freqs[i]
+        if not getattr(freq, "has_mode", False): raise ValueError("GEOM_SAMPLING_FROM_VNM: A sampled VNM has no eigenvector")
+        if list(freq.labels) != labels: raise ValueError("GEOM_SAMPLING_FROM_VNM: VNM atom labels must match the geometry order")
+        masses = np.asarray(freq.masses, dtype=float)
+        if masses.shape != (N_atoms,) or not np.all(np.isfinite(masses)) or np.any(masses <= 0): raise ValueError("GEOM_SAMPLING_FROM_VNM: Atomic masses must be finite and positive")
+        if reference_masses is not None and not np.allclose(masses, reference_masses, rtol=1e-12, atol=0): raise ValueError("GEOM_SAMPLING_FROM_VNM: VNMs must use the same atomic masses")
+        if reference_indices is not None and list(freq.atomidxs) != reference_indices: raise ValueError("GEOM_SAMPLING_FROM_VNM: VNMs must use the same atom indices")
+        reference_masses  = masses
+        reference_indices = list(freq.atomidxs)
+        mode_mw = freq.mass_weight_mode(permanent=False)
+        if mode_mw.shape != (N_atoms, 3) or not np.all(np.isfinite(mode_mw)): raise ValueError("GEOM_SAMPLING_FROM_VNM: Invalid mode shape or components")
+        mode_norm = np.linalg.norm(mode_mw)
+        if not np.isfinite(mode_norm) or mode_norm <= 0: raise ValueError("GEOM_SAMPLING_FROM_VNM: Mode norm must be finite and positive")
+        cart_mode = constants.bohr2angs * (mode_mw / mode_norm) / np.sqrt(masses[:, None] * constants.amu2au)
+        modes[i]  = cart_mode.reshape(-1)
+
+        # 2) Sets the thermal width and any explicitly requested empirical attenuation
+        variance = 1.0 / (2.0 * omegas[i])
+        if T > 0: variance /= np.tanh(omegas[i] / (2.0 * constants.boltz_au * T))
+        weight = 0.5 * (1 + np.tanh((freq_cm[i] - freq_bottom_limit) / 10.0)) if freq_bottom_limit > 0 else 1.0
+        if freq_top_limit is not None: weight *= 0.5 * (1 - np.tanh((freq_cm[i] - freq_top_limit) / 10.0))
+        sigmas[i] = np.sqrt(variance * weight) / freq_cm[i]**sigma_damp_factor
+        if not np.isfinite(sigmas[i]): raise ValueError("GEOM_SAMPLING_FROM_VNM: Sampling width is not finite")
+        if debug > 1: print(f"GEOM_SAMPLING_FROM_VNM: Mode {i + 1}: frequency={freq_cm[i]:.3f} cm^-1, sigma={sigmas[i]:.5g}, taper={weight:.3f}")
+
+    # 3) Samples increments around the supplied parent geometry and cumulative Q
+    if check_adjacencies:
+        isgood, original_adjmat, _ = get_adjmatrix(labels, coord, smart=True, debug=max(debug - 1, 0))
+        if not isgood: print("GEOM_SAMPLING_FROM_VNM: Warning: Initial adjacency matrix might have an issue")
+    geometries, q_coords, energies = [], [], []
+    maxcount = n_samples * 100
+    count    = 0
+    while len(geometries) < n_samples and count < maxcount:
         q_tot = qini.copy()
-        q_vec = []
-        e_harm = 0.0
-        for i in range(N_modes):
-            if freqs[i].freq_cm <= 0: continue  # skip imaginary modes
-
-            omega = freqs[i].freq                               
-            sigma_q = np.sqrt(constants.hbar / (2 * omega))     
-
-            if T > 0:
-                coth = 1 / np.tanh(constants.hbar * omega / (2 * constants.boltz_au * T))
-                sigma_q *= np.sqrt(coth)
-            else: coth = 1.0
-
-            # Apply smooth tapering based on frequency in cm^-1
-            if freq_bottom_limit > 0: weight = taper_weight(freqs[i].freq_cm, f0=freq_bottom_limit)
-            else:                     weight = 1.0
-
-            # Applies weight and limitations
-            sigma_q *= np.sqrt(weight)
-            sigma_q  = sigma_q/(freqs[i].freq_cm**sigma_damp_factor) ## a factor tunes down the displacement in the ith-VNM depending on its frequency
-            sigma_q  = np.min((np.abs(sigma_q), 10))                 ## displacement is also limited to Q=10 
-
-            # Sample a displacement
-            q_i = np.random.normal(loc=0.0, scale=sigma_q)          ## Coordinates of Q for this VNM
-            q_vec.append(q_i)                                       ## Collection of Q for all VNM to be applied to this sample
-            q_tot[i] += q_i                                         ## Collection of Accumulated Q (including the initial ones) 
-            e_harm += 0.5 * q_tot[i]**2 * omega**2
-            displacement += q_i * modes[i]                 
-
-            if debug > 0 and i < 10: print(f"  Mode {i}: freq_cm = {freqs[i].freq_cm}, weight = {weight:.3f}, q_i= {q_i:.3f}, sigma_q = {sigma_q:.3f}")
-            if debug > 1: print(f"  max eigenvector component (mass-weighted)    = {np.max(np.abs(modes[i])):.3e}")
-            if debug > 1: print(f"  max displacement contribution from this mode = {np.max(np.abs(q_i * modes[i])):.3e}")
-            if debug > 1: print(f"  {i=} displacement: {np.round(displacement[i],3)}")
-
-        if debug > 1: print(f"Coord:      {np.round(coord[0],3)}")
-        if debug > 1: print(f"modes[i]    {np.round(modes[0][0:3],5)}")
-
-        # Convert to Cartesian displacement
-        if debug > 1: print(f"Cart_Disp:  {np.round(displacement[0:3],3)}")
-        displaced_coord   = coord.flatten() + displacement
-        if debug > 1: print(f"Disp_Coord1 [bohr]: {np.round(displaced_coord[0:3],3)}")
-        displaced_coord   = displaced_coord.reshape((N_atoms, 3))
-
-        if check_adjacencies: 
-            # Apply the same smart construction because its internal covalent factor is intentionally not exposed
-            isgood, new_adjmat, new_adjnum = get_adjmatrix(labels, displaced_coord, smart=True)
-            if isgood and np.array_equal(original_adjmat, new_adjmat):
-                if debug > 0: print(f"Geometry {count} ACCEPTED")
-                geometries.append(displaced_coord)
-                q_coords.append(q_tot)
-                energies.append(e_harm)
-            else:
-                if debug > 0: print(f"Geometry {count} DISCARDED due to adjacency mismatch")
-                if debug > 1: print(f"{new_adjnum=}")
-                if debug > 1: print(f"{original_adjnum=}")
-                if debug > 1: print(f"{new_adjnum-original_adjnum}")
-        else:
-            geometries.append(displaced_coord)
-            q_coords.append(q_tot)
-            energies.append(e_harm)
+        for i in positive: q_tot[i] += np.random.normal(loc=0.0, scale=sigmas[i])
+        displacement    = (q_tot - qini) @ modes
+        displaced_coord = coord + displacement.reshape((N_atoms, 3))
+        e_harm          = 0.5 * np.sum((omegas[positive] * q_tot[positive])**2)
         count += 1
-        if count >= maxcount: 
-            print(f"Warning: Reached maximum count of {maxcount} with only {len(geometries)}/{n_samples} samples created.")
-            break
-    if debug > 0: print(f"------------------------------------------------------------------")
-    if debug > 0: print(f"Sampling Produced {len(geometries)} structures in {count} attempts")
-    if debug > 0: print(f"------------------------------------------------------------------")
-    return np.array(geometries), np.array(q_coords), np.array(energies)
+
+        if check_adjacencies:
+            isgood, new_adjmat, _ = get_adjmatrix(labels, displaced_coord, smart=True, debug=max(debug - 1, 0))
+            if not isgood or not np.array_equal(original_adjmat, new_adjmat): continue
+        geometries.append(displaced_coord)
+        q_coords.append(q_tot)
+        energies.append(e_harm)
+
+    if len(geometries) < n_samples: print(f"GEOM_SAMPLING_FROM_VNM: Reached {maxcount} attempts; accepted {len(geometries)}/{n_samples} geometries")
+    if debug > 0: print(f"GEOM_SAMPLING_FROM_VNM: Accepted {len(geometries)}/{n_samples} geometries in {count} attempts")
+    return np.asarray(geometries, dtype=float).reshape((-1, N_atoms, 3)), np.asarray(q_coords, dtype=float).reshape((-1, N_modes)), np.asarray(energies, dtype=float)
 
 ####
 def apply_q_displacement(x_ref, q_coords, freqs):

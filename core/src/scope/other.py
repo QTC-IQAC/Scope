@@ -106,32 +106,22 @@ def gram_schmidt(A,norm=True,row_vect=False):
 
 ####
 def furthest_point_sampling(data, k, dist_func):
+    """Select k distinct input indices by furthest-point sampling, starting at index 0."""
     from scope.vnm_tools import pairwise_distance_matrix
-    """
-    Selects `k` furthest points from `data` using a custom distance function.
 
-    Parameters:
-    - data: np.ndarray of shape (n_samples, n_features)
-    - k: number of samples to select
-    - dist_func: function to compute distance between two samples
-
-    Returns:
-    - selected_indices: list of indices of selected points
-    """
-    data        = np.array(data)
-    #freqs_cm1   = np.array(freqs_cm1)
-
-    n_samples   = data.shape[0]
-    #D = pairwise_distance_matrix(data, freqs_cm1, dist_func)
+    data      = np.asarray(data)
+    n_samples = len(data)
+    if not isinstance(k, (int, np.integer)) or isinstance(k, (bool, np.bool_)) or k < 0 or k > n_samples: raise ValueError("FURTHEST_POINT_SAMPLING: k must be between zero and the number of candidates")
+    if k == 0: return []
     D = pairwise_distance_matrix(data, dist_func)
+    if not np.all(np.isfinite(D)): raise ValueError("FURTHEST_POINT_SAMPLING: Distances must be finite")
 
-    selected      = [0]  # Starts with 0
-    min_distances = D[selected[0]].copy()         # Distance from selected[0] to all points
-
+    selected      = [0]
+    min_distances = D[0].copy()
+    min_distances[0] = -np.inf
     for _ in range(1, k):
-        # At each step, pick the point with the maximum minimum distance to the selected set
-        for i in range(n_samples):
-            min_distances[i] = min(min_distances[i], min(D[i, j] for j in selected))
-        next_idx = np.argmax(min_distances)
+        next_idx = int(np.argmax(min_distances))
         selected.append(next_idx)
+        min_distances = np.minimum(min_distances, D[next_idx])
+        min_distances[next_idx] = -np.inf
     return selected

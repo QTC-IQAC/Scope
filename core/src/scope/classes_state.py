@@ -548,98 +548,70 @@ class State(object):
 #############################
 #### Sampling Geometries ####
 #############################
-    def sample_geometries(self, ngeoms: int, n_aux_geoms=100, n_fps_rounds=0, temp: float=300, sigma_damp_factor: float=1, freq_bottom_limit: float=50, debug: int=0):
-        """
-        Sample geometries around the current state using vibrational modes.
+    def sample_geometries(self, ngeoms: int, n_aux_geoms=100, n_fps_rounds=0, temp: float=300, sigma_damp_factor: float=0, freq_bottom_limit: float=0, freq_top_limit: float=None, debug: int=0):
+        """Sample geometries around this state's reference geometry and vibrational modes.
 
         Parameters:
-            ngeoms (int):                Number of geometries to keep.
-            n_aux_geoms (int):           Number of trial geometries per FPS round.
-            n_fps_rounds (int):          Number of furthest-point-sampling rounds.
-            temp (float):                Sampling temperature.
-            sigma_damp_factor (float):   Damping factor for mode amplitudes.
-            freq_bottom_limit (float):   Lower frequency cutoff.
-            debug (int):                 Verbosity level.
+            ngeoms (int):               Number of geometries to retain; zero returns empty lists.
+            n_aux_geoms (int):          Trial geometries per parent in each additional FPS round.
+            n_fps_rounds (int):         Additional rounds of cumulative increments and FPS selection.
+            temp (float):              Temperature in K, including zero-point motion at zero.
+            sigma_damp_factor (float):  Optional frequency exponent for sigma attenuation; zero disables it.
+            freq_bottom_limit (float):  Optional smooth taper midpoint in cm^-1; nonpositive disables it.
+            freq_top_limit (float | None): Smooth upper taper midpoint in cm^-1; None disables it.
+            debug (int):               Verbosity; child functions receive debug - 1.
 
         Returns:
-            tuple: Selected Q displacements and Cartesian geometries.
+            tuple: Lists of cumulative Q in sqrt(electron mass)*Bohr, geometries in Angstrom,
+                   and harmonic potential increments in Hartree relative to this state.
+
+        Notes:
+            Uses geom_sampling_from_vnm() with connectivity rejection and its bounded retry count.
+            No displacement or sigma cap is applied. Masses and mode directions must correspond
+            to this reference geometry in the same atom order and frame.
+            Frequency attenuation and connectivity rejection change the harmonic distribution.
+            Additional rounds form a random walk; FPS selects spread rather than a thermal ensemble.
+            Energies refer to final cumulative Q; rejected proposals may leave fewer than ngeoms.
         """
-        from scope.vnm_tools import geom_sampling_from_vnm, euclidean_q_distance, custom_q_distance, beta_distance
+        from scope.vnm_tools import geom_sampling_from_vnm, euclidean_q_distance
         from scope.other import furthest_point_sampling
 
-        if not self.check_minimum():
-            raise ValueError("State is not a minimum")
-        if not hasattr(self.VNMs[0],"has_mode"):
-            raise ValueError("VNMs do not have Eigenvectors. Please parse them")
+        # 0) Checks the requested sampling and reference modes
+        if not isinstance(ngeoms, (int, np.integer)) or isinstance(ngeoms, (bool, np.bool_)) or ngeoms < 0: raise ValueError("STATE.SAMPLE_GEOMETRIES: ngeoms must be a nonnegative integer")
+        if not isinstance(n_fps_rounds, (int, np.integer)) or isinstance(n_fps_rounds, (bool, np.bool_)) or n_fps_rounds < 0: raise ValueError("STATE.SAMPLE_GEOMETRIES: n_fps_rounds must be a nonnegative integer")
+        if n_fps_rounds > 0 and (not isinstance(n_aux_geoms, (int, np.integer)) or isinstance(n_aux_geoms, (bool, np.bool_)) or n_aux_geoms < 1): raise ValueError("STATE.SAMPLE_GEOMETRIES: n_aux_geoms must be a positive integer for FPS rounds")
+        if ngeoms == 0: return [], [], []
+        if not hasattr(self, "VNMs") or len(self.VNMs) == 0: raise ValueError("STATE.SAMPLE_GEOMETRIES: No VNMs are available")
+        if not self.check_minimum(): raise ValueError("State is not a minimum")
 
-        if debug > 0:
-            if n_fps_rounds == 0: 
-                print(f"-------------------------------------------------------------------------------------------------")
-                print(f"STATE.SAMPLE_GEOMETRIES: {ngeoms} geometries will be generated directly from the State's geometry")
-                print(f"-------------------------------------------------------------------------------------------------")
-            else:                 
-                print(f"-------------------------------------------------------------------------------------------------")
-                print(f"STATE.SAMPLE_GEOMETRIES: {ngeoms} geometries will be generated in two steps:")
-                print(f"STATE.SAMPLE_GEOMETRIES: 1) An initial sampling starting from the State's geometry, generating {ngeoms} geometries")
-                print(f"STATE.SAMPLE_GEOMETRIES: 2) From each of the resulting {ngeoms} geometries, another sampling will be performed in which {n_aux_geoms} will be generated")
-                print(f"STATE.SAMPLE_GEOMETRIES: 3) Step 2 will be repeated for {n_fps_rounds} rounds. At each round, {n_aux_geoms**2} will be created.")
-                print(f"STATE.SAMPLE_GEOMETRIES: 4) After the last round, {ngeoms} will be selected")
-                print(f"-------------------------------------------------------------------------------------------------")
+        q_min            = np.zeros(len(self.VNMs))
+        current_geoms    = [self.coord]
+        current_q_disp   = [q_min]
+        current_energies = [0.0]
 
-        q_min = np.zeros((len(self.VNMs)))
-        current_geoms       = [] 
-        current_q_disp      = [] 
-        current_energies    = [] 
-        current_geoms.append(self.coord)
-        current_q_disp.append(q_min)
-        current_energies.append(float(0.0))
-
-        ## Main Loop
-        for nr in range(n_fps_rounds+1):
-            q_fps, g_fps, e_fps = [], [], [] 
-            count = 0
+        # 1) Samples from each retained parent, then selects candidates in cumulative Q
+        for nr in range(n_fps_rounds + 1):
+            q_fps, g_fps, e_fps = [], [], []
+            if nr < n_fps_rounds:
+                q_fps.append(q_min)
+                g_fps.append(self.coord)
+                e_fps.append(0.0)
+            geoms_this_round = ngeoms if nr == 0 else n_aux_geoms
             for c, q in zip(current_geoms, current_q_disp):
-                count += 1
-
-                if nr == 0: geoms_this_round = ngeoms
-                else:       geoms_this_round = n_aux_geoms
-
-                if debug > 0: print(f"STATE.SAMPLE_GEOMETRIES: Running sampling of initial geometry, with: {geoms_this_round=} and {debug=}") 
-                geoms, q_disp, energies = geom_sampling_from_vnm(self.labels, c, self.VNMs, qini=q, T=temp, n_samples=geoms_this_round, sigma_damp_factor=sigma_damp_factor, freq_bottom_limit=freq_bottom_limit, check_adjacencies=True, debug=debug)
-                if debug > 0: 
-                    if nr == 0: 
-                        print(f"STATE.SAMPLE_GEOMETRIES: Initial structure {count}/{len(current_geoms)} sampled {len(q_disp)} geometries")
-                    else:
-                        print(f"STATE.SAMPLE_GEOMETRIES: Initial structure {count}/{len(current_geoms)} of FPS round {nr}/{n_fps_rounds+1} sampled {len(q_disp)} geometries")
-
-                # Data for FPS
-                if nr < n_fps_rounds:  ## Minimum (i.e. initial structure, with Q=0) is added in every round except the last one
-                    q_fps.append(q_min)
-                    g_fps.append(self.coord)
-                    e_fps.append(float(0.0))
+                geoms, q_disp, energies = geom_sampling_from_vnm(self.labels, c, self.VNMs, qini=q, T=temp, n_samples=geoms_this_round, sigma_damp_factor=sigma_damp_factor, freq_bottom_limit=freq_bottom_limit, check_adjacencies=True, freq_top_limit=freq_top_limit, debug=max(debug - 1, 0))
                 q_fps.extend(q_disp)
                 g_fps.extend(geoms)
                 e_fps.extend(energies)
 
-            if len(q_fps) > ngeoms:
-                #Run FPS
-                if debug > 0: print(f"STATE.SAMPLE_GEOMETRIES: Entering FPS selection with {len(q_fps)} geometries. Selecting {ngeoms}")
-                idxs = furthest_point_sampling(q_fps, ngeoms, euclidean_q_distance)
-                if debug > 0: print(f"STATE.SAMPLE_GEOMETRIES: FPS of round {nr+1}/{n_fps_rounds+1} kept {len(idxs)} geometries, with indices:{idxs}")
-            else:
-                if debug > 0 and n_fps_rounds > 0: print(f"STATE.SAMPLE_GEOMETRIES: Sampling of round {nr+1}/{n_fps_rounds+1} failed to generate enough samples for FPS. Taking all available to the next round")
-                idxs = list(range(len(q_disp)))
+            if len(q_fps) > ngeoms: idxs = furthest_point_sampling(q_fps, ngeoms, euclidean_q_distance)
+            else:                   idxs = list(range(len(q_fps)))
+            if debug > 0: print(f"STATE.SAMPLE_GEOMETRIES: Round {nr + 1}/{n_fps_rounds + 1}: {len(q_fps)} candidates, retained {len(idxs)} geometries")
+            current_geoms    = [g_fps[idx] for idx in idxs]
+            current_q_disp   = [q_fps[idx] for idx in idxs]
+            current_energies = [e_fps[idx] for idx in idxs]
+            if not current_geoms: break
 
-            # Prepares Next Round 
-            current_geoms    = [] 
-            current_q_disp   = [] 
-            current_energies = [] 
-            for idx in idxs:
-                current_geoms.append(g_fps[idx])
-                current_q_disp.append(q_fps[idx])
-                current_energies.append(e_fps[idx])
-
-        return current_q_disp, current_geoms, current_energies 
+        return current_q_disp, current_geoms, current_energies
 
 #######################################
 #### Results associated with State ####
