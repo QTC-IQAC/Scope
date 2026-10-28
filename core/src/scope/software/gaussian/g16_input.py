@@ -55,10 +55,9 @@ def gen_g16_input(comp, debug: int=0):
         commandline.append(" nosymm")
         commandline.append(" scf=(maxconventionalcycles=200,xqc)")
 
-        ## 2.2 Decides Unrestricted or Restricted based on the spin multiplicity of the source
-        is_unrestricted = False
-        if source.spin > 0: 
-            is_unrestricted = True
+        ## 2.2 Decides Unrestricted or Restricted from the source spin and user choice
+        is_unrestricted = source.spin > 0 or getattr(comp.qc_data,"unrestricted",False)
+        if is_unrestricted:
             commandline.append(" U")
         else:
             commandline.append(" ")
