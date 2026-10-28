@@ -188,7 +188,7 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
             print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
             print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
             print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
-            print(f"cat tmp1 {comp.inp_name} > tmp2 | mv -f tmp2 {comp.inp_name}", file=sub)
+            print(f"cat tmp1 {comp.inp_name} > tmp2 && mv -f tmp2 {comp.inp_name} || exit 1", file=sub)
             print(f"{launch_command} < {comp.inp_name} > {comp.out_name}", file=sub)
             print(f"cp -pr *.log $JOBDIR/", file=sub)
             if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)  ## This option must be tested
@@ -213,7 +213,7 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
             print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
             print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
             print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
-            print(f"cat tmp1 {comp.inp_name} > tmp2 | mv -f tmp2 {comp.inp_name}", file=sub)
+            print(f"cat tmp1 {comp.inp_name} > tmp2 && mv -f tmp2 {comp.inp_name} || exit 1", file=sub)
             print(f"{launch_command} < {comp.inp_name} > {comp.out_name}", file=sub)
             print(f"cp -pr *.log $JOBDIR", file=sub)
             if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)
