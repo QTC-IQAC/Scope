@@ -15,7 +15,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
         sys_path (str):                Path to the system binary.
         inp_paths (list):              Input-job file paths.
         global_env (str | object):     Environment path or loaded environment object.
-        handle_errors (bool):          Whether to apply automatic error handling.
+        handle_errors (bool):          Retry startup aborts and apply automatic file/error handling.
         debug (int):                   Verbosity level.
 
     Returns:
@@ -162,6 +162,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                             # A stored completion flag cannot replace the required geometry.
                             if not comp.verify_state(comp.qc_data.istate):
                                 if debug > 0: print(f"RUN_TASK, step 3.2a: initial state '{comp.qc_data.istate}' is missing or lacks geometry")
+                                report += f"Retry pending for {comp.out_path}: initial state '{comp.qc_data.istate}' is missing or lacks geometry.\n"
                                 continue
                             comp.run(global_env, options, debug=debug); updated = True
                     else: 
@@ -191,13 +192,21 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
 
                         ## 4.2 sets continuation computations. These are added to JOB object 
                         continuation_stopped = False
-                        if comp.status == 'no_scf_convergence': 
+                        retry_running = False
+                        if comp.has_update:
+                            if debug > 0: print("RUN_TASK, step 4.2: A newer attempt already exists")
+                        elif comp.status == 'no_scf_convergence':
                             if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=scf")  
                             new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
                             if new_comp is None:
                                 continuation_stopped = True
                                 report += f"Automatic QE SCF recovery exhausted: {comp.out_path}. Review the electronic and SCF settings.\n"
                             elif new_comp.qc_data.software != "qe" and new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path}: Run Number > 10 \n"
+                        elif comp.status == "aborted":
+                            # Aborted attempts are resubmitted under the same run, never continued.
+                            if handle_errors and options.want_submit:
+                                comp.check_submission_status(global_env, debug=debug)
+                                retry_running = comp.isrunning and not options.ignore_submitted
                         elif not comp.isgood and this_job.must_be_good:
                             if comp.type == 'opt':
                                 if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=opt")  
@@ -239,26 +248,38 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                         # Checks for common stupid errors and handles files
                         if debug > 0: print(f"RUN_TASK, step 4.4: registration {worked=}")  
                         if not worked:
-                            if continuation_stopped:
+                            if comp.has_update:
+                                # Keep failed outputs under their original attempt names.
+                                comp.delete_lines()
+                                comp.delete_output()
+                                if debug > 0: print(f"RUN_TASK: Preserving superseded output: {comp.out_path}")
+                            elif retry_running:
+                                if debug > 0: print(f"RUN_TASK: Attempt is still queued or running; preserving {comp.out_path}")
+                            elif continuation_stopped:
                                 if debug > 0: print(f"RUN_TASK: Preserving {comp.out_path} for manual inspection")
                             elif handle_errors:          # ...takes default action
                                 comp.read_lines()
-                                if len(comp.output_lines) > 0:
-                                    comp.store(debug=debug)  # Creates Copy of output
-                                    if not comp.has_update: report += f"Retry pending for {comp.out_path} --> Run SCOPE again to prepare and submit the next attempt.\n"
+                                empty_output = len(comp.output_lines) == 0
+                                if not empty_output:
+                                    comp.store(debug=debug)  # Moves the failed log to _part.
                                 else:
-                                    # empty outputs (0 lines) are typical of erroneous submissions
                                     if os.path.isfile(comp.out_path): os.remove(comp.out_path)
-                                    comp.delete_lines()
-                                    comp.delete_output()
-                                    comp.check_files()
+                                comp.delete_lines()
+                                comp.delete_output()
+                                comp.check_files()
+                                if comp.status == "aborted" or empty_output:
+                                    comp.isregistered = False
+                                    comp.isfinished   = False
+                                    comp.isgood       = False
                                     if options.want_submit and comp.verify_state(comp.qc_data.istate):
                                         comp.run(global_env, options, debug=debug)
-                                        if debug > 0: print(f"RUN_TASK: Empty output removed and retry passed to submission logic: {comp.out_path}")
+                                        if debug > 0: print(f"RUN_TASK: Same-run retry passed to submission logic: {comp.out_path}")
                                     elif options.want_submit:
                                         report += f"Retry pending for {comp.out_path}: initial state '{comp.qc_data.istate}' is missing or lacks geometry.\n"
                                     else:
                                         report += f"Retry pending for {comp.out_path}: automatic submission is disabled.\n"
+                                else:
+                                    report += f"Retry pending for {comp.out_path} --> Run SCOPE again to prepare and submit the next attempt.\n"
                                 if debug > 0: print(f"RUN_TASK: Errors handled for {comp.out_path}")
                             else:
                                 if not comp.has_update: report += f"Registration failed for current attempt: {comp.out_path}. Inspect the output or rerun with automatic error handling (-e).\n"

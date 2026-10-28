@@ -779,7 +779,7 @@ class Job(object):
         print(f"JOB.SET_CONTINUATION_COMP: set new computation with {new_comp.run_number=} and {new_comp.step=}")
     
         ######
-        ## Irrespectively of typ, the new computation will continue from the fstate, which should contain the latest available geometry and properties
+        ## Continue from a valid fstate only when requested by the continuation type.
         #####
         if  hasattr(comp.qc_data,"fstate"):
             iscorrect = comp.verify_state(comp.qc_data.fstate, target='opt')
@@ -792,6 +792,7 @@ class Job(object):
                 print("JOB.SET_CONTINUATION_COMP: istate of new computation remains as:", new_comp.qc_data.istate)
                 print("JOB.SET_CONTINUATION_COMP: fstate of new computation remains as:", new_comp.qc_data.fstate)
     
+        if typ != "rep_opt": comp.has_update = True
         return new_comp
 
 ####################
@@ -1143,6 +1144,7 @@ class Computation(object):
         import shutil
         if self.output_exists: new_out_path= self.out_path+'_part'
         shutil.move(self.out_path, new_out_path)
+        if debug > 0: print(f"COMPUTATION.STORE: Moved {self.out_path} to {new_out_path}")
 
 ###########################################
     def submit(self, environment: object, want_job_id: bool=False, debug: int=0) -> None:
