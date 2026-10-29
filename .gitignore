@@ -4,6 +4,9 @@
 *.gz
 .pypirc
 
+# Local bug investigations and regression records
+/bug_fixes/
+
 # Temporary
 /core/src/scope/import_system.py
 

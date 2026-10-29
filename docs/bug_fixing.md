@@ -28,6 +28,8 @@ Use the version under review when the problem is discovered, even if the fix is 
 
 Because `bug_fixes/` is outside `core/src` and the add-on `src` directories, these development files are not installed with SCOPE through pip.
 
+The folder is kept locally and excluded from Git; bug records are not distributed with the repository.
+
 ## The bug-details notebook
 
 `bug_details.ipynb` is the executable record of the problem. It should:
