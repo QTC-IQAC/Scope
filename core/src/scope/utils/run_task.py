@@ -178,114 +178,122 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
                 ### STEP 4: REGISTRATION ###
                 ############################
                 elif comp.output_exists and comp.input_exists:
-                    ## 4.1-If output exists, and is not registered, it does it
-                    ## This means that the output is read, parsed. The parsed data depends on the type of computation
+                    ## 4.1 Parse new outputs; cached registrations still reach continuation decisions in Step 5.
+                    worked = True
                     if comp.isregistered:
                         if debug > 0: print(f"RUN_TASK, step 4: job already registered")
                     else:
                         if debug > 0: print(f"RUN_TASK, step 4: registration")
-                        worked = comp.register(debug=debug) 
+                        worked = comp.register(debug=debug)
+                        updated = True
 
                         if debug > 0: print(f"RUN_TASK, step 4.1: registration {worked=}")
                         if debug > 0: print(f"RUN_TASK, step 4.1: {comp.has_update=}")
                         if debug > 0: print(f"RUN_TASK, step 4.1: {options.overwrite_inputs=}")
 
-                        ## 4.2 sets continuation computations. These are added to JOB object 
-                        continuation_stopped = False
-                        retry_running = False
-                        if comp.has_update:
-                            if debug > 0: print("RUN_TASK, step 4.2: A newer attempt already exists")
-                        elif comp.status == 'no_scf_convergence':
-                            if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=scf")  
-                            new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
-                            if new_comp is None:
-                                continuation_stopped = True
-                                report += f"Automatic QE SCF recovery exhausted: {comp.out_path}. Review the electronic and SCF settings.\n"
-                            elif new_comp.qc_data.software != "qe" and new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path}: Run Number > 10 \n"
-                        elif comp.status == "aborted":
-                            # Aborted attempts are resubmitted under the same run, never continued.
-                            if handle_errors and options.want_submit:
-                                comp.check_submission_status(global_env, debug=debug)
-                                retry_running = comp.isrunning and not options.ignore_submitted
-                        elif not comp.isgood and this_job.must_be_good:
-                            if comp.type == 'opt':
-                                if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=opt")  
-                                new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
-                                if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path}: Run Number > 10 \n"
-                            elif comp.type == 'ts':
-                                if comp.qc_data.fctype != "calcall":
-                                    if debug > 0: print(f"RUN_TASK, step 4.2: setting continuation computation with typ=ts")  
-                                    new_comp = this_job.set_continuation_computation(comp, "ts", debug=debug)
-                                else:
-                                    if debug > 0: print(f"RUN_TASK, step 4.2: continuation computation for TS not set. calcAll already attempted")  
-                                    report += f"Investigate {comp.out_path}: TS could not be found\n"
-
-                        ## 4.3 Cases meant to be repetitive. Next step added to JOB object 
                         if this_job.job_setup == "rep_opt" and comp.isgood:
-                            from scope.other import check_convergence
- 
-                            ## 4.3.1 Collects energies from state in this step
+                            ## 4.2 Collect energy only after fresh parsing: a cached final State may belong to a later step.
                             if hasattr(comp.qc_data,"fstate"): fstate_name = comp.qc_data.fstate
                             else:                              fstate_name = comp._job.fstate
                             exists, fstate = comp.source.find_state(fstate_name, debug=debug)         ## This one MUST exist
                             assert exists
-                            if comp.step > len(this_job.energies): 
+                            if comp.step > len(this_job.energies):
                                 this_job.energies = np.append(this_job.energies,int(0))
                             this_job.energies[int(comp.step)-1] = fstate.results['energy'].value
 
-                            ## 4.3.2 Checks the energy convergence
-                            this_job.isconverged = False
-                            if comp.step > 0: this_job.isconverged = check_convergence(this_job.energies, comp.step-1, this_job.job_data.energy_thres)
-
-                            ## 4.3.3 Continutes if not converged and below max_steps
-                            if this_job.isconverged: 
-                                print(f"RUN_TASK, step 4.3: repetitive opt reached convergence")  
-                            elif not this_job.isconverged and comp.step <= this_job.job_data.max_steps:
-                                new_comp = this_job.set_continuation_computation(comp, "rep_opt", debug=debug)     
+                    #############################
+                    ### STEP 5: CONTINUATIONS ###
+                    #############################
+                    ## 5.1 Generate or reuse continuations, including when the parent was registered earlier.
+                    ## has_update can mean only that a file exists; the native setter must still create its object.
+                    ncomputations = len(this_job.computations)
+                    continuation_stopped = False
+                    retry_running = False
+                    if comp.status == 'no_scf_convergence':
+                        if debug > 0: print(f"RUN_TASK, step 5.1: setting continuation computation with typ=scf")
+                        new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
+                        if new_comp is None:
+                            continuation_stopped = True
+                            report += f"Automatic QE SCF recovery exhausted: {comp.out_path}. Review the electronic and SCF settings.\n"
+                        elif new_comp.qc_data.software != "qe" and new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path}: Run Number > 10 \n"
+                    elif comp.status == "aborted":
+                        # Aborted attempts are resubmitted under the same run, never continued.
+                        if handle_errors and options.want_submit:
+                            comp.check_submission_status(global_env, debug=debug)
+                            retry_running = comp.isrunning and not options.ignore_submitted
+                    elif not comp.isgood and this_job.must_be_good:
+                        if comp.type == 'opt':
+                            if debug > 0: print(f"RUN_TASK, step 5.1: setting continuation computation with typ=opt")
+                            new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
+                            if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path}: Run Number > 10 \n"
+                        elif comp.type == 'ts':
+                            if comp.qc_data.fctype != "calcall":
+                                if debug > 0: print(f"RUN_TASK, step 5.1: setting continuation computation with typ=ts")
+                                new_comp = this_job.set_continuation_computation(comp, "ts", debug=debug)
                             else:
-                                print(f"RUN_TASK, step 4.3: maximum steps reached without convergence")  
+                                if debug > 0: print(f"RUN_TASK, step 5.1: continuation computation for TS not set. calcAll already attempted")
+                                report += f"Investigate {comp.out_path}: TS could not be found\n"
 
-                        # Checks for common stupid errors and handles files
-                        if debug > 0: print(f"RUN_TASK, step 4.4: registration {worked=}")  
-                        if not worked:
-                            if comp.has_update:
-                                # Keep failed outputs under their original attempt names.
-                                comp.delete_lines()
-                                comp.delete_output()
-                                if debug > 0: print(f"RUN_TASK: Preserving superseded output: {comp.out_path}")
-                            elif retry_running:
-                                if debug > 0: print(f"RUN_TASK: Attempt is still queued or running; preserving {comp.out_path}")
-                            elif continuation_stopped:
-                                if debug > 0: print(f"RUN_TASK: Preserving {comp.out_path} for manual inspection")
-                            elif handle_errors:          # ...takes default action
-                                comp.read_lines()
-                                empty_output = len(comp.output_lines) == 0
-                                if not empty_output:
-                                    comp.store(debug=debug)  # Moves the failed log to _part.
-                                else:
-                                    if os.path.isfile(comp.out_path): os.remove(comp.out_path)
-                                comp.delete_lines()
-                                comp.delete_output()
-                                comp.check_files()
-                                if comp.status == "aborted" or empty_output:
-                                    comp.isregistered = False
-                                    comp.isfinished   = False
-                                    comp.isgood       = False
-                                    if options.want_submit and comp.verify_state(comp.qc_data.istate):
-                                        comp.run(global_env, options, debug=debug)
-                                        if debug > 0: print(f"RUN_TASK: Same-run retry passed to submission logic: {comp.out_path}")
-                                    elif options.want_submit:
-                                        report += f"Retry pending for {comp.out_path}: initial state '{comp.qc_data.istate}' is missing or lacks geometry.\n"
-                                    else:
-                                        report += f"Retry pending for {comp.out_path}: automatic submission is disabled.\n"
-                                else:
-                                    report += f"Retry pending for {comp.out_path} --> Run SCOPE again to prepare and submit the next attempt.\n"
-                                if debug > 0: print(f"RUN_TASK: Errors handled for {comp.out_path}")
+                    ## 5.2 Continue repetitive optimization from current attempts, retaining cached step energies.
+                    if this_job.job_setup == "rep_opt" and comp.isgood and not comp.has_update:
+                        from scope.other import check_convergence
+
+                        ## Check convergence using the stored per-step energies.
+                        this_job.isconverged = False
+                        if comp.step > 1: this_job.isconverged = check_convergence(this_job.energies, comp.step-1, this_job.job_data.energy_thres)
+
+                        ## Reuse an existing next step without calling the setter again for rep_opt.
+                        exists, next_comp = this_job.find_computation(keyword=comp.keyword, step=comp.step+1, run_number=1)
+                        if this_job.isconverged:
+                            print(f"RUN_TASK, step 5.2: repetitive opt reached convergence")
+                        elif comp.step <= this_job.job_data.max_steps:
+                            if not exists:
+                                new_comp = this_job.set_continuation_computation(comp, "rep_opt", debug=debug)
+                        else:
+                            print(f"RUN_TASK, step 5.2: maximum steps reached without convergence")
+
+                    if len(this_job.computations) > ncomputations: updated = True
+
+                    ## 5.3 Keep error handling after continuation creation so superseded outputs stay intact.
+                    if debug > 0: print(f"RUN_TASK, step 5.3: registration {worked=}")
+                    if not worked:
+                        if comp.has_update:
+                            # Keep failed outputs under their original attempt names.
+                            comp.delete_lines()
+                            comp.delete_output()
+                            if debug > 0: print(f"RUN_TASK: Preserving superseded output: {comp.out_path}")
+                        elif retry_running:
+                            if debug > 0: print(f"RUN_TASK: Attempt is still queued or running; preserving {comp.out_path}")
+                        elif continuation_stopped:
+                            if debug > 0: print(f"RUN_TASK: Preserving {comp.out_path} for manual inspection")
+                        elif handle_errors:          # ...takes default action
+                            comp.read_lines()
+                            empty_output = len(comp.output_lines) == 0
+                            if not empty_output:
+                                comp.store(debug=debug)  # Moves the failed log to _part.
                             else:
-                                if not comp.has_update: report += f"Registration failed for current attempt: {comp.out_path}. Inspect the output or rerun with automatic error handling (-e).\n"
-                                if debug > 0: print(f"RUN_TASK: Error registering {comp.out_path}")
-                        updated = True
-                        if debug > 0: print("")
+                                if os.path.isfile(comp.out_path): os.remove(comp.out_path)
+                            comp.delete_lines()
+                            comp.delete_output()
+                            comp.check_files()
+                            if comp.status == "aborted" or empty_output:
+                                comp.isregistered = False
+                                comp.isfinished   = False
+                                comp.isgood       = False
+                                if options.want_submit and comp.verify_state(comp.qc_data.istate):
+                                    comp.run(global_env, options, debug=debug)
+                                    if debug > 0: print(f"RUN_TASK: Same-run retry passed to submission logic: {comp.out_path}")
+                                elif options.want_submit:
+                                    report += f"Retry pending for {comp.out_path}: initial state '{comp.qc_data.istate}' is missing or lacks geometry.\n"
+                                else:
+                                    report += f"Retry pending for {comp.out_path}: automatic submission is disabled.\n"
+                            else:
+                                report += f"Retry pending for {comp.out_path} --> Run SCOPE again to prepare and submit the next attempt.\n"
+                            if debug > 0: print(f"RUN_TASK: Errors handled for {comp.out_path}")
+                        else:
+                            if not comp.has_update: report += f"Registration failed for current attempt: {comp.out_path}. Inspect the output or rerun with automatic error handling (-e).\n"
+                            if debug > 0: print(f"RUN_TASK: Error registering {comp.out_path}")
+                    if debug > 0: print("")
 
             # Updates Job Registry information. Necessary to update class.isregistered attribute, but not very important
             this_job.register(debug=0)
