@@ -25,9 +25,9 @@ def gen_qe_input(comp: object, debug: int=0):
 
     Warning:
         Atomic coordinates and labels are taken from the requested state
-        (`comp.qc_data.istate`) so that the geometry reflects any updates coming
-        from previous computations. However, atomic spin information is instead taken from
-        the original source (comp.source).
+        (`comp.qc_data.istate`) in State order. Spins come from comp.source. Reordered
+        States require uniform spins per element, or an explicit atom mapping when
+        chemically identical sites have different intended spins.
     """ 
 
     ######################
@@ -85,6 +85,18 @@ def gen_qe_input(comp: object, debug: int=0):
     metal_species            = get_metal_species(istate.labels)        ## 
     species                  = get_label_spin_pairs(comp.source)       ## Spin information is taken from the source
     nspecies                 = len(species)
+
+    # Coordinates follow State order; intended spins must describe those same atoms.
+    source_labels = [atom.label for atom in comp.source.atoms]
+    spins         = list(comp.source.atomic_spins)
+    if len(istate.labels) != len(istate.coord) or sorted(istate.labels) != sorted(source_labels):
+        raise ValueError("GEN_QE_INPUT: State and source must describe the same atoms")
+    if list(istate.labels) != source_labels:
+        spins_by_label = {}
+        for label, spin in zip(source_labels, spins): spins_by_label.setdefault(label, set()).add(spin)
+        if any(len(values) != 1 for values in spins_by_label.values()):
+            raise ValueError("GEN_QE_INPUT: Reordered State with mixed site spins requires an explicit atom mapping")
+        spins = [next(iter(spins_by_label[label])) for label in istate.labels]
 
     if debug >= 0: 
         print("GEN_QE_INPUT: Received cell with this data:")
@@ -243,18 +255,9 @@ def gen_qe_input(comp: object, debug: int=0):
         #// Atom Coords, taken from istate, but spins taken from the source //
         #/////////////////////////////////////////////////////////////////////
         print("ATOMIC_POSITIONS angstrom", file=inp)
-        # First, it prints the metal atoms
-        for idx, at in enumerate(comp.source.atoms):
-            if idx in metal_indices:
-                if comp.source.atomic_spins[idx] == 0: l = at.label
-                else:                             l = at.get_decorated_label(typ="spin") 
-                print(f"{l:4}        {at.coord[0]:12.6f}   {at.coord[1]:12.6f}   {at.coord[2]:12.6f}", file=inp)
-        # Then the rest
-        for idx, at in enumerate(comp.source.atoms):
-            if idx not in metal_indices:
-                if comp.source.atomic_spins[idx] == 0: l = at.label
-                else:                             l = at.get_decorated_label(typ="spin") 
-                print(f"{l:4}        {at.coord[0]:12.6f}   {at.coord[1]:12.6f}   {at.coord[2]:12.6f}", file=inp)
+        for label, coord, spin in zip(istate.labels, istate.coord, spins):
+            if spin != 0: label = f"{label}{spin}"
+            print(f"{label:4}        {coord[0]:12.6f}   {coord[1]:12.6f}   {coord[2]:12.6f}", file=inp)
         print("K_POINTS gamma", file=inp)
 
         #//////////////////////////////////////////
