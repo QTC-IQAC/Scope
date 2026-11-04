@@ -177,11 +177,12 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"requisites"):    data._add_attr("requisites", [])
     if not hasattr(data,"constrains"):    data._add_attr("constrains", ['self'])
     if not hasattr(data,"must_be_good"):  data._add_attr("must_be_good", True)
+    if not hasattr(data,"save_wf"):       data._add_attr("save_wf", False)
 
     ## Adds defaults for rep_opt job setup type
     if data.job_setup == 'rep_opt' and not hasattr(data,"energy_thres"): data._add_attr("energy_thres",float(1e-5))
-    if data.job_setup == 'rep_opt' and not hasattr(data,"max_steps"):    data._add_attr("max_steps",int(10))
-    if data.job_setup == 'rep_opt' and not hasattr(data,"energiess"):    data._add_attr("energies",np.zeros((data.max_steps)))
+    if data.job_setup == 'rep_opt' and not hasattr(data,"max_steps"):    data._add_attr("max_steps",int(5))
+    if data.job_setup == 'rep_opt' and not hasattr(data,"energies"):     data._add_attr("energies",np.zeros((data.max_steps)))
 
     ## Modifies some attributes to avoid blank spaces and dashes, and to use lower letters
     data._mod_attr("job",str(data.job.strip().lower().replace("-","_").replace(" ","_")))
@@ -258,7 +259,11 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"elec_maxstep"):  data._add_attr("elec_maxstep", int(200)) 
         if not hasattr(data,"pressure"):      data._add_attr("pressure", int(0))
         if not hasattr(data,"forc_conv"):     data._add_attr("forc_conv", float(1e-5))
-        if not hasattr(data,"elec_conv"):     data._add_attr("elec_conv", float(1e-5))
+        if not hasattr(data,"elec_conv"):     data._add_attr("elec_conv", float(1e-10))
+        if not hasattr(data,"trust_rad"):     data._add_attr("trust_rad", float(1e-6))
+        if not hasattr(data,"upscale"):       data._add_attr("upscale", int(10))
+        if not hasattr(data,"ion_dynamics"):  data._add_attr("ion_dynamics", "bfgs")
+        if not hasattr(data,"cell_dynamics"): data._add_attr("cell_dynamics", "bfgs")
 
     return data
 

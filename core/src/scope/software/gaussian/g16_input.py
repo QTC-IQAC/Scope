@@ -290,7 +290,7 @@ SUPPORTED_BASIS_NAMES = ", ".join(BASIS_ALIASES.keys())
 #################
 ### Check G16 ###
 #################
-def check_g16(module: str, debug: int=0) -> dict:
+def check_g16_launcher(module: str, debug: int=0) -> dict:
     """Inspect a Gaussian module without executing g16 or testing Linda.
 
     Returns:

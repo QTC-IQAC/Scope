@@ -374,6 +374,7 @@ class Job(object):
 
     Methods:
         add_computation():              Create a computation for the job.
+        get_wf_path():                  Return the shared wf path for a keyword chain.
         set_computations_from_setup():  Expand the job into computations.
         set_continuation_computation(): Create a retry or continuation run.
         check_requisites():             Evaluate job dependencies.
@@ -414,6 +415,31 @@ class Job(object):
     @property
     def ncomputations(self):
         return len(self.computations)
+
+    def get_wf_path(self, keyword: str='', debug: int=0) -> str | None:
+        """Return the planned wf path for a keyword chain, or None when save_wf is False.
+
+        The name includes the system, source, job and optional keyword. Steps and run
+        numbers share this path. QE uses a .save directory; Gaussian uses a .chk file.
+        Software is taken from the Job's computations, which must use one backend.
+        Saved data belongs under the Job's directory; the path does not imply usable data.
+        """
+        if not self.job_data.save_wf: return None
+        if not self.computations: raise ValueError("JOB.GET_WF_PATH: No computations are available to determine the software")
+        software = self.computations[0].software
+        if any(comp.software != software for comp in self.computations): raise ValueError("JOB.GET_WF_PATH: Job computations must use the same software")
+        if   software == 'qe':  extension = '.save'
+        elif software == 'g16': extension = '.chk'
+        else: raise ValueError(f"JOB.GET_WF_PATH: software '{software}' is not supported")
+
+        filename = Filename()
+        filename.add_item(Filename_item('sys_name', self.source._sys.name))
+        filename.add_item(Filename_item('sou_name', self.source.name))
+        filename.add_item(Filename_item('job_name', self.name))
+        if keyword != '': filename.add_item(Filename_item('keyword', keyword))
+        wf_path = os.path.join(self.path, filename.get_name(suffix=extension))
+        if debug > 0: print(f"JOB.GET_WF_PATH: {keyword=}, {wf_path=}")
+        return wf_path
 
     def check_job_data(self, inp_path: str, debug: int=0):
         from scope.classes_input import set_input_data
@@ -672,7 +698,10 @@ class Job(object):
     
         # 0-We make sure that the new_run does not exist. If so, we return it directly:
         exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step, run_number=comp.run_number+1)
-        if exists: comp.has_update = True; print("Set_Continuation_Comp: Continuation Computation exists"); return new_comp
+        if exists:
+            comp.has_update = True
+            print("Set_Continuation_Comp: Continuation Computation exists")
+            return new_comp
 
         ###############################
         ## Operates Depending on typ ##
@@ -889,6 +918,7 @@ class Computation(object):
         type (str):                     Computation type.
         step (int):                     Step number in the job setup.
         run_number (int):               Retry or update counter.
+        wf_path (str | None):           Planned wf location when job_data.save_wf is enabled, otherwise None.
 
     Methods:
         set_name():                     Build the computation name.
@@ -908,6 +938,7 @@ class Computation(object):
         self.step             = step
         self.keyword          = keyword               ## Normally blank, but it can be used to identify the computation in jobs with complex setups
         self.path             = path
+        self.wf_path          = None
         self.index            = len(_job.computations)+1
         self.isregistered     = False
         self.has_update       = False
@@ -923,10 +954,11 @@ class Computation(object):
         if self.software == 'g16':
             inp = ".com"
             out = ".log"
+            sub = ".sub"
         if self.software == 'qe':
             inp = ".input"
             out = ".out"
-        sub = ".sub"
+            sub = ".sub"
         return inp, out, sub
  
     def get_mod_filename(self, mod_item_vars: list, mod_item_vals: list, debug: int=0):
@@ -979,6 +1011,8 @@ class Computation(object):
         self.inp_path = self.path+self.inp_name
         self.out_path = self.path+self.out_name
         self.sub_path = self.path+self.sub_name
+        self.wf_path = self._job.get_wf_path(keyword=self.keyword)
+        self.wf_name = os.path.basename(self.wf_path) if self.wf_path is not None else None
 
     def check_files(self) -> None:
         if not hasattr(self,"inp_path"): self.set_paths()

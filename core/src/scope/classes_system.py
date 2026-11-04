@@ -301,6 +301,8 @@ class System(object):
                         comp.inp_path = comp.path+comp.inp_name  ## inp_path is a file
                         comp.out_path = comp.path+comp.out_name  ## out_path is a file
                         comp.sub_path = comp.path+comp.sub_name  ## sub_path is a file
+                        comp.wf_path  = job.get_wf_path(keyword=comp.keyword)
+                        comp.wf_name  = os.path.basename(comp.wf_path) if comp.wf_path is not None else None
                         comp.check_files()
                         if debug > 0: print(f"SET_PATHS_DOWN_HIERARCHY: new computation path: {comp.inp_path}")
 

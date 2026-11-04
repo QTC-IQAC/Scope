@@ -14,12 +14,14 @@ def gen_qe_input(comp: object, debug: int=0):
     Generate a Quantum Espresso input file for a computation.
 
     Parameters:
-        comp (object):                Computation object containing the QC settings,
-                                      source, and input-file path.
-        debug (int):                  Verbosity level.
+        comp (object):    Computation object containing the QC settings, source, and file paths.
+        debug (int):      Verbosity level.
 
     Returns:
         None
+
+    The input starts from an atomic guess. Continuation batch scripts may switch
+    their scratch copy to file initialization after preparing a valid saved wf.
 
     Warning:
         Atomic coordinates and labels are taken from the requested state
@@ -33,7 +35,7 @@ def gen_qe_input(comp: object, debug: int=0):
     ######################
     ## 1-Verify Information in initial state
     assert hasattr(comp.qc_data,"istate"), f"istate = {comp.qc_data.istate} not found in comp.qc_data"
-    exists, istate    = find_state(comp.source, comp.qc_data.istate)
+    exists, istate = find_state(comp.source, comp.qc_data.istate)
     assert exists,                         f"istate = {comp.qc_data.istate} does not exist"
     assert hasattr(istate,"labels"),       f"istate = {comp.qc_data.istate} doesn't have labels"
     assert hasattr(istate,"coord"),        f"istate = {comp.qc_data.istate} doesn't have coordinates"
@@ -100,7 +102,11 @@ def gen_qe_input(comp: object, debug: int=0):
         print( "    restart_mode='from_scratch'", file=inp)
         print(f"    pseudo_dir ='{PP_path}'", file=inp)
         print( "    disk_io='low'", file=inp)
-        print(f"    prefix='{comp.name}'", file=inp)
+        prefix = os.path.splitext(comp.wf_name)[0] if comp._job.job_data.save_wf else comp.name
+        print(f"    prefix='{prefix}'", file=inp)
+
+        ## Keep QE scratch files in the working directory chosen by the batch script.
+        print("    outdir='./'", file=inp)
 
         ## Print forces for finite differences computation.
         if hasattr(comp.qc_data,"print_forces"):
@@ -110,7 +116,7 @@ def gen_qe_input(comp: object, debug: int=0):
         if comp.qc_data.comp_type == "opt" or comp.qc_data.comp_type == "relax" or comp.qc_data.comp_type == "vc-relax":
             print(f"    wf_collect = .true.", file=inp)
             print(f"    tprnfor = .true.", file=inp)
-            print(f"    nstep = 300", file=inp)
+            print(f"    nstep = 100", file=inp)
             print(f"    forc_conv_thr = {comp.qc_data.forc_conv}", file=inp)
         print("/", file=inp)
 
@@ -118,12 +124,14 @@ def gen_qe_input(comp: object, debug: int=0):
         #// System control ///
         #/////////////////////
         min_cowfc = 25
-        min_corho = 200
-        ### Determines cutoffs using the info contained in the Pseudopotentials
+        min_corho = 250
+        ### Determines cutoffs using the info contained in the Pseudopotentials.
+        ### Minimum values are also set
         for idx, spec in enumerate(species):
             pp, cutoff_wfc, cutoff_rho = get_pp(spec[0], PP_path)
-            if cutoff_wfc > min_cowfc: min_cowfc = cutoff_wfc # updates
-            if cutoff_rho > min_corho: min_corho = cutoff_rho # updates
+            if cutoff_wfc > min_cowfc:      min_cowfc = cutoff_wfc      # updates
+            if cutoff_rho > min_corho:      min_corho = cutoff_rho      # updates
+            if cutoff_rho < 10*cutoff_wfc:  min_corho = 10*cutoff_wfc   # updates
 
         if comp.qc_data.comp_type == "vc-relax": min_cowfc *= 2; min_corho *= 2  ## In vc-relax it is convenient to minimize pulay stress
 
@@ -134,6 +142,7 @@ def gen_qe_input(comp: object, debug: int=0):
             if not hasattr(comp.qc_data,"cubeside"): 
                 raise ValueError(f"GEN_QE_INPUT: For molecules, the 'cubeside' parameter must be set in the qc_data section of the input. It is missing.") 
             print(f"    ibrav=1, celldm(1)={comp.qc_data.cubeside}", file=inp)
+
         ## For Crystals
         elif system_type == "cell":     
             print(f"    ibrav=0,", file=inp)
@@ -183,6 +192,8 @@ def gen_qe_input(comp: object, debug: int=0):
         print(f"    mixing_beta = {comp.qc_data.mix_beta}", file=inp)
         print(f"    mixing_mode = '{comp.qc_data.mix_mode}'", file=inp)
         print(f"    mixing_ndim = {comp.qc_data.mix_ndim}", file=inp)
+        print("    startingpot='atomic'", file=inp)
+        print("    startingwfc='atomic+random'", file=inp)
         print("/", file=inp)
    
         #///////////////////
@@ -190,9 +201,9 @@ def gen_qe_input(comp: object, debug: int=0):
         #///////////////////
         if comp.qc_data.comp_type == "opt" or comp.qc_data.comp_type == "relax" or comp.qc_data.comp_type == "vc-relax":
             print(" &ions", file=inp)
-            print("    upscale=10", file=inp)
-            print("    ion_dynamics='bfgs'", file=inp)
-            print("    trust_radius_ini= 0.1D0", file=inp)
+            print(f"    upscale={comp.qc_data.upscale}", file=inp)
+            print(f"    ion_dynamics='{comp.qc_data.ion_dynamics}'", file=inp)
+            print(f"    trust_radius_ini= {comp.qc_data.trust_rad}", file=inp)
             print("/", file=inp)
         
         #///////////////////
@@ -200,9 +211,9 @@ def gen_qe_input(comp: object, debug: int=0):
         #///////////////////
         if comp.qc_data.comp_type == "vc-relax":
             print(" &cell", file=inp)
-            print("    cell_dynamics='bfgs'", file=inp)
-            print("    cell_dofree='all'", file=inp)
-            print("    cell_factor= 1.2D0", file=inp)
+            print(f"    cell_dynamics='{comp.qc_data.cell_dynamics}'", file=inp)
+            print(f"    cell_dofree='all'", file=inp)
+            print(f"    cell_factor= 1.2D0", file=inp)
             print(f"    press= {comp.qc_data.pressure}", file=inp)
             if comp.qc_data.pressure == 0: print("    press_conv_thr= 0.5D0", file=inp)
             else:                          print("    press_conv_thr= 0.01D0", file=inp)
@@ -256,8 +267,14 @@ def gen_qe_input(comp: object, debug: int=0):
 
 ###################################################
 def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: str="pw.x", version: float=7.0, launcher: str=None, debug: int=0):
-    # Write a QE submission script using the Environment's preferred launcher.
     import shlex
+    import sys
+    save_wf = comp._job.job_data.save_wf
+    reuse_wf = save_wf and (comp.is_update or comp.step > 1 or comp.run_number > 1)
+    if save_wf:
+        # Use the submitting SCOPE environment for checks on the compute node.
+        wf_check_code    = f'import sys; from scope.software.quantum_espresso.qe_input import check_qe_wf; sys.exit(not check_qe_wf(sys.argv[1], debug={max(debug - 1,0)}))'
+        wf_check_command = f'{shlex.quote(sys.executable)} -c {shlex.quote(wf_check_code)}'
 
     # Retrieve the preferred launcher from the queue's environment if not provided.
     if launcher is None: launcher = 'srun' if queue._environment.scheduler == 'slurm' else 'mpirun'
@@ -272,6 +289,7 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
     if debug > 0: print(f"GEN_QE_SUBFILE: Using QE Module From Environment: '{module}'") 
     if debug > 0: print(f"GEN_QE_SUBFILE: Requesting Cores={procs}")
     version = str(version)
+
     with open(comp.sub_path, 'w+') as sub:
         if queue._environment.scheduler == 'slurm':
             print(f"#!/bin/bash", file=sub)
@@ -283,18 +301,6 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
             print(f"#SBATCH --ntasks={procs}", file=sub)
             print(f"#SBATCH --mem-per-cpu=1900MB", file=sub)
             print(f"#SBATCH --time={queue.time_limit}", file=sub)
-            print(f"", file=sub)
-            print(f"module load {module}", file=sub)
-            print(f"", file=sub)
-            print(f"set OMP_NUM_THREADS=1", file=sub)
-            print(f"ulimit -l unlimited", file=sub)
-            print(f"", file=sub)
-            print(f"JOBDIR=$PWD", file=sub)
-            print(f"cd $TMPDIR", file=sub)
-            print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
-            if procs >= 128: print(f"{launch_command} < {comp.inp_name} > {comp.out_name} -pd .true.", file=sub)
-            else:            print(f"{launch_command} < {comp.inp_name} > {comp.out_name}", file=sub)
-            print(f"cp -pr {comp.out_name} $JOBDIR", file=sub)
 
         elif queue._environment.scheduler == 'sge':
             print(f"#!/bin/bash", file=sub)
@@ -304,26 +310,182 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
             print(f"#$ -q {queue.name}" , file=sub)
             print(f"#$ -pe smp {procs}", file=sub)
             print(f"#$ -cwd", file=sub)
-            print(f"", file=sub)
-            #print(f"source /etc/profile.d/modules.csh", file=sub)
-            #print(f"source $HOME/.bashrc", file=sub)
-            #print(f". /etc/profile", file=sub)
-            print(f"module load {module}", file=sub)
-            print(f"", file=sub)
-            print(f"set OMP_NUM_THREADS=1", file=sub)
-            print(f"ulimit -l unlimited", file=sub)
-            print(f"", file=sub)
-            print(f"JOBDIR=$PWD", file=sub)
-            print(f"cd $TMPDIR", file=sub)
-            print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
-            print(f"{launch_command} < {comp.inp_name} > {comp.out_name}", file=sub)
-            print(f"cp -pr {comp.out_name} $JOBDIR", file=sub)
+
+        # 1) Prepare an isolated directory inside the job scratch, for every QE run.
+        print('', file=sub)
+        print(f'module load {module}', file=sub)
+        print('set OMP_NUM_THREADS=1', file=sub)
+        print('ulimit -l unlimited', file=sub)
+        print('', file=sub)
+        print('# Prepare job scratch', file=sub)
+        print('JOBDIR=$PWD', file=sub)
+        print('SCRATCHDIR=$(mktemp -d "${TMPDIR:?}/scope.XXXXXX")', file=sub)
+        print('cd "$SCRATCHDIR"', file=sub)
+        print(f'cp "$JOBDIR"/{shlex.quote(comp.inp_name)} .', file=sub)
+
+        # 2) Continuations may initialize from the latest valid wf of this keyword chain.
+        if reuse_wf:
+            wf_prepare_code = f'import sys; from scope.software.quantum_espresso.qe_input import prepare_qe_wf; prepare_qe_wf(sys.argv[1], sys.argv[2], debug={max(debug - 1,0)})'
+            print('', file=sub)
+            print('# Prepare the saved wf; keep the atomic guess if unavailable', file=sub)
+            print(f'{shlex.quote(sys.executable)} -c {shlex.quote(wf_prepare_code)} {shlex.quote(comp.wf_path)} {shlex.quote(comp.inp_name)}', file=sub)
+
+        # 3) Run QE. Saved data will be copied even if QE does not converge.
+        print('', file=sub)
+        print('# Run QE', file=sub)
+        if queue._environment.scheduler == 'slurm' and procs >= 128: print(f"{launch_command} < {comp.inp_name} > {comp.out_name} -pd .true.", file=sub)
+        else:                                                        print(f"{launch_command} < {comp.inp_name} > {comp.out_name}", file=sub)
+
+        # 4) Preserve the wf. Stop only this copy block on failure, then return the output.
+        if save_wf:
+            print(f'''
+# Save the wavefunction directory, replacing any previous saved copy
+WF_NAME={shlex.quote(comp.wf_name)}
+WF_DIR={shlex.quote(os.path.dirname(comp.wf_path))}
+wf_status=0
+if [ -d "$SCRATCHDIR/$WF_NAME" ]; then
+    (
+        set -e  # Stop this block if a file operation fails
+
+        # Copy the new data before touching the previous copy
+        wf_staging=$(mktemp -d "$WF_DIR/.scope-wf.XXXXXX")
+        cp -pr "$SCRATCHDIR/$WF_NAME" "$wf_staging/"
+
+        # Retain the previous wf if the new saved data is incomplete
+        if ! {wf_check_command} "$wf_staging/$WF_NAME"; then
+            rm -rf "$wf_staging"
+            exit 0
+        fi
+
+        # Keep the previous copy until its replacement is installed
+        if [ -e "$WF_DIR/$WF_NAME" ]; then
+            mv "$WF_DIR/$WF_NAME" "$wf_staging/previous"
+        fi
+        mv "$wf_staging/$WF_NAME" "$WF_DIR/$WF_NAME"
+        rm -rf "$wf_staging"
+    )
+    wf_status=$?
+else
+    echo "SCOPE: QE save directory not found: $SCRATCHDIR/$WF_NAME" >&2
+fi''', file=sub)
+
+        # 5) Return the text output even when preserving the wf failed.
+        print('', file=sub)
+        print('# Return the text output', file=sub)
+        print(f'if ! cp -pr {shlex.quote(comp.out_name)} "$JOBDIR"; then', file=sub)
+        print('    exit 1', file=sub)
+        print('fi', file=sub)
+        if save_wf: print('exit "$wf_status"', file=sub)
 
         os.chmod(comp.sub_path, 0o777)
 
 #####################
 ## Other Functions ##
 #####################
+def check_qe_wf(wf_path: str, debug: int=0) -> bool:
+    """Check the basic completeness of a collected QE .save directory.
+
+    Read data-file-schema.xml and require readable, nonempty density and orbital
+    files for every k-point/spin channel, in one consistent .dat or .hdf5 format.
+    Require occup.txt for DFT+U and paw.txt for PAW when identified in the metadata.
+    Legacy/distributed saves are unsupported. Return only a Boolean; explanations
+    are printed when debug > 0. Files are opened read-only and only one byte of
+    each binary file is read. This does not validate binary contents, SCF convergence,
+    the electronic state or compatibility with a receiving computation/QE build.
+    """
+    from xml.etree import ElementTree
+
+    if wf_path is None or not os.path.isdir(wf_path):
+        if debug > 0: print(f"CHECK_QE_WF: save directory not found: {wf_path}")
+        return False
+
+    try:
+        root  = ElementTree.parse(os.path.join(wf_path, 'data-file-schema.xml')).getroot()
+        bands = root.find('./{*}output/{*}band_structure')
+        if root.tag.rsplit('}',1)[-1] != 'espresso' or bands is None: raise ValueError('QE output band metadata is missing')
+        nks       = int(bands.findtext('{*}nks', default='0'))
+        lsda      = bands.findtext('{*}lsda', default='').strip().lower()
+        collected = bands.findtext('{*}wf_collected', default='').strip().lower()
+        if nks < 1: raise ValueError('Invalid or missing k-point count')
+        if lsda not in ['true', 'false', '1', '0']: raise ValueError('Invalid or missing spin-channel flag')
+        if collected not in ['true', '1']: raise ValueError('Metadata does not identify collected wavefunctions')
+        if len(bands.findall('{*}ks_energies')) != nks: raise ValueError('K-point metadata is incomplete')
+
+        # QE XML counts physical k-points; collinear LSDA needs up and down files for each.
+        prefixes = ['wfcup', 'wfcdw'] if lsda in ['true', '1'] else ['wfc']
+        binaries = ['charge-density'] + [f'{prefix}{idx}' for prefix in prefixes for idx in range(1,nks+1)]
+        auxiliary = []
+        if root.find('./{*}output/{*}dft/{*}dftU') is not None: auxiliary.append('occup.txt')
+        paw = root.findtext('./{*}output/{*}algorithmic_info/{*}paw', default='false').strip().lower()
+        if paw not in ['true', 'false', '1', '0']: raise ValueError('Invalid PAW flag')
+        if paw in ['true', '1']: auxiliary.append('paw.txt')
+        for name in auxiliary:
+            with open(os.path.join(wf_path, name), 'rb') as data:
+                if not data.read(1): raise ValueError(f'{name} is empty')
+
+        # A QE build reads one binary format; accepting a mixture would hide missing files.
+        failures = []
+        for extension in ['.dat', '.hdf5']:
+            try:
+                for name in binaries:
+                    with open(os.path.join(wf_path, name+extension), 'rb') as data:
+                        if not data.read(1): raise ValueError(f'{name+extension} is empty')
+            except (OSError, ValueError) as exc:
+                failures.append(str(exc))
+                continue
+            if debug > 0: print(f"CHECK_QE_WF: required files present and nonempty ({nks} k-points, {extension}): {wf_path}")
+            return True
+        if debug > 0: print(f"CHECK_QE_WF: no complete binary file set: {'; '.join(failures)}")
+        return False
+    except (OSError, ValueError, ElementTree.ParseError) as exc:
+        if debug > 0: print(f"CHECK_QE_WF: {exc}")
+        return False
+
+def prepare_qe_wf(wf_path: str, inp_path: str, debug: int=0) -> bool:
+    """Copy a saved QE wf beside a generated scratch input and enable file initialization.
+
+    Return True only after copying, checking the copy and replacing the scratch
+    input. On failure retain the original input and return False. Expected input
+    uses the saved directory's prefix, outdir='./', and SCOPE's atomic defaults.
+    The persistent wf is read-only; the scratch destination must not already exist.
+    This checks file completeness, not binary contents or calculation compatibility.
+    """
+    import shutil
+    import tempfile
+
+    if not check_qe_wf(wf_path, debug=max(debug - 1,0)):
+        if debug > 0: print(f"PREPARE_QE_WF: no complete saved wf; keeping the atomic guess: {wf_path}")
+        return False
+    inp_path = os.path.abspath(inp_path)
+    wf_name  = os.path.basename(os.path.normpath(wf_path))
+    target   = os.path.join(os.path.dirname(inp_path), wf_name)
+    if os.path.lexists(target):
+        if debug > 0: print(f"PREPARE_QE_WF: scratch destination already exists: {target}")
+        return False
+
+    copy_started = False
+    temporary    = None
+    try:
+        with open(inp_path, 'r') as inp: text = inp.read()
+        expected = [f"prefix='{os.path.splitext(wf_name)[0]}'", "outdir='./'", "startingpot='atomic'", "startingwfc='atomic+random'"]
+        if any(text.count(item) != 1 for item in expected): raise ValueError('Input does not use the expected prefix, outdir and atomic defaults')
+        copy_started = True
+        shutil.copytree(wf_path, target)
+        if not check_qe_wf(target, debug=max(debug - 1,0)): raise ValueError('Copied wf is incomplete')
+        text = text.replace("startingpot='atomic'", "startingpot='file'").replace("startingwfc='atomic+random'", "startingwfc='file'")
+        with tempfile.NamedTemporaryFile(mode='w', dir=os.path.dirname(inp_path), delete=False) as inp:
+            temporary = inp.name
+            inp.write(text)
+        os.replace(temporary, inp_path)
+    except (OSError, ValueError) as exc:
+        if copy_started: shutil.rmtree(target, ignore_errors=True)
+        if debug > 0: print(f"PREPARE_QE_WF: {exc}; keeping the atomic guess")
+        return False
+    finally:
+        if temporary is not None and os.path.isfile(temporary): os.remove(temporary)
+    if debug > 0: print(f"PREPARE_QE_WF: initialized from {wf_path}")
+    return True
+
 def get_label_spin_pairs(source: object, debug: int=0):
     if not hasattr(source,"atoms"): source.set_atoms(debug=debug)
     pairs = []
@@ -349,7 +511,7 @@ def get_pp(elem: str, path: str):
 ################
 ### Check QE ###
 ################
-def check_qe(module: str, scheduler: str='slurm', debug: int=0) -> dict:
+def check_qe_launcher(module: str, scheduler: str='slurm', debug: int=0) -> dict:
     """Inspect QE's executable, MPI libraries, and possible external launchers.
 
     Returns:

@@ -794,8 +794,8 @@ class Environment(object):
         Set that attribute to None to select a fresh default after a module
         change. Runtime MPI validation is not implemented.
         """
-        from scope.software.gaussian.g16_input import check_g16
-        from scope.software.quantum_espresso.qe_input import check_qe
+        from scope.software.gaussian.g16_input import check_g16_launcher
+        from scope.software.quantum_espresso.qe_input import check_qe_launcher
 
         self.software_checks = {}
         for software in ['g16', 'qe']:
@@ -803,9 +803,9 @@ class Environment(object):
             if not module or not module.strip(): continue
 
             if software == 'g16':
-                report = check_g16(module, debug=max(debug - 1, 0))
+                report = check_g16_launcher(module, debug=max(debug - 1, 0))
             elif software == 'qe':
-                report = check_qe(module, scheduler=getattr(self, 'scheduler', 'local'), debug=max(debug - 1, 0))
+                report = check_qe_launcher(module, scheduler=getattr(self, 'scheduler', 'local'), debug=max(debug - 1, 0))
             launcher_attribute = f'{software}_launcher'
             launcher = getattr(self, launcher_attribute, None) or report['launcher']
             setattr(self, launcher_attribute, launcher)
