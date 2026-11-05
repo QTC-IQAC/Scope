@@ -20,9 +20,13 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
 
     Returns:
         str: Report string summarizing unresolved issues that require manual attention.
+
+    Stored branches whose computation folder is unavailable are skipped and
+    reported once. Their folders and workflow history are not recreated or reset.
     """
 
     report = ''
+    unavailable_branches = set()
 
     ##############
     ### HEADER ###
@@ -86,6 +90,22 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
         if not exists: 
             if debug > 0:   print(f"RUN_TASK, step 1.4: Branch not found. Creating it")
             this_branch = sys.add_branch(job_data.branch, debug=debug); updated = True
+
+        if not os.path.isdir(this_branch.path):
+            if this_branch.name not in unavailable_branches:
+                message = f"""Skipped {sys.name}/{this_branch.name}: branch folder not found: {this_branch.path}
+Check whether it was moved or renamed; restore the folder to resume.
+To restart this branch, run in Python:
+    from scope.read_write import load_binary
+    system = load_binary({sys_path!r})
+    system.remove_branch({this_branch.name!r})
+    system.save()
+Then relaunch the SCOPE tasks.
+"""
+                print(f"RUN_TASK: {message}", end='')
+                report += message
+                unavailable_branches.add(this_branch.name)
+            continue
 
         ##########################
         ### STEP 1.5: WORKFLOW ###
