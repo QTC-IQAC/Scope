@@ -302,7 +302,9 @@ def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, 
         No Q or sigma cap is applied. The quantum variance is coth(omega/(2*kB*T))/(2*omega).
         Without attenuation or rejection, the mean potential at T=0 is half the zero-point energy.
         The taper multiplies variance by 0.5*(1+tanh((freq_cm-midpoint)/10)); it is not a hard cutoff.
-        Frequency damping, tapering, connectivity rejection and subsequent FPS change the distribution.
+        A nonzero sigma_damp_factor changes the mode widths; the sampled geometries and
+        harmonic potential increments therefore do not follow the unattenuated harmonic
+        distribution expected at T. Tapering, rejection and subsequent FPS also change it.
         Skipped nonpositive modes must have zero qini. Seeding numpy.random reproduces draws.
         The upper taper multiplies variance by 0.5*(1-tanh((freq_cm-midpoint)/10)).
         Both taper weights multiply; parent Q and its cumulative energy remain included.

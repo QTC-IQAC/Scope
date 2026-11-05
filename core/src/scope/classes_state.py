@@ -569,7 +569,9 @@ class State(object):
             Uses geom_sampling_from_vnm() with connectivity rejection and its bounded retry count.
             No displacement or sigma cap is applied. Masses and mode directions must correspond
             to this reference geometry in the same atom order and frame.
-            Frequency attenuation and connectivity rejection change the harmonic distribution.
+            A nonzero sigma_damp_factor changes mode widths, so the sampled geometries and
+            harmonic potential increments no longer follow the unattenuated harmonic
+            distribution expected at temp. Connectivity rejection also changes the distribution.
             Additional rounds form a random walk; FPS selects spread rather than a thermal ensemble.
             Energies refer to final cumulative Q; rejected proposals may leave fewer than ngeoms.
         """
