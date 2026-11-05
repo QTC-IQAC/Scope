@@ -215,7 +215,8 @@ def gen_qe_input(comp: object, debug: int=0):
             print(" &ions", file=inp)
             print(f"    upscale={comp.qc_data.upscale}", file=inp)
             print(f"    ion_dynamics='{comp.qc_data.ion_dynamics}'", file=inp)
-            print(f"    trust_radius_ini= {comp.qc_data.trust_rad}", file=inp)
+            print(f"    trust_radius_ini= {comp.qc_data.trust_rad_ini}", file=inp)
+            print(f"    trust_radius_min= {comp.qc_data.trust_rad_min}", file=inp)
             print("/", file=inp)
         
         #///////////////////
