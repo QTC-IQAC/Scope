@@ -1,8 +1,10 @@
 # AGENTS.md
 
 ## Project Summary
+
 SCOPE is a Python codebase for computational chemistry workflows on molecules and molecular crystals.
 It combines four responsibilities:
+
 - chemistry-aware data structures such as molecules, ligands, cells, atoms, and bonds
 - workflow orchestration for generating, submitting, and tracking computations
 - parsing and registration of Gaussian and Quantum Espresso results
@@ -11,11 +13,13 @@ It combines four responsibilities:
 Users often interact with SCOPE through the CLI, while serialized `System` objects are a main persistent artifact for later inspection in notebooks.
 
 The repository is split into a core package and two optional add-ons:
+
 - `core/`: main SCOPE package
 - `azo/`:  azobenzene-focused extensions
 - `sco/`:  spin-crossover-focused extensions
 
 ## Core Object Model
+
 - `System` is the top-level project container.
 - `System.sources` stores chemistry sources, typically molecules or cells.
 - Sources may come from native SCOPE objects, `.xyz` data, RDKit molecules, or cell2mol objects.
@@ -26,15 +30,17 @@ The repository is split into a core package and two optional add-ons:
 - Workflow execution follows this hierarchy: `System -> Branch -> Workflow -> Job -> Computation`
 
 ## Objects are interconnected
+
 - In principle, all objects associated with a `System` are interconnected.
-- Chemistry-aware objects can be navigated both top-down and bottom-up 
-- Workflow-related objects can be navigated both top-down and bottom-up 
+- Chemistry-aware objects can be navigated both top-down and bottom-up
+- Workflow-related objects can be navigated both top-down and bottom-up
 - Sources have `States`. `State._source` links a state to its parent source.
 - Sources are connected to the computational workflow through `Workflow.source`
 - Computations that modified `States` are stored in `State.computations`
 - State, Branch, Workflow and System have a dictionary in `self.results` where results can be stored.
 
 ## Key Invariants
+
 - Keep chemistry containers (e.g. Molecule, Ligand, Group, Atom) internally consistent.
   `labels`, coordinates, atoms, and adjacency/connectivity data should describe the same structure.
 - When attaching a source to a `System`, keep parent links and source registration in sync.
@@ -43,6 +49,7 @@ The repository is split into a core package and two optional add-ons:
   Avoid changing it unless the task is explicitly about path handling.
 
 ## Domain Notes
+
 - Fragmentation, reconstruction, and reference-molecule logic are scientifically sensitive.
 - Transition-metals and ligands are central in species and cell operations.
 - Gaussian and Quantum Espresso parsers feed results back into SCOPE objects.
@@ -53,6 +60,7 @@ The repository is split into a core package and two optional add-ons:
 - The `azo` and `sco` packages add domain-specific workflows and assumptions on top of the core model.
 
 ## Coding Guidance
+
 - Prefer small, local, backward-compatible edits unless a broader refactor is requested.
 - Follow the existing naming style and object model.
 - Before creating a new helper function, search the repository for existing functions with the same or closely related behavior. Pay particular attention to shared modules such as `other.py`, `connectivity.py`, and `operations/`.
@@ -61,6 +69,9 @@ The repository is split into a core package and two optional add-ons:
 - Prefer single-line function calls, function signatures, and assignments, even when the resulting line is long. Do not split an argument list across several lines solely to satisfy a conventional line-length limit.
 - Keep logically complete operations visible on one physical line whenever practical. Use multiline formatting only for structures whose contents are genuinely easier to understand vertically, such as large dictionaries, lists, or matrices.
 - When successive assignments have the same structure or purpose, align their equal signs and corresponding values into visual columns. Preserve this alignment when modifying an existing block, but do not force column alignment across unrelated statements.
+- Keep software-specific behavior restricted, as much as possible, to functions inside the respective folders (e.g. gaussian or quantum_espresso).
+- Registration functions should store parsed results and maintain object links. Keep job-setup stopping criteria in the workflow layer and output-format interpretation in the software modules.
+- Separate evaluating a criterion from committing aggregate object status. Evaluating one historical computation should not overwrite the convergence status of its whole Job. Registration methods should own status updates and parent-cache invalidation.
 - Keep docstrings concise.
   Preferred sections are `Parameters:`, `Returns:`, `Attributes:`, and `Methods:` when useful.
 - Avoid rewriting stable scientific logic just to make it look cleaner.
@@ -68,6 +79,7 @@ The repository is split into a core package and two optional add-ons:
 - `debug` must be the last optional attribute to be passed to a function, and it must default to 0
 
 ## Validation
+
 - For touched Python files, a lightweight check is:   `python -m py_compile <files>`
 - If you change workflow execution logic, inspect:
   - state creation and source linkage
@@ -77,7 +89,9 @@ The repository is split into a core package and two optional add-ons:
 - If you change chemistry classes, sanity-check that structure metadata stays aligned.
 
 ## Documentation
+
 - The main user-facing overview lives in `README.md`.
 - `docs/concepts.md` is reserved for the project's enduring core philosophy and conceptual object model. Update it only when those concepts change; do not add implementation details, numerical conventions, parameter documentation, bug-fix notes, or change history there.
-- Document function behavior, units, and numerical conventions in the relevant docstrings or focused technical documentation. Record bug investigations and fixes under `bug_fixes/`, following `docs/bug_fixing.md`.
+- Document function behavior, units, and numerical conventions in the relevant docstrings or focused technical documentation. When writing docstrings, consider that you are informing the casual user, without recent context.
+- Explain the concrete operation, relevant units, and what is returned when data are unavailable. Describe software behavior directly; do not rely on conversation-specific terms or implementation history to explain a function.
 - Keep architecture docs aligned with the code when introducing new abstractions.
