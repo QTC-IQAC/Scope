@@ -166,6 +166,7 @@ def fill_options_data(data: object, debug: int=0):
     return data
 
 def fill_job_data(data: object, debug: int=0):
+    """Fill Job defaults; normalize save_wf to False, 'job' or 'workflow' (True means 'job')."""
     ## Adds defaults to job_data
     if not hasattr(data,"branch"):        raise ValueError("WARNING: job_data is missing 'branch' input variable")
     if not hasattr(data,"workflow"):      raise ValueError("WARNING: job_data is missing 'workflow' input variable")
@@ -178,6 +179,20 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"constrains"):    data._add_attr("constrains", ['self'])
     if not hasattr(data,"must_be_good"):  data._add_attr("must_be_good", True)
     if not hasattr(data,"save_wf"):       data._add_attr("save_wf", False)
+
+    # None also disables storage of the wavefunction. Input_data reads an unquoted None as the string 'none'.
+    save_wf = data.save_wf
+    if save_wf is None or save_wf is False: save_wf = False
+    elif save_wf is True:                   save_wf = 'job'
+    elif isinstance(save_wf, str):
+        save_wf = save_wf.strip().lower()
+        if save_wf in ['none', 'false']: save_wf = False
+        elif save_wf == 'true':          save_wf = 'job'
+        elif save_wf not in ['job', 'workflow']:
+            raise ValueError("save_wf must be False, None, 'job' or 'workflow'")
+    else:
+        raise ValueError("save_wf must be False, None, 'job' or 'workflow'")
+    data._mod_attr('save_wf', save_wf)
 
     ## Adds defaults for rep_opt job setup type
     if data.job_setup == 'rep_opt' and not hasattr(data,"energy_thres"): data._add_attr("energy_thres",float(1e-5))

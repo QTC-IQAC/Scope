@@ -417,12 +417,14 @@ class Job(object):
         return len(self.computations)
 
     def get_wf_path(self, keyword: str='', debug: int=0) -> str | None:
-        """Return the planned wf path for a keyword chain, or None when save_wf is False.
+        """Return the planned Job/Workflow wf path for a keyword chain, or None when disabled.
 
-        The name includes the system, source, job and optional keyword. Steps and run
-        numbers share this path. QE uses a .save directory; Gaussian uses a .chk file.
+        save_wf='job' (also legacy True) uses the Job's name and directory. 'workflow'
+        uses the Workflow's name and directory, with a workflow_ marker in the filename.
+        The system, source and optional keyword keep chains separate. Steps and runs
+        share each path. QE uses a .save directory; Gaussian uses a .chk file.
         Software is taken from the Job's computations, which must use one backend.
-        Saved data belongs under the Job's directory; the path does not imply usable data.
+        The path does not imply usable data.
         """
         if not self.job_data.save_wf: return None
         if not self.computations: raise ValueError("JOB.GET_WF_PATH: No computations are available to determine the software")
@@ -435,9 +437,14 @@ class Job(object):
         filename = Filename()
         filename.add_item(Filename_item('sys_name', self.source._sys.name))
         filename.add_item(Filename_item('sou_name', self.source.name))
-        filename.add_item(Filename_item('job_name', self.name))
+        if self.job_data.save_wf == 'workflow':
+            filename.add_item(Filename_item('workflow_name', self._workflow.name, prefix='workflow_'))
+            path = self._workflow.path
+        else:
+            filename.add_item(Filename_item('job_name', self.name))
+            path = self.path
         if keyword != '': filename.add_item(Filename_item('keyword', keyword))
-        wf_path = os.path.join(self.path, filename.get_name(suffix=extension))
+        wf_path = os.path.join(path, filename.get_name(suffix=extension))
         if debug > 0: print(f"JOB.GET_WF_PATH: {keyword=}, {wf_path=}")
         return wf_path
 

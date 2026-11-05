@@ -270,14 +270,15 @@ def gen_qe_input(comp: object, debug: int=0):
 
 ###################################################
 def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: str="pw.x", version: float=7.0, launcher: str=None, debug: int=0):
+    """Generate a QE script with isolated scratch and optional evolving wf storage.
+
+    save_wf='job' (also True) reuses data only for continuations. 'workflow'
+    allows reuse from the first computation of every participating Job. The
+    shared path is checked at runtime; unavailable/incomplete data leaves the
+    atomic guess unchanged. Job requisites must enforce execution order.
+    """
     import shlex
-    import sys
-    save_wf = comp._job.job_data.save_wf
-    reuse_wf = save_wf and (comp.is_update or comp.step > 1 or comp.run_number > 1)
-    if save_wf:
-        # Use the submitting SCOPE environment for checks on the compute node.
-        wf_check_code    = f'import sys; from scope.software.quantum_espresso.qe_input import check_qe_wf; sys.exit(not check_qe_wf(sys.argv[1], debug={max(debug - 1,0)}))'
-        wf_check_command = f'{shlex.quote(sys.executable)} -c {shlex.quote(wf_check_code)}'
+    wf_prepare, wf_store = gen_qe_wf_blocks(comp, debug=debug)
 
     # Retrieve the preferred launcher from the queue's environment if not provided.
     if launcher is None: launcher = 'srun' if queue._environment.scheduler == 'slurm' else 'mpirun'
@@ -326,12 +327,8 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
         print('cd "$SCRATCHDIR"', file=sub)
         print(f'cp "$JOBDIR"/{shlex.quote(comp.inp_name)} .', file=sub)
 
-        # 2) Continuations may initialize from the latest valid wf of this keyword chain.
-        if reuse_wf:
-            wf_prepare_code = f'import sys; from scope.software.quantum_espresso.qe_input import prepare_qe_wf; prepare_qe_wf(sys.argv[1], sys.argv[2], debug={max(debug - 1,0)})'
-            print('', file=sub)
-            print('# Prepare the saved wf; keep the atomic guess if unavailable', file=sub)
-            print(f'{shlex.quote(sys.executable)} -c {shlex.quote(wf_prepare_code)} {shlex.quote(comp.wf_path)} {shlex.quote(comp.inp_name)}', file=sub)
+        # 2) Reuse the keyword chain's wf for continuations or workflow-sharing Jobs.
+        if wf_prepare: print(wf_prepare, file=sub)
 
         # 3) Run QE. Saved data will be copied even if QE does not converge.
         print('', file=sub)
@@ -340,8 +337,43 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
         else:                                                        print(f"{launch_command} < {comp.inp_name} > {comp.out_name}", file=sub)
 
         # 4) Preserve the wf. Stop only this copy block on failure, then return the output.
-        if save_wf:
-            print(f'''
+        if wf_store: print(wf_store, file=sub)
+
+        # 5) Return the text output even when preserving the wf failed.
+        print('', file=sub)
+        print('# Return the text output', file=sub)
+        print(f'if ! cp -pr {shlex.quote(comp.out_name)} "$JOBDIR"; then', file=sub)
+        print('    exit 1', file=sub)
+        print('fi', file=sub)
+        if wf_store: print('exit "$wf_status"', file=sub)
+
+        os.chmod(comp.sub_path, 0o777)
+
+#####################
+## Other Functions ##
+#####################
+def gen_qe_wf_blocks(comp: object, debug: int=0) -> tuple[str, str]:
+    """Return the wf preparation and storage shell blocks for a QE submission.
+
+    Disabled storage returns two empty strings. Job mode prepares a saved wf
+    only for continuations; workflow mode also prepares it for initial runs.
+    Runtime helpers use the submitting Python environment. Storage stages and
+    checks new data before replacing the previous wf, independently of QE exit status.
+    """
+    import shlex
+    import sys
+    save_wf = comp._job.job_data.save_wf
+    if not save_wf: return '', ''
+    reuse_wf = save_wf == 'workflow' or comp.is_update or comp.step > 1 or comp.run_number > 1
+
+    wf_prepare = ''
+    if reuse_wf:
+        wf_prepare_code = f'import sys; from scope.software.quantum_espresso.qe_input import prepare_qe_wf; prepare_qe_wf(sys.argv[1], sys.argv[2], debug={max(debug - 1,0)})'
+        wf_prepare = f'\n# Prepare the saved wf; keep the atomic guess if unavailable\n{shlex.quote(sys.executable)} -c {shlex.quote(wf_prepare_code)} {shlex.quote(comp.wf_path)} {shlex.quote(comp.inp_name)}'
+
+    wf_check_code    = f'import sys; from scope.software.quantum_espresso.qe_input import check_qe_wf; sys.exit(not check_qe_wf(sys.argv[1], debug={max(debug - 1,0)}))'
+    wf_check_command = f'{shlex.quote(sys.executable)} -c {shlex.quote(wf_check_code)}'
+    wf_store = f'''
 # Save the wavefunction directory, replacing any previous saved copy
 WF_NAME={shlex.quote(comp.wf_name)}
 WF_DIR={shlex.quote(os.path.dirname(comp.wf_path))}
@@ -370,21 +402,9 @@ if [ -d "$SCRATCHDIR/$WF_NAME" ]; then
     wf_status=$?
 else
     echo "SCOPE: QE save directory not found: $SCRATCHDIR/$WF_NAME" >&2
-fi''', file=sub)
+fi'''
+    return wf_prepare, wf_store
 
-        # 5) Return the text output even when preserving the wf failed.
-        print('', file=sub)
-        print('# Return the text output', file=sub)
-        print(f'if ! cp -pr {shlex.quote(comp.out_name)} "$JOBDIR"; then', file=sub)
-        print('    exit 1', file=sub)
-        print('fi', file=sub)
-        if save_wf: print('exit "$wf_status"', file=sub)
-
-        os.chmod(comp.sub_path, 0o777)
-
-#####################
-## Other Functions ##
-#####################
 def check_qe_wf(wf_path: str, debug: int=0) -> bool:
     """Check the basic completeness of a collected QE .save directory.
 
