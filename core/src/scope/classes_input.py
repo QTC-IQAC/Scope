@@ -127,23 +127,33 @@ class Input_data(object):
         return to_print
 
     def __eq__(self, other):
+        """Compare public non-callable attributes, excluding duplicate dct storage.
+
+        Public names may contain underscores and values may be dictionaries.
+        NumPy array settings use exact element/shape equality. Section metadata
+        remains part of the comparison.
+        """
         if not isinstance(other, Input_data): return False
         else: 
             same = True
             for d in dir(self): 
-                if '_' not in d and not isinstance(getattr(self, d), dict) and not callable(getattr(self, d)): 
+                if not d.startswith('_') and d != 'dct' and not callable(getattr(self, d)):
                     at1 = getattr(self,d)
                     try:    
                         at2 = getattr(other,d)
-                        if at1 != at2: 
+                        if isinstance(at1, np.ndarray) or isinstance(at2, np.ndarray):
+                            if not np.array_equal(at1, at2): same = False
+                        elif at1 != at2:
                             same = False
                     except: return False
             for d in dir(other): 
-                if '_' not in d and not isinstance(getattr(other, d), dict) and not callable(getattr(other, d)): 
+                if not d.startswith('_') and d != 'dct' and not callable(getattr(other, d)):
                     at1 = getattr(other,d)
                     try:    
                         at2 = getattr(self,d)
-                        if at1 != at2: 
+                        if isinstance(at1, np.ndarray) or isinstance(at2, np.ndarray):
+                            if not np.array_equal(at1, at2): same = False
+                        elif at1 != at2:
                             same = False
                     except: return False
         return same
@@ -275,7 +285,7 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"pressure"):      data._add_attr("pressure", int(0))
         if not hasattr(data,"forc_conv"):     data._add_attr("forc_conv", float(1e-5))
         if not hasattr(data,"elec_conv"):     data._add_attr("elec_conv", float(1e-10))
-        if not hasattr(data,"trust_rad"):     data._add_attr("trust_rad", float(0.1))
+        if not hasattr(data,"trust_rad_ini"): data._add_attr("trust_rad_ini", float(0.1))
         if not hasattr(data,"trust_rad_min"): data._add_attr("trust_rad_min", float(1e-6))
         if not hasattr(data,"upscale"):       data._add_attr("upscale", int(10))
         if not hasattr(data,"ion_dynamics"):  data._add_attr("ion_dynamics", "bfgs")
