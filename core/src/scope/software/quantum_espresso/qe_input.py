@@ -204,8 +204,8 @@ def gen_qe_input(comp: object, debug: int=0):
         print(f"    mixing_beta = {comp.qc_data.mix_beta}", file=inp)
         print(f"    mixing_mode = '{comp.qc_data.mix_mode}'", file=inp)
         print(f"    mixing_ndim = {comp.qc_data.mix_ndim}", file=inp)
-        print("    startingpot='atomic'", file=inp)
-        print("    startingwfc='atomic+random'", file=inp)
+        print(f"    startingpot = 'atomic'", file=inp)
+        print(f"    startingwfc = 'atomic+random'", file=inp)
         print("/", file=inp)
    
         #///////////////////
@@ -363,6 +363,7 @@ def gen_qe_wf_blocks(comp: object, debug: int=0) -> tuple[str, str]:
     only for continuations; workflow mode also prepares it for initial runs.
     Runtime helpers use the submitting Python environment. Storage stages and
     checks new data before replacing the previous wf, independently of QE exit status.
+    Pseudopotential copies named in the XML are omitted from persistent storage.
     """
     import shlex
     import sys
@@ -375,8 +376,10 @@ def gen_qe_wf_blocks(comp: object, debug: int=0) -> tuple[str, str]:
         wf_prepare_code = f'import sys; from scope.software.quantum_espresso.qe_input import prepare_qe_wf; prepare_qe_wf(sys.argv[1], sys.argv[2], debug={max(debug - 1,0)})'
         wf_prepare = f'\n# Prepare the saved wf; keep the atomic guess if unavailable\n{shlex.quote(sys.executable)} -c {shlex.quote(wf_prepare_code)} {shlex.quote(comp.wf_path)} {shlex.quote(comp.inp_name)}'
 
-    wf_check_code    = f'import sys; from scope.software.quantum_espresso.qe_input import check_qe_wf; sys.exit(not check_qe_wf(sys.argv[1], debug={max(debug - 1,0)}))'
-    wf_check_command = f'{shlex.quote(sys.executable)} -c {shlex.quote(wf_check_code)}'
+    wf_check_code     = f'import sys; from scope.software.quantum_espresso.qe_input import check_qe_wf; sys.exit(not check_qe_wf(sys.argv[1], debug={max(debug - 1,0)}))'
+    wf_check_command  = f'{shlex.quote(sys.executable)} -c {shlex.quote(wf_check_code)}'
+    wf_remove_code    = f'import sys; from scope.software.quantum_espresso.qe_input import remove_qe_pseudopotentials; remove_qe_pseudopotentials(sys.argv[1], debug={max(debug - 1,0)})'
+    wf_remove_command = f'{shlex.quote(sys.executable)} -c {shlex.quote(wf_remove_code)}'
     wf_store = f'''
 # Save the wavefunction directory, replacing any previous saved copy
 WF_NAME={shlex.quote(comp.wf_name)}
@@ -396,6 +399,9 @@ if [ -d "$SCRATCHDIR/$WF_NAME" ]; then
             exit 0
         fi
 
+        # SCOPE supplies pseudopotentials through pseudo_dir; omit local copies
+        {wf_remove_command} "$wf_staging/$WF_NAME"
+
         # Keep the previous copy until its replacement is installed
         if [ -e "$WF_DIR/$WF_NAME" ]; then
             mv "$WF_DIR/$WF_NAME" "$wf_staging/previous"
@@ -409,12 +415,34 @@ else
 fi'''
     return wf_prepare, wf_store
 
+def remove_qe_pseudopotentials(wf_path: str, debug: int=0) -> None:
+    """Remove pseudopotential copies named in QE output XML from a staged .save folder.
+
+    Only local basenames listed under output/atomic_species are removed, regardless
+    of extension. Missing copies are ignored; XML and other files are retained.
+    Call on the staged copy, leaving QE scratch intact. File/XML errors propagate
+    so the submission script retains the previous saved wf if cleanup fails.
+    """
+    from xml.etree import ElementTree
+
+    root = ElementTree.parse(os.path.join(wf_path, 'data-file-schema.xml')).getroot()
+    removed = 0
+    for item in root.findall('./{*}output/{*}atomic_species/{*}species/{*}pseudo_file'):
+        name = os.path.basename((item.text or '').strip())
+        if not name: continue
+        path = os.path.join(wf_path, name)
+        if os.path.isfile(path) or os.path.islink(path):
+            os.remove(path)
+            removed += 1
+    if debug > 0: print(f"REMOVE_QE_PSEUDOPOTENTIALS: removed {removed} local copies from {wf_path}")
+
 def check_qe_wf(wf_path: str, debug: int=0) -> bool:
     """Check the basic completeness of a collected QE .save directory.
 
     Read data-file-schema.xml and require readable, nonempty density and orbital
     files for every k-point/spin channel, in one consistent .dat or .hdf5 format.
     Require occup.txt for DFT+U and paw.txt for PAW when identified in the metadata.
+    Pseudopotential copies are optional; SCOPE supplies them through pseudo_dir.
     Legacy/distributed saves are unsupported. Return only a Boolean; explanations
     are printed when debug > 0. Files are opened read-only and only one byte of
     each binary file is read. This does not validate binary contents, SCF convergence,
@@ -474,6 +502,7 @@ def prepare_qe_wf(wf_path: str, inp_path: str, debug: int=0) -> bool:
     Return True only after copying, checking the copy and replacing the scratch
     input. On failure retain the original input and return False. Expected input
     uses the saved directory's prefix, outdir='./', and SCOPE's atomic defaults.
+    Whitespace around assignment signs is allowed and preserved.
     The persistent wf is read-only; the scratch destination must not already exist.
     This checks file completeness, not binary contents or calculation compatibility.
     """
@@ -494,12 +523,21 @@ def prepare_qe_wf(wf_path: str, inp_path: str, debug: int=0) -> bool:
     temporary    = None
     try:
         with open(inp_path, 'r') as inp: text = inp.read()
-        expected = [f"prefix='{os.path.splitext(wf_name)[0]}'", "outdir='./'", "startingpot='atomic'", "startingwfc='atomic+random'"]
-        if any(text.count(item) != 1 for item in expected): raise ValueError('Input does not use the expected prefix, outdir and atomic defaults')
+        expected = {'prefix': f"'{os.path.splitext(wf_name)[0]}'", 'outdir': "'./'", 'startingpot': "'atomic'", 'startingwfc': "'atomic+random'"}
+        lines = text.splitlines(keepends=True)
+        settings = {}
+        for idx, line in enumerate(lines):
+            key, separator, value = line.partition('=')
+            key = key.strip()
+            if separator and key in expected:
+                if key in settings or value.strip() != expected[key]: raise ValueError('Input does not use the expected prefix, outdir and atomic defaults')
+                settings[key] = idx
+        if settings.keys() != expected.keys(): raise ValueError('Input does not use the expected prefix, outdir and atomic defaults')
         copy_started = True
         shutil.copytree(wf_path, target)
         if not check_qe_wf(target, debug=max(debug - 1,0)): raise ValueError('Copied wf is incomplete')
-        text = text.replace("startingpot='atomic'", "startingpot='file'").replace("startingwfc='atomic+random'", "startingwfc='file'")
+        for key in ['startingpot', 'startingwfc']: lines[settings[key]] = lines[settings[key]].replace(expected[key], "'file'")
+        text = ''.join(lines)
         with tempfile.NamedTemporaryFile(mode='w', dir=os.path.dirname(inp_path), delete=False) as inp:
             temporary = inp.name
             inp.write(text)
