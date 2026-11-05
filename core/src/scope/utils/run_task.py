@@ -23,6 +23,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
 
     Stored branches whose computation folder is unavailable are skipped and
     reported once. Their folders and workflow history are not recreated or reset.
+    Save after a task only when System.should_save marks pending changes.
     """
 
     report = ''
@@ -50,7 +51,6 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
     ## 0.3-Loads the System
     sys = load_binary(sys_path)
     if debug > 0: print(f"RUN_TASK, step 0.3: System {sys.name} loaded from {sys_path}") 
-    updated = False
 
     ## 0.4-Loads the Global Environment, if not provided already as an object 
     if isinstance(global_env, str): 
@@ -89,7 +89,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
         exists, this_branch        = sys.find_branch(job_data.branch, debug=0)
         if not exists: 
             if debug > 0:   print(f"RUN_TASK, step 1.4: Branch not found. Creating it")
-            this_branch = sys.add_branch(job_data.branch, debug=debug); updated = True
+            this_branch = sys.add_branch(job_data.branch, debug=debug); sys.should_save = True
 
         if not os.path.isdir(this_branch.path):
             if this_branch.name not in unavailable_branches:
@@ -116,7 +116,7 @@ Then relaunch the SCOPE tasks.
         for wrk in job_data.workflow if isinstance(job_data.workflow, list) else list([job_data.workflow]):   ### Works when job_data.workflow is a str or a list
 
             exists, this_workflow             = this_branch.find_workflow(wrk)
-            if not exists: this_workflow      = this_branch.add_workflow(wrk); updated = True
+            if not exists: this_workflow      = this_branch.add_workflow(wrk); sys.should_save = True
             if this_workflow is None: 
                 raise ValueError(f"RUN_TASK, step 2.0: WORKFLOW could not be created. Make sure a Source with name {wrk} exist in System")
             if debug == 1:   print(f"RUN_TASK, step 2.0: Evaluating WORKFLOW with name={this_workflow.name}")
@@ -128,7 +128,7 @@ Then relaunch the SCOPE tasks.
             ## 2.1 Finds or creates the job.
             print(f"RUN_TASK, step 2.1: Evaluating JOB with name={job_data.job}")
             exists, this_job = this_workflow.find_job(job_data=job_data, debug=debug)
-            if not exists: this_job = this_workflow.add_job(job_data); updated = True
+            if not exists: this_job = this_workflow.add_job(job_data); sys.should_save = True
 
             print(f"RUN_TASK, step 2.2: Checking its job_data")
             ## 2.2 If job exists, it checks for input changes (also in qc_data for the computations)
@@ -184,7 +184,7 @@ Then relaunch the SCOPE tasks.
                                 if debug > 0: print(f"RUN_TASK, step 3.2a: initial state '{comp.qc_data.istate}' is missing or lacks geometry")
                                 report += f"Retry pending for {comp.out_path}: initial state '{comp.qc_data.istate}' is missing or lacks geometry.\n"
                                 continue
-                            comp.run(global_env, options, debug=debug); updated = True
+                            comp.run(global_env, options, debug=debug); sys.should_save = True
                     else: 
                         if debug > 0: print("RUN_TASK, step 3.2a: want_submit is False or comp.has_update")
 
@@ -205,21 +205,16 @@ Then relaunch the SCOPE tasks.
                     else:
                         if debug > 0: print(f"RUN_TASK, step 4: registration")
                         worked = comp.register(debug=debug)
-                        updated = True
+                        sys.should_save = True
 
                         if debug > 0: print(f"RUN_TASK, step 4.1: registration {worked=}")
                         if debug > 0: print(f"RUN_TASK, step 4.1: {comp.has_update=}")
                         if debug > 0: print(f"RUN_TASK, step 4.1: {options.overwrite_inputs=}")
 
-                        if this_job.job_setup == "rep_opt" and comp.isgood:
-                            ## 4.2 Collect energy only after fresh parsing: a cached final State may belong to a later step.
-                            if hasattr(comp.qc_data,"fstate"): fstate_name = comp.qc_data.fstate
-                            else:                              fstate_name = comp._job.fstate
-                            exists, fstate = comp.source.find_state(fstate_name, debug=debug)         ## This one MUST exist
-                            assert exists
-                            if comp.step > len(this_job.energies):
-                                this_job.energies = np.append(this_job.energies,int(0))
-                            this_job.energies[int(comp.step)-1] = fstate.results['energy'].value
+                    if this_job.job_setup == 'rep_opt' and getattr(comp,'energy',None) is not None:
+                        # Preserve this attempt's energy even when a later step overwrote fstate.
+                        if comp.step > len(this_job.energies): this_job.energies = np.pad(this_job.energies, (0,comp.step-len(this_job.energies)))
+                        this_job.energies[comp.step-1] = comp.energy
 
                     #############################
                     ### STEP 5: CONTINUATIONS ###
@@ -241,8 +236,8 @@ Then relaunch the SCOPE tasks.
                         if handle_errors and options.want_submit:
                             comp.check_submission_status(global_env, debug=debug)
                             retry_running = comp.isrunning and not options.ignore_submitted
-                    elif not comp.isgood and this_job.must_be_good:
-                        if comp.type == 'opt':
+                    elif not comp.isgood and this_job.must_be_good and this_job.job_setup != 'rep_opt':
+                        if comp.type in ['opt','relax','vc-relax']:
                             if debug > 0: print(f"RUN_TASK, step 5.1: setting continuation computation with typ=opt")
                             new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
                             if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path}: Run Number > 10 \n"
@@ -255,24 +250,21 @@ Then relaunch the SCOPE tasks.
                                 report += f"Investigate {comp.out_path}: TS could not be found\n"
 
                     ## 5.2 Continue repetitive optimization from current attempts, retaining cached step energies.
-                    if this_job.job_setup == "rep_opt" and comp.isgood and not comp.has_update:
-                        from scope.other import check_convergence
-
-                        ## Check convergence using the stored per-step energies.
-                        this_job.isconverged = False
-                        if comp.step > 1: this_job.isconverged = check_convergence(this_job.energies, comp.step-1, this_job.job_data.energy_thres)
+                    if this_job.job_setup == 'rep_opt' and worked and comp.isfinished and comp.status in ['worked','exhausted','stucked'] and not comp.has_update:
+                        converged = this_job.check_convergence(comp=comp, debug=debug)
 
                         ## Reuse an existing next step without calling the setter again for rep_opt.
                         exists, next_comp = this_job.find_computation(keyword=comp.keyword, step=comp.step+1, run_number=1)
-                        if this_job.isconverged:
+                        if converged:
                             print(f"RUN_TASK, step 5.2: repetitive opt reached convergence")
-                        elif comp.step <= this_job.job_data.max_steps:
+                        elif comp.step < this_job.job_data.max_steps:
                             if not exists:
                                 new_comp = this_job.set_continuation_computation(comp, "rep_opt", debug=debug)
                         else:
                             print(f"RUN_TASK, step 5.2: maximum steps reached without convergence")
+                            report += f"Repetitive optimization exhausted {this_job.job_data.max_steps} steps without convergence: {comp.out_path}. Check energy, forces and QE optimization status.\n"
 
-                    if len(this_job.computations) > ncomputations: updated = True
+                    if len(this_job.computations) > ncomputations: sys.should_save = True
 
                     ## 5.3 Keep error handling after continuation creation so superseded outputs stay intact.
                     if debug > 0: print(f"RUN_TASK, step 5.3: registration {worked=}")
@@ -315,12 +307,12 @@ Then relaunch the SCOPE tasks.
                             if debug > 0: print(f"RUN_TASK: Error registering {comp.out_path}")
                     if debug > 0: print("")
 
-            # Updates Job Registry information. Necessary to update class.isregistered attribute, but not very important
+            # Aggregate Computation status into the Job, Workflow and Branch.
             this_job.register(debug=0)
         this_workflow.register(debug=0)
         this_branch.register(debug=0)
 
-        if updated: 
+        if getattr(sys,'should_save',False):
             if debug > 0: print(f"Saving System {sys.name} to {sys.system_file}")
             sys.save()
     return report
