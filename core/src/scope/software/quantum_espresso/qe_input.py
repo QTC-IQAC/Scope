@@ -328,6 +328,7 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
         print('JOBDIR=$PWD', file=sub)
         print('SCRATCHDIR=$(mktemp -d "${TMPDIR:?}/scope.XXXXXX")', file=sub)
         print('cd "$SCRATCHDIR"', file=sub)
+        print('echo "SCOPE: Running in $PWD"', file=sub)
         print(f'cp "$JOBDIR"/{shlex.quote(comp.inp_name)} .', file=sub)
 
         # 2) Reuse the keyword chain's wf for continuations or workflow-sharing Jobs.
