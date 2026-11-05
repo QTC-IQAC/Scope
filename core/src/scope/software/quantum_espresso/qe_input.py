@@ -129,7 +129,7 @@ def gen_qe_input(comp: object, debug: int=0):
         if comp.qc_data.comp_type == "opt" or comp.qc_data.comp_type == "relax" or comp.qc_data.comp_type == "vc-relax":
             print(f"    wf_collect = .true.", file=inp)
             print(f"    tprnfor = .true.", file=inp)
-            print(f"    nstep = {comp.qc_data.opt_max_step}", file=inp)
+            print(f"    nstep = {comp.qc_data.opt_maxstep}", file=inp)
             print(f"    forc_conv_thr = {comp.qc_data.forc_conv}", file=inp)
         print("/", file=inp)
 

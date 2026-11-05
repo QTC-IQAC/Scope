@@ -282,6 +282,7 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"mix_mode"):      data._add_attr("mix_mode", "plain")
         if not hasattr(data,"mix_ndim"):      data._add_attr("mix_ndim", int(8))
         if not hasattr(data,"elec_maxstep"):  data._add_attr("elec_maxstep", int(200)) 
+        if not hasattr(data,"opt_maxstep"):   data._add_attr("opt_maxstep", int(100))
         if not hasattr(data,"pressure"):      data._add_attr("pressure", int(0))
         if not hasattr(data,"forc_conv"):     data._add_attr("forc_conv", float(1e-4))
         if not hasattr(data,"elec_conv"):     data._add_attr("elec_conv", float(1e-8))
@@ -289,7 +290,6 @@ def fill_qc_data(data: object, debug: int=0):
         if not hasattr(data,"trust_rad_min"): data._add_attr("trust_rad_min", float(1e-6))
         if not hasattr(data,"upscale"):       data._add_attr("upscale", int(100))
         if not hasattr(data,"bfgs_ndim"):     data._add_attr("bfgs_ndim", int(1))
-        if not hasattr(data,"opt_max_step"):  data._add_attr("opt_max_step", int(100))
         if not hasattr(data,"ion_dynamics"):  data._add_attr("ion_dynamics", "bfgs")
         if not hasattr(data,"cell_dynamics"): data._add_attr("cell_dynamics", "bfgs")
 
