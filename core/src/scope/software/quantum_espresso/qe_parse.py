@@ -89,8 +89,9 @@ def parse_forces_from_step(lines, debug: int=0):
             dummy, atnum, dummy, specnum, dummy, dummy, x, y, z = l.split()
             try: 
                 forces.append([float(x), float(y), float(z)])
-            except exception as exc:
+            except ValueError as exc:
                 if debug >= 1: print(f"PARSE_FORCES: exception {exc} reading line: {l}")
+                return None
         else:
             if debug >= 1: print(f"PARSE_FORCES: line discarded: {line_data}")
     return forces
@@ -204,19 +205,26 @@ def parse_status_finished(lines):
     return found
 
 def parse_opt_status(lines):
-    linenum, found = search_string("End of BFGS Geometry Optimization", lines, typ="last")
-    if found: return 'finished'
-    linenum, found = search_string("history already reset at previous step: exiting", lines, typ="last")
-    if found: 
-        print("PARSE_QE_OUTPUTS. Optimization Stuck. --Assuming isfinished--")
-        return 'stucked'
-    return 'not finished' 
+    """Return the latest explicit BFGS outcome, or 'not finished' if none is printed."""
+    # 1) Locate convergence, step exhaustion and optimizer failure messages
+    converged_line, found_converged = search_string('bfgs converged in', lines, typ='last')
+    exhausted_line, found_exhausted = search_string('The maximum number of steps has been reached', lines, typ='last')
+    stuck_line,     found_stuck     = search_string('history already reset at previous step:', lines, typ='last')
+    if not found_converged: converged_line = -1
+    if not found_exhausted: exhausted_line = -1
+    if not found_stuck:     stuck_line     = -1
+
+    # 2) Return the outcome of the last message in the file
+    if converged_line > max(exhausted_line, stuck_line): return 'finished'
+    if exhausted_line > stuck_line:                     return 'exhausted'
+    if found_stuck:                                     return 'stucked'
+    return 'not finished'
 
 def parse_scf_status(lines):
     linenum1, found1 = search_string("convergence has been achieved", lines, typ="last")
     linenum2, found2 = search_string("convergence NOT achieved",      lines, typ="last")
-    if found1:                            return True
-    elif found2:                          return False
+    if found1 and (not found2 or linenum1 > linenum2): return True
+    elif found2:                                    return False
     else:                                 return None
 
 def parse_coord_status(lines):

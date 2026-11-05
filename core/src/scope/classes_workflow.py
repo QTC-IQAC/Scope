@@ -152,6 +152,8 @@ class Branch(object):
     ### Registration ###
     ####################
     def register(self, debug: int=0):
+        """Register pending Workflows and aggregate their completion and success status."""
+        previous_status = (self.isregistered, self.isgood, self.isfinished)
         if debug > 1: print("BRANCH.REGISTER: Registering Branch:", self.name)
         allgood     = True
         allfinished = True
@@ -166,6 +168,7 @@ class Branch(object):
         self.isgood     = allgood
         self.isfinished = allfinished
         self.isregistered = True
+        if previous_status != (self.isregistered, self.isgood, self.isfinished): self._system.should_save = True
         if debug > 1: print("Registered Branch:", self.name, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
 
     ######
@@ -307,6 +310,8 @@ class Workflow(object):
     ### Registration ###
     ####################
     def register(self, debug: int=0):
+        """Register pending Jobs and aggregate their completion and success status."""
+        previous_status = (self.isregistered, self.isgood, self.isfinished)
         if debug > 0: print("WORKFLOW.REGISTER: Registering Workflow:", self.name)
         allgood     = True
         allfinished = True
@@ -322,6 +327,9 @@ class Workflow(object):
         self.isfinished = allfinished
         self.isregistered = True
         if debug > 0: print("WORKFLOW.REGISTER: Registered Workflow:", self.name, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
+        if previous_status != (self.isregistered, self.isgood, self.isfinished):
+            self._branch.isregistered = False
+            self._branch._system.should_save = True
 
     def remove_output_lines(self):
         for job in self.jobs:
@@ -482,10 +490,53 @@ class Job(object):
                 max_step = comp.step
         return max_step
 
-    def check_convergence(self, debug: int=0):
+    def check_convergence(self, comp: object=None, debug: int=0):
+        """Return whether a job with 'rep_opt' setup meets its stopping criteria.
+
+        With comp, evaluate that Computation against the latest attempt of the
+        preceding step with the same keyword. This supports checking individual
+        steps while run_task() walks through a Job's history. With comp=None,
+        require convergence of the latest step and run of every keyword chain.
+
+        Require a successful, finished registration and an energy change within
+        energy_thres (Hartree). QE also requires the maximum absolute force
+        component below qc_data.forc_conv (Ry/Bohr). Missing results fail the
+        check. Return a boolean without changing Job status; register() stores
+        the overall result in isconverged.
+        """
         from scope.other import check_convergence
-        self.isconverged = check_convergence(self.energies, None, self.job_data.energy_thres)
-        return self.isconverged
+        if comp is None:
+            latest = {}
+            for item in self.computations:
+                previous = latest.get(item.keyword)
+                if previous is None or (item.step,item.run_number) > (previous.step,previous.run_number): latest[item.keyword] = item
+            return bool(latest) and all(self.check_convergence(comp=item, debug=debug) for item in latest.values())
+
+        previous = [item for item in self.computations if item.keyword == comp.keyword and item.step == comp.step-1 and not item.has_update]
+        previous = max(previous, key=lambda item: item.run_number) if previous else None
+        energy = getattr(comp, 'energy', None)
+        previous_energy = getattr(previous, 'energy', None)
+        energy_change = None
+        energy_converged = False
+        if previous is not None and previous.isregistered and getattr(previous,'isfinished',False) and energy is not None and previous_energy is not None and np.isfinite(energy) and np.isfinite(previous_energy):
+            energy_change = abs(energy-previous_energy)
+            energy_converged = check_convergence([previous_energy,energy], 1, self.job_data.energy_thres)
+
+        if debug > 0:
+            change = f'{energy_change:.3e}' if energy_change is not None else 'unavailable'
+            print(f"REP_OPT: step {comp.step}, keyword={comp.keyword!r}")
+            print(f"    Energy change: {change} Ha; threshold {self.job_data.energy_thres:.3e} — {'passed' if energy_converged else 'failed'}")
+
+        forces_converged = True
+        if comp.software == 'qe':
+            forces = getattr(comp, 'forces', None)
+            valid_forces = forces is not None and np.shape(forces) == (len(comp.source.labels),3) and np.all(np.isfinite(forces))
+            forces_converged = valid_forces and np.max(np.abs(forces)) < comp.qc_data.forc_conv
+            if debug > 0:
+                force = f'{np.max(np.abs(forces)):.3e}' if valid_forces else 'unavailable'
+                print(f"    Maximum force: {force} Ry/Bohr; threshold {comp.qc_data.forc_conv:.3e} — {'passed' if forces_converged else 'failed'}")
+        if debug > 0: print(f"    Optimizer accepted: {getattr(comp,'isgood',False)}; computation status: {getattr(comp,'status','unknown')}")
+        return bool(comp.isregistered and getattr(comp,'isfinished',False) and getattr(comp,'isgood',False) and energy_converged and forces_converged)
 
     def find_computation(self, keyword: str='', step: int=1, run_number: int=1, debug: int=0):
         for comp in self.computations:
@@ -705,9 +756,14 @@ class Job(object):
         if debug > 1: print("Set_Continuation_Comp: Creating new computation to continue job. Type:", typ, "Path:", comp.path)
     
         # 0-We make sure that the new_run does not exist. If so, we return it directly:
-        exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step, run_number=comp.run_number+1)
+        if typ == 'rep_opt':
+            if comp.step >= getattr(self.job_data,'max_steps',5):
+                if debug > 0: print("JOB.SET_CONTINUATION_COMP: Maximum repetitive optimization steps reached")
+                return None
+            exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step+1, run_number=1)
+        else: exists, new_comp = self.find_computation(keyword=comp.keyword, step=comp.step, run_number=comp.run_number+1)
         if exists:
-            comp.has_update = True
+            if typ != 'rep_opt': comp.has_update = True
             print("Set_Continuation_Comp: Continuation Computation exists")
             return new_comp
 
@@ -836,6 +892,12 @@ class Job(object):
 ### Registration ###
 ####################
     def register(self, debug: int=0):
+        """Register Computations and commit Job completion and convergence status.
+
+        Changed status marks the System for saving and the parent Workflow for
+        aggregate registration. Repeated checks of unchanged status do neither.
+        """
+        previous_status = (self.isregistered, self.isgood, self.isfinished, getattr(self,'isconverged',None))
         if debug > 1: print("JOB.REGISTER: Registering Job:", self.name)
 
         ##########################################################################
@@ -880,7 +942,13 @@ class Job(object):
         self.isgood       = allgood
         self.isfinished   = allfinished
         self.isregistered = True
+        if self.job_setup == 'rep_opt':
+            self.isconverged = self.check_convergence(debug=max(debug - 1,0))
+            self.isgood      = bool(allfinished and self.isconverged)
         if debug > 1: print("Registered Job:", self.name, "[REG, GOOD, FIN]", self.isregistered, self.isgood, self.isfinished)
+        if previous_status != (self.isregistered, self.isgood, self.isfinished, getattr(self,'isconverged',None)):
+            self._workflow.isregistered = False
+            self._workflow._branch._system.should_save = True
 
 #############
 ### Other ###
@@ -927,6 +995,8 @@ class Computation(object):
         step (int):                     Step number in the job setup.
         run_number (int):               Retry or update counter.
         wf_path (str | None):           Planned wf location when job_data.save_wf is enabled, otherwise None.
+        energy (float | None):          Created by energy registration, in Hartree.
+        forces (list | None):           Created by optimization registration, in the parser's units.
 
     Methods:
         set_name():                     Build the computation name.
@@ -1313,7 +1383,7 @@ class Computation(object):
             reg_general(self, debug=debug)  
 
         ## 2-Registration of Energy 
-        worked = reg_energy(self, debug=debug)      # Stores the "last energy of a complete block" to State if it is not None
+        worked = reg_energy(self, debug=debug)      # Store evaluated energy on this attempt and its final State.
 
         ## 3-Registration of Optimization, Frequency and TD/TDA Tasks 
         opt_keywords = ['relax', 'vc-relax', 'opt', 'ts']
@@ -1327,6 +1397,7 @@ class Computation(object):
         ## 4-Wraps Up
         if worked:
             self.isregistered = True
+            self._job._workflow._branch._system.should_save = True
             self.add_registration_data()
             self.delete_lines()   ## Output lines are deleted to save disk
             self.delete_output()  ## Output Object too, since it also stores output lines

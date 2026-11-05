@@ -18,6 +18,7 @@ class QE_output(object):
         get_requisites():               Define required parsed sections.
         assess_scf_convergence():       Classify the final SCF convergence trend.
         get_last_complete_block():      Retrieve the latest valid block.
+        get_energy_forces_block():      Select the SCF output used to read energy and forces.
         get_last_geometry():            Extract the latest geometry.
         get_status_finished():          Check whether the run finished.
     """
@@ -65,10 +66,8 @@ class QE_output(object):
         return self.status_finished
 
     def get_optimization_finished(self, debug: int=0):
-        status = parse_opt_status(self.lines)
-        if   status == 'finished':      self.optimization_finished = True
-        elif status == 'stucked' :      self.optimization_finished = True
-        elif status == 'not finished' : self.optimization_finished = False
+        self.optimization_status = parse_opt_status(self.lines)
+        self.optimization_finished = self.optimization_status == 'finished' and self.get_scf_finished() is True and self.get_energy_forces_block(debug=max(debug - 1,0)) is not None
         return self.optimization_finished
 
     def get_scf_finished(self, debug: int=0):
@@ -105,17 +104,50 @@ class QE_output(object):
         coordinates          = parse_coord_status(lines_last_opt_block)
         time_limit           = parse_timelimit_status(lines_last_opt_block)
 
-        if   time_limit:              self.last_block_status = "time_stopped" 
-        if   scf_convergence is None: self.last_block_status = "aborted"
+        if   time_limit:              self.last_block_status = "time_stopped"
+        elif scf_convergence is None: self.last_block_status = "aborted"
         elif not scf_convergence:     self.last_block_status = "no_scf_convergence"
         elif scf_convergence: 
-            if not coordinates:       self.last_block_status = "no_coord"
-            else:                     self.last_block_status = "worked"
+            if not coordinates and self.comp_type != 'scf':
+                self.get_energy_forces_block(debug=max(debug - 1,0))
+                coordinates = self.uses_final_scf
+            optimization_status = parse_opt_status(self.lines)
+            if not coordinates and self.comp_type != 'scf': self.last_block_status = "no_coord"
+            elif optimization_status in ['exhausted','stucked']: self.last_block_status = optimization_status
+            else: self.last_block_status = "worked"
         return self.last_block_status
 
 ###############
 ### BLOCKS ###
 ###############
+    def get_energy_forces_block(self, debug: int=0):
+        """Return the output lines used to read energy and atomic forces.
+
+        After vc-relax, QE may recalculate them with a plane-wave basis built
+        for the optimized cell. Select that final SCF when present; return None
+        if it did not complete and converge. Read atomic coordinates separately.
+        """
+        if hasattr(self, 'energy_forces_block'): return self.energy_forces_block
+        self.uses_final_scf = False
+
+        # 1) Locate the optional SCF calculation performed after cell optimization
+        linenum, found = search_string('Final scf calculation at the relaxed structure', self.lines, typ='last')
+        if not found:
+            self.energy_forces_block = self.get_last_complete_block(debug=max(debug - 1,0))
+            return self.energy_forces_block
+
+        # 2) Check that the final SCF completed and produced a converged energy
+        lines = self.lines[linenum:]
+        _, ended  = parse_end_scf(lines)
+        converged = parse_scf_status(lines)
+        timed_out = parse_timelimit_status(lines)
+        energy    = parse_energy_from_step(lines)
+        self.energy_forces_block = None
+        if ended and converged is True and not timed_out and energy is not None:
+            self.energy_forces_block = lines
+            self.uses_final_scf = True
+        return self.energy_forces_block
+
     def get_last_complete_block(self, debug: int=0):
         if not hasattr(self,"opt_blocks"): self.get_opt_blocks(debug=debug)
         found = False
@@ -521,17 +553,22 @@ class QE_output(object):
             else:          return self.last_at_forces
 
     def get_forces_last_complete_block(self, with_total: bool=False, debug: int=0):
-        if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
-        if self.last_complete_block is None: return None, None
-        tmp1 = parse_forces_from_step(self.last_complete_block)
-        tmp2 = parse_total_force_from_step(self.last_complete_block)
+        """Return atomic forces in Ry/Bohr, or None when unavailable.
+
+        For vc-relax, include the final SCF performed with the optimized cell.
+        with_total also returns QE's printed total force.
+        """
+        block = self.get_energy_forces_block(debug=max(debug - 1,0))
+        if block is None: return (None, None) if with_total else None
+        tmp1 = parse_forces_from_step(block)
+        tmp2 = parse_total_force_from_step(block)
         if tmp1 is not None and tmp2 is not None:
             self.last_at_forces = tmp1 
-            self.last_tot_force = tmp2 
+            self.last_tot_forces = tmp2
         else:
             if debug > 0: print("get_forces_last_complete_block: forces are None")
             self.last_at_forces = None
-            self.last_tot_force = None 
+            self.last_tot_forces = None
         if with_total: return self.last_at_forces, self.last_tot_forces 
         else:          return self.last_at_forces
             
@@ -580,12 +617,16 @@ class QE_output(object):
             return self.last_energy
 
     def get_energy_last_complete_block(self, debug: int=0):
-        if not hasattr(self,"last_complete_block"): self.get_last_complete_block()
-        if self.last_complete_block is None: return None
+        """Return energy in Hartree, or None when unavailable.
+
+        For vc-relax, include the final SCF performed with the optimized cell.
+        """
+        block = self.get_energy_forces_block(debug=max(debug - 1,0))
+        if block is None: return None
         ## If Makov Payne Energy has been requested, it is taken
-        tmp = parse_makov_from_step(self.last_complete_block)
+        tmp = parse_makov_from_step(block)
         if tmp is None: 
-            tmp = parse_energy_from_step(self.last_complete_block)
+            tmp = parse_energy_from_step(block)
         if tmp is not None: 
             self.last_energy = tmp
         else:

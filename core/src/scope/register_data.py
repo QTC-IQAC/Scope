@@ -26,6 +26,11 @@ def reg_general(comp: object, debug: int=0):
 
 ###########################################
 def reg_optimization(comp: object, debug: int=0):
+    """Store optimization geometry, available forces and optimization success.
+
+    Keep each Computation's forces before discarding its output object. Store
+    forces on the final State when available, in the parser's force units.
+    """
     ### 0-In Case Reg_General hasn't been run:
     if not hasattr(comp,"output"): reg_general(comp)
 
@@ -34,6 +39,7 @@ def reg_optimization(comp: object, debug: int=0):
     if new_coord is None:
         print(f"REG_OPTIMIZATION: received None coordinates from comp.output. State won't be updated")
     comp.isgood = comp.output.get_optimization_finished()
+    comp.forces = comp.output.get_forces_last_complete_block()
     if labels is not None:
         assert len(labels) == len(new_coord)
         assert len(labels) > 0
@@ -51,6 +57,7 @@ def reg_optimization(comp: object, debug: int=0):
         if not exists: fstate = comp.source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created
         print(f"REG_OPTIMIZATION: Setting new geometry on fstate={fstate.name}")
         fstate.set_geometry(labels, new_coord)                                            ## New geometry is stored
+        if comp.forces is not None: fstate.set_forces(comp.forces)                        ## New forces are stored, if available
         if comp.source.object_type == "cell": 
             print(f"REG_OPTIMIZATION: Setting new cell parameters on fstate={fstate.name}")
             fstate.set_cell(cellvec, cellparam)
@@ -74,7 +81,7 @@ def reg_frequencies(comp: object, witheigen: bool=False, debug: int=0):
     forces = comp.output.get_forces_last_complete_block()
 
     ### 2a-Saving Data in fstate ###
-    exists, fstate        = comp.source.find_state(comp.qc_data.fstate, debug=debug)         ## If exists, it will be updated
+    exists, fstate        = comp.source.find_state(comp.qc_data.fstate, debug=debug)  ## If exists, it will be updated
     if not exists: fstate = comp.source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created 
     ### 2b-Computation is linked to the fstate
     fstate.add_computation(comp)
@@ -101,7 +108,8 @@ def reg_energy(comp: object, debug: int=0):
     if not hasattr(comp,"output"): reg_general(comp)
 
     ### 1-Parses Energy
-    energy      = comp.output.get_energy_last_complete_block()  ## last_complete_block requires convergence, not necessary energy. Careful
+    energy      = comp.output.get_energy_last_complete_block()
+    comp.energy = energy  # Hartree; keep this attempt independent of later State updates.
     comp.isgood = comp.output.get_scf_finished()
     if debug > 0: print(f"REG_ENERGY: {comp.isgood=}")          ## Stores isgood, which determines if the computation converged, essentially
     if debug > 0: print(f"REG_ENERGY: {energy=} a.u.")          ## Parsing routines already convert energy to a.u.
@@ -140,7 +148,7 @@ def reg_excited_states(comp: object, debug: int=0):
     exc_states = comp.output.get_exc_states(nstates=comp.qc_data.td_nstates, debug=debug)
 
     ### 2a-Saving Data in fstate ###
-    exists, fstate        = comp.source.find_state(comp.qc_data.fstate, debug=debug)         ## If exists, it will be updated
+    exists, fstate        = comp.source.find_state(comp.qc_data.fstate, debug=debug)  ## If exists, it will be updated
     if not exists: fstate = comp.source.add_state(comp.qc_data.fstate, debug=debug)   ## Otherwise, it is created 
 
     ### 2b-Computation is linked to the fstate
