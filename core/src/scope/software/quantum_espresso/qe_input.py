@@ -200,12 +200,12 @@ def gen_qe_input(comp: object, debug: int=0):
         print(f" &electrons", file=inp)
         print(f"    diagonalization='david'", file=inp)
         print(f"    electron_maxstep= {comp.qc_data.elec_maxstep}", file=inp)
-        print(f"    conv_thr = {comp.qc_data.elec_conv}", file=inp)
-        print(f"    mixing_beta = {comp.qc_data.mix_beta}", file=inp)
-        print(f"    mixing_mode = '{comp.qc_data.mix_mode}'", file=inp)
-        print(f"    mixing_ndim = {comp.qc_data.mix_ndim}", file=inp)
-        print(f"    startingpot = 'atomic'", file=inp)
-        print(f"    startingwfc = 'atomic+random'", file=inp)
+        print(f"    conv_thr={comp.qc_data.elec_conv}", file=inp)
+        print(f"    mixing_beta={comp.qc_data.mix_beta}", file=inp)
+        print(f"    mixing_mode='{comp.qc_data.mix_mode}'", file=inp)
+        print(f"    mixing_ndim={comp.qc_data.mix_ndim}", file=inp)
+        print(f"    startingpot='atomic'", file=inp)
+        print(f"    startingwfc='atomic+random'", file=inp)
         print("/", file=inp)
    
         #///////////////////
