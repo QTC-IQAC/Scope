@@ -12,12 +12,16 @@ class System(object):
     """
     Represent the top-level container for sources, workflows, and results.
 
+    should_save tracks registered changes and Source/Branch additions. Direct
+    attribute edits are not automatically detected; set the flag when needed.
+
     Attributes:
         object_type (str):              Object category (`"system"`).
         name (str):                     System name.
         sources (list):                 Molecular or cell sources stored in the system.
         branches (list):                Workflow branches attached to the system.
         results (dict):                 Results registered at the system level.
+        should_save (bool):             Tracked changes need saving; cleared by a successful save().
 
     Methods:
         add_source():                   Add a new source and initialize its state.
@@ -39,6 +43,7 @@ class System(object):
         self.branches             = []
         ## Results dictionary. Normally, results should be stored in Branch.results
         self.results              = dict()
+        self.should_save          = True
 
     ########################################
     #### Results associated with System ####
@@ -90,10 +95,20 @@ class System(object):
 
     ######
     def save(self, filepath: str=None):
+        """Save the System in disk, clearing should_save only if writing succeeds.
+
+        The saved object also has should_save=False. Failed saves leave the
+        in-memory flag True so that unsaved changes remain marked.
+        """
         if filepath is None: filepath = self.system_file
         if not hasattr(self, "system_file") or self.system_file is None:
             self.system_file = filepath
-        save_binary(self, filepath)
+        self.should_save = False
+        try:
+            if not save_binary(self, filepath): self.should_save = True
+        except Exception:
+            self.should_save = True
+            raise
 
     ######
     def find_source(self, name: str, debug: int=0):
@@ -123,12 +138,14 @@ class System(object):
             new_source._sys = self ## Links the system to the source 
             if set_initial_state: new_source.set_initial_state(debug=debug)
             self.sources.append(new_source)
+            self.should_save = True
         ## If it exists, it is overwritten if specified 
         elif found and overwrite: 
             new_source._sys = self ## Links the system to the source 
             if set_initial_state: new_source.set_initial_state(debug=debug)
             self.sources = [s for s in self.sources if s.name.lower() != name.lower()]
             self.sources.append(new_source)
+            self.should_save = True
         else: 
             print(f"SYSTEM.ADD_SOURCE: Source with name '{new_source.name}' already exists in system '{self.name}'") 
             print(f"SYSTEM.ADD_SOURCE: If you would like to Overwrite, specify overwrite=True")
@@ -322,6 +339,7 @@ class System(object):
             if debug > 0: print(f"SYSTEM.ADD_BRANCH: creating Branch in {self.computations_path}{name}")
             if create_folder: os.makedirs(self.computations_path+name, exist_ok=True)
         self.branches.append(new_branch)
+        self.should_save = True
         return new_branch
 
     ######

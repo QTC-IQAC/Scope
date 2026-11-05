@@ -203,6 +203,7 @@ def load_binary(pathfile):
     return binary
 
 def save_binary(variable, pathfile):
+    """Serialize to a temporary file and replace pathfile; return whether writing succeeded."""
     import tempfile
     # Write to a temporary file first
     dir_name = os.path.dirname(pathfile)
@@ -213,12 +214,14 @@ def save_binary(variable, pathfile):
             temp_name = tmp_file.name
         # If pickle.dump succeeds, replace the original file
         shutil.move(temp_name, pathfile)
+        return True
     except Exception as exc:
         print("Error Saving Binary for pathfile:", pathfile)
         print(exc)
         # Clean up temp file if exists
         if 'temp_name' in locals() and os.path.exists(temp_name):
             os.remove(temp_name)
+        return False
 
 #####################
 ## Plain XYZ Files ##
