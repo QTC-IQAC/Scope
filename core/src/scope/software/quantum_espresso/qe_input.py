@@ -114,7 +114,7 @@ def gen_qe_input(comp: object, debug: int=0):
         print( "    restart_mode='from_scratch'", file=inp)
         print(f"    pseudo_dir ='{PP_path}'", file=inp)
         print( "    disk_io='low'", file=inp)
-        prefix = os.path.splitext(comp.wf_name)[0] if comp._job.job_data.save_wf else comp.name
+        prefix = os.path.splitext(comp.wf_name)[0] if getattr(comp._job.job_data, 'save_wf', False) else comp.name
         print(f"    prefix='{prefix}'", file=inp)
 
         ## Keep QE scratch files in the working directory chosen by the batch script.
@@ -362,7 +362,7 @@ def gen_qe_wf_blocks(comp: object, debug: int=0) -> tuple[str, str]:
     """
     import shlex
     import sys
-    save_wf = comp._job.job_data.save_wf
+    save_wf = getattr(comp._job.job_data, 'save_wf', False)
     if not save_wf: return '', ''
     reuse_wf = save_wf == 'workflow' or comp.is_update or comp.step > 1 or comp.run_number > 1
 

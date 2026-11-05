@@ -424,9 +424,10 @@ class Job(object):
         The system, source and optional keyword keep chains separate. Steps and runs
         share each path. QE uses a .save directory; Gaussian uses a .chk file.
         Software is taken from the Job's computations, which must use one backend.
-        The path does not imply usable data.
+        The path does not imply usable data. Missing save_wf in older Jobs means disabled.
         """
-        if not self.job_data.save_wf: return None
+        save_wf = getattr(self.job_data, 'save_wf', False)
+        if not save_wf: return None
         if not self.computations: raise ValueError("JOB.GET_WF_PATH: No computations are available to determine the software")
         software = self.computations[0].software
         if any(comp.software != software for comp in self.computations): raise ValueError("JOB.GET_WF_PATH: Job computations must use the same software")
@@ -437,7 +438,7 @@ class Job(object):
         filename = Filename()
         filename.add_item(Filename_item('sys_name', self.source._sys.name))
         filename.add_item(Filename_item('sou_name', self.source.name))
-        if self.job_data.save_wf == 'workflow':
+        if save_wf == 'workflow':
             filename.add_item(Filename_item('workflow_name', self._workflow.name, prefix='workflow_'))
             path = self._workflow.path
         else:
