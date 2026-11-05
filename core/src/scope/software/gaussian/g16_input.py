@@ -156,8 +156,11 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
 
     None retains 'g16' for older Environments. Gaussian is not wrapped in an
     MPI launcher; a configured site wrapper may replace the driver command.
+    Scheduler stdout/stderr use absolute paths in the computation folder.
     """
     import shlex
+    stderr_path = shlex.quote(os.path.abspath(os.path.join(comp.path, comp.name+'.stderr')))
+    stdout_path = shlex.quote(os.path.abspath(os.path.join(comp.path, comp.name+'.stdout')))
 
     launch_command = shlex.join(shlex.split('g16' if launcher is None else launcher))
     if not launch_command: raise ValueError('GEN_G16_SUBFILE: Launcher cannot be empty')
@@ -173,8 +176,8 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
         if queue._environment.scheduler == 'slurm':
             print(f"#!/bin/bash", file=sub)
             print(f"#SBATCH -J {comp.name}", file=sub)
-            print(f"#SBATCH -e {comp.name}.stderr", file=sub)
-            print(f"#SBATCH -o {comp.name}.stdout", file=sub)
+            print(f"#SBATCH -e {stderr_path}", file=sub)
+            print(f"#SBATCH -o {stdout_path}", file=sub)
             print(f"#SBATCH -p {queue.name}", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
@@ -196,8 +199,8 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
         elif queue._environment.scheduler == 'sge':
             print(f"#!/bin/bash", file=sub)
             print(f"#$ -N {comp.name}", file=sub)
-            print(f"#$ -o {comp.name}.stdout", file=sub)
-            print(f"#$ -e {comp.name}.stderr", file=sub)
+            print(f"#$ -o {stdout_path}", file=sub)
+            print(f"#$ -e {stderr_path}", file=sub)
             print(f"#$ -q {queue.name}" , file=sub)
             print(f"#$ -pe smp {procs}", file=sub)
             print(f"#$ -cwd", file=sub)

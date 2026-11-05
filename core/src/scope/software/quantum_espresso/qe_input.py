@@ -276,9 +276,12 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
     allows reuse from the first computation of every participating Job. The
     shared path is checked at runtime; unavailable/incomplete data leaves the
     atomic guess unchanged. Job requisites must enforce execution order.
+    Scheduler stdout/stderr use absolute paths in the computation folder.
     """
     import shlex
     wf_prepare, wf_store = gen_qe_wf_blocks(comp, debug=debug)
+    stderr_path = shlex.quote(os.path.abspath(os.path.join(comp.path, comp.name+'.stderr')))
+    stdout_path = shlex.quote(os.path.abspath(os.path.join(comp.path, comp.name+'.stdout')))
 
     # Retrieve the preferred launcher from the queue's environment if not provided.
     if launcher is None: launcher = 'srun' if queue._environment.scheduler == 'slurm' else 'mpirun'
@@ -298,8 +301,8 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
         if queue._environment.scheduler == 'slurm':
             print(f"#!/bin/bash", file=sub)
             print(f"#SBATCH -J {comp.name}", file=sub)
-            print(f"#SBATCH -e {comp.name}.stderr", file=sub)
-            print(f"#SBATCH -o {comp.name}.stdout", file=sub)
+            print(f"#SBATCH -e {stderr_path}", file=sub)
+            print(f"#SBATCH -o {stdout_path}", file=sub)
             print(f"#SBATCH -p {queue.name}", file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
@@ -309,8 +312,8 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
         elif queue._environment.scheduler == 'sge':
             print(f"#!/bin/bash", file=sub)
             print(f"#$ -N {comp.name}", file=sub)
-            print(f"#$ -o {comp.name}.stdout", file=sub)
-            print(f"#$ -e {comp.name}.stderr", file=sub)
+            print(f"#$ -o {stdout_path}", file=sub)
+            print(f"#$ -e {stderr_path}", file=sub)
             print(f"#$ -q {queue.name}" , file=sub)
             print(f"#$ -pe smp {procs}", file=sub)
             print(f"#$ -cwd", file=sub)
