@@ -10,6 +10,7 @@
 
 # Temporary
 /core/src/scope/import_system.py
+/core/src/scope/liic.py
 
 # Editable install / build artifacts
 *.egg-info/

@@ -23,6 +23,7 @@ def gen_qe_input(comp: object, debug: int=0):
     The input starts from an atomic guess. Continuation batch scripts may switch
     their scratch copy to file initialization after preparing a valid saved wf.
     Optimization inputs include qc_data.bfgs_ndim in &ions (default 1, standard BFGS).
+    All inputs disable symmetry with nosym=.true. in &system.
 
     Warning:
         Atomic coordinates and labels are taken from the requested state
@@ -149,6 +150,7 @@ def gen_qe_input(comp: object, debug: int=0):
         if comp.qc_data.comp_type == "vc-relax": min_cowfc *= 2; min_corho *= 2  ## In vc-relax it is convenient to minimize pulay stress
 
         print(" &system", file=inp)
+        print("    nosym = .true.", file=inp)
 
         ## For isolated molecules
         if system_type == "molecule": 
