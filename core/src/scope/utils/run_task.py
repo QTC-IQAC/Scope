@@ -163,6 +163,15 @@ Then relaunch the SCOPE tasks.
                 comp.check_updates()                                              ## Checks for not-registered update computations 
                 comp.check_files()
 
+                # Deleted outputs invalidate cached completion and parser data.
+                if not comp.output_exists and (comp.isregistered or getattr(comp,'isfinished',False) or getattr(comp,'isgood',False) or hasattr(comp,'output') or hasattr(comp,'output_lines')):
+                    comp.isregistered = False
+                    comp.isfinished   = False
+                    comp.isgood       = False
+                    comp.delete_lines()
+                    comp.delete_output()
+                    sys.should_save = True
+
                 if debug > 0: print("RUN_TASK, step 3.1: doing computation with keyword and run_number:", comp.keyword, comp.run_number)
                 if debug > 0: print("RUN_TASK, step 3.1: out_file:", comp.out_path)
                 if debug > 0: print("RUN_TASK, step 3.1: is_update:", comp.is_update)
@@ -174,6 +183,23 @@ Then relaunch the SCOPE tasks.
                 ## Step 3.2a-Evaluates Submission
                 if not comp.output_exists:
                     if options.want_submit and not comp.has_update:
+
+                        # A saved State can outlive deleted files from earlier steps.
+                        if this_job.job_setup == 'rep_opt' and comp.step > 1:
+                            previous_steps = {}
+                            for previous in this_job.computations:
+                                if previous.keyword == comp.keyword and previous.step < comp.step:
+                                    latest = previous_steps.get(previous.step)
+                                    if latest is None or previous.run_number > latest.run_number: previous_steps[previous.step] = previous
+                            waiting_step = None if comp.step-1 in previous_steps else comp.step-1
+                            for previous in previous_steps.values():
+                                previous.check_files()
+                                if not previous.input_exists or not previous.output_exists or not previous.isregistered or not getattr(previous,'isfinished',False) or previous.has_update:
+                                    waiting_step = previous.step if waiting_step is None else min(waiting_step, previous.step)
+                            if waiting_step is not None:
+                                if debug > 0: print(f"RUN_TASK, step 3.2a: waiting for rep_opt step {waiting_step}, keyword={comp.keyword!r}, to finish and register")
+                                continue
+
                         comp.check_submission_status(global_env, debug=debug)
                         if debug > 0: print("RUN_TASK, step 3.2a: checking submission status: isrunning=",comp.isrunning)
                         if debug > 0: print("RUN_TASK, step 3.2a: ignore_submitted=", options.ignore_submitted)
