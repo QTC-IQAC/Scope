@@ -157,6 +157,8 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
     None retains 'g16' for older Environments. Gaussian is not wrapped in an
     MPI launcher; a configured site wrapper may replace the driver command.
     Scheduler stdout/stderr use absolute paths in the computation folder.
+    Run in an isolated directory inside TMPDIR and remove it after copying logs
+    and requested checkpoints. A failed copy retains scratch and reports its path.
     """
     import shlex
     stderr_path = shlex.quote(os.path.abspath(os.path.join(comp.path, comp.name+'.stderr')))
@@ -185,18 +187,6 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
             print(f"", file=sub)
             print(f"module load {module}", file=sub)
             print(f"", file=sub)
-            print(f"JOBDIR=$PWD", file=sub)
-            print(f"cd $TMPDIR", file=sub)
-            print('echo "SCOPE: Running in $PWD"', file=sub)
-            print('export GAUSS_SCRDIR="$TMPDIR"', file=sub)
-            print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
-            print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
-            print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
-            print(f"cat tmp1 {comp.inp_name} > tmp2 && mv -f tmp2 {comp.inp_name} || exit 1", file=sub)
-            print(f"{launch_command} < {comp.inp_name} > {comp.out_name}", file=sub)
-            print(f"cp -pr *.log $JOBDIR/", file=sub)
-            if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)  ## This option must be tested
-
         elif queue._environment.scheduler == 'sge':
             print(f"#!/bin/bash", file=sub)
             print(f"#$ -N {comp.name}", file=sub)
@@ -211,17 +201,35 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
             #print(f". /etc/profile", file=sub)
             print(f"module load {module}", file=sub)
             print(f"", file=sub)
-            print(f"JOBDIR=$PWD", file=sub)
-            print(f"cd $TMPDIR", file=sub)
-            print('echo "SCOPE: Running in $PWD"', file=sub)
-            print('export GAUSS_SCRDIR="$TMPDIR"', file=sub)
-            print(f"cp $JOBDIR/{comp.inp_name} .", file=sub)
-            print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
-            print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
-            print(f"cat tmp1 {comp.inp_name} > tmp2 && mv -f tmp2 {comp.inp_name} || exit 1", file=sub)
-            print(f"{launch_command} < {comp.inp_name} > {comp.out_name}", file=sub)
-            print(f"cp -pr *.log $JOBDIR", file=sub)
-            if savechk: print(f"cp -pr *.chk $JOBDIR", file=sub)
+        # Run in a computation-owned directory; never remove the scheduler's TMPDIR.
+        print('JOBDIR=$PWD', file=sub)
+        print('SCRATCHDIR=$(mktemp -d "${TMPDIR:?}/scope.XXXXXX") || exit 1', file=sub)
+        print('cd "$SCRATCHDIR" || exit 1', file=sub)
+        print('echo "SCOPE: Running in $PWD"', file=sub)
+        print('export GAUSS_SCRDIR="$SCRATCHDIR"', file=sub)
+        print(f'cp "$JOBDIR"/{shlex.quote(comp.inp_name)} .', file=sub)
+        print(f"echo '%nprocs={procs}' >  tmp1", file=sub)
+        print(f"echo '%mem={mem}gb'    >> tmp1", file=sub)
+        print(f"cat tmp1 {shlex.quote(comp.inp_name)} > tmp2 && mv -f tmp2 {shlex.quote(comp.inp_name)} || exit 1", file=sub)
+        print(f"{launch_command} < {shlex.quote(comp.inp_name)} > {shlex.quote(comp.out_name)}", file=sub)
+
+        # Return results before removing the working files, also after a Gaussian error.
+        copy_command = 'cp -pr -- *.log "$JOBDIR/"'
+        if savechk: copy_command += ' && cp -pr -- *.chk "$JOBDIR/"'
+        print(f'''
+# Return logs and requested checkpoints
+if ! ( {copy_command} ); then
+    echo "SCOPE: Result copy failed; scratch retained: $SCRATCHDIR" >&2
+    exit 1
+fi
+
+# Remove computation scratch after copying results
+if cd "$JOBDIR" && rm -rf -- "$SCRATCHDIR"; then
+    echo "SCOPE: Removed scratch: $SCRATCHDIR"
+else
+    echo "SCOPE: Scratch cleanup failed: $SCRATCHDIR" >&2
+    exit 1
+fi''', file=sub)
 
         os.chmod(comp.sub_path, 0o777)
 

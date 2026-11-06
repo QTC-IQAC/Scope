@@ -280,6 +280,8 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
     shared path is checked at runtime; unavailable/incomplete data leaves the
     atomic guess unchanged. Job requisites must enforce execution order.
     Scheduler stdout/stderr use absolute paths in the computation folder.
+    Remove the computation's scratch directory after output and wf copying;
+    retain it and report its path if either copy fails.
     """
     import shlex
     wf_prepare, wf_store = gen_qe_wf_blocks(comp, debug=debug)
@@ -329,8 +331,8 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
         print('', file=sub)
         print('# Prepare job scratch', file=sub)
         print('JOBDIR=$PWD', file=sub)
-        print('SCRATCHDIR=$(mktemp -d "${TMPDIR:?}/scope.XXXXXX")', file=sub)
-        print('cd "$SCRATCHDIR"', file=sub)
+        print('SCRATCHDIR=$(mktemp -d "${TMPDIR:?}/scope.XXXXXX") || exit 1', file=sub)
+        print('cd "$SCRATCHDIR" || exit 1', file=sub)
         print('echo "SCOPE: Running in $PWD"', file=sub)
         print(f'cp "$JOBDIR"/{shlex.quote(comp.inp_name)} .', file=sub)
 
@@ -350,9 +352,24 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
         print('', file=sub)
         print('# Return the text output', file=sub)
         print(f'if ! cp -pr {shlex.quote(comp.out_name)} "$JOBDIR"; then', file=sub)
+        print('    echo "SCOPE: Output copy failed; scratch retained: $SCRATCHDIR" >&2', file=sub)
         print('    exit 1', file=sub)
         print('fi', file=sub)
-        if wf_store: print('exit "$wf_status"', file=sub)
+        if wf_store:
+            print('''if [ "$wf_status" -ne 0 ]; then
+    echo "SCOPE: Wavefunction copy failed; scratch retained: $SCRATCHDIR" >&2
+    exit "$wf_status"
+fi''', file=sub)
+
+        # 6) Remove only the isolated directory created for this computation.
+        print('''
+# Remove computation scratch after copying results
+if cd "$JOBDIR" && rm -rf -- "$SCRATCHDIR"; then
+    echo "SCOPE: Removed scratch: $SCRATCHDIR"
+else
+    echo "SCOPE: Scratch cleanup failed: $SCRATCHDIR" >&2
+    exit 1
+fi''', file=sub)
 
         os.chmod(comp.sub_path, 0o777)
 
