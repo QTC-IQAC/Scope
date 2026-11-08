@@ -145,9 +145,11 @@ def gen_qe_input(comp: object, debug: int=0):
             pp, cutoff_wfc, cutoff_rho = get_pp(spec[0], PP_path)
             if cutoff_wfc > min_cowfc:      min_cowfc = cutoff_wfc      # updates
             if cutoff_rho > min_corho:      min_corho = cutoff_rho      # updates
-            if cutoff_rho < 10*cutoff_wfc:  min_corho = 10*cutoff_wfc   # updates
+            #if cutoff_rho < 10*cutoff_wfc:  min_corho = 10*cutoff_wfc   # updates
 
-        if comp.qc_data.comp_type == "vc-relax": min_cowfc *= 2; min_corho *= 2  ## In vc-relax it is convenient to minimize pulay stress
+        if min_corho < 10*min_cowfc: min_corho = 10*min_cowfc   ## Minimum value for cutoff_rho is 10 times the cutoff_wfc
+        if comp.qc_data.comp_type == "vc-relax": 
+            min_cowfc *= 2; min_corho *= 2  ## In vc-relax it is convenient to minimize pulay stress
 
         print(" &system", file=inp)
         print("    nosym = .true.", file=inp)
