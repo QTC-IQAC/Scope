@@ -255,8 +255,8 @@ Then relaunch the SCOPE tasks.
                         new_comp = this_job.set_continuation_computation(comp, "scf", debug=debug)
                         if new_comp is None:
                             continuation_stopped = True
-                            report += f"Automatic QE SCF recovery exhausted: {comp.out_path}. Review the electronic and SCF settings.\n"
-                        elif new_comp.qc_data.software != "qe" and new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path}: Run Number > 10 \n"
+                            report += f"Automatic QE SCF recovery exhausted: {comp.out_path} : Review the electronic and SCF settings.\n"
+                        elif new_comp.qc_data.software != "qe" and new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} : Run Number > 10 \n"
                     elif comp.status == "aborted":
                         # Aborted attempts are resubmitted under the same run, never continued.
                         if handle_errors and options.want_submit:
@@ -266,14 +266,14 @@ Then relaunch the SCOPE tasks.
                         if comp.type in ['opt','relax','vc-relax']:
                             if debug > 0: print(f"RUN_TASK, step 5.1: setting continuation computation with typ=opt")
                             new_comp = this_job.set_continuation_computation(comp, "opt", debug=debug)
-                            if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path}: Run Number > 10 \n"
+                            if new_comp.run_number >= 10: report += f"Investigate {new_comp.out_path} : Run Number > 10 \n"
                         elif comp.type == 'ts':
                             if comp.qc_data.fctype != "calcall":
                                 if debug > 0: print(f"RUN_TASK, step 5.1: setting continuation computation with typ=ts")
                                 new_comp = this_job.set_continuation_computation(comp, "ts", debug=debug)
                             else:
                                 if debug > 0: print(f"RUN_TASK, step 5.1: continuation computation for TS not set. calcAll already attempted")
-                                report += f"Investigate {comp.out_path}: TS could not be found\n"
+                                report += f"Investigate {comp.out_path} : TS could not be found\n"
 
                     ## 5.2 Continue repetitive optimization from current attempts, retaining cached step energies.
                     if this_job.job_setup == 'rep_opt' and worked and comp.isfinished and comp.status in ['worked','exhausted','stucked'] and not comp.has_update:
