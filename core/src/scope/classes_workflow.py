@@ -630,7 +630,13 @@ class Job(object):
 ###############################
 ### Create Computations Set ###
 ###############################
-    def set_computations_from_setup(self, qc_data: object, debug: int=0): 
+    def set_computations_from_setup(self, qc_data: object, debug: int=0):
+        """Create computations required by the Job setup without duplicating existing ones.
+
+        - findiff creates 6N fixed-cell QE SCFs around istate, with forces enabled
+        and a separate State per displacement. The one-sided step is set by
+        job_data.findiff_displacement/findiff_units (default 0.01 Bohr).
+        """
 
         #####################
         ## 1- Setup for regular computations: "1 job => 1 computation"
@@ -700,37 +706,55 @@ class Job(object):
         #####################
         ## 3- Setup for finite Differences
         #####################
-        elif self.job_setup == "findiff": 
-            print(f"SET COMPUTATIONS FROM SETUP: findiff selected")
+        elif self.job_setup == "findiff":
+            from scope.findiff import findiff_displacements
+            # Limits the finite difference to periodic QE SCF jobs with a cell source.
+            if qc_data.software != 'qe' or qc_data.comp_type != 'scf' or self.source.object_type != 'cell': 
+                raise ValueError("FINDIFF: Use a periodic source with software=qe and comp_type=scf")
+
+            # Finds State and checks that it has coordinates and cell vectors. Also checks that istate and fstate differ.
             found, initial_state = find_state(self.source, self.istate)
-            if not found: print(f"SET COMPUTATIONS FROM SETUP: initial state not found")
-            else:
-                if hasattr(initial_state,"coord"):
-                    from scope.findiff import findiff_displacements
-                    #self.path = self.path+"findiff_test4"
-                    if not os.path.isdir(self.path): os.makedirs(self.path); print(f"SET COMPUTATIONS FROM SETUP: findiff folder created")
-                    geoms, names = findiff_displacements(initial_state.coord)
+            if not found or not hasattr(initial_state,'coord') or not hasattr(initial_state,'cell_vector'): 
+                raise ValueError("FINDIFF: Reference State requires coordinates and cell vectors")
+            if self.istate == self.fstate: 
+                raise ValueError("FINDIFF: Reference and final States must differ")
 
-                    for idx, geo in enumerate(geoms):
-                        assert len(geo) == len(initial_state.labels)
-                        exists, displ_state = find_state(self.source, names[idx])          # Checks if state already exists
-                        if not exists: displ_state = state(self.source, names[idx])        # If not, creates it and adds it to source
-                        displ_state.set_geometry(initial_state.labels, geo)         # Creates New State with Displaced Coordinates 
-                        if hasattr(initial_state,"cellvec"): displ_state.set_cell(initial_state.cellvec,initial_state.cellparam) 
-    
-                        # Initial State of the Computation must be updated, to account for the displacement of geometries
-                        exists, new_comp = self.find_computation(keyword=names[idx])
-                        if not exists: new_comp = self.add_computation(qc_data, 1, self.path, comp_keyword=names[idx], is_update=False, debug=debug)
-                        new_comp.qc_data = deepcopy(new_comp.qc_data)
-                        new_comp.qc_data._mod_attr("istate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
-                        new_comp.qc_data._mod_attr("fstate",names[idx]) ## Updates the initial state of the computation, so it takes the displaced geometries
-                        new_comp.qc_data._mod_attr("print_forces",True) ## Updates the initial state of the computation, so it takes the displaced geometries
-                        new_comp.set_name()
-                        new_comp.set_paths()
+            # Defines and takes default parameters for the job, in case they are not specified in the input. 
+            step  = getattr(self.job_data,'findiff_displacement',0.01)
+            units = getattr(self.job_data,'findiff_units','bohr')
 
-                else: 
-                    print("SET COMPUTATIONS FROM SETUP: ERROR! initial_state for findiff does not have coordinates")
-                    print(initial_state)
+            # Creates the displacements and assigns them a name.
+            geoms, names = findiff_displacements(initial_state.coord, step, units)
+            prefix = f"findiff_{self._workflow._branch.name}_{self._workflow.name}_{self.name}"
+            os.makedirs(self.path, exist_ok=True)
+            for geo, keyword in zip(geoms, names):
+                state_name = prefix+keyword
+                exists, displ_state = find_state(self.source, state_name)
+                if exists:
+                    condition1 = list(displ_state.labels) == list(initial_state.labels)                              # Checks that the labels are the same
+                    condition2 = np.allclose(displ_state.coord, geo, rtol=0, atol=1e-12)                             # Checks that the coordinates are the same
+                    condition3 = np.allclose(displ_state.cell_vector, initial_state.cell_vector, rtol=0, atol=1e-12) # Checks that the cell vectors are the same
+                    matches = condition1 and condition2 and condition3
+                    if not matches: raise ValueError("FINDIFF: Reference geometry or step changed; use a new Job and final State for a new batch of displacements")
+                else:
+                    displ_state = self.source.add_state(state_name)
+                    displ_state.set_geometry(list(initial_state.labels), geo)
+                    displ_state.set_cell(deepcopy(initial_state.cell_vector), deepcopy(initial_state.cell_param))
+                    self._workflow._branch._system.should_save = True
+
+                # For each displaced geometry, we create a new computation with the same QC data, but with the displaced geometry as the initial state. 
+                # The final state remains the same as specified in the job_data.
+                exists, new_comp = self.find_computation(keyword=keyword)
+                if not exists:
+                    displaced_qc = deepcopy(qc_data)
+                    displaced_qc._mod_attr('istate', state_name)
+                    displaced_qc._mod_attr('fstate', state_name)
+                    displaced_qc._mod_attr('print_forces', True)
+                    new_comp = self.add_computation(displaced_qc, 1, self.path, comp_keyword=keyword, is_update=False, debug=max(debug-1,0))
+                    new_comp.set_name()
+                    new_comp.set_paths()
+                    self._workflow._branch._system.should_save = True
+            if debug > 0: print(f"FINDIFF: {len(names)} displacements; one-sided step {step:g} {units}")
 
         #####################
         ## 4- Setup for repetitive optimizations (rep_opt): consecutive opt jobs until energy is stable
@@ -909,7 +933,7 @@ class Job(object):
         if len(self.computations) > 0:
             for idx, comp in enumerate(self.computations):
                 comp.check_updates(debug=max(debug - 1, 0))
-                if not comp.has_update:    # if has_update means that there is another computation of the same type with a different run_number
+                if not comp.has_update:  # if has_update is True, it means that there is another computation of the same type with a different run_number
                     ncurrent += 1
                     if debug > 1: print("Registering Job: Evaluating computation with run_number:", comp.run_number)
                     comp.check_files()
@@ -928,16 +952,13 @@ class Job(object):
             allgood     = False
             allfinished = False
 
-#        ############################################################
-#        ## Findiff Setup: we extract frequencies at the job level ##
-#        ############################################################
-#        if allgood and self.job_setup == 'findiff': 
-#            if debug > 1: print("------------------------------------------")
-#            if debug > 1: print("Registering Finite Differences of this job")
-#            if debug > 1: print("------------------------------------------")
-#            from scope.Register_Data import reg_findiff 
-#            worked = reg_findiff(self)
-#            if not worked: allgood = False
+        # Assemble the finite-difference result only after all current attempts succeeded.
+        if self.job_setup == 'findiff' and ncurrent != 6*len(self.source.labels):
+            allgood     = False
+            allfinished = False
+        if allgood and self.job_setup == 'findiff':
+            from scope.register_data import reg_findiff
+            allgood = reg_findiff(self, debug=max(debug-1,0))
 
         self.isgood       = allgood
         self.isfinished   = allfinished
@@ -1171,6 +1192,11 @@ class Computation(object):
         self.software         = new_qc_data.software
         ## Adds any old information that is now not present. I'm not sure about this one
         self.qc_data         += old_qc_data
+        # Displacement States and force requests belong to the generated set of displaced computations.
+        if self._job.job_setup == 'findiff':
+            for setting in ['istate','fstate','print_forces']:
+                self.qc_data._mod_attr(setting, getattr(old_qc_data,setting))
+            self.qc_data._mod_attr('comp_type', 'scf')
         self.type             = self.qc_data.comp_type
         ## Exceptions
         if self.is_update and self.software == 'qe':
@@ -1399,6 +1425,7 @@ class Computation(object):
             self.isregistered = True
             self._job._workflow._branch._system.should_save = True
             self.add_registration_data()
+            if self._job.job_setup == 'findiff': self._job._findiff_signature = None
             self.delete_lines()   ## Output lines are deleted to save disk
             self.delete_output()  ## Output Object too, since it also stores output lines
         else: 

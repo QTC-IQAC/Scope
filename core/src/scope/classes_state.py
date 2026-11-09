@@ -537,13 +537,12 @@ class State(object):
         return False, None
 
     def add_computation(self, computation: object, debug: int=0):
-        found, comp = self.find_computation(computation._job.name, computation.step, computation.run_number)
-        if not found: 
-            if debug > 0: print("STATE.ADD_COMPUTATION: same computation wasn't found. So adding it to state")
+        """Link an existing Computation."""
+        if not any(comp is computation for comp in self.computations):
+            if debug > 0: print("STATE.ADD_COMPUTATION: Adding computation to state")
             self.computations.append(computation)
             computation.add_state(self)
-        else:
-            if debug > 0: print("STATE.ADD_COMPUTATION: same computation was already found in state. Ignoring")
+        elif debug > 0: print("STATE.ADD_COMPUTATION: Computation is already linked")
 
 #############################
 #### Sampling Geometries ####

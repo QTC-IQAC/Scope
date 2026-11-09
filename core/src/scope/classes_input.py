@@ -176,12 +176,12 @@ def fill_options_data(data: object, debug: int=0):
     return data
 
 def fill_job_data(data: object, debug: int=0):
-    """Fill Job defaults; normalize save_wf to False, 'job' or 'workflow' (True means 'job')."""
+    """Fill Job defaults and check for required attributes. Raises ValueError if required attributes are missing."""
     ## Adds defaults to job_data
-    if not hasattr(data,"branch"):        raise ValueError("WARNING: job_data is missing 'branch' input variable")
-    if not hasattr(data,"workflow"):      raise ValueError("WARNING: job_data is missing 'workflow' input variable")
-    if not hasattr(data,"job"):           raise ValueError("WARNING: job_data is missing 'job' input variable")
-    if not hasattr(data,"hierarchy"):     raise ValueError("WARNING: job_data is missing 'hierarchy' input variable")  ## This shouldn't be mandatory, I need to fix it
+    if not hasattr(data,"branch"):        raise ValueError("FILL_JOB_DATA: job_data is missing 'branch' input variable")
+    if not hasattr(data,"workflow"):      raise ValueError("FILL_JOB_DATA: job_data is missing 'workflow' input variable")
+    if not hasattr(data,"job"):           raise ValueError("FILL_JOB_DATA: job_data is missing 'job' input variable")
+    if not hasattr(data,"hierarchy"):     raise ValueError("FILL_JOB_DATA: job_data is missing 'hierarchy' input variable")  ## This shouldn't be mandatory, I need to fix it
     if not hasattr(data,"istate"):        data._add_attr("istate", str("initial"))
     if not hasattr(data,"fstate"):        data._add_attr("fstate", str(data.job))
     if not hasattr(data,"job_setup"):     data._add_attr("job_setup", "regular")
@@ -208,6 +208,17 @@ def fill_job_data(data: object, debug: int=0):
     if data.job_setup == 'rep_opt' and not hasattr(data,"energy_thres"): data._add_attr("energy_thres",float(1e-5))
     if data.job_setup == 'rep_opt' and not hasattr(data,"max_steps"):    data._add_attr("max_steps",int(5))
     if data.job_setup == 'rep_opt' and not hasattr(data,"energies"):     data._add_attr("energies",np.zeros((data.max_steps)))
+
+    # Finite-difference settings; geometry coordinates remain in Angstrom.
+    if data.job_setup == 'findiff':
+        if not hasattr(data,'findiff_displacement'): data._add_attr('findiff_displacement', 0.01)
+        if not hasattr(data,'findiff_units'):        data._add_attr('findiff_units', 'bohr')
+        if not np.isfinite(data.findiff_displacement) or data.findiff_displacement <= 0: 
+            raise ValueError("FILL_JOB_DATA: findiff_displacement must be finite and positive")
+        if data.findiff_units not in ['bohr','angstrom']: 
+            raise ValueError("FILL_JOB_DATA: findiff_units must be 'bohr' or 'angstrom'")
+        if data.fstate == data.istate: 
+            raise ValueError("FILL_JOB_DATA: Finite differences require distinct reference and final States")
 
     ## Modifies some attributes to avoid blank spaces and dashes, and to use lower letters
     data._mod_attr("job",str(data.job.strip().lower().replace("-","_").replace(" ","_")))

@@ -312,7 +312,7 @@ class System(object):
                     job.path = wrk.path         ## Job Path is the same as branch, and is a folder. Except for finite differences jobs
                     if job.job_setup == "findiff": 
                         job.path = job.path+"findiff/"
-                        if create_folders: os.makedirs(wrk.path, exist_ok=True)
+                        if create_folders: os.makedirs(job.path, exist_ok=True)
                     for comp in job.computations:
                         comp.path = job.path                     ## Computation paths is the same as branch folder
                         comp.inp_path = comp.path+comp.inp_name  ## inp_path is a file

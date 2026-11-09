@@ -1,195 +1,281 @@
-#######################################################
-## The findiff module in SCOPE requires more testing ##
-#######################################################
+"""Finite differences vibrational analysis.
 
+Coordinates are in Angstrom; Cartesian Hessians are in Hartree/Bohr^2 and
+atomic masses in amu.
+"""
 from scope import constants
-from copy import deepcopy
 import numpy as np
 
+
 def apply_coord_displacement(coord, atom: int, axis: int, displacement: float=0.01, units: str='angstrom'):
-    mod_coord = deepcopy(coord)
-    if units == 'angstrom':    mod_coord[atom][axis] += displacement
-    elif units == 'bohr':      mod_coord[atom][axis] += displacement*constants.bohr2angs
-    else: print(f"FINDIFF: APPLY COORD DISPLACEMENT: could not understand the specified {units=}"); return None
+    """Return Angstrom coordinates with one zero-based atom/axis displaced.
+
+    "units" describes the displacement units, not those of the "coord".
+    The input is unchanged; the returned array has shape (natoms, 3).
+    """
+    # Check inputs
+    if np.iscomplexobj(coord):
+        raise ValueError("APPLY_COORD_DISPLACEMENT: Coordinates must be real")
+    mod_coord = np.array(coord, dtype=float, copy=True)
+    if mod_coord.ndim != 2 or mod_coord.shape[1] != 3 or len(mod_coord) == 0 or not np.all(np.isfinite(mod_coord)):
+        raise ValueError("APPLY_COORD_DISPLACEMENT: Expected finite (natoms, 3) coordinates")
+    if not isinstance(atom, (int, np.integer)) or isinstance(atom, (bool, np.bool_)) or not 0 <= atom < len(mod_coord):
+        raise ValueError("APPLY_COORD_DISPLACEMENT: Atom index is out of range")
+    if not isinstance(axis, (int, np.integer)) or isinstance(axis, (bool, np.bool_)) or axis not in [0,1,2]:
+        raise ValueError("APPLY_COORD_DISPLACEMENT: Axis must be 0, 1 or 2")
+    if not np.isfinite(displacement):
+        raise ValueError("APPLY_COORD_DISPLACEMENT: Displacement must be finite")
+
+    # Apply the displacement in Angstrom, converting from Bohr if requested
+    if units == 'bohr':
+        displacement *= constants.bohr2angs
+    elif units != 'angstrom':
+        raise ValueError("APPLY_COORD_DISPLACEMENT: units must be 'bohr' or 'angstrom'")
+    mod_coord[atom,axis] += displacement
     return mod_coord
 
-def get_central_difference(f1, f2, displacement: float=0.01, units: str='angstrom', debug: int=0):
-    ## displacement is how much the coordinate is displaced from the center point, so the difference between the positive and negative displacements is twice
-    ## Units of the displacement, not units of the forces
-    ## f1 must be the forces of the positive displacement
-    ## f2 must be the forces of the negative displacement
-    assert np.shape(f1) == np.shape(f2)    
-    if units == 'angstrom': displacement = displacement*constants.angs2bohr
-    elif units == 'bohr':   pass
-    else: print("FINDIFF: GET CENTRAL: could not understand the specified units"); return None
-    cdiff = - ( f1 - f2 ) / (2.0 * displacement)
-    return cdiff
+
+def get_central_difference(f1, f2, displacement: float=0.01, units: str='bohr', force_units: str='hartree/bohr', debug: int=0):
+    """Return -(F_plus - F_minus)/(2*displacement) in Hartree/Bohr^2.
+
+    f1 and f2 are forces at positive and negative displacements, respectively, with matching shapes;
+    displacement is the positive one-sided step;
+    units is 'bohr' (default) or 'angstrom';
+    force_units is 'hartree/bohr' or 'ry/bohr'; select 'ry/bohr' for forces returned by the QE parser.
+    The returned array has the force-array shape; inputs are not modified.
+    """
+    # Check inputs
+    if np.iscomplexobj(f1) or np.iscomplexobj(f2):
+        raise ValueError("GET_CENTRAL_DIFFERENCE: Forces must be real")
+    f1 = np.asarray(f1, dtype=float)
+    f2 = np.asarray(f2, dtype=float)
+    if f1.shape != f2.shape or f1.size == 0 or not np.all(np.isfinite(f1)) or not np.all(np.isfinite(f2)): raise ValueError("GET_CENTRAL_DIFFERENCE: Forces must have matching finite nonempty shapes")
+    if not np.isfinite(displacement) or displacement <= 0:
+        raise ValueError("GET_CENTRAL_DIFFERENCE: Displacement must be finite and positive")
+    if units == 'angstrom': displacement *= constants.angs2bohr
+    elif units != 'bohr':
+        raise ValueError("GET_CENTRAL_DIFFERENCE: units must be 'bohr' or 'angstrom'")
+
+    # Convert the force difference to Hartree/Bohr^2, if necessary
+    if force_units == 'ry/bohr':
+        factor = constants.ry2har
+    elif force_units == 'hartree/bohr':
+        factor = 1.0
+    else:
+        raise ValueError("GET_CENTRAL_DIFFERENCE: force_units must be 'hartree/bohr' or 'ry/bohr'")
+    if debug > 0:
+        print(f"GET_CENTRAL_DIFFERENCE: step={displacement:g} Bohr, forces={force_units}")
+
+    # Returns the central-difference Hessian entries in Hartree/Bohr^2
+    return -(f1-f2) * factor / (2*displacement)
+
 
 def findiff_displacements(coord, displacement: float=0.01, units: str='bohr'):
-    ## Default should be bohr instead
-    if   units == "bohr": pass
-    elif units == "angstrom": displacement = displacement * constants.angs2bohr
-    geoms = []
-    names = []
-    for idx, atom_coord in enumerate(coord):
-        for jdx, axis in enumerate(atom_coord):
-            ## Positive_Displacement
-            geoms.append(apply_coord_displacement(coord, idx, jdx, displacement, units))
-            names.append("_"+str(idx)+"_"+str(jdx)+"_pos")
-            ## Negative_Displacement
-            geoms.append(apply_coord_displacement(coord, idx, jdx, -displacement, units))
-            names.append("_"+str(idx)+"_"+str(jdx)+"_neg")
+    """Return the 6N displaced Angstrom geometries and their coordinate names.
+
+    coord is a finite (natoms, 3) Angstrom array. displacement is a positive
+    one-sided step in units ('bohr' or 'angstrom'). Each zero-based atom/axis
+    produces a positive then a negative geometry, named _atom_axis_pos/neg.
+    """
+
+    # Check inputs
+    if np.iscomplexobj(coord):
+        raise ValueError("FINDIFF_DISPLACEMENTS: Coordinates must be real")
+    coord = np.asarray(coord, dtype=float)
+    if coord.ndim != 2 or coord.shape[1] != 3 or len(coord) == 0 or not np.all(np.isfinite(coord)):
+        raise ValueError("FINDIFF_DISPLACEMENTS: Expected finite (natoms, 3) coordinates")
+    if not np.isfinite(displacement) or displacement <= 0:
+        raise ValueError("FINDIFF_DISPLACEMENTS: Displacement must be finite and positive")
+    if units not in ['bohr','angstrom']:
+        raise ValueError("FINDIFF_DISPLACEMENTS: units must be 'bohr' or 'angstrom'")
+    geoms, names = [], []
+    for atom in range(len(coord)):
+        for axis in range(3):
+            # Positive Displacement
+            geoms.append(apply_coord_displacement(coord, atom, axis, displacement, units))
+            names.append(f'_{atom}_{axis}_pos')
+            # Negative Displacement
+            geoms.append(apply_coord_displacement(coord, atom, axis, -displacement, units))
+            names.append(f'_{atom}_{axis}_neg')
+
+    # Returns the 6N displaced geometries and their names
     return geoms, names
 
+
 def mass_weight_hessian(hessian, masses, debug: int=0):
-    assert np.shape(hessian)[0] == 3*len(masses)
-    natoms = len(masses)
-    dim = np.shape(hessian)[0]
-    mw_hessian = hessian.copy()
-    ij = 0
-    for idx in range(1,natoms+1):
-        for jdx in range(1,3+1):
-            ij += 1
-            kl = 0
-            for kdx in range(1,natoms+1):
-                for ldx in range(1,3+1):
-                    kl += 1
-                    factor = 1.0/np.sqrt(masses[idx-1]*masses[kdx-1])
-                    mw_hessian[ij-1,kl-1] = hessian[ij-1,kl-1]*factor
-    return mw_hessian
+    """Divide Cartesian Hessian entries by sqrt(m_i*m_j), without modifying inputs.
+
+    hessian is a finite real (3N, 3N) array in Hartree/Bohr^2, ordered by atom
+    then x/y/z. masses contains N finite positive masses in amu. The result is
+    in Hartree/(Bohr^2*amu); it is not an electron-mass atomic-unit matrix.
+    """
+    # Check inputs
+    if np.iscomplexobj(hessian) or np.iscomplexobj(masses):
+        raise ValueError("MASS_WEIGHT_HESSIAN: Hessian and masses must be real")
+    hessian = np.asarray(hessian, dtype=float)
+    masses  = np.asarray(masses, dtype=float)
+    if masses.ndim != 1 or len(masses) == 0 or not np.all(np.isfinite(masses)) or np.any(masses <= 0):
+        raise ValueError("MASS_WEIGHT_HESSIAN: Masses must be a finite positive vector")
+    if hessian.shape != (3*len(masses),3*len(masses)) or not np.all(np.isfinite(hessian)):
+        raise ValueError("MASS_WEIGHT_HESSIAN: Expected a finite (3N, 3N) Hessian")
+
+    # Apply the mass weighting by dividing each Hessian entry by sqrt(m_i*m_j)
+    mass_components = np.repeat(masses, 3)
+    if debug > 0:
+        print(f"MASS_WEIGHT_HESSIAN: {len(masses)} atoms, masses in amu")
+
+    # Returns the mass-weighted Hessian in Hartree/(Bohr^2*amu)
+    return hessian / np.sqrt(mass_components[:,None]*mass_components[None,:])
+
 
 def project_out(hessian, proj_rot: bool=False, proj_tra: bool=True, debug: int=0):
-    from scope.other import gram_schmidt
+    """Project uniform translations from a Cartesian Hessian before mass weighting.
 
-    if not proj_rot and not proj_tra: return hessian
-    
-    dim = np.shape(hessian)[0]    
-    um = np.identity(dim)
-    
-    if proj_rot: h = np.zeros((dim,6))
-    else:        h = np.zeros((dim,3))
-    
-    ## translations ##
-    for k in range(3):
-        a = np.zeros((dim))
-        for i in range(k, dim, 3):
-            a[i] = 1./np.sqrt(dim)
-        h[:,k] = a[:]
-        
-    ## Rotations: from 559 to 676 of vibanalysis.f 
-    if proj_rot: pass # when implemented, this would create the 3 other columns of h. That is: h[:,3:6]
-    
-    # orthogonalize with gram_schmidt
-    new_h = gram_schmidt(h)
-    
-    if not proj_rot: 
-        ## we add the remaining 3 columns to h
-        b = np.zeros((dim,3))
-        final_h = np.concatenate((new_h, b), axis=1)
-    else:
-        final_h = new_h.copy()
-                
-    # projection matrix
-    for j in range(dim):
-        for i in range(dim):
-            for k in range(6):
-                um[i,j] = um[i,j] - final_h[i,k]*final_h[j,k]
-    
-    # correct hessian
-    f = np.zeros((dim,dim))
-    for j in range(dim):
-        for i in range(dim):
-            for k in range(dim):
-                f[i,j] = f[i,j] + um[k,i]*hessian[k,j]
-    
-    proj_hessian = np.zeros((dim,dim))
-    for j in range(dim):
-        for i in range(dim):
-            for k in range(dim):
-                proj_hessian[i,j] = proj_hessian[i,j] + f[i,k]*um[k,j]
-                
-    return proj_hessian
+    Return P.T @ hessian @ P, where P removes the three rigid translations.
+    With proj_tra=False return an independent copy. Rotational projection needs
+    geometry information and is not implemented; proj_rot=True raises an error.
+    hessian must be finite, real, square and ordered as atom-wise x/y/z.
+    """
+    # Check inputs
+    if proj_rot:
+        raise NotImplementedError("PROJECT_OUT: Rotational projection is not implemented")
+    if np.iscomplexobj(hessian):
+        raise ValueError("PROJECT_OUT: Hessian must be real")
+    hessian = np.asarray(hessian, dtype=float)
+    if hessian.ndim != 2 or hessian.shape[0] == 0 or hessian.shape[0] != hessian.shape[1] or hessian.shape[0] % 3 or not np.all(np.isfinite(hessian)):
+        raise ValueError("PROJECT_OUT: Expected a finite (3N, 3N) Hessian")
+    if not proj_tra: return hessian.copy()
+    # Project out the three Cartesian translations with a simple projector
+    natoms       = len(hessian)//3
+    translations = np.tile(np.eye(3), (natoms,1))/np.sqrt(natoms)
+    projector    = np.eye(3*natoms) - translations@translations.T
+    if debug > 0:
+        print("PROJECT_OUT: Removing three Cartesian translations")
+    # Return the projected Hessian in Hartree/Bohr^2, without modifying the input
+    return projector.T @ hessian @ projector
 
-def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True, debug: int=0):
+
+def get_VNM_from_hessian(hessian, labels: list, masses: list, proj_rot: bool=False, proj_tra: bool=True, debug: int=0):
+    """Return 3N mass-weighted VNMs from a Cartesian Hessian in Hartree/Bohr^2.
+
+    labels contains elemental symbols in Hessian atom order; masses supplies the
+    calculation's masses in amu. Symmetrize, optionally project translations in
+    Cartesian space, mass-weight and diagonalize with a symmetric eigensolver.
+    Rotational projection is not implemented. Inputs are not modified.
+
+    Frequencies are ascending in cm^-1, with negative values for imaginary modes
+    and any near-zero roundoff retained. Modes have unit mass-weighted norm and
+    is_mass_weighted=True. Reduced masses are in amu and each VNM retains the
+    supplied atomic masses. Intensities and spectroscopic force constants are
+    not calculated. This function does not collect or register Job results.
+    """
+    from scope.classes_qc import VNM
+    from scope.connectivity import labels2atnums
     from scope.operations.vecs_and_mats import symmetrize
 
-    factor_cminv = 5140.487   ## must figure out where does it come from
+    # 0) Check atom order and the Cartesian Hessian dimensions
+    if np.iscomplexobj(hessian):
+        raise ValueError("GET_VNM_FROM_HESSIAN: Hessian must be real")
+    hessian = np.asarray(hessian, dtype=float)
+    masses  = np.asarray(masses)
+    natoms  = len(labels)
+    if natoms == 0 or hessian.shape != (3*natoms,3*natoms):
+        raise ValueError("GET_VNM_FROM_HESSIAN: Labels and Hessian dimensions must agree")
+    atnums = labels2atnums(labels)
 
-    import numpy as np
-    from scope.classes_qc import VNM
+    # 1) Symmetrize and project before applying the calculation's atomic masses
+    sym_hessian  = symmetrize(hessian)
+    proj_hessian = project_out(sym_hessian, proj_rot=proj_rot, proj_tra=proj_tra, debug=max(debug-1,0))
+    mw_hessian   = mass_weight_hessian(proj_hessian, masses, debug=max(debug-1,0))
+    masses       = np.asarray(masses, dtype=float)
 
-    ## Read the number of atoms from the source
-    source = job._workflow.source
-    natoms  = source.natoms
-    masses = [elemdatabase.elementweight[l] for l in labels]     # For the mass-weighted hessian
-    atnums  = [elemdatabase.elementnr[l] for l in labels]        # For the creation of VNM
-    atomidxs = [i+1 for i in range(natoms)]                      # For the creation of VNM
+    # 2) Diagonalize and convert eigenvalues to signed wavenumbers
+    eigenval, eigenvec = np.linalg.eigh(mw_hessian)
+    factor_cminv      = 1/(np.sqrt(constants.amu2au)*constants.cm2har)
+    frequencies       = np.sign(eigenval)*np.sqrt(np.abs(eigenval))*factor_cminv
+    cartesian_modes   = eigenvec/np.sqrt(np.repeat(masses,3))[:,None]
+    reduced_masses    = 1/np.sum(cartesian_modes**2, axis=0)
 
-    hessian = np.zeros((natoms*3,natoms*3))
-
-    ## We collect all computations in a simpler variable
-    comps = job.computations.sort(key=lambda x: (x.index))
-
-    ## Checks that all computations are good and are registered, otherwise quits
-    for idx, c in enumerate(comps):
-        if c.isregistered and c.isgood: pass
-        else:
-            print(f"get_VNM_findiff: WARNING. Computation {idx} is reg={c.isregistered} good={c.isgood}")
-            return None
-
-    # Collects data
-    for idx in range(3*natoms):
-        # reads successive computations
-        f1 = np.array(comps[2*idx].forces)
-        f2 = np.array(comps[2*idx+1].forces)
-
-        # and the dentral difference is computed as the difference between forces
-        cdiff = get_central_difference(f1, f2)  # Nx3 components
-
-        # insert cdiff into hessian
-        for jdx, atom in enumerate (cdiff):
-            for kdx, axis in enumerate(atom):
-                row = 3*jdx + kdx
-                column = idx
-                hessian[column, row] = axis
-
-    ## Projects rotations and/or translations, symmetrizes, and mass-weights
-    if proj_rot or proj_tra:
-        proj_hessian = project_out(hessian, proj_rot=proj_rot, proj_tra=proj_tra, debug=debug)
-    else:
-        proj_hessian = hessian.copy()
-
-    sym_hessian = symmetrize(hessian)
-    mw_hessian = mass_weight_hessian(sym_hessian, masses)
-
-    # Diagonalize the mass-weighted hessian. Eigenval should have mass units in it
-    eigenval, eigenvec = np.linalg.eig(mw_hessian)
-
-    nvnm   = np.shape(eigenval)[0]
-    assert nvnm % 3 == 0 
-    assert natoms == int(nvnm / 3)
-
-    ## Transform the eigenvalues to cm-1
-    e_cm = []
-    for e in enumerate(eigenval):
-        if e >= 0: sign =  1
-        else:      sign = -1
-        e_cm.append(float(np.sqrt(abs(e))*factor_cminv)*sign)
-
-    ## Transpose the matrix of eigenvectors, since np.linalg.eig returns it transposed
-    eigenvec = eigenvec.T
-
+    # 3) Store the mass-weighted eigenvectors without substituting element-table masses
+    atomidxs = list(range(1,natoms+1))
     VNMs = []
-    for idx, e in enumerate(e_cm):
-        new_VNM = VNM(idx, e)
-        evec = np.reshape(eigenvec[i],[nvnm,3])
-        xs = evec[:,0]
-        ys = evec[:,1]
-        zs = evec[:,2]
-        new_VNM.set_mode(atomidxs, atnums, xs, ys, zs, is_mass_weighted=True)
-        VNMs.append(new_VNM)
-
-    # So far, VNMs have been created in reverse order (from largest to smallest frequency). Here we reverse
-    VNMs.reverse()
-
+    for idx, freq in enumerate(frequencies):
+        mode = eigenvec[:,idx].reshape(natoms,3)
+        vnm = VNM(idx+1, float(freq), red_mass=float(reduced_masses[idx]))
+        vnm.set_mode(atomidxs, atnums, mode[:,0], mode[:,1], mode[:,2], is_mass_weighted=True)
+        vnm.masses = masses.tolist()
+        VNMs.append(vnm)
+    if debug > 0:
+        norm = np.linalg.norm(hessian)
+        asymmetry = np.linalg.norm(hessian-hessian.T)/norm if norm else 0.0
+        print(f"GET_VNM_FROM_HESSIAN: {len(VNMs)} modes; relative Hessian antisymmetry={asymmetry:.3e}")
     return VNMs
+
+
+def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True, debug: int=0):
+    """Collect a complete periodic QE force stencil and return its 3N VNMs.
+
+    Select the latest (step, run_number) for every _atom_axis_pos/neg keyword,
+    independent of list order. Return None while any point is missing, pending,
+    unsuccessful or lacks forces. Invalid stencils raise ValueError. Inputs must
+    match the reference State's atom order, cell and symmetric displacements.
+    Use submitted atomic masses and actual rounded steps, converting QE forces
+    from Ry/Bohr. The Job and its States are not modified; rotations are unsupported.
+    """
+    from pathlib import Path
+    from scope.read_write import read_lines_file
+    from scope.software.quantum_espresso.qe_parse import parse_findiff_input
+
+    # 0) Identify the reference geometry and the latest attempt at each point
+    if proj_rot: raise NotImplementedError("GET_VNM_FROM_FINDIFF: Rotational projection is not implemented")
+    found, reference = job.source.find_state(job.istate)
+    if not found or not hasattr(reference, 'coord'): raise ValueError("GET_VNM_FROM_FINDIFF: Reference State has no geometry")
+    if job.source.object_type != 'cell': raise ValueError("GET_VNM_FROM_FINDIFF: Only fixed-cell periodic QE calculations are supported")
+    step  = getattr(job.job_data, 'findiff_displacement', 0.01)
+    units = getattr(job.job_data, 'findiff_units', 'bohr')
+    geoms, names = findiff_displacements(reference.coord, step, units)
+    latest = {}
+    for comp in job.computations:
+        if comp.keyword not in names: raise ValueError(f"GET_VNM_FROM_FINDIFF: Unexpected displacement keyword {comp.keyword!r}")
+        previous = latest.get(comp.keyword)
+        if previous is not None and (comp.step,comp.run_number) == (previous.step,previous.run_number): raise ValueError(f"GET_VNM_FROM_FINDIFF: Duplicate attempt for {comp.keyword}")
+        if previous is None or (comp.step,comp.run_number) > (previous.step,previous.run_number): latest[comp.keyword] = comp
+    if len(latest) != len(names):
+        if debug > 0: print(f"GET_VNM_FROM_FINDIFF: {len(latest)}/{len(names)} displacement points available")
+        return None
+
+    # 1) Check submitted geometries and retain forces from the current attempts
+    natoms = len(reference.labels)
+    coords, forces, masses = [], [], None
+    for name, expected in zip(names, geoms):
+        comp = latest[name]
+        if comp.software != 'qe' or comp.type != 'scf': raise ValueError("GET_VNM_FROM_FINDIFF: Displacements must be QE SCF computations")
+        valid = comp.isregistered and getattr(comp,'isfinished',False) and getattr(comp,'isgood',False) and not comp.has_update
+        if not valid or not Path(comp.out_path).is_file() or getattr(comp,'forces',None) is None:
+            if debug > 0: print(f"GET_VNM_FROM_FINDIFF: Waiting for converged forces at {name}, run {comp.run_number}")
+            return None
+        if not Path(comp.inp_path).is_file(): raise ValueError(f"GET_VNM_FROM_FINDIFF: Missing submitted input {comp.inp_path}")
+        labels, coord, atomic_masses, cell = parse_findiff_input(read_lines_file(comp.inp_path), natoms, debug=max(debug-1,0))
+        coord         = np.asarray(coord, dtype=float)
+        atomic_masses = np.asarray(atomic_masses, dtype=float)
+        force         = np.asarray(comp.forces, dtype=float)
+        if labels != list(reference.labels) or not np.allclose(coord, expected, rtol=0, atol=1e-6): raise ValueError(f"GET_VNM_FROM_FINDIFF: Geometry or atom order mismatch at {name}")
+        if not np.all(np.isfinite(cell)) or not np.allclose(cell, reference.cell_vector, rtol=0, atol=1e-6): raise ValueError(f"GET_VNM_FROM_FINDIFF: Cell mismatch at {name}")
+        if not np.all(np.isfinite(atomic_masses)) or np.any(atomic_masses <= 0): raise ValueError(f"GET_VNM_FROM_FINDIFF: Invalid atomic masses at {name}")
+        if masses is not None and not np.array_equal(masses, atomic_masses): raise ValueError(f"GET_VNM_FROM_FINDIFF: Atomic masses changed at {name}")
+        if force.shape != (natoms,3) or not np.all(np.isfinite(force)): raise ValueError(f"GET_VNM_FROM_FINDIFF: Invalid forces at {name}")
+        coords.append(coord)
+        forces.append(force)
+        masses = atomic_masses
+
+    # 2) Assemble columns using actual positive/negative input separations
+    hessian = np.empty((3*natoms,3*natoms))
+    for component in range(3*natoms):
+        plus, minus = 2*component, 2*component+1
+        atom, axis  = divmod(component,3)
+        delta       = (coords[plus][atom,axis]-coords[minus][atom,axis])/2
+        if delta <= 1e-6: raise ValueError("GET_VNM_FROM_FINDIFF: Step is unresolved at input coordinate precision")
+        midpoint = (coords[plus]+coords[minus])/2
+        if not np.allclose(midpoint, reference.coord, rtol=0, atol=1e-6): raise ValueError("GET_VNM_FROM_FINDIFF: Displacements are not centered on the reference geometry")
+        hessian[:,component] = get_central_difference(forces[plus], forces[minus], delta, units='angstrom', force_units='ry/bohr').reshape(-1)
+    return get_VNM_from_hessian(hessian, reference.labels, masses, proj_rot=proj_rot, proj_tra=proj_tra, debug=debug)

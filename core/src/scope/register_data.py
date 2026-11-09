@@ -120,6 +120,9 @@ def reg_energy(comp: object, debug: int=0):
         else:                         forces = None
     else:                             forces = None
 
+    if getattr(comp.qc_data,'print_forces',False): 
+        comp.forces = forces  # Keep this attempt's forces independent of State updates.
+
     ### Storage ###
     worked = False
     if energy is not None or forces is not None:
@@ -162,3 +165,39 @@ def reg_excited_states(comp: object, debug: int=0):
     else: print("REG_EXCITED_STATES: could not parse excited states")
 
     return worked
+
+
+def reg_findiff(job: object, debug: int=0) -> bool:
+    """Register a complete QE finite-difference set of computations on job.fstate.
+
+    The final State receives the reference geometry/cell, 3N VNMs and links to
+    the contributing Computations. Return False for incomplete or inconsistent
+    stencils. Saves unchanged successful registrations; only new results mark
+    the System for saving. Negative frequencies do not invalidate registration.
+    """
+    from scope.findiff import get_VNM_from_findiff
+    found, reference = job.source.find_state(job.istate)
+    if not found: return False
+    current = sorted((comp for comp in job.computations if not comp.has_update), key=lambda comp: comp.keyword)
+    try:
+        attempts = tuple((comp.keyword, comp.step, comp.run_number, getattr(comp,'registration_time',None)) for comp in current)
+        geometry  = (tuple(reference.labels), np.asarray(reference.coord).tobytes(), np.asarray(reference.cell_vector).tobytes())
+        settings  = (job.fstate, getattr(job.job_data,'findiff_displacement',0.01), getattr(job.job_data,'findiff_units','bohr'))
+        signature = (attempts, geometry, settings)
+        exists, fstate = job.source.find_state(job.fstate)
+        if signature == getattr(job,'_findiff_signature',None) and exists and hasattr(fstate,'VNMs'): return True
+        VNMs = get_VNM_from_findiff(job, debug=debug)
+    except (OSError, ValueError) as exc:
+        print(f"REG_FINDIFF: {exc}")
+        return False
+    if VNMs is None: return False
+
+    if not exists: fstate = job.source.add_state(job.fstate)
+    fstate.set_geometry(list(reference.labels), np.array(reference.coord, dtype=float, copy=True))
+    fstate.set_cell(deepcopy(reference.cell_vector), deepcopy(reference.cell_param))
+    fstate.set_VNMs(VNMs)
+    for comp in current: fstate.add_computation(comp)
+    job._findiff_signature = signature
+    job._workflow._branch._system.should_save = True
+    if debug > 0: print(f"REG_FINDIFF: {len(VNMs)} modes registered on State {fstate.name}")
+    return True

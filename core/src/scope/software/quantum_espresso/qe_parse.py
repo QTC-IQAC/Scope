@@ -8,6 +8,40 @@ ry2har    = scope.constants.ry2har
 ###############
 ### PARSING ###
 ###############
+def parse_findiff_input(lines: list, natoms: int, debug: int=0):
+    """Read a SCOPE-generated periodic QE displacement input.
+
+    Return elemental labels, Angstrom coordinates, atomic masses in amu and
+    Angstrom cell vectors, in input atom order. Require ATOMIC_SPECIES and
+    Angstrom ATOMIC_POSITIONS/CELL_PARAMETERS cards; malformed inputs raise
+    ValueError. Numeric spin suffixes on SCOPE species names are removed.
+    """
+    species_idx, found_species = search_string('ATOMIC_SPECIES', lines, typ='first')
+    coord_idx, found_coord     = search_string('ATOMIC_POSITIONS', lines, typ='first')
+    cell_idx, found_cell       = search_string('CELL_PARAMETERS', lines, typ='first')
+    if not (found_species and found_coord and found_cell): raise ValueError("PARSE_FINDIFF_INPUT: Missing species, positions or cell card")
+    if 'angstrom' not in lines[coord_idx].lower() or 'angstrom' not in lines[cell_idx].lower(): raise ValueError("PARSE_FINDIFF_INPUT: Angstrom positions and cell vectors are required")
+
+    species = {}
+    for line in lines[species_idx+1:]:
+        fields = line.split()
+        if len(fields) != 3: break
+        try: mass = float(fields[1])
+        except ValueError: break
+        species[fields[0]] = mass
+    try:
+        atoms  = [line.split() for line in lines[coord_idx+1:coord_idx+1+natoms]]
+        labels = [atom[0].rstrip('0123456789.+-') for atom in atoms]
+        coord  = [[float(value) for value in atom[1:4]] for atom in atoms]
+        masses = [species[atom[0]] for atom in atoms]
+        cell   = [[float(value) for value in line.split()] for line in lines[cell_idx+1:cell_idx+4]]
+    except (KeyError, IndexError, ValueError) as exc:
+        raise ValueError("PARSE_FINDIFF_INPUT: Could not read displacement geometry or masses") from exc
+    if len(atoms) != natoms or any(len(row) != 3 for row in coord) or len(cell) != 3 or any(len(row) != 3 for row in cell): raise ValueError("PARSE_FINDIFF_INPUT: Incomplete positions or cell vectors")
+    if debug > 0: print(f"PARSE_FINDIFF_INPUT: {natoms} atoms, positions in Angstrom, masses in amu")
+    return labels, coord, masses, cell
+
+
 def parse_start_scf(lines, debug=0):
     start_SCF, found  = search_string("Self-consistent Calculation", lines)
     return start_SCF, found
