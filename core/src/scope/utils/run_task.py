@@ -111,9 +111,9 @@ Then relaunch the SCOPE tasks.
         ### STEP 1.5: WORKFLOW ###
         ##########################
         if debug > 0:   print(f"RUN_TASK, step 1.5: Evaluating list of Workflows in input: {job_data.workflow=}")
-        job_data.workflow = interpret_workflow_from_user(sys, job_data, debug=debug)
+        workflow_names = interpret_workflow_from_user(sys, job_data, debug=debug)
   
-        for wrk in job_data.workflow if isinstance(job_data.workflow, list) else list([job_data.workflow]):   ### Works when job_data.workflow is a str or a list
+        for wrk in workflow_names:
 
             exists, this_workflow             = this_branch.find_workflow(wrk)
             if not exists: this_workflow      = this_branch.add_workflow(wrk); sys.should_save = True

@@ -10,7 +10,7 @@
 
 &job_data
    branch       = 'bench'
-   workflow     = 'all_sources' 
+   workflow     = '*'
    job          = 'scf'
 
    hierarchy    = 1

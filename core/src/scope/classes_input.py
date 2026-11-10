@@ -2,6 +2,7 @@ import os
 import sys
 import numpy as np
 from ast import literal_eval
+from fnmatch import fnmatchcase
 
 ######################
 def interpret_software(name: str):
@@ -371,35 +372,32 @@ def read_section(lines: list, section: str, debug: int=0):
 
 ##############
 def interpret_workflow_from_user(sys: object, job_data: object, debug: int=0):
+    """Expands the user selection in job_data.workflow into a unique list of workflow names.
+
+    workflow accepts a name/pattern or a list, matched case-insensitively against
+    System sources. Shell-style *, ? and [...] patterns are supported; '*' selects
+    all sources. Preserve selector order and source order within each match.
+    Raise ValueError for invalid selectors or any selector matching no source.
+    Return the expanded list without changing job_data; branch membership is irrelevant.
+    """
     if not hasattr(job_data,"workflow"):
         raise ValueError("INTERPRET_WORKFLOW_FROM_USER: job_data is missing 'workflow' input variable")
     if not hasattr(sys,"sources"):
         raise ValueError("INTERPRET_WORKFLOW_FROM_USER: system is missing 'sources'")
 
-    # If job_data.workflow == 'all_sources' as a str or in a list, it converts it to a list of all workflow names in the system
-    # If job_data.workflow == 'all_in_branch' as a str or in a list, it converts it to a list of all workflow names in the branch
-    if isinstance(job_data.workflow, str):
-        if job_data.workflow.lower() == 'all_sources': 
-            job_data.workflow = [sou.name.lower() for sou in sys.sources]
-            if debug > 0: print(f"INTERPRET_WORKFLOW_FROM_USER: job_data.workflow contained 'all_sources'. It was adapted to {job_data.workflow}")
-        elif job_data.workflow.lower() == 'all_in_branch': 
-            if not hasattr(job_data,"branch"):
-                raise ValueError("INTERPRET_WORKFLOW_FROM_USER: job_data is missing 'branch' input variable") 
-            found, br = sys.find_branch(job_data.branch)
-            if not found: raise ValueError(f"INTERPRET_WORKFLOW_FROM_USER: Branch {job_data.branch} not found in system {sys.name}")
-            job_data.workflow = [wk.name.lower() for wk in br.workflows]
-            if debug > 0: print(f"INTERPRET_WORKFLOW_FROM_USER: job_data.workflow contained 'all_in_branch'. It was adapted to {job_data.workflow}")
+    selectors = [job_data.workflow] if isinstance(job_data.workflow,str) else job_data.workflow
+    if not isinstance(selectors,list): 
+        raise ValueError("INTERPRET_WORKFLOW_FROM_USER: job_data.workflow must be a source-name selector, or a list of selectors")
 
-    elif isinstance(job_data.workflow, list):
-        if len(job_data.workflow) == 1 and 'all_sources' in [x.lower() for x in job_data.workflow]:
-            job_data.workflow = [sou.name.lower() for sou in sys.sources]
-            if debug > 0: print(f"INTERPRET_WORKFLOW_FROM_USER: job_data.workflow contained 'all_sources'. It was adapted to {job_data.workflow}")
-        elif len(job_data.workflow) == 1 and 'all_in_branch' in [x.lower() for x in job_data.workflow]:
-            if not hasattr(job_data,"branch"):
-                raise ValueError("INTERPRET_WORKFLOW_FROM_USER: job_data is missing 'branch' input variable") 
-            found, br = sys.find_branch(job_data.branch)
-            if not found: raise ValueError(f"INTERPRET_WORKFLOW_FROM_USER: Branch {job_data.branch} not found in system {sys.name}")
-            job_data.workflow = [wk.name.lower() for wk in br.workflows]
-            if debug > 0: print(f"INTERPRET_WORKFLOW_FROM_USER: job_data.workflow contained 'all_in_branch'. It was adapted to {job_data.workflow}")
-    
-    return job_data.workflow
+    names     = [sou.name.lower() for sou in sys.sources]
+    workflows = []
+    for selector in selectors:
+        if not isinstance(selector,str) or not selector: 
+            raise ValueError("INTERPRET_WORKFLOW_FROM_USER: job_data.workflow selectors must be nonempty strings")
+        matches = [name for name in names if fnmatchcase(name,selector.lower())]
+        if not matches: raise ValueError(f"INTERPRET_WORKFLOW_FROM_USER: No source matches workflow selector {selector!r}")
+        for name in matches:
+            if name not in workflows: workflows.append(name)
+
+    if debug > 0: print(f"INTERPRET_WORKFLOW_FROM_USER: Selected {len(workflows)} workflows: {workflows}")
+    return workflows
