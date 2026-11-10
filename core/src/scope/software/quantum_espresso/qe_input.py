@@ -316,7 +316,9 @@ def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: 
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
             print(f"#SBATCH --mem-per-cpu=1900MB", file=sub)
-            print(f"#SBATCH --time={queue.time_limit}", file=sub)
+            time_limit = getattr(queue._environment,'time_limit',None) # If the user supplies a time limit, it is stored in the environment
+            if time_limit is None: time_limit = queue.time_limit       # If not, then it uses the default time limit of the queue.
+            print(f"#SBATCH --time={time_limit}", file=sub)
 
         elif queue._environment.scheduler == 'sge':
             print(f"#!/bin/bash", file=sub)

@@ -26,7 +26,8 @@ class Environment(object):
         available_queues (list):        Queues discovered for this environment.
         selected_queues (list):         Queues selected for submission.
         method (str):                   Queue scoring strategy.
-        software_checks (dict):        Most recent static checks of configured software modules.
+        time_limit (int | None):        Input-specific SLURM wall time in minutes; None uses the queue limit.
+        software_checks (dict):         Most recent static checks of configured software modules.
         qe_launcher (str):              Preferred QE MPI launcher, configurable by the user.
         g16_launcher (str):             Gaussian driver command (normally 'g16').
 
@@ -188,6 +189,7 @@ class Environment(object):
 
     ######
     def read_job_specs(self, content: str, isfile: bool=True, debug: int=0):
+        """Apply an input's resource settings; omitted time_limit resets the queue-limit fallback."""
         from scope.classes_input import set_environment_data
         if not hasattr(self,"available_queues"): print("ENV.READ_JOB_SPECS: please run 'user_queue_preferences' first in the environment class"); return None
         local_env = set_environment_data(content, isfile=isfile, debug=debug)

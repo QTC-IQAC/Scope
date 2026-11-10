@@ -160,11 +160,22 @@ class Input_data(object):
 
 #######################
 def fill_environment_data(data: object, debug: int=0):
+    """Fill resource defaults; time_limit optionally overrides SLURM wall time in integer minutes.
+
+    Omitted or None uses the selected queue's limit. Positive integers apply
+    to submissions prepared from this input.
+    """
     ## Adds defaults to environment data
     if not hasattr(data,"requested_procs"):   data._add_attr("requested_procs",int(1)) 
     if not hasattr(data,"max_jobs"):          data._add_attr("max_jobs",int(100)) 
     if not hasattr(data,"max_procs"):         data._add_attr("max_procs",int(320)) 
     if not hasattr(data,"method"):            data._add_attr("method","weighted") 
+    if not hasattr(data,"time_limit"):        data._add_attr("time_limit",None)
+    
+    ## Validates the time_limit attribute; None uses default queue time limit; values are expected in minutes
+    if isinstance(data.time_limit,str) and data.time_limit == 'none': data._mod_attr('time_limit',None)
+    if data.time_limit is not None and (isinstance(data.time_limit,bool) or not isinstance(data.time_limit,int) or data.time_limit <= 0):
+        raise ValueError("FILL_ENVIRONMENT_DATA: time_limit must be a positive integer in minutes, or None")
     return data
 
 def fill_options_data(data: object, debug: int=0):
