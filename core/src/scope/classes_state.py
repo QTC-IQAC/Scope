@@ -343,22 +343,22 @@ class State(object):
                 else:                                     return False
 
     def set_VNMs(self, VNMs):
-        self.VNMs       = VNMs
-        self.freqs_cm   = [vnm.freq_cm for vnm in VNMs]
+        """Store VNMs and refresh all frequency-based minimum and transition-state flags."""
+        self.VNMs           = VNMs
+        self.freqs_cm       = [vnm.freq_cm for vnm in VNMs]
+        self.num_neg_freqs  = sum(vnm.freq_cm < 0.0 for vnm in self.VNMs)
+        self.almost_minimum = False
 
         ## Checks if it is a minimum energy structure: all positive frequencies 
         if all(vnm.freq_cm >= 0.0 for vnm in self.VNMs): self.isminimum = True
         else:                                            self.isminimum = False
 
         ## Checks if it is a TS: only one very negative frequency 
-        if sum(vnm.freq_cm < 0.0 for vnm in self.VNMs) == 1 and min(self.freqs_cm) < -50: self.is_ts = True
-        else:                                                                             self.is_ts = False
+        if self.num_neg_freqs == 1 and min(self.freqs_cm) < -50: self.is_ts = True
+        else:                                                    self.is_ts = False
 
         ## If it is not a minimum, evaluates if, at least, is close
         if not self.isminimum:
-            self.num_neg_freqs = 0
-            for vnm in self.VNMs: 
-                if vnm.freq_cm < 0.0: self.num_neg_freqs += 1
             if self.num_neg_freqs <= 3 and VNMs[0].freq_cm > -50: self.almost_minimum = True
             else:                                                 self.almost_minimum = False
 
