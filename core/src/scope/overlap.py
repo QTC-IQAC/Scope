@@ -388,6 +388,14 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
 
     Returns:
         tuple:                          Aligned labels, coordinates, and atom mapping.
+
+    Notes:
+        Opposite-handed configurations: alignment uses proper rotations
+        (determinant +1) and translations only, never a reflection. Identical
+        element/connectivity graphs, even with bond orders, do not establish
+        stereochemical equivalence. Delta/Lambda metal coordination, ligand
+        stereocentres and different conformers can therefore give a substantial
+        RMSD without an incorrect atom mapping. 
     """
     from scope.read_write import print_xyz, write_xyz
 

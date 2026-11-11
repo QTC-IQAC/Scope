@@ -571,6 +571,8 @@ class Job(object):
             
     def check_requisites(self, debug: int=0) -> bool:
         """Refresh related jobs and evaluate dependencies from their current status."""
+        # Previously completed finite-difference Jobs may still lack the reference SCF.
+        if self.job_setup == 'findiff' and not any(comp.keyword == 'ref' for comp in self.computations): self.register(debug=max(debug-1,0))
         self.requisites_fulfilled = False
         self.constrains_fulfilled = False
         requisites_fulfilled = np.zeros((len(self.requisites)))  ## To be correct, all must be 1
@@ -633,9 +635,9 @@ class Job(object):
     def set_computations_from_setup(self, qc_data: object, debug: int=0):
         """Create computations required by the Job setup without duplicating existing ones.
 
-        - findiff creates 6N fixed-cell QE SCFs around istate, with forces enabled
-        and a separate State per displacement. The one-sided step is set by
-        job_data.findiff_displacement/findiff_units (default 0.01 Bohr).
+        - findiff creates 6N displaced fixed-cell QE SCFs and an undisplaced 'ref'
+        SCF, with forces enabled and a separate State per computation. The step
+        uses job_data.findiff_displacement/findiff_units (default 0.01 Bohr).
         """
 
         #####################
@@ -725,10 +727,12 @@ class Job(object):
 
             # Creates the displacements and assigns them a name.
             geoms, names = findiff_displacements(initial_state.coord, step, units)
+            geoms.append(np.array(initial_state.coord,dtype=float,copy=True))
+            names.append('ref')
             prefix = f"findiff_{self._workflow._branch.name}_{self._workflow.name}_{self.name}"
             os.makedirs(self.path, exist_ok=True)
             for geo, keyword in zip(geoms, names):
-                state_name = prefix+keyword
+                state_name = prefix+'_ref' if keyword == 'ref' else prefix+keyword
                 exists, displ_state = find_state(self.source, state_name)
                 if exists:
                     condition1 = list(displ_state.labels) == list(initial_state.labels)                              # Checks that the labels are the same
@@ -754,7 +758,7 @@ class Job(object):
                     new_comp.set_name()
                     new_comp.set_paths()
                     self._workflow._branch._system.should_save = True
-            if debug > 0: print(f"FINDIFF: {len(names)} displacements; one-sided step {step:g} {units}")
+            if debug > 0: print(f"FINDIFF: {len(names)-1} displacements and reference SCF; one-sided step {step:g} {units}")
 
         #####################
         ## 4- Setup for repetitive optimizations (rep_opt): consecutive opt jobs until energy is stable
@@ -953,7 +957,7 @@ class Job(object):
             allfinished = False
 
         # Assemble the finite-difference result only after all current attempts succeeded.
-        if self.job_setup == 'findiff' and ncurrent != 6*len(self.source.labels):
+        if self.job_setup == 'findiff' and (ncurrent != 6*len(self.source.labels)+1 or not any(comp.keyword == 'ref' and not comp.has_update for comp in self.computations)):
             allgood     = False
             allfinished = False
         if allgood and self.job_setup == 'findiff':

@@ -155,13 +155,17 @@ def project_out(hessian, proj_rot: bool=False, proj_tra: bool=True, debug: int=0
     return projector.T @ hessian @ projector
 
 
-def get_VNM_from_hessian(hessian, labels: list, masses: list, proj_rot: bool=False, proj_tra: bool=True, debug: int=0):
-    """Return 3N mass-weighted VNMs from a Cartesian Hessian in Hartree/Bohr^2.
+def get_VNM_from_hessian(hessian, labels: list, masses: list, proj_rot: bool=False, proj_tra: bool=True, discard_translations: bool=False, debug: int=0):
+    """Return mass-weighted VNMs from a Cartesian Hessian in Hartree/Bohr^2.
 
     labels contains elemental symbols in Hessian atom order; masses supplies the
     calculation's masses in amu. Symmetrize, optionally project translations in
     Cartesian space, mass-weight and diagonalize with a symmetric eigensolver.
     Rotational projection is not implemented. Inputs are not modified.
+    With discard_translations=True, require proj_tra=True and diagonalize only
+    the translation-free subspace, returning 3N-3 modes. Otherwise return 3N.
+    Raw relative Hessian antisymmetry above 1% prints a warning, independently
+    of debug. This warning does not prevent diagonalization.
 
     Frequencies are ascending in cm^-1, with negative values for imaginary modes
     and any near-zero roundoff retained. Modes have unit mass-weighted norm and
@@ -183,6 +187,11 @@ def get_VNM_from_hessian(hessian, labels: list, masses: list, proj_rot: bool=Fal
         raise ValueError("GET_VNM_FROM_HESSIAN: Labels and Hessian dimensions must agree")
     atnums = labels2atnums(labels)
 
+    if discard_translations and not proj_tra: raise ValueError("GET_VNM_FROM_HESSIAN: Discarding translations requires proj_tra=True")
+    norm      = np.linalg.norm(hessian)
+    asymmetry = np.linalg.norm(hessian-hessian.T)/norm if norm else 0.0
+    if asymmetry > 0.01: print(f"GET_VNM_FROM_HESSIAN: WARNING: Hessian asymmetry {asymmetry:.2%} exceeds 1%")
+
     # 1) Symmetrize and project before applying the calculation's atomic masses
     sym_hessian  = symmetrize(hessian)
     proj_hessian = project_out(sym_hessian, proj_rot=proj_rot, proj_tra=proj_tra, debug=max(debug-1,0))
@@ -190,7 +199,14 @@ def get_VNM_from_hessian(hessian, labels: list, masses: list, proj_rot: bool=Fal
     masses       = np.asarray(masses, dtype=float)
 
     # 2) Diagonalize and convert eigenvalues to signed wavenumbers
-    eigenval, eigenvec = np.linalg.eigh(mw_hessian)
+    if discard_translations:
+        # Mass-weighted translations span the null space of the projected matrix.
+        translations = np.tile(np.eye(3),(natoms,1))*np.sqrt(np.repeat(masses,3))[:,None]
+        basis        = np.linalg.qr(translations,mode='complete')[0][:,3:]
+        eigenval, eigenvec = np.linalg.eigh(basis.T@mw_hessian@basis)
+        eigenvec = basis@eigenvec
+    else:
+        eigenval, eigenvec = np.linalg.eigh(mw_hessian)
     factor_cminv      = 1/(np.sqrt(constants.amu2au)*constants.cm2har)
     frequencies       = np.sign(eigenval)*np.sqrt(np.abs(eigenval))*factor_cminv
     cartesian_modes   = eigenvec/np.sqrt(np.repeat(masses,3))[:,None]
@@ -206,21 +222,22 @@ def get_VNM_from_hessian(hessian, labels: list, masses: list, proj_rot: bool=Fal
         vnm.masses = masses.tolist()
         VNMs.append(vnm)
     if debug > 0:
-        norm = np.linalg.norm(hessian)
-        asymmetry = np.linalg.norm(hessian-hessian.T)/norm if norm else 0.0
         print(f"GET_VNM_FROM_HESSIAN: {len(VNMs)} modes; relative Hessian antisymmetry={asymmetry:.3e}")
     return VNMs
 
 
 def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True, debug: int=0):
-    """Collect a complete periodic QE force stencil and return its 3N VNMs.
+    """Collect periodic QE forces and return 3N-3 VNMs when projecting translations.
 
     Select the latest (step, run_number) for every _atom_axis_pos/neg keyword,
     independent of list order. Return None while any point is missing, pending,
     unsuccessful or lacks forces. Invalid stencils raise ValueError. Inputs must
     match the reference State's atom order, cell and symmetric displacements.
     Use submitted atomic masses and actual rounded steps, converting QE forces
-    from Ry/Bohr. The Job and its States are not modified; rotations are unsupported.
+    from Ry/Bohr. A 'ref' computation, when present, must supply converged energy
+    and forces at the undisplaced geometry; Job registration requires it. The
+    returned VNMs exclude translations when proj_tra=True. The Job and its States
+    are not modified; rotations are unsupported.
     """
     from pathlib import Path
     from scope.read_write import read_lines_file
@@ -234,6 +251,9 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
     step  = getattr(job.job_data, 'findiff_displacement', 0.01)
     units = getattr(job.job_data, 'findiff_units', 'bohr')
     geoms, names = findiff_displacements(reference.coord, step, units)
+    if any(comp.keyword == 'ref' for comp in job.computations):
+        geoms.append(np.asarray(reference.coord,dtype=float))
+        names.append('ref')
     latest = {}
     for comp in job.computations:
         if comp.keyword not in names: raise ValueError(f"GET_VNM_FROM_FINDIFF: Unexpected displacement keyword {comp.keyword!r}")
@@ -253,6 +273,9 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
         valid = comp.isregistered and getattr(comp,'isfinished',False) and getattr(comp,'isgood',False) and not comp.has_update
         if not valid or not Path(comp.out_path).is_file() or getattr(comp,'forces',None) is None:
             if debug > 0: print(f"GET_VNM_FROM_FINDIFF: Waiting for converged forces at {name}, run {comp.run_number}")
+            return None
+        if name == 'ref' and (getattr(comp,'energy',None) is None or not np.isfinite(comp.energy)):
+            if debug > 0: print("GET_VNM_FROM_FINDIFF: Waiting for the reference SCF energy")
             return None
         if not Path(comp.inp_path).is_file(): raise ValueError(f"GET_VNM_FROM_FINDIFF: Missing submitted input {comp.inp_path}")
         labels, coord, atomic_masses, cell = parse_findiff_input(read_lines_file(comp.inp_path), natoms, debug=max(debug-1,0))
@@ -278,4 +301,4 @@ def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True,
         midpoint = (coords[plus]+coords[minus])/2
         if not np.allclose(midpoint, reference.coord, rtol=0, atol=1e-6): raise ValueError("GET_VNM_FROM_FINDIFF: Displacements are not centered on the reference geometry")
         hessian[:,component] = get_central_difference(forces[plus], forces[minus], delta, units='angstrom', force_units='ry/bohr').reshape(-1)
-    return get_VNM_from_hessian(hessian, reference.labels, masses, proj_rot=proj_rot, proj_tra=proj_tra, debug=debug)
+    return get_VNM_from_hessian(hessian, reference.labels, masses, proj_rot=proj_rot, proj_tra=proj_tra, discard_translations=proj_tra, debug=debug)

@@ -170,22 +170,27 @@ def reg_excited_states(comp: object, debug: int=0):
 def reg_findiff(job: object, debug: int=0) -> bool:
     """Register a complete QE finite-difference set of computations on job.fstate.
 
-    The final State receives the reference geometry/cell, 3N VNMs and links to
-    the contributing Computations. Return False for incomplete or inconsistent
-    stencils. Saves unchanged successful registrations; only new results mark
-    the System for saving. Negative frequencies do not invalidate registration.
+    Requires an undisplaced 'ref' SCF and all displacement pairs. The final State
+    receives the reference geometry/cell, its SCF energy and forces, 3N-3 VNMs
+    (excluding translations), and links to the contributing Computations.
+    The function Returns False for incomplete or inconsistent sets of computations. 
+    Negative frequencies do not invalidate registration.
     """
     from scope.findiff import get_VNM_from_findiff
     found, reference = job.source.find_state(job.istate)
     if not found: return False
     current = sorted((comp for comp in job.computations if not comp.has_update), key=lambda comp: comp.keyword)
+    ref_comp = next((comp for comp in current if comp.keyword == 'ref'),None)
+    if ref_comp is None: return False
+    if not ref_comp.isregistered or not getattr(ref_comp,'isgood',False) or not getattr(ref_comp,'isfinished',False): return False
+    if getattr(ref_comp,'energy',None) is None or not np.isfinite(ref_comp.energy) or getattr(ref_comp,'forces',None) is None: return False
     try:
         attempts = tuple((comp.keyword, comp.step, comp.run_number, getattr(comp,'registration_time',None)) for comp in current)
         geometry  = (tuple(reference.labels), np.asarray(reference.coord).tobytes(), np.asarray(reference.cell_vector).tobytes())
         settings  = (job.fstate, getattr(job.job_data,'findiff_displacement',0.01), getattr(job.job_data,'findiff_units','bohr'))
         signature = (attempts, geometry, settings)
         exists, fstate = job.source.find_state(job.fstate)
-        if signature == getattr(job,'_findiff_signature',None) and exists and hasattr(fstate,'VNMs'): return True
+        if signature == getattr(job,'_findiff_signature',None) and exists and hasattr(fstate,'VNMs') and len(fstate.VNMs) == 3*len(reference.labels)-3: return True
         VNMs = get_VNM_from_findiff(job, debug=debug)
     except (OSError, ValueError) as exc:
         print(f"REG_FINDIFF: {exc}")
@@ -195,6 +200,8 @@ def reg_findiff(job: object, debug: int=0) -> bool:
     if not exists: fstate = job.source.add_state(job.fstate)
     fstate.set_geometry(list(reference.labels), np.array(reference.coord, dtype=float, copy=True))
     fstate.set_cell(deepcopy(reference.cell_vector), deepcopy(reference.cell_param))
+    fstate.set_energy(ref_comp.energy,'au')
+    fstate.set_forces(np.array(ref_comp.forces,dtype=float,copy=True))
     fstate.set_VNMs(VNMs)
     for comp in current: fstate.add_computation(comp)
     job._findiff_signature = signature
