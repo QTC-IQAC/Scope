@@ -165,11 +165,126 @@ class Input_data(object):
         return same
 
 #######################
-def fill_environment_data(data: object, debug: int=0):
-    """Fills resource defaults; time_limit optionally overrides SLURM wall time in integer minutes.
+def check_environment_data(data: object, debug: int=0) -> None:
+    """Validates supplied environment settings without changing data.
 
-    Omitted or None uses the selected queue's limit. Positive integers apply
-    to submissions prepared from this input.
+    Accepted values:
+        - time_limit: positive integer in minutes or None ('none' in parsed input).
+
+    Missing optional settings use defaults when filled. Raises ValueError for
+    invalid data; returns None otherwise.
+    """
+    time_limit = getattr(data,'time_limit',None)
+    if isinstance(time_limit,str) and time_limit == 'none': return
+    if time_limit is not None and (isinstance(time_limit,bool) or not isinstance(time_limit,int) or time_limit <= 0):
+        raise ValueError("CHECK_ENVIRONMENT_DATA: time_limit must be a positive integer in minutes, or None")
+
+def check_options_data(data: object, debug: int=0) -> None:
+    """Validates supplied submission/overwrite flags without changing data.
+
+    Accepted values:
+        - want_submit: True or False.
+        - ignore_submitted: True or False.
+        - overwrite_inputs: True or False.
+        - overwrite_outputs: True or False.
+
+    Missing flags use defaults when filled. Raises ValueError for invalid
+    data; returns None otherwise.
+    """
+    for setting in ['want_submit','ignore_submitted','overwrite_inputs','overwrite_outputs']:
+        if hasattr(data,setting) and not isinstance(getattr(data,setting),bool):
+            raise ValueError(f"CHECK_OPTIONS_DATA: {setting} must be True or False")
+
+def check_job_data(data: object, debug: int=0) -> None:
+    """Validates required Job fields and supplied options without changing data.
+
+    Accepted values:
+        - job: nonempty string.
+        - istate: nonempty string.
+        - fstate: nonempty string; distinct from istate after name cleanup for 'findiff'.
+        - recovery: nonempty string; strategy availability is checked by the software's recovery function.
+        - save_wf: False, None, True, 'job' or 'workflow'; string aliases 'none', 'false' and 'true' are also accepted, ignoring case and surrounding spaces.
+        - job_setup: nonempty string, e.g. 'regular', 'rep_opt' or 'findiff'.
+        - max_steps: positive integer for 'rep_opt'.
+        - findiff_displacement: finite positive number for 'findiff', in findiff_units.
+        - findiff_units: 'bohr' or 'angstrom' for 'findiff'.
+
+    Requires branch, workflow, job and hierarchy. Missing optional fields use
+    defaults when filled. Raises ValueError for invalid data; returns None
+    otherwise.
+    """
+    # Checks branch, workflow, job and hierarchy
+    for setting in ['branch','workflow','job','hierarchy']:
+        if not hasattr(data,setting): 
+            raise ValueError(f"CHECK_JOB_DATA: job_data is missing {setting!r} input variable")
+
+    # Checks job name, and istate/fstate name
+    for setting in ['job','istate','fstate']:
+        if hasattr(data,setting) and (not isinstance(getattr(data,setting),str) or not getattr(data,setting).strip()):
+            raise ValueError(f"CHECK_JOB_DATA: {setting} must be a nonempty name")
+
+    # Checks the recovery strategy name; the software checks its availability.
+    recovery = getattr(data,'recovery','standard')
+    if not isinstance(recovery,str) or not recovery.strip():
+        raise ValueError("CHECK_JOB_DATA: recovery must be a nonempty strategy name")
+
+    # Checks the wavefunction storage mode and its accepted aliases.
+    save_wf = getattr(data,'save_wf',False)
+    if isinstance(save_wf,str):
+        if save_wf.strip().lower() not in ['none','false','true','job','workflow']:
+            raise ValueError("CHECK_JOB_DATA: save_wf must be False, None, 'job' or 'workflow'")
+    elif save_wf is not None and not isinstance(save_wf,bool):
+        raise ValueError("CHECK_JOB_DATA: save_wf must be False, None, 'job' or 'workflow'")
+
+    # Checks the setup name before evaluating its specific settings.
+    job_setup = getattr(data,'job_setup','regular')
+    if not isinstance(job_setup,str) or not job_setup.strip():
+        raise ValueError("CHECK_JOB_DATA: job_setup must be a nonempty string")
+
+    if job_setup == 'rep_opt':
+        # Checks the number of repetitive optimization steps.
+        max_steps = getattr(data,'max_steps',5)
+        if isinstance(max_steps,bool) or not isinstance(max_steps,(int,np.integer)) or max_steps <= 0:
+            raise ValueError("CHECK_JOB_DATA: max_steps must be a positive integer")
+    elif job_setup == 'findiff':
+        # Checks the finite-difference displacement length and units.
+        displacement = getattr(data,'findiff_displacement',0.01)
+        if isinstance(displacement,bool) or not isinstance(displacement,(int,float,np.integer,np.floating)) or not np.isfinite(displacement) or displacement <= 0:
+            raise ValueError("CHECK_JOB_DATA: findiff_displacement must be finite and positive")
+        if getattr(data,'findiff_units','bohr') not in ['bohr','angstrom']:
+            raise ValueError("CHECK_JOB_DATA: findiff_units must be 'bohr' or 'angstrom'")
+
+        # Checks that initial/final State names remain distinct after cleanup.
+        istate = getattr(data,'istate','initial').strip().lower().replace('-','_').replace(' ','_')
+        fstate = getattr(data,'fstate',data.job).strip().lower().replace('-','_').replace(' ','_')
+        if fstate == istate:
+            raise ValueError("CHECK_JOB_DATA: Finite differences require distinct reference and final States")
+
+def check_qc_data(data: object, debug: int=0) -> None:
+    """Validates the QC software and computation type without changing data.
+
+    Accepted values:
+        - software: 'g16' (alias 'gaussian') or 'qe' (aliases 'quantum_espresso' and 'espresso').
+        - comp_type (G16): 'scf', 'opt', 'freq', 'ts', 'td' or 'tda'.
+        - comp_type (QE): 'scf', 'opt', 'relax', 'vc-relax' or 'freq'.
+
+    Requires software; missing comp_type means 'scf'. Raises ValueError for
+    invalid data; returns None otherwise.
+    """
+    if not hasattr(data,'software'): raise ValueError("CHECK_QC_DATA: qc_data is missing 'software' input variable")
+    software  = interpret_software(data.software)
+    comp_type = getattr(data,'comp_type','scf')
+    if software == 'g16': available_types = ['scf','opt','freq','ts','td','tda']
+    elif software == 'qe': available_types = ['scf','opt','relax','vc-relax','freq']
+    if comp_type not in available_types:
+        raise ValueError(f"CHECK_QC_DATA: computation type {comp_type!r} is not implemented for {software}")
+
+#######################
+def fill_environment_data(data: object, debug: int=0):
+    """Adds resource defaults and normalizes a parsed 'none' time limit.
+
+    Expects data accepted by check_environment_data(); returns the same object.
+    time_limit is in integer minutes; None uses the selected queue's limit.
     """
     ## Adds defaults to environment data
     if not hasattr(data,"requested_procs"):   data._add_attr("requested_procs",int(1)) 
@@ -178,13 +293,14 @@ def fill_environment_data(data: object, debug: int=0):
     if not hasattr(data,"method"):            data._add_attr("method","weighted") 
     if not hasattr(data,"time_limit"):        data._add_attr("time_limit",None)
     
-    ## Validates the time_limit attribute; None uses default queue time limit; values are expected in minutes
     if isinstance(data.time_limit,str) and data.time_limit == 'none': data._mod_attr('time_limit',None)
-    if data.time_limit is not None and (isinstance(data.time_limit,bool) or not isinstance(data.time_limit,int) or data.time_limit <= 0):
-        raise ValueError("FILL_ENVIRONMENT_DATA: time_limit must be a positive integer in minutes, or None")
     return data
 
 def fill_options_data(data: object, debug: int=0):
+    """Adds submission/overwrite defaults and returns the same object.
+
+    Expects data accepted by check_options_data().
+    """
     ## Adds defaults to options data
     if not hasattr(data,"want_submit"):       data._add_attr("want_submit",True) 
     if not hasattr(data,"ignore_submitted"):  data._add_attr("ignore_submitted",False) 
@@ -193,12 +309,13 @@ def fill_options_data(data: object, debug: int=0):
     return data
 
 def fill_job_data(data: object, debug: int=0):
-    """Fills Job defaults and checks for required attributes."""
+    """Adds Job defaults and normalizes names and accepted option aliases.
+
+    Expects data accepted by check_job_data(); returns the same object.
+    recovery defaults to 'standard'. save_wf=True becomes 'job', and None
+    becomes False. Defaults for rep_opt/findiff depend on job_setup.
+    """
     ## Adds defaults to job_data
-    if not hasattr(data,"branch"):        raise ValueError("FILL_JOB_DATA: job_data is missing 'branch' input variable")
-    if not hasattr(data,"workflow"):      raise ValueError("FILL_JOB_DATA: job_data is missing 'workflow' input variable")
-    if not hasattr(data,"job"):           raise ValueError("FILL_JOB_DATA: job_data is missing 'job' input variable")
-    if not hasattr(data,"hierarchy"):     raise ValueError("FILL_JOB_DATA: job_data is missing 'hierarchy' input variable")  ## This shouldn't be mandatory, I need to fix it
     if not hasattr(data,"istate"):        data._add_attr("istate", str("initial"))
     if not hasattr(data,"fstate"):        data._add_attr("fstate", str(data.job))
     if not hasattr(data,"job_setup"):     data._add_attr("job_setup", "regular")
@@ -208,8 +325,6 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"save_wf"):       data._add_attr("save_wf", False)
     if not hasattr(data,"recovery"):      data._add_attr("recovery", "standard")
 
-    if not isinstance(data.recovery,str) or not data.recovery.strip():
-        raise ValueError("FILL_JOB_DATA: recovery must be a nonempty strategy name")
     data._mod_attr('recovery',data.recovery.strip().lower())
 
     # None also disables storage of the wavefunction. Input_data reads an unquoted None as the string 'none'.
@@ -220,10 +335,6 @@ def fill_job_data(data: object, debug: int=0):
         save_wf = save_wf.strip().lower()
         if save_wf in ['none', 'false']: save_wf = False
         elif save_wf == 'true':          save_wf = 'job'
-        elif save_wf not in ['job', 'workflow']:
-            raise ValueError("save_wf must be False, None, 'job' or 'workflow'")
-    else:
-        raise ValueError("save_wf must be False, None, 'job' or 'workflow'")
     data._mod_attr('save_wf', save_wf)
 
     ## Adds defaults for rep_opt job setup type
@@ -235,12 +346,6 @@ def fill_job_data(data: object, debug: int=0):
     if data.job_setup == 'findiff':
         if not hasattr(data,'findiff_displacement'): data._add_attr('findiff_displacement', 0.01)
         if not hasattr(data,'findiff_units'):        data._add_attr('findiff_units', 'bohr')
-        if not np.isfinite(data.findiff_displacement) or data.findiff_displacement <= 0: 
-            raise ValueError("FILL_JOB_DATA: findiff_displacement must be finite and positive")
-        if data.findiff_units not in ['bohr','angstrom']: 
-            raise ValueError("FILL_JOB_DATA: findiff_units must be 'bohr' or 'angstrom'")
-        if data.fstate == data.istate: 
-            raise ValueError("FILL_JOB_DATA: Finite differences require distinct reference and final States")
 
     ## Modifies some attributes to avoid blank spaces and dashes, and to use lower letters
     data._mod_attr("job",str(data.job.strip().lower().replace("-","_").replace(" ","_")))
@@ -259,15 +364,16 @@ def fill_job_data(data: object, debug: int=0):
     return data
 
 def fill_qc_data(data: object, debug: int=0):
+    """Adds software/type-specific QC defaults and normalizes software aliases.
+
+    Expects data accepted by check_qc_data(); returns the same object.
+    """
     ## Adds defaults to qc_data
-    if not hasattr(data,"software"):      raise ValueError("ERROR: qc_data is missing 'software' input variable")
-    else:                                 data._add_attr("software", interpret_software(data.software))
+    data._mod_attr("software", interpret_software(data.software))
 
     if data.software == "g16":
-        # Adds default if needed and checks Jobtype
+        # Adds the default computation type.
         if not hasattr(data,"comp_type"):      data._add_attr("comp_type", "scf")
-        g16_available_jobtypes = ["scf", "opt", "freq", "ts", "td", "tda"] # "opt&freq" and "ts&freq" are being implemented
-        if data.comp_type not in g16_available_jobtypes: raise ValueError(f"{data.comp_type} is not implemented")
 
         # Adds defaults
         if not hasattr(data,"functional"):     data._add_attr("functional", "pbe")
@@ -295,10 +401,8 @@ def fill_qc_data(data: object, debug: int=0):
             if data.fctype == "recalcfc" and not hasattr(data,"recalc_steps"): data._add_attr("recalc_steps", int(30))
 
     elif data.software == "qe":
-        # Adds default if needed and checks Jobtype
+        # Adds the default computation type.
         if not hasattr(data,"comp_type"):     data._add_attr("comp_type", "scf")
-        qe_available_jobtypes = ["scf", "opt", "relax", "vc-relax", "freq"]
-        if data.comp_type not in qe_available_jobtypes: raise ValueError(f"{data.comp_type} is not implemented")
 
         # Adds defaults
         if not hasattr(data,"version"):       data._add_attr("version", float(7.0))
@@ -335,22 +439,30 @@ def harmonize_input_data(environment: object, options: object, job_data: object,
 
 #######################
 def set_environment_data(content, section="&environment", isfile: bool=True, debug: int=0):
+    """Parses and validates environment settings, then adds defaults."""
     environment = Input_data(content=content, section=section, isfile=isfile, debug=debug)
+    check_environment_data(environment, debug=max(debug-1,0))
     environment = fill_environment_data(environment)
     return environment
 
 def set_options_data(content, section="&options", isfile: bool=True, debug: int=0):
+    """Parses and validates submission options, then adds defaults."""
     options     = Input_data(content=content, section=section, isfile=isfile, debug=debug)
+    check_options_data(options, debug=max(debug-1,0))
     options     = fill_options_data(options)
     return options
 
 def set_job_data(content, section="&job_data", isfile: bool=True, debug: int=0):
+    """Parses and validates Job settings, then adds defaults and normalizes names."""
     job_data    = Input_data(content=content, section=section, isfile=isfile, debug=debug)
+    check_job_data(job_data, debug=max(debug-1,0))
     job_data    = fill_job_data(job_data)
     return job_data
 
 def set_qc_data(content, section="&qc_data", isfile: bool=True, debug: int=0):
+    """Parses and validates QC settings, then adds software-specific defaults."""
     qc_data     = Input_data(content=content, section=section, isfile=isfile, debug=debug)
+    check_qc_data(qc_data, debug=max(debug-1,0))
     qc_data     = fill_qc_data(qc_data)
     return qc_data
 
