@@ -158,9 +158,33 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
 
 ######
 def get_Selec(spin_multiplicity, outunits: str='au', nmol: int=1):
-    if outunits.lower()     == 'kj': value = float(8.314*np.log(spin_multiplicity)/1000/nmol)
-    elif outunits.lower()   == 'au': value = float(8.314*np.log(spin_multiplicity)/constants.har2kJmol/1000/nmol)
-    return Data("Selec", value, outunits,  'scope.thermodynamics.get_Selec()') 
+    """Return spin entropy R sum(ln(M_i))/nmol as a Data object.
+
+    A scalar multiplicity describes one spin multiplet (e.g. of one molecule);
+    a nonempty 1-D list describes independent molecular multiplets (e.g. of all molecules in a cell).
+    Multiplicities must be positive integers. No coupling between molecules is assumed. 
+    For a unit cell, nmol is Z and the returned result is per formula unit.
+    Output units are 'kj' (kJ/mol/K) or 'au' (Ha/K). 
+    Metadata records the spin model, multiplicities and normalization. 
+    """
+    try:
+        multiplicities = np.asarray(spin_multiplicity, dtype=float)
+        normalization  = float(nmol)
+    except (TypeError, ValueError) as exc:
+        raise ValueError("GET_SELEC: multiplicities and nmol must be numeric") from exc
+    if multiplicities.ndim > 1 or multiplicities.size == 0: raise ValueError("GET_SELEC: provide a scalar or a nonempty 1-D list of multiplicities")
+    if not np.all(np.isfinite(multiplicities)) or np.any(multiplicities < 1) or np.any(multiplicities != np.floor(multiplicities)): raise ValueError("GET_SELEC: multiplicities must be finite positive integers")
+    if not np.isfinite(normalization) or normalization <= 0: raise ValueError("GET_SELEC: nmol must be finite and positive")
+    if outunits.lower() not in ['kj', 'au']: raise ValueError("GET_SELEC: outunits must be 'kj' or 'au'")
+
+    # Independent degeneracies multiply; summing logarithms avoids their product.
+    value = float(8.314 * np.log(multiplicities).sum() / 1000 / normalization)
+    if outunits.lower() == 'au': value /= constants.har2kJmol
+    data = Data("Selec", value, outunits, 'scope.thermodynamics.get_Selec()')
+    data.add_setting('spin_model', 'single_multiplet' if multiplicities.ndim == 0 else 'independent_molecules')
+    data.add_setting('spin_multiplicities', multiplicities.reshape(-1).tolist())
+    data.add_setting('nmol', normalization)
+    return data
 
 ######
 def get_Gibbs(Helec: float, Hvib: float, Selec: float, Svib: float, temp: float):

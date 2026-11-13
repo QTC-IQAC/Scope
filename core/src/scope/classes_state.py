@@ -730,9 +730,16 @@ class State(object):
           useful for checking intended minima, but expected to reject transition
           states with imaginary modes. It does not simply skip the offending mode.
 
+        For cell sources, electronic spin entropy sums independent source-molecule
+        multiplets, R sum(ln(abs(spin_i) + 1))/Z; spin_i is the assigned 2S.
+        Molecular sources retain the single-multiplet expression. Coupled-spin
+        models can supply Selec explicitly. Derived Selec is refreshed when its
+        spin model, multiplicities or Z change, including older untagged results.
+        Explicit entropy values are retained unless overwrite=True is requested.
+
         Settings changes replace affected collections automatically. Gibbs energies
         are refreshed when contributing results are replaced. Use overwrite=True
-        after changing source energies or frequencies without replacing results.
+        after changing source energies, frequencies or Z to refresh all other terms.
         """
         from scope.thermodynamics import get_Selec, get_Hvib, get_Svib, get_Gibbs, normalize_vib_options
         Svib_options  = normalize_vib_options(vib_options)
@@ -762,15 +769,39 @@ class State(object):
                 if supplied.find_value_with_property('temperature', temperature) is None: raise ValueError(f"STATE.GET_THERMAL_DATA: Provided {key} lacks temperature {temperature}")
         if not hasattr(self, "z"): self.get_z(debug=child_debug)
 
-        # 1) Stores electronic contributions
+        # Validate inferred spin entropy before changing results. Source molecules
+        # retain intended spins; geometry-reconstructed State molecules may not.
+        stored_Selec = self.results.get('Selec')
+        explicit_Selec = isinstance(stored_Selec, Data) and stored_Selec.function != 'scope.thermodynamics.get_Selec()'
+        if Selec is not None:
+            if overwrite or stored_Selec is None: Selec = Data('Selec', Selec.value, Selec.units, 'enforced in state.get_thermal_data()')
+            else: Selec = stored_Selec
+        elif explicit_Selec and not overwrite:
+            Selec = stored_Selec
+        else:
+            if self._source.object_type == 'cell':
+                molecules = getattr(self._source, 'molecules', None)
+                if molecules is None or len(molecules) == 0: raise ValueError("STATE.GET_THERMAL_DATA: Cell source needs molecules with assigned spins, or an explicit Selec")
+                multiplicities = []
+                for idx, molecule in enumerate(molecules):
+                    if isinstance(molecule, Specie) and not getattr(molecule, 'atoms', None): raise ValueError(f"STATE.GET_THERMAL_DATA: Source molecule {idx} needs atoms with assigned spins, or an explicit Selec")
+                    try: spin = getattr(molecule, 'spin', None)
+                    except (TypeError, ValueError) as exc: raise ValueError(f"STATE.GET_THERMAL_DATA: Invalid assigned spins for source molecule {idx}; supply its spin or an explicit Selec") from exc
+                    if not isinstance(spin, (int, float, np.integer, np.floating)) or not np.isfinite(spin) or spin != np.floor(spin): raise ValueError(f"STATE.GET_THERMAL_DATA: Missing or invalid assigned 2S for source molecule {idx}; supply its spin or an explicit Selec")
+                    multiplicities.append(abs(spin) + 1)
+                Selec = get_Selec(multiplicities, outunits='au', nmol=self.z)
+            else:
+                Selec = get_Selec(self.spin_multiplicity, outunits='au', nmol=self.z)
+            settings = {key: getattr(Selec, key) for key in Selec.settings}
+            if not overwrite and isinstance(stored_Selec, Data) and stored_Selec.check_settings(settings): Selec = stored_Selec
+
+        # 1) Store electronic contributions. Replacing derived Selec also makes
+        # the Gibbs input-identity check below invalidate its previous results.
         if overwrite or 'Helec' not in self.results:
             if Helec is None: Helec = Data('Helec', self.results['energy'].value/self.z, self.results['energy'].units, 'state.get_thermal_data()')
             else: Helec = Data('Helec', Helec.value, Helec.units, 'enforced in state.get_thermal_data()')
             self.add_result(Helec, overwrite=True)
-        if overwrite or 'Selec' not in self.results:
-            if Selec is None: Selec = get_Selec(self.spin_multiplicity, outunits='au', nmol=self.z)
-            else: Selec = Data('Selec', Selec.value, Selec.units, 'enforced in state.get_thermal_data()')
-            self.add_result(Selec, overwrite=True)
+        self.add_result(Selec, overwrite=True)
 
         # 2) Reuses compatible vibrational results and fills missing temperatures
         for key, supplied, settings, options, calculate in [('Hvib', Hvib, Hvib_options, Hvib_options, get_Hvib), ('Svib', Svib, Svib_settings, Svib_options, get_Svib)]:
