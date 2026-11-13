@@ -93,15 +93,16 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
 
         if not os.path.isdir(this_branch.path):
             if this_branch.name not in unavailable_branches:
-                message = f"""Skipped {sys.name}/{this_branch.name}: branch folder not found: {this_branch.path}
-Check whether it was moved or renamed; restore the folder to resume.
-To restart this branch, run in Python:
-    from scope.read_write import load_binary
-    system = load_binary({sys_path!r})
-    system.remove_branch({this_branch.name!r})
-    system.save()
-Then relaunch the SCOPE tasks.
-"""
+                message = (
+                    f"Skipped {sys.name}/{this_branch.name}: branch folder not found: {this_branch.path}\n"
+                    "Check whether it was moved or renamed; restore the folder to resume.\n"
+                    "To restart this branch, run in Python:\n"
+                    "    from scope.read_write import load_binary\n"
+                    f"    system = load_binary({sys_path!r})\n"
+                    f"    system.remove_branch({this_branch.name!r})\n"
+                    "    system.save()\n"
+                    "Then relaunch the SCOPE tasks.\n"
+                )
                 print(f"RUN_TASK: {message}", end='')
                 report += message
                 unavailable_branches.add(this_branch.name)
