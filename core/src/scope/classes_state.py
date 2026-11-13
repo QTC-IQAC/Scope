@@ -362,53 +362,126 @@ class State(object):
             if self.num_neg_freqs <= 3 and VNMs[0].freq_cm > -50: self.almost_minimum = True
             else:                                                 self.almost_minimum = False
 
-    def get_ir_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, debug: int=0):
-        from scope.operations.vecs_and_mats import build_spectrum
-        """
-        Build a simulated IR spectrum from the stored VNMs.
+    def get_ir_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, per_formula_unit: bool=True, debug: int=0):
+        """Build an IR spectrum from stored VNM frequencies and intensities.
 
         Parameters:
-            vmin (float | None):         Lower bound of the frequency range.
-            vmax (float | None):         Upper bound of the frequency range.
-            function (str):              Broadening kernel.
-            sigma (float):               Broadening width.
+            vmin, vmax (float | None):   Bounds (in cm^-1); defaults are -100 and max frequency + 100.
+            function (str):              Gaussian, Laplacian or Lorentzian broadening.
+            sigma (float):               Positive width in cm^-1, following the selected kernel.
+            per_formula_unit (bool):     Divide mode intensities by Z
             debug (int):                 Verbosity level.
 
         Returns:
-            tuple: Frequency grid and broadened intensity.
+            tuple: Frequency grid in cm^-1 and broadened IR intensity.
+
+        Preserve peak-height broadening; IR kernels are not area-normalized.
+        Cache the returned arrays as ir_spec_x and ir_spec_y.
         """
+        from scope.operations.vecs_and_mats import build_spectrum
 
-        # Extract frequencies and intensities
-        freqs       = np.array([v.freq_cm for v in self.VNMs])
-        intensities = np.array([v.IR_int for  v in self.VNMs])
+        if not hasattr(self, 'VNMs') or len(self.VNMs) == 0: raise ValueError("IR spectrum requires at least one stored VNM")
+        freqs       = np.asarray([getattr(v, 'freq_cm', np.nan) for v in self.VNMs], dtype=float)
+        intensities = np.asarray([getattr(v, 'IR_int', np.nan) for v in self.VNMs], dtype=float)
+        if freqs.ndim != 1 or not np.isfinite(freqs).all(): raise ValueError("VNM frequencies must be finite scalars")
+        if intensities.ndim != 1 or not np.isfinite(intensities).all(): raise ValueError("VNM IR intensities must be finite scalars")
+        sigma = float(sigma)
+        if not np.isfinite(sigma) or sigma <= 0: raise ValueError("sigma must be finite and positive")
+        if vmin is None: vmin = -100.0
+        if vmax is None: vmax = float(freqs.max()) + 100.0
+        vmin, vmax = float(vmin), float(vmax)
+        if not np.isfinite([vmin, vmax]).all() or vmax <= vmin: raise ValueError("Require finite bounds with vmax > vmin")
+        units = float(self.Z) if per_formula_unit else 1.0
+        if not np.isfinite(units) or units <= 0: raise ValueError("Z must be finite and positive")
 
-        # Define range
-        if vmin is None:  vmin = -100
-        if vmax is None:  vmax = freqs.max() + 100
         xrange = np.linspace(vmin, vmax, 2000)
-        self.ir_spec_x, self.ir_spec_y = build_spectrum(xrange, freqs, intensities, function=function, sigma=sigma, debug=debug)
+        self.ir_spec_x, self.ir_spec_y = build_spectrum(xrange, freqs, intensities / units, function=function, sigma=sigma, debug=debug)
         return self.ir_spec_x, self.ir_spec_y
 
-    def plot_ir_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, debug: int=0):
+    def get_vdos_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, per_formula_unit: bool=True, debug: int=0):
+        """Build a mode-count density from the stored vibrational normal modes.
+
+        Parameters:
+            vmin, vmax (float | None):   Bounds (in cm^-1); defaults include eight widths around modes.
+            function (str):              Gaussian, Laplacian or Lorentzian broadening.
+            sigma (float):               Positive width in cm^-1, following the selected kernel.
+            per_formula_unit (bool):     Divide mode weights by Z; False counts whole-state modes.
+            debug (int):                 Verbosity level.
+
+        Returns:
+            tuple: Frequency grid in cm^-1 and modes per cm^-1 per formula unit or state.
+
+        Each native kernel has unit area and each stored mode has unit weight,
+        independently of IR intensity (as opposed to IR intensity). 
+        The full-axis area counts modes/Z, or modes when per_formula_unit=False. Finite windows can truncate tails.
+        Gamma-only modes give a Gamma spectrum, not a q-integrated phonon DOS.
+        Cache arrays as vdos_spec_x/y.
+        """
+        from scope.operations.vecs_and_mats import build_spectrum
+
+        if not hasattr(self, 'VNMs') or len(self.VNMs) == 0: raise ValueError("VDOS requires at least one stored VNM")
+        freqs = np.asarray([getattr(v, 'freq_cm', np.nan) for v in self.VNMs], dtype=float)
+        if freqs.ndim != 1 or not np.isfinite(freqs).all(): raise ValueError("VNM frequencies must be finite scalars")
+        sigma = float(sigma)
+        if not np.isfinite(sigma) or sigma <= 0: raise ValueError("sigma must be finite and positive")
+        if vmin is None: vmin = min(-100.0, float(freqs.min()) - 8 * sigma)
+        if vmax is None: vmax = float(freqs.max()) + 8 * sigma
+        vmin, vmax = float(vmin), float(vmax)
+        if not np.isfinite([vmin, vmax]).all() or vmax <= vmin: raise ValueError("Require finite bounds with vmax > vmin")
+        units = float(self.Z) if per_formula_unit else 1.0
+        if not np.isfinite(units) or units <= 0: raise ValueError("Z must be finite and positive")
+
+        xrange = np.linspace(vmin, vmax, 2000)
+        weights = np.ones(len(freqs)) / units
+        self.vdos_spec_x, self.vdos_spec_y = build_spectrum(xrange, freqs, weights, function=function, sigma=sigma, normalize=True, debug=debug)
+        return self.vdos_spec_x, self.vdos_spec_y
+
+    def plot_ir_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, per_formula_unit: bool=True, debug: int=0):
+        """Plot IR intensity and sticks using get_ir_spectrum()'s arguments.
+
+        Rebuild with the requested bounds, kernel, width and Z normalization;
+        earlier cached spectra do not override arguments. Fill under the
+        broadened curve and scale both the curve and sticks consistently.
+        """
         import matplotlib.pyplot as plt
-        if not hasattr(self,"ir_spec_x"): self.get_ir_spectrum(vmin=vmin, vmax=vmax, function=function, sigma=sigma, debug=debug)
 
-        x, y = self.ir_spec_x, self.ir_spec_y
-        spectrum = np.zeros_like(x)
+        x, y        = self.get_ir_spectrum(vmin=vmin, vmax=vmax, function=function, sigma=sigma, per_formula_unit=per_formula_unit, debug=debug)
+        freqs       = np.asarray([v.freq_cm for v in self.VNMs])
+        units       = float(self.Z) if per_formula_unit else 1.0
+        intensities = np.asarray([v.IR_int for v in self.VNMs]) / units
 
-        freqs       = np.array([v.freq_cm for v in self.VNMs])
-        intensities = np.array([v.IR_int for  v in self.VNMs])
-        
-        # Plot
         plt.figure(figsize=(8,4))
         plt.plot(x, y, 'k-', lw=1.5)
-        plt.fill_between(x, 0, spectrum, color="grey", alpha=0.4)
-        # Add sticks
-        for f, I in zip(freqs, intensities):
-            plt.vlines(f, 0, I, color="r", lw=1, linestyle="--")
+        plt.fill_between(x, 0, y, color="grey", alpha=0.4)
+        for f, intensity in zip(freqs, intensities):
+            plt.vlines(f, 0, intensity, color="r", lw=1, linestyle="--")
+        plt.xlim(x[0], x[-1])
         plt.xlabel("Wavenumber (cm$^{-1}$)")
-        plt.ylabel("Intensity (a.u.)")
+        plt.ylabel("Intensity (a.u. per formula unit)" if per_formula_unit else "Intensity (a.u.)")
         plt.title("Simulated IR Spectrum")
+        plt.tight_layout()
+        plt.show()
+
+    def plot_vdos_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, per_formula_unit: bool=True, debug: int=0):
+        """Plot the mode-count density using get_vdos_spectrum()'s arguments.
+
+        Rebuild with the requested settings. Red ticks mark stored frequencies
+        without assigning a stick height in incompatible density units.
+        """
+        import matplotlib.pyplot as plt
+
+        x, y  = self.get_vdos_spectrum(vmin=vmin, vmax=vmax, function=function, sigma=sigma, per_formula_unit=per_formula_unit, debug=debug)
+        freqs = np.asarray([v.freq_cm for v in self.VNMs])
+
+        plt.figure(figsize=(8,4))
+        plt.plot(x, y, 'k-', lw=1.5)
+        plt.fill_between(x, 0, y, color="grey", alpha=0.4)
+        plt.plot(freqs, np.zeros_like(freqs), '|', color="r", markersize=7, transform=plt.gca().get_xaxis_transform())
+        plt.xlim(x[0], x[-1])
+        plt.ylim(bottom=0)
+        plt.xlabel("Wavenumber (cm$^{-1}$)")
+        plt.ylabel("VDOS [modes / (cm$^{-1}$ formula unit)]" if per_formula_unit else "VDOS [modes / cm$^{-1}$]")
+        plt.title("Vibrational Density of States")
         plt.tight_layout()
         plt.show()
 
