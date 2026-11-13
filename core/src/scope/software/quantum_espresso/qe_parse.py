@@ -9,10 +9,10 @@ ry2har    = scope.constants.ry2har
 ### PARSING ###
 ###############
 def parse_findiff_input(lines: list, natoms: int, debug: int=0):
-    """Read a SCOPE-generated periodic QE displacement input.
+    """Reads a SCOPE-generated periodic QE displacement input.
 
-    Return elemental labels, Angstrom coordinates, atomic masses in amu and
-    Angstrom cell vectors, in input atom order. Require ATOMIC_SPECIES and
+    Returns elemental labels, Angstrom coordinates, atomic masses in amu and
+    Angstrom cell vectors, in input atom order. Requires ATOMIC_SPECIES and
     Angstrom ATOMIC_POSITIONS/CELL_PARAMETERS cards; malformed inputs raise
     ValueError. Numeric spin suffixes on SCOPE species names are removed.
     """
@@ -51,7 +51,7 @@ def parse_end_scf(lines, debug=0):
     return end_SCF, found
 
 def parse_scf_accuracies_from_step(lines: list, debug: int=0) -> list:
-    """Return the estimated SCF accuracies reported within one QE step."""
+    """Returns the estimated SCF accuracies reported within one QE step."""
     linenums, found = search_string("estimated scf accuracy", lines)
     if not found: return []
 
@@ -239,7 +239,7 @@ def parse_status_finished(lines):
     return found
 
 def parse_opt_status(lines):
-    """Return the latest explicit BFGS outcome, or 'not finished' if none is printed."""
+    """Returns the latest explicit BFGS outcome, or 'not finished' if none is printed."""
     # 1) Locate convergence, step exhaustion and optimizer failure messages
     converged_line, found_converged = search_string('bfgs converged in', lines, typ='last')
     exhausted_line, found_exhausted = search_string('The maximum number of steps has been reached', lines, typ='last')

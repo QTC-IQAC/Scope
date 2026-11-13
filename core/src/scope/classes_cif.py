@@ -11,7 +11,7 @@ from scope               import __version__
 ###########
 class Cif(object):
     """
-    Represent metadata parsed from a crystallographic information file.
+    Represents metadata parsed from a crystallographic information file.
 
     Attributes:
         object_type (str):              Object category (`"cif"`).
@@ -22,9 +22,9 @@ class Cif(object):
         diff_temp (str | None):         Diffraction temperature.
 
     Methods:
-        get_biblio_data():              Read bibliographic metadata.
-        associate_cell():               Link the CIF to a cell object.
-        save():                         Serialize the CIF object to disk.
+        get_biblio_data():              Reads bibliographic metadata.
+        associate_cell():               Links the CIF to a cell object.
+        save():                         Serializes the CIF object to disk.
     """
     def __init__(self, name: str, path: str) -> None:
         self.object_type       = "cif" 

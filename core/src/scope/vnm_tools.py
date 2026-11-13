@@ -3,7 +3,7 @@ from scope import constants
 
 ####
 def displace_neg_freqs(ini_coord, VNMs: object, amplitude: float=10, debug: int=0) -> np.ndarray:
-    """Displace each imaginary mode by amplitude in sqrt(electron mass)*Bohr (default 10); return Angstrom coordinates."""
+    """Displaces each imaginary mode by amplitude in sqrt(electron mass)*Bohr (default 10); returns Angstrom coordinates."""
     neg_VNMs = [vnm for vnm in VNMs if vnm.freq_cm < 0.0]
     if debug > 0: print(f"DISPLACE_NEG_FREQS: Displacing {len(neg_VNMs)} imaginary modes with Q={amplitude:.5g}")
     return displace_coords_with_vnm(neg_VNMs, ini_coord, amplitude=amplitude, debug=max(debug - 1, 0))
@@ -11,7 +11,7 @@ def displace_neg_freqs(ini_coord, VNMs: object, amplitude: float=10, debug: int=
 ####
 def map_vnms(vnmsA,vnmsB,labelsA,coordsA,labelsB,coordsB,f_weight: float=1.00,f_scale: float=100.0,center_method: str="centroid",use_ext_info: bool=True,adjmatA=None,adjmatB=None,bond_ordersA=None,bond_ordersB=None,max_graph_mappings: int=1000,debug: int=0):
     """
-    Align two molecular geometries and map their vibrational normal modes.
+    Aligns two molecular geometries and maps their vibrational normal modes.
 
     Geometry A defines the reference atom ordering and Cartesian frame.
     Geometry B and its modes are reordered and rotated into that frame before
@@ -207,7 +207,7 @@ def map_vnms(vnmsA,vnmsB,labelsA,coordsA,labelsB,coordsB,f_weight: float=1.00,f_
 
 ######
 def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=None, which_side: str='positive', amplitude: float=10, debug: int=0):
-    """Displace a geometry by a fixed atomic-unit Q along each selected mode.
+    """Displaces a geometry by a fixed atomic-unit Q along each selected mode.
 
     Parameters:
         VNMs (list):                   Modes in the geometry's atom order and frame, including imaginary modes.
@@ -276,7 +276,7 @@ def displace_coords_with_vnm(VNMs: list, initial_coord: list, which: list=None, 
 
 ####
 def geom_sampling_from_vnm(labels, coord, freqs, qini: list=None, T: float=0.0, n_samples: int=10, sigma_damp_factor: float=0, freq_bottom_limit: float=0, freq_top_limit: float=None, check_adjacencies: bool=True, debug: int=0):
-    """Sample Cartesian geometries from harmonic normal coordinates.
+    """Samples Cartesian geometries from harmonic normal coordinates.
 
     Parameters:
         labels, coord:                 Atom symbols and coordinates in Angstrom, in mode order and frame.

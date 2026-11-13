@@ -78,7 +78,7 @@ def _get_bond_orders(bond_orders1, bond_orders2, natoms: int, debug: int=0):
     return bond_orders1, bond_orders2
 
 def get_extended_info(labels, adjmat, adjnum, debug: int=0):
-    """Build atom labels decorated with their topological environments."""
+    """Builds atom labels decorated with their topological environments."""
     graph             = build_graph(adjmat, label=labels)
     _, _, signatures = get_signatures(graph)
 
@@ -378,7 +378,7 @@ def _run_hungarian_search(labels1, coords1, data1, adjmat1, bond_orders1, labels
 ## Public Interface ##
 ######################
 def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="centroid", use_ext_info: bool=True, translate_to_ref: bool=True, max_iter: int=5, adjmat1=None, adjmat2=None, bond_orders1=None, bond_orders2=None, max_graph_mappings: int=1000, rmsd_convergence: float=1e-8, return_rotation: bool=False, debug: int=0):
-    """Overlap equivalent molecules using topology-aware atom mappings.
+    """Overlaps equivalent molecules using topology-aware atom mappings.
 
     Parameters:
         adjmat1, adjmat2:               Optional stored adjacency matrices.
@@ -477,7 +477,7 @@ def overlap_molecules(labels1, coords1, labels2, coords2, center_method: str="ce
 
 
 def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, center_method="centroid", atom_idxs: list=None, use_ext_info: bool=True, translate_to_ref: bool=True, max_iter: int=5, adjmat1=None, adjmat2=None, bond_orders1=None, bond_orders2=None, max_graph_mappings: int=1000, debug: int=0):
-    """Compute RMSD, optionally reordering equivalent atoms before alignment."""
+    """Computes RMSD, optionally reordering equivalent atoms before alignment."""
     if len(labels1) != len(labels2):
         raise ValueError("RMSD: molecules must contain the same number of atoms")
     coords1 = np.asarray(coords1)
@@ -505,7 +505,7 @@ def rmsd(labels1, coords1, labels2, coords2, reorder: bool=False, center_method=
 ## Kabsch Alignment ##
 ######################
 def kabsch_align(labels1, coords1, labels2, coords2, center_method: str="centroid", debug: int=0):
-    """Align the first coordinate set onto the second with the Kabsch algorithm."""
+    """Aligns the first coordinate set onto the second with the Kabsch algorithm."""
     coords1          = np.asarray(coords1)
     coords2          = np.asarray(coords2)
     center1          = _get_center(labels1, coords1, center_method, debug=debug)
@@ -529,7 +529,7 @@ def kabsch_align(labels1, coords1, labels2, coords2, center_method: str="centroi
 
 
 def kabsch_rotate(coords1, coords2, debug: int=0):
-    """Return the Kabsch rotation that aligns coords2 onto coords1."""
+    """Returns the Kabsch rotation that aligns coords2 onto coords1."""
     covariance       = np.dot(np.asarray(coords2).T, np.asarray(coords1))
     left, _, right   = np.linalg.svd(covariance)
     determinant_sign = np.sign(np.linalg.det(left) * np.linalg.det(right))

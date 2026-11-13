@@ -92,7 +92,7 @@ def get_radii(labels: list) -> np.ndarray:
 ######
 def get_adjmatrix(labels: list, coord: list, cov_factor: float=1.3, metal_factor: float=1.0, smart: bool=False, radii="default", metal_only: bool=False, bond_margin: float=0.1, debug: int=0) -> Tuple[bool, np.ndarray, np.ndarray]:
     """
-    Compute the adjacency matrix of a molecule based on atomic labels and coordinates.
+    Computes the adjacency matrix of a molecule based on atomic labels and coordinates.
 
     Parameters
     ----------

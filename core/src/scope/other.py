@@ -57,7 +57,7 @@ def replace_zero(array):
 ####
 def gram_schmidt(A,norm=True,row_vect=False):
     """
-    Orthonormalize vectors with the Gram-Schmidt procedure.
+    Orthonormalizes vectors with the Gram-Schmidt procedure.
 
     Parameters:
         A (ndarray):                   Input matrix of vectors.
@@ -106,7 +106,7 @@ def gram_schmidt(A,norm=True,row_vect=False):
 
 ####
 def furthest_point_sampling(data, k, dist_func):
-    """Select k distinct input indices by furthest-point sampling, starting at index 0."""
+    """Selects k distinct input indices by furthest-point sampling, starting at index 0."""
     from scope.vnm_tools import pairwise_distance_matrix
 
     data      = np.asarray(data)

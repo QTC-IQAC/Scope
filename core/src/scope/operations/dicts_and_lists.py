@@ -20,7 +20,7 @@ def same_dictionaries(dic1: dict, dic2: dict):
 #############
 def extract_from_list(entrylist: list, old_array: list, dimension: int=2) -> list:
     """
-    Extract selected entries from an atom-indexed sequence or square matrix.
+    Extracts selected entries from an atom-indexed sequence or square matrix.
 
     Parameters
     ----------

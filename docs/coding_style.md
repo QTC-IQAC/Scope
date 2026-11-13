@@ -1,6 +1,6 @@
 # SCOPE Coding Style
 
-This document records the coding conventions used in SCOPE tutorials and development notebooks. It is descriptive rather than a strict formatter configuration. Scientific clarity and consistency with the object model take priority over abstraction.
+This document records the coding conventions used in SCOPE source code, tutorials, and development notebooks. It is descriptive rather than a strict formatter configuration. Scientific clarity and consistency with the object model take priority over abstraction.
 
 ## Notebook Structure
 
@@ -51,4 +51,5 @@ This document records the coding conventions used in SCOPE tutorials and develop
 - Maintain consistency between labels, coordinates, atoms, connectivity, and parent indices.
 - Preserve bidirectional navigation through the chemistry and workflow hierarchies.
 - Use concise docstrings with `Parameters:`, `Returns:`, `Attributes:`, and `Methods:` sections when useful.
+- Write docstrings in the descriptive third-person form: `Creates or reuses...`, `Returns...`, and `Calculates...`. Keep coordinated verbs consistent, for example `Stores results and updates the State`. This applies to summaries and prose describing code behavior; instructions to the reader and code examples retain their natural form.
 - Avoid broad refactors of stable scientific logic unless the task explicitly requires them.

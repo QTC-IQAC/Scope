@@ -19,7 +19,7 @@ elemdatabase = ElementData()
 ##############
 class Specie(object):
     """
-    Represent a generic chemical species built from atoms.
+    Represents a generic chemical species built from atoms.
 
     Attributes:
         object_type (str):              Object category (`"specie"`).
@@ -31,12 +31,12 @@ class Specie(object):
         parents (list):                 Parent objects related to the species.
 
     Methods:
-        set_atoms():                    Build atom objects for the species.
-        get_adjmatrix():                Compute adjacency matrix (connectivity)
-        get_bond_order_matrix():        Return connectivity with available formal bond orders.
-        get_graph():                    Build a graph representation.
-        add_parent():                   Register a parent-child relation.
-        save():                         Serialize the species to disk.
+        set_atoms():                    Builds atom objects for the species.
+        get_adjmatrix():                Computes adjacency matrix (connectivity)
+        get_bond_order_matrix():        Returns connectivity with available formal bond orders.
+        get_graph():                    Builds a graph representation.
+        add_parent():                   Registers a parent-child relation.
+        save():                         Serializes the species to disk.
     """
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
 
@@ -221,7 +221,7 @@ class Specie(object):
     ## Other ##
     ###########
     def get_bond_order_matrix(self):
-        """Return adjacency connectivity decorated with available bond orders."""
+        """Returns adjacency connectivity decorated with available bond orders."""
         if not hasattr(self, "adjmat"): self.get_adjmatrix()
         if self.adjmat is None:
             return None
@@ -379,7 +379,7 @@ class Specie(object):
     #####################
     def set_atoms(self, atomlist=None, create_adjacencies: bool=False, debug: int=0):
         """
-        Build or assign atom objects for the species.
+        Builds or assigns atom objects for the species.
 
         Parameters:
             atomlist (list | None):      Existing atoms to attach, or `None` to create them.
@@ -625,7 +625,7 @@ class Specie(object):
     ######
     def get_occurrence(self, substructure: object, debug: int=0) -> int:
         """
-        Count how many times a substructure appears in the species.
+        Counts how many times a substructure appears in the species.
 
         Parameters:
             substructure (object):       Substructure to search for.
@@ -680,7 +680,7 @@ class Specie(object):
     ### Functions to Interact with States ###
     #########################################
     def set_initial_state(self, name: str='initial', debug: int=0):
-        """Create the initial state for this species."""
+        """Creates the initial state for this species."""
         if not hasattr(self, "adjmat"): self.get_adjmatrix(smart=True, debug=debug)
         ini_state = self.add_state(name)
         ini_state.set_geometry(self.labels, self.coord, debug=debug)
@@ -992,7 +992,7 @@ class Specie(object):
 ###############
 class Molecule(Specie):
     """
-    Represent a discrete molecular species.
+    Represents a discrete molecular species.
 
     Attributes:
         object_subtype (str):           Species subtype (`"molecule"`).
@@ -1000,11 +1000,11 @@ class Molecule(Specie):
         metals (list):                  Metal atoms detected in the molecule.
 
     Methods:
-        split_complex():                Separate metals and ligands in a complex.
-        set_spin_metals():              Assign spins to metal centers.
-        set_charge_metals():            Assign charges to metal centers.
-        set_bonds():                    Build intra- and metal-related bonds.
-        fix_ligands_rdkit_obj():        Repair ligand RDKit representations.
+        split_complex():                Separates metals and ligands in a complex.
+        set_spin_metals():              Assigns spins to metal centers.
+        set_charge_metals():            Assigns charges to metal centers.
+        set_bonds():                    Builds intra- and metal-related bonds.
+        fix_ligands_rdkit_obj():        Repairs ligand RDKit representations.
     """
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
         Specie.__init__(self, labels, coord, frac_coord, radii)
@@ -1278,7 +1278,7 @@ class Molecule(Specie):
 ###############
 class Ligand(Specie):
     """
-    Represent a ligand extracted from a molecule.
+    Represents a ligand extracted from a molecule.
 
     Attributes:
         object_subtype (str):           Species subtype (`"ligand"`).
@@ -1286,11 +1286,11 @@ class Ligand(Specie):
         smiles (str):                   RDKit-derived SMILES when available.
 
     Methods:
-        get_groups():                   Split the ligand into connected groups.
-        get_connected_metals():         Identify bound metal centers.
-        get_hapticity():                Evaluate ligand hapticity.
-        fix_rdkit_obj():                Repair RDKit connectivity and charges.
-        set_smiles_from_rdkit_obj():    Export a SMILES string from RDKit.
+        get_groups():                   Splits the ligand into connected groups.
+        get_connected_metals():         Identifies bound metal centers.
+        get_hapticity():                Evaluates ligand hapticity.
+        fix_rdkit_obj():                Repairs RDKit connectivity and charges.
+        set_smiles_from_rdkit_obj():    Exports a SMILES string from RDKit.
     """
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
         if frac_coord is not None:        
@@ -1438,7 +1438,7 @@ class Ligand(Specie):
     ######
     def fix_rdkit_obj(self, debug: int=0):
         """
-        Fix common issues in the ligand RDKit object.
+        Fixes common issues in the ligand RDKit object.
 
         Parameters:
             debug (int):                 Verbosity level.
@@ -1889,7 +1889,7 @@ class Ligand(Specie):
 ###############
 class Group(Specie):
     """
-    Represent a connected fragment inside a ligand.
+    Represents a connected fragment inside a ligand.
 
     Attributes:
         object_subtype (str):           Species subtype (`"group"`).
@@ -1897,10 +1897,10 @@ class Group(Specie):
         metals (list):                  Metals connected to the group.
 
     Methods:
-        remove_atom():                  Remove an atom from the group.
-        get_closest_metal():            Find the nearest metal center.
-        get_connected_metals():         Retrieve metals bonded to the group.
-        get_hapticity():                Evaluate group hapticity.
+        remove_atom():                  Removes an atom from the group.
+        get_closest_metal():            Finds the nearest metal center.
+        get_connected_metals():         Retrieves metals bonded to the group.
+        get_hapticity():                Evaluates group hapticity.
     """
     def __init__(self, labels: list, coord: list, frac_coord: list=None, radii: list=None) -> None:
         if frac_coord is not None:        
@@ -2253,7 +2253,7 @@ def import_group(old_group: object, parent: object=None, debug: int=0) -> object
 ####################
 def import_rdkit_molecule(mol, debug: int=0) -> object:
     """
-    Import an RDKit molecule into a SCOPE `Molecule` object.
+    Imports an RDKit molecule into a SCOPE `Molecule` object.
 
     Parameters:
         mol (object):                   RDKit molecule to import.

@@ -8,7 +8,7 @@ import numpy as np
 
 
 def apply_coord_displacement(coord, atom: int, axis: int, displacement: float=0.01, units: str='angstrom'):
-    """Return Angstrom coordinates with one zero-based atom/axis displaced.
+    """Returns Angstrom coordinates with one zero-based atom/axis displaced.
 
     "units" describes the displacement units, not those of the "coord".
     The input is unchanged; the returned array has shape (natoms, 3).
@@ -36,7 +36,7 @@ def apply_coord_displacement(coord, atom: int, axis: int, displacement: float=0.
 
 
 def get_central_difference(f1, f2, displacement: float=0.01, units: str='bohr', force_units: str='hartree/bohr', debug: int=0):
-    """Return -(F_plus - F_minus)/(2*displacement) in Hartree/Bohr^2.
+    """Returns -(F_plus - F_minus)/(2*displacement) in Hartree/Bohr^2.
 
     f1 and f2 are forces at positive and negative displacements, respectively, with matching shapes;
     displacement is the positive one-sided step;
@@ -71,7 +71,7 @@ def get_central_difference(f1, f2, displacement: float=0.01, units: str='bohr', 
 
 
 def findiff_displacements(coord, displacement: float=0.01, units: str='bohr'):
-    """Return the 6N displaced Angstrom geometries and their coordinate names.
+    """Returns the 6N displaced Angstrom geometries and their coordinate names.
 
     coord is a finite (natoms, 3) Angstrom array. displacement is a positive
     one-sided step in units ('bohr' or 'angstrom'). Each zero-based atom/axis
@@ -103,7 +103,7 @@ def findiff_displacements(coord, displacement: float=0.01, units: str='bohr'):
 
 
 def mass_weight_hessian(hessian, masses, debug: int=0):
-    """Divide Cartesian Hessian entries by sqrt(m_i*m_j), without modifying inputs.
+    """Divides Cartesian Hessian entries by sqrt(m_i*m_j), without modifying inputs.
 
     hessian is a finite real (3N, 3N) array in Hartree/Bohr^2, ordered by atom
     then x/y/z. masses contains N finite positive masses in amu. The result is
@@ -129,10 +129,10 @@ def mass_weight_hessian(hessian, masses, debug: int=0):
 
 
 def project_out(hessian, proj_rot: bool=False, proj_tra: bool=True, debug: int=0):
-    """Project uniform translations from a Cartesian Hessian before mass weighting.
+    """Projects uniform translations from a Cartesian Hessian before mass weighting.
 
-    Return P.T @ hessian @ P, where P removes the three rigid translations.
-    With proj_tra=False return an independent copy. Rotational projection needs
+    Returns P.T @ hessian @ P, where P removes the three rigid translations.
+    With proj_tra=False, returns an independent copy. Rotational projection needs
     geometry information and is not implemented; proj_rot=True raises an error.
     hessian must be finite, real, square and ordered as atom-wise x/y/z.
     """
@@ -156,14 +156,14 @@ def project_out(hessian, proj_rot: bool=False, proj_tra: bool=True, debug: int=0
 
 
 def get_VNM_from_hessian(hessian, labels: list, masses: list, proj_rot: bool=False, proj_tra: bool=True, discard_translations: bool=False, debug: int=0):
-    """Return mass-weighted VNMs from a Cartesian Hessian in Hartree/Bohr^2.
+    """Returns mass-weighted VNMs from a Cartesian Hessian in Hartree/Bohr^2.
 
     labels contains elemental symbols in Hessian atom order; masses supplies the
-    calculation's masses in amu. Symmetrize, optionally project translations in
-    Cartesian space, mass-weight and diagonalize with a symmetric eigensolver.
+    calculation's masses in amu. Symmetrizes, optionally projects translations in
+    Cartesian space, mass-weights and diagonalizes with a symmetric eigensolver.
     Rotational projection is not implemented. Inputs are not modified.
-    With discard_translations=True, require proj_tra=True and diagonalize only
-    the translation-free subspace, returning 3N-3 modes. Otherwise return 3N.
+    With discard_translations=True, requires proj_tra=True and diagonalizes only
+    the translation-free subspace, returning 3N-3 modes. Otherwise returns 3N.
     Raw relative Hessian antisymmetry above 1% prints a warning, independently
     of debug. This warning does not prevent diagonalization.
 
@@ -227,13 +227,13 @@ def get_VNM_from_hessian(hessian, labels: list, masses: list, proj_rot: bool=Fal
 
 
 def get_VNM_from_findiff(job: object, proj_rot: bool=False, proj_tra: bool=True, debug: int=0):
-    """Collect periodic QE forces and return 3N-3 VNMs when projecting translations.
+    """Collects periodic QE forces and returns 3N-3 VNMs when projecting translations.
 
-    Select the latest (step, run_number) for every _atom_axis_pos/neg keyword,
-    independent of list order. Return None while any point is missing, pending,
+    Selects the latest (step, run_number) for every _atom_axis_pos/neg keyword,
+    independent of list order. Returns None while any point is missing, pending,
     unsuccessful or lacks forces. Invalid stencils raise ValueError. Inputs must
     match the reference State's atom order, cell and symmetric displacements.
-    Use submitted atomic masses and actual rounded steps, converting QE forces
+    Uses submitted atomic masses and actual rounded steps, converting QE forces
     from Ry/Bohr. A 'ref' computation, when present, must supply converged energy
     and forces at the undisplaced geometry; Job registration requires it. The
     returned VNMs exclude translations when proj_tra=True. The Job and its States

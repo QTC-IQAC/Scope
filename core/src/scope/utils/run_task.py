@@ -9,13 +9,13 @@ from scope.read_write           import load_binary
 ######################
 def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_errors: bool=False, debug: int=0):
     """
-    Run one or more SCOPE input files on a stored system.
+    Runs one or more SCOPE input files on a stored system.
 
     Parameters:
         sys_path (str):                Path to the system binary.
         inp_paths (list):              Input-job file paths.
         global_env (str | object):     Environment path or loaded environment object.
-        handle_errors (bool):          Retry startup aborts and apply automatic file/error handling.
+        handle_errors (bool):          Retries startup aborts and applies automatic file/error handling.
         debug (int):                   Verbosity level.
 
     Returns:
@@ -23,7 +23,7 @@ def run_task(sys_path: str, inp_paths: list, global_env: str | object, handle_er
 
     Stored branches whose computation folder is unavailable are skipped and
     reported once. Their folders and workflow history are not recreated or reset.
-    Save after a task only when System.should_save marks pending changes.
+    Saves after a task only when System.should_save marks pending changes.
     """
 
     report = ''

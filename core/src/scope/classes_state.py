@@ -11,7 +11,7 @@ elemdatabase = ElementData()
 ##############
 class State(object):
     """
-    Represent a geometry- and result-bearing state of a source object.
+    Represents a geometry- and result-bearing state of a source object.
 
     Attributes:
         object_type (str):              Object category (`"state"`).
@@ -23,11 +23,11 @@ class State(object):
         coord (list):                   Cartesian coordinates.
 
     Methods:
-        set_geometry():                 Store labels and coordinates.
-        set_cell():                     Attach unit-cell metadata.
-        get_molecules():                Build molecular fragments from the geometry.
-        set_VNMs():                     Register vibrational normal modes.
-        get_thermal_data():             Compute thermodynamic quantities.
+        set_geometry():                 Stores labels and coordinates.
+        set_cell():                     Attaches unit-cell metadata.
+        get_molecules():                Builds molecular fragments from the geometry.
+        set_VNMs():                     Registers vibrational normal modes.
+        get_thermal_data():             Computes thermodynamic quantities.
     """
     def __init__(self, _source: object, name: str, debug: int=0):
         self.object_type    = "state"
@@ -225,7 +225,7 @@ class State(object):
     ######
     def get_occurrence(self, substructure: object, debug: int=0) -> int:
         """
-        Count how many times a substructure appears in the state.
+        Counts how many times a substructure appears in the state.
 
         Parameters:
             substructure (object):       Substructure to search for.
@@ -343,7 +343,7 @@ class State(object):
                 else:                                     return False
 
     def set_VNMs(self, VNMs):
-        """Store VNMs and refresh all frequency-based minimum and transition-state flags."""
+        """Stores VNMs and refreshes all frequency-based minimum and transition-state flags."""
         self.VNMs           = VNMs
         self.freqs_cm       = [vnm.freq_cm for vnm in VNMs]
         self.num_neg_freqs  = sum(vnm.freq_cm < 0.0 for vnm in self.VNMs)
@@ -363,20 +363,20 @@ class State(object):
             else:                                                 self.almost_minimum = False
 
     def get_ir_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, per_formula_unit: bool=True, debug: int=0):
-        """Build an IR spectrum from stored VNM frequencies and intensities.
+        """Builds an IR spectrum from stored VNM frequencies and intensities.
 
         Parameters:
             vmin, vmax (float | None):   Bounds (in cm^-1); defaults are -100 and max frequency + 100.
             function (str):              Gaussian, Laplacian or Lorentzian broadening.
             sigma (float):               Positive width in cm^-1, following the selected kernel.
-            per_formula_unit (bool):     Divide mode intensities by Z
+            per_formula_unit (bool):     Divides mode intensities by Z
             debug (int):                 Verbosity level.
 
         Returns:
             tuple: Frequency grid in cm^-1 and broadened IR intensity.
 
-        Preserve peak-height broadening; IR kernels are not area-normalized.
-        Cache the returned arrays as ir_spec_x and ir_spec_y.
+        Preserves peak-height broadening; IR kernels are not area-normalized.
+        Caches the returned arrays as ir_spec_x and ir_spec_y.
         """
         from scope.operations.vecs_and_mats import build_spectrum
 
@@ -399,13 +399,13 @@ class State(object):
         return self.ir_spec_x, self.ir_spec_y
 
     def get_vdos_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, per_formula_unit: bool=True, debug: int=0):
-        """Build a mode-count density from the stored vibrational normal modes.
+        """Builds a mode-count density from the stored vibrational normal modes.
 
         Parameters:
             vmin, vmax (float | None):   Bounds (in cm^-1); defaults include eight widths around modes.
             function (str):              Gaussian, Laplacian or Lorentzian broadening.
             sigma (float):               Positive width in cm^-1, following the selected kernel.
-            per_formula_unit (bool):     Divide mode weights by Z; False counts whole-state modes.
+            per_formula_unit (bool):     Divides mode weights by Z; False counts whole-state modes.
             debug (int):                 Verbosity level.
 
         Returns:
@@ -415,7 +415,7 @@ class State(object):
         independently of IR intensity (as opposed to IR intensity). 
         The full-axis area counts modes/Z, or modes when per_formula_unit=False. Finite windows can truncate tails.
         Gamma-only modes give a Gamma spectrum, not a q-integrated phonon DOS.
-        Cache arrays as vdos_spec_x/y.
+        Caches arrays as vdos_spec_x/y.
         """
         from scope.operations.vecs_and_mats import build_spectrum
 
@@ -437,11 +437,11 @@ class State(object):
         return self.vdos_spec_x, self.vdos_spec_y
 
     def plot_ir_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, per_formula_unit: bool=True, debug: int=0):
-        """Plot IR intensity and sticks using get_ir_spectrum()'s arguments.
+        """Plots IR intensity and sticks using get_ir_spectrum()'s arguments.
 
-        Rebuild with the requested bounds, kernel, width and Z normalization;
-        earlier cached spectra do not override arguments. Fill under the
-        broadened curve and scale both the curve and sticks consistently.
+        Rebuilds with the requested bounds, kernel, width and Z normalization;
+        earlier cached spectra do not override arguments. Fills under the
+        broadened curve and scales both the curve and sticks consistently.
         """
         import matplotlib.pyplot as plt
 
@@ -463,9 +463,9 @@ class State(object):
         plt.show()
 
     def plot_vdos_spectrum(self, vmin=None, vmax=None, function: str='gaussian', sigma: float=10, per_formula_unit: bool=True, debug: int=0):
-        """Plot the mode-count density using get_vdos_spectrum()'s arguments.
+        """Plots the mode-count density using get_vdos_spectrum()'s arguments.
 
-        Rebuild with the requested settings. Red ticks mark stored frequencies
+        Rebuilds with the requested settings. Red ticks mark stored frequencies
         without assigning a stick height in incompatible density units.
         """
         import matplotlib.pyplot as plt
@@ -509,14 +509,14 @@ class State(object):
 
     def get_abs_spectrum(self, lmin: float=200, lmax: float=1000, function: str='gaussian', sigma: float=0.2, as_cross_section: bool=False, debug: int=0):
         """
-        Build an absorption spectrum from the stored excited states.
+        Builds an absorption spectrum from the stored excited states.
 
         Parameters:
             lmin (float):                Lower wavelength bound in nm.
             lmax (float):                Upper wavelength bound in nm.
             function (str):              Broadening kernel.
             sigma (float):               Broadening width.
-            as_cross_section (bool):     Normalize as a cross-section-like spectrum.
+            as_cross_section (bool):     Normalizes as a cross-section-like spectrum.
             debug (int):                 Verbosity level.
 
         Returns:
@@ -551,7 +551,7 @@ class State(object):
 
     def get_cross_section(self, lmin: float=200, lmax: float=1000, function: str='gaussian', sigma: float=0.2, debug: int=0):
         """
-        Build an absorption cross section from the stored excited states.
+        Builds an absorption cross section from the stored excited states.
 
         Parameters:
             lmin (float):                Lower wavelength bound in nm.
@@ -610,7 +610,7 @@ class State(object):
         return False, None
 
     def add_computation(self, computation: object, debug: int=0):
-        """Link an existing Computation."""
+        """Links an existing Computation."""
         if not any(comp is computation for comp in self.computations):
             if debug > 0: print("STATE.ADD_COMPUTATION: Adding computation to state")
             self.computations.append(computation)
@@ -621,7 +621,7 @@ class State(object):
 #### Sampling Geometries ####
 #############################
     def sample_geometries(self, ngeoms: int, n_aux_geoms=100, n_fps_rounds=0, temp: float=300, sigma_damp_factor: float=0, freq_bottom_limit: float=0, freq_top_limit: float=None, debug: int=0):
-        """Sample geometries around this state's reference geometry and vibrational modes.
+        """Samples geometries around this state's reference geometry and vibrational modes.
 
         Parameters:
             ngeoms (int):               Number of geometries to retain; zero returns empty lists.
@@ -710,13 +710,13 @@ class State(object):
 #### Get Thermodynamic Data ####
 ################################
     def get_thermal_data(self, temp: float=298.15, Helec=None, Selec=None, Hvib=None, Svib=None, Gtot=None, overwrite: bool=False, vib_options: dict=None, debug: int=0):
-        """Computes and Handles Thermochemistry results
+        """Computes and handles Thermochemistry results
 
         Parameters:
             temp:                       Temperature (in K) as a float or an iterable of temperatures.
             Helec, Selec:               Optional enforced Data objects.
             Hvib, Svib, Gtot:           Optional enforced Collections with Temperature as variable.
-            overwrite (bool):           Force replacement, including unchanged settings.
+            overwrite (bool):           Forces replacement, including unchanged settings.
             vib_options (dict):         model ('HO' or 'QRRHO'), FR_cutoff (cm-1), FR_alpha, and imaginary treatment.
             debug (int):                Verbosity; child functions receive debug - 1.
 

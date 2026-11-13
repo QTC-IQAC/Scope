@@ -136,7 +136,7 @@ def rdkit_overlap(rdkit_mol1, rdkit_mol2):
 ########################
 def validate_cell_molecule(cell2mol_molecule, scope_molecule):
     """
-    Compare a cell2mol molecule with its imported SCOPE representation.
+    Compares a cell2mol molecule with its imported SCOPE representation.
 
     Parameters:
         cell2mol_molecule (object):     Molecule stored in the original cell2mol Cell.
@@ -253,7 +253,7 @@ def validate_cell_molecule(cell2mol_molecule, scope_molecule):
 ## Compare the chemical information in an RDKit molecule and its SCOPE representation.
 def compare_rdkit_scope_molecules(rdkit_molecule, scope_molecule):
     """
-    Compare an RDKit molecule with its SCOPE representation.
+    Compares an RDKit molecule with its SCOPE representation.
 
     Parameters:
         rdkit_molecule (object):       RDKit molecule used as the reference.
@@ -404,7 +404,7 @@ def compare_rdkit_scope_molecules(rdkit_molecule, scope_molecule):
 
 def validate_xyz_molecule(scope_molecule):
     """
-    Validate a SCOPE Molecule created from an XYZ file.
+    Validates a SCOPE Molecule created from an XYZ file.
 
     Parameters:
         scope_molecule (object):        SCOPE molecule to validate.

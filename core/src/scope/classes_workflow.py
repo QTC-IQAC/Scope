@@ -13,7 +13,7 @@ from scope                            import __version__
 ##########################
 class Branch(object):
     """
-    Represent a branch of workflows attached to a system.
+    Represents a branch of workflows attached to a system.
 
     Attributes:
         object_type (str):              Object category (`"branch"`).
@@ -24,10 +24,10 @@ class Branch(object):
         results (dict):                 Branch-level results.
 
     Methods:
-        add_workflow():                 Create a workflow for a source.
-        find_workflow():                Find an existing workflow.
-        register():                     Register contained workflows.
-        set_status():                   Update branch status markers.
+        add_workflow():                 Creates a workflow for a source.
+        find_workflow():                Finds an existing workflow.
+        register():                     Registers contained workflows.
+        set_status():                   Updates branch status markers.
     """
     def __init__(self, path: str, name: str, _system: object, debug: int=0) -> None:
         self.version          = __version__
@@ -152,7 +152,7 @@ class Branch(object):
     ### Registration ###
     ####################
     def register(self, debug: int=0):
-        """Register pending Workflows and aggregate their completion and success status."""
+        """Registers pending Workflows and aggregates their completion and success status."""
         previous_status = (self.isregistered, self.isgood, self.isfinished)
         if debug > 1: print("BRANCH.REGISTER: Registering Branch:", self.name)
         allgood     = True
@@ -201,7 +201,7 @@ class Branch(object):
 ############################
 class Workflow(object):
     """
-    Represent the sequence of jobs applied to a single source.
+    Represents the sequence of jobs applied to a single source.
 
     Attributes:
         object_type (str):              Object category (`"workflow"`).
@@ -212,9 +212,9 @@ class Workflow(object):
         results (dict):                 Workflow-level results.
 
     Methods:
-        add_job():                      Create a new job from input data.
-        find_job():                     Locate a job by name or hierarchy.
-        register():                     Register contained jobs.
+        add_job():                      Creates a new job from input data.
+        find_job():                     Locates a job by name or hierarchy.
+        register():                     Registers contained jobs.
     """
     def __init__(self, name: str, source: object, _branch: object, debug: int=0) -> None:
         self.version          = __version__
@@ -310,7 +310,7 @@ class Workflow(object):
     ### Registration ###
     ####################
     def register(self, debug: int=0):
-        """Register pending Jobs and aggregate their completion and success status."""
+        """Registers pending Jobs and aggregates their completion and success status."""
         previous_status = (self.isregistered, self.isgood, self.isfinished)
         if debug > 0: print("WORKFLOW.REGISTER: Registering Workflow:", self.name)
         allgood     = True
@@ -369,7 +369,7 @@ class Workflow(object):
 #######################
 class Job(object):
     """
-    Represent a logical job inside a workflow.
+    Represents a logical job inside a workflow.
 
     Attributes:
         object_type (str):              Object category (`"job"`).
@@ -381,12 +381,12 @@ class Job(object):
         constrains (list):              Jobs that block this job.
 
     Methods:
-        add_computation():              Create a computation for the job.
-        get_wf_path():                  Return the shared wf path for a keyword chain.
-        set_computations_from_setup():  Expand the job into computations.
-        set_continuation_computation(): Create a retry or continuation run.
-        check_requisites():             Evaluate job dependencies.
-        register():                     Register all computations.
+        add_computation():              Creates a computation for the job.
+        get_wf_path():                  Returns the shared wf path for a keyword chain.
+        set_computations_from_setup():  Expands the job into computations.
+        set_continuation_computation(): Creates a retry or continuation run.
+        check_requisites():             Evaluates job dependencies.
+        register():                     Registers all computations.
     """
     def __init__(self, job_data: object, _workflow: object):        
         self.version          = __version__
@@ -425,7 +425,7 @@ class Job(object):
         return len(self.computations)
 
     def get_wf_path(self, keyword: str='', debug: int=0) -> str | None:
-        """Return the planned Job/Workflow wf path for a keyword chain, or None when disabled.
+        """Returns the planned Job/Workflow wf path for a keyword chain, or None when disabled.
 
         save_wf='job' (also legacy True) uses the Job's name and directory. 'workflow'
         uses the Workflow's name and directory, with a workflow_ marker in the filename.
@@ -491,17 +491,17 @@ class Job(object):
         return max_step
 
     def check_convergence(self, comp: object=None, debug: int=0):
-        """Return whether a job with 'rep_opt' setup meets its stopping criteria.
+        """Returns whether a job with 'rep_opt' setup meets its stopping criteria.
 
-        With comp, evaluate that Computation against the latest attempt of the
+        With comp, evaluates that Computation against the latest attempt of the
         preceding step with the same keyword. This supports checking individual
         steps while run_task() walks through a Job's history. With comp=None,
-        require convergence of the latest step and run of every keyword chain.
+        requires convergence of the latest step and run of every keyword chain.
 
-        Require a successful, finished registration and an energy change within
+        Requires a successful, finished registration and an energy change within
         energy_thres (Hartree). QE also requires the maximum absolute force
         component below qc_data.forc_conv (Ry/Bohr). Missing results fail the
-        check. Return a boolean without changing Job status; register() stores
+        check. Returns a boolean without changing Job status; register() stores
         the overall result in isconverged.
         """
         from scope.other import check_convergence
@@ -570,7 +570,7 @@ class Job(object):
             del self.computations[found_idx]
             
     def check_requisites(self, debug: int=0) -> bool:
-        """Refresh related jobs and evaluate dependencies from their current status."""
+        """Refreshes related jobs and evaluates dependencies from their current status."""
         # Previously completed finite-difference Jobs may still lack the reference SCF.
         if self.job_setup == 'findiff' and not any(comp.keyword == 'ref' for comp in self.computations): self.register(debug=max(debug-1,0))
         self.requisites_fulfilled = False
@@ -633,7 +633,7 @@ class Job(object):
 ### Create Computations Set ###
 ###############################
     def set_computations_from_setup(self, qc_data: object, debug: int=0):
-        """Create computations required by the Job setup without duplicating existing ones.
+        """Creates computations required by the Job setup without duplicating existing ones.
 
         - findiff creates 6N displaced fixed-cell QE SCFs and an undisplaced 'ref'
         SCF, with forces enabled and a separate State per computation. The step
@@ -920,7 +920,7 @@ class Job(object):
 ### Registration ###
 ####################
     def register(self, debug: int=0):
-        """Register Computations and commit Job completion and convergence status.
+        """Registers Computations and commits Job completion and convergence status.
 
         Changed status marks the System for saving and the parent Workflow for
         aggregate registration. Repeated checks of unchanged status do neither.
@@ -1009,7 +1009,7 @@ class Job(object):
 ###########################
 class Computation(object):
     """
-    Represent a single software execution generated from a job.
+    Represents a single software execution generated from a job.
 
     Attributes:
         object_type (str):              Object category (`"computation"`).
@@ -1024,12 +1024,12 @@ class Computation(object):
         forces (list | None):           Created by optimization registration, in the parser's units.
 
     Methods:
-        set_name():                     Build the computation name.
-        set_paths():                    Build input, output, and submission paths.
-        check_files():                  Check expected files on disk.
-        create_output():                Create a parser object for the output.
-        run():                          Generate inputs and optionally submit.
-        register():                     Parse and register output data.
+        set_name():                     Builds the computation name.
+        set_paths():                    Builds input, output, and submission paths.
+        check_files():                  Checks expected files on disk.
+        create_output():                Creates a parser object for the output.
+        run():                          Generates inputs and optionally submits.
+        register():                     Parses and registers output data.
     """
     def __init__(self, _job: object, qc_data: object, step: int, path: str, keyword: str, is_update: bool=False, debug: int=0):        
         self.version          = __version__
@@ -1474,16 +1474,16 @@ class Computation(object):
 ##############################################################
 class Filename(object):
     """
-    Represent a structured filename assembled from reusable items.
+    Represents a structured filename assembled from reusable items.
 
     Attributes:
         typ (str):                      Filename object type.
         items (list):                   Ordered filename components.
 
     Methods:
-        add_item():                     Append a filename component.
-        get_name():                     Build the final filename string.
-        set_path():                     Join the filename with a directory.
+        add_item():                     Appends a filename component.
+        get_name():                     Builds the final filename string.
+        set_path():                     Joins the filename with a directory.
     """
     def __init__(self):
         self.typ      = 'name_global'
@@ -1517,7 +1517,7 @@ class Filename(object):
 #######################
 class Filename_item(object):
     """
-    Represent one formatted component of a computation filename.
+    Represents one formatted component of a computation filename.
 
     Attributes:
         object_type (str):              Object category (`"Filename_item"`).
@@ -1526,9 +1526,9 @@ class Filename_item(object):
         prefix (str):                   Optional prefix added when formatted.
 
     Methods:
-        set_min_value():                Set a minimum value for printing.
-        mod_value():                    Update the stored value.
-        format():                       Return the formatted filename fragment.
+        set_min_value():                Sets a minimum value for printing.
+        mod_value():                    Updates the stored value.
+        format():                       Returns the formatted filename fragment.
     """
     ## Simple object to create filenames for computation files: input, output and submission
     def __init__(self, variable: str, value, prefix: str=''):

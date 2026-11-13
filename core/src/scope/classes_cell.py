@@ -16,7 +16,7 @@ elemdatabase = ElementData()
 ##############
 class Cell(object):
     """
-    Represent a periodic crystal cell and its molecular decomposition.
+    Represents a periodic crystal cell and its molecular decomposition.
 
     Attributes:
         object_type (str):              Object category (`"cell"`).
@@ -28,11 +28,11 @@ class Cell(object):
         volume (float):                 Unit-cell volume.
 
     Methods:
-        get_molecules():                Split the cell into molecular fragments.
-        set_atoms():                    Collect atom objects from molecules.
-        get_z():                        Compute the stoichiometric multiplicity.
-        set_spin_metals():              Assign spins to metal centers.
-        associate_cif():                Link the cell to a CIF object.
+        get_molecules():                Splits the cell into molecular fragments.
+        set_atoms():                    Collects atom objects from molecules.
+        get_z():                        Computes the stoichiometric multiplicity.
+        set_spin_metals():              Assigns spins to metal centers.
+        associate_cif():                Links the cell to a CIF object.
     """
 
     def __init__(self, name: str, labels: list, coord: list, cell_vector: list=None, cell_param: list=None) -> None:
@@ -105,32 +105,32 @@ class Cell(object):
     ######################
     @property
     def Z(self):
-        """Return `z` as a convenience alias."""
+        """Returns `z` as a convenience alias."""
         return self.z
 
     @property
     def z(self):
-        """Return the cached stoichiometric multiplicity, computing it if needed."""
+        """Returns the cached stoichiometric multiplicity, computing it if needed."""
         if not hasattr(self, "_z"):
             return self.get_z()
         return self._z
 
     #### 
     def reset_charge(self, debug: int=0):
-        """Reset charges for all molecules stored in the cell."""
+        """Resets charges for all molecules stored in the cell."""
         if not hasattr(self,"molecules"): return None
         for mol in self.molecules:
             mol.reset_charge()
 
     def reset_spin(self, debug: int=0):
-        """Reset spins for all molecules stored in the cell."""
+        """Resets spins for all molecules stored in the cell."""
         if not hasattr(self,"molecules"): return None
         for mol in self.molecules:
             mol.reset_spin()
 
     ####
     def set_spin_metals(self, spins: list | int, debug: int=0):
-        """Assign spin values to metal centers in transition-metal complexes.
+        """Assigns spin values to metal centers in transition-metal complexes.
 
         Parameters:
             spins (list | int):          One spin per complex, or one value for all.
@@ -172,16 +172,16 @@ class Cell(object):
     ## Other ##
     ###########
     def save(self, filepath):
-        """Serialize the cell to disk."""
+        """Serializes the cell to disk."""
         save_binary(self, filepath)
 
     def associate_cif(self, cif: object) -> None:
-        """Attach a CIF object to the cell."""
+        """Attaches a CIF object to the cell."""
         self.cif       = cif
         return self.cif
 
     def set_path(self, path: str) -> None:
-        """Store a filesystem path for the cell."""
+        """Stores a filesystem path for the cell."""
         self.path = path
 
     def get_ncomplex(self, debug: int=0):
@@ -199,7 +199,7 @@ class Cell(object):
         return self.ncomplex
 
     def get_z(self, debug: int=0):
-        """Compute and cache the unit-cell stoichiometric multiplicity (`Z`).
+        """Computes and caches the unit-cell stoichiometric multiplicity (`Z`).
 
         Parameters:
             debug (int):                 Verbosity level.
@@ -234,7 +234,7 @@ class Cell(object):
     #############
     ## This function mimics the specie-class function with the same name
     def check_parent(self, subtype, search_by: str="subtype"):
-        """Return whether this cell matches the requested parent subtype."""
+        """Returns whether this cell matches the requested parent subtype."""
         if search_by.lower() == "subtype":
             if subtype == "cell": return True
             else:                 return False
@@ -246,7 +246,7 @@ class Cell(object):
 
     ## This function mimics the specie-class function with the same name
     def get_parent(self, subtype, search_by: str="subtype"):
-        """Return this cell when `subtype == "cell"`."""
+        """Returns this cell when `subtype == "cell"`."""
         if search_by.lower() == "subtype":
             if subtype == "cell": return self
             else:                 return None
@@ -258,7 +258,7 @@ class Cell(object):
 
     ## This function mimics the specie-class function with the same name
     def get_parent_indices(self, subtype: str, search_by: str="subtype"):
-        """Return atom indices for the cell parent subtype."""
+        """Returns atom indices for the cell parent subtype."""
         if search_by.lower() == "subtype":
             if subtype == "cell": return list(range(0,self.natoms))
             else:                 return None
@@ -272,7 +272,7 @@ class Cell(object):
     ## Atoms and Molecules ##
     #########################
     def set_atoms(self, debug: int=0):
-        """Collect atom objects from the stored molecules."""
+        """Collects atom objects from the stored molecules."""
         if not hasattr(self,"molecules"): 
             if debug > 0: print("CELL.SET_ATOMS: retrieving molecules")
             self.get_molecules()
@@ -306,12 +306,12 @@ class Cell(object):
 
     ######
     def set_molecules(self, molecules: list) -> None:
-        """Store the molecule list used by the cell."""
+        """Stores the molecule list used by the cell."""
         self.molecules = molecules
     
     ######
     def get_molecules(self, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
-        """Build or return the molecules detected in the cell.
+        """Builds or returns the molecules detected in the cell.
 
         Parameters:
             overwrite (bool):            Recompute even if molecules already exist.
@@ -382,7 +382,7 @@ class Cell(object):
     ######
     def get_occurrence(self, substructure: object, debug: int=0) -> int:
         """
-        Count how many times a substructure appears in the cell.
+        Counts how many times a substructure appears in the cell.
 
         Parameters:
             substructure (object):       Substructure to search for.
@@ -412,7 +412,7 @@ class Cell(object):
     ## Connectivity ##
     ##################
     def get_adjmatrix(self, overwrite: bool=False, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
-        """Compute and cache the regular and metal-only cell adjacency matrices."""
+        """Computes and caches the regular and metal-only cell adjacency matrices."""
         if not overwrite and hasattr(self, "adjmat") and self.adjmat is not None:
             self.adjmat = np.asarray(self.adjmat)
             if not hasattr(self, "adjnum") or self.adjnum is None: self.adjnum = self.adjmat.sum(axis=1).astype(int)
@@ -443,7 +443,7 @@ class Cell(object):
 
     ######
     def check_fragmentation(self, reconstruct: bool = False, debug: int=0):
-        """Check whether the current molecular decomposition is fragmented.
+        """Checks whether the current molecular decomposition is fragmented.
 
         Parameters:
             reconstruct (bool):          Attempt reconstruction before returning.
@@ -497,7 +497,7 @@ class Cell(object):
 
     ######
     def fix_cell_coord(self, debug: int=0) -> None:
-        """Rebuild cell labels and coordinates from the stored molecules."""
+        """Rebuilds cell labels and coordinates from the stored molecules."""
         ## In cell2mol, the cell object does not have the coordinates of the reconstructed cell.
         ## However, the molecule and atom objects are updated (i.e. reconstructed). We use this info to update the cell
         if not hasattr(self,"molecules"): 
@@ -525,7 +525,7 @@ class Cell(object):
 
     ######
     def reconstruct(self, cov_factor: float=1.3, metal_factor: float=1.0, debug: int=0):
-        """Reconstruct fragmented molecules in the periodic cell.
+        """Reconstructs fragmented molecules in the periodic cell.
 
         Parameters:
             cov_factor (float):          Starting covalent radii scaling factor.
@@ -594,7 +594,7 @@ class Cell(object):
     ### Functions to Interact with States ###
     #########################################
     def set_initial_state(self, name: str='initial', debug: int=0):
-        """Create the initial state for this cell."""
+        """Creates the initial state for this cell."""
         if not hasattr(self, "adjmat") or self.adjmat is None: self.get_adjmatrix(debug=debug)
         ini_state = self.add_state(name)
         ini_state.set_geometry(self.labels, self.coord, debug=debug)
@@ -604,7 +604,7 @@ class Cell(object):
         
     ######
     def add_state(self, name: object, debug: int=0):
-        """Create or return a state with the requested name."""
+        """Creates or returns a state with the requested name."""
         from scope.classes_state import State
         if not hasattr(self,"states"): setattr(self,"states",list([]))
         exists, new_state = self.find_state(name)
@@ -634,7 +634,7 @@ class Cell(object):
 
     ######
     def find_state(self, search_name: str, debug: int=0):
-        """Find a state by name.
+        """Finds a state by name.
 
         Parameters:
             search_name (str):           Name of the state to search.
@@ -659,7 +659,7 @@ class Cell(object):
     ################################
     def view(self, size: str='default'):
         """
-        Visualize the cell with Plotly.
+        Visualizes the cell with Plotly.
 
         Parameters:
             size (str):                  Figure size preset.
@@ -703,7 +703,7 @@ class Cell(object):
         fig.show()
 
     def __repr__(self, indirect: bool=False):
-        """Return a formatted summary of the cell."""
+        """Returns a formatted summary of the cell."""
         to_print = ''   
         if not indirect: to_print += '-------------------------------\n'
         if not indirect: to_print += '   >>> SCOPE CELL Object >>>   \n'

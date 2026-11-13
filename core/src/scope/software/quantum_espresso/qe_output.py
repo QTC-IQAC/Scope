@@ -5,7 +5,7 @@ from scope.software.quantum_espresso.qe_parse  import *
 
 class QE_output(object):
     """
-    Parse and store information extracted from a Quantum Espresso output file.
+    Parses and stores information extracted from a Quantum Espresso output file.
 
     Attributes:
         _computation (object):          Parent computation, when available.
@@ -14,13 +14,13 @@ class QE_output(object):
         requisites (list):              Output sections required for a valid result.
 
     Methods:
-        set_comp_type():                Set or infer the computation type.
-        get_requisites():               Define required parsed sections.
-        assess_scf_convergence():       Classify the final SCF convergence trend.
-        get_last_complete_block():      Retrieve the latest valid block.
-        get_energy_forces_block():      Select the SCF output used to read energy and forces.
-        get_last_geometry():            Extract the latest geometry.
-        get_status_finished():          Check whether the run finished.
+        set_comp_type():                Sets or infers the computation type.
+        get_requisites():               Defines required parsed sections.
+        assess_scf_convergence():       Classifies the final SCF convergence trend.
+        get_last_complete_block():      Retrieves the latest valid block.
+        get_energy_forces_block():      Selects the SCF output used to read energy and forces.
+        get_last_geometry():            Extracts the latest geometry.
+        get_status_finished():          Checks whether the run finished.
     """
     def __init__(self, lines: list, computation: object=None):
         self.version        = __version__
@@ -75,7 +75,7 @@ class QE_output(object):
         return self.scf_finished
 
     def assess_scf_convergence(self, debug: int=0) -> str:
-        """Return the convergence behavior of the final QE SCF cycle."""
+        """Returns the convergence behavior of the final QE SCF cycle."""
         lines      = self.get_lines_last_scf_block(debug=debug)
         accuracies = [] if lines is None else [value for value in parse_scf_accuracies_from_step(lines, debug=debug) if value > 0]
         if len(accuracies) < 10: return "unknown"
@@ -121,11 +121,11 @@ class QE_output(object):
 ### BLOCKS ###
 ###############
     def get_energy_forces_block(self, debug: int=0):
-        """Return the output lines used to read energy and atomic forces.
+        """Returns the output lines used to read energy and atomic forces.
 
         After vc-relax, QE may recalculate them with a plane-wave basis built
-        for the optimized cell. Select that final SCF when present; return None
-        if it did not complete and converge. Read atomic coordinates separately.
+        for the optimized cell. Selects that final SCF when present; returns None
+        if it did not complete and converge. Atomic coordinates are read separately.
         """
         if hasattr(self, 'energy_forces_block'): return self.energy_forces_block
         self.uses_final_scf = False
@@ -553,7 +553,7 @@ class QE_output(object):
             else:          return self.last_at_forces
 
     def get_forces_last_complete_block(self, with_total: bool=False, debug: int=0):
-        """Return atomic forces in Ry/Bohr, or None when unavailable.
+        """Returns atomic forces in Ry/Bohr, or None when unavailable.
 
         For vc-relax, include the final SCF performed with the optimized cell.
         with_total also returns QE's printed total force.
@@ -617,7 +617,7 @@ class QE_output(object):
             return self.last_energy
 
     def get_energy_last_complete_block(self, debug: int=0):
-        """Return energy in Hartree, or None when unavailable.
+        """Returns energy in Hartree, or None when unavailable.
 
         For vc-relax, include the final SCF performed with the optimized cell.
         """

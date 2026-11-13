@@ -14,7 +14,7 @@ elemdatabase = ElementData()
 #######################
 def gen_g16_input(comp, debug: int=0):
     """
-    Generate a Gaussian 16 input file for a computation.
+    Generates a Gaussian 16 input file for a computation.
 
     Parameters:
         comp (object):                Computation object containing the QC settings,
@@ -152,12 +152,12 @@ def gen_g16_input(comp, debug: int=0):
 
 ###################################################
 def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, savechk: bool=False, launcher: str=None, debug: int=0):
-    """Write a Gaussian submission script; launcher is the direct driver command.
+    """Writes a Gaussian submission script; launcher is the direct driver command.
 
     None retains 'g16' for older Environments. Gaussian is not wrapped in an
     MPI launcher; a configured site wrapper may replace the driver command.
     Scheduler stdout/stderr use absolute paths in the computation folder.
-    Run in an isolated directory inside TMPDIR and remove it after copying logs
+    Runs in an isolated directory inside TMPDIR and removes it after copying logs
     and requested checkpoints. A failed copy retains scratch and reports its path.
     """
     import shlex
@@ -306,7 +306,7 @@ SUPPORTED_BASIS_NAMES = ", ".join(BASIS_ALIASES.keys())
 ### Check G16 ###
 #################
 def check_g16_launcher(module: str, debug: int=0) -> dict:
-    """Inspect a Gaussian module without executing g16 or testing Linda.
+    """Inspects a Gaussian module without executing g16 or testing Linda.
 
     Returns:
         Static availability, probe results, and warnings. Runtime validation is

@@ -5,7 +5,7 @@ from scope.operations.dicts_and_lists import range2list
 
 ######
 def get_Svib(freqs: list, temp: float, freq_units: str='au', outunits: str='au', model: str='HO', FR_cutoff: float=100.0, FR_alpha: float=4.0, nmol: int=1, imaginary: str='ignore', debug: int=0):
-    """Calculate vibrational entropy with the HO or QRRHO model.
+    """Calculates vibrational entropy with the HO or QRRHO model.
 
     Parameters:
         model (str):                    'HO' (default) or 'QRRHO'.
@@ -158,7 +158,7 @@ def get_Hvib(freqs: list, temp: float, freq_units: str='au', outunits: str='au',
 
 ######
 def get_Selec(spin_multiplicity, outunits: str='au', nmol: int=1):
-    """Return spin entropy R sum(ln(M_i))/nmol as a Data object.
+    """Returns spin entropy R sum(ln(M_i))/nmol as a Data object.
 
     A scalar multiplicity describes one spin multiplet (e.g. of one molecule);
     a nonempty 1-D list describes independent molecular multiplets (e.g. of all molecules in a cell).
@@ -201,7 +201,7 @@ def find_t12(templist, dGlist: list):
 ######
 def eyring_equation(e_ground: float, e_barrier: float, temp: float=298.15, debug: int=0):
     """
-    Compute half-life and rate constant from the Eyring equation.
+    Computes half-life and rate constant from the Eyring equation.
 
     Parameters:
         e_ground (float):              Ground-state energy in Hartree.

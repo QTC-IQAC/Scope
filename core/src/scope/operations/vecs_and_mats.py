@@ -51,7 +51,7 @@ def gcd_list(numbers):
 ###############
 def gaussian(grid, center, sigma=0.2, normalize=False, debug: int=0):
     """
-    Evaluate a Gaussian profile on a grid.
+    Evaluates a Gaussian profile on a grid.
 
     Parameters:
         grid:                           Evaluation grid.
@@ -71,7 +71,7 @@ def gaussian(grid, center, sigma=0.2, normalize=False, debug: int=0):
 ######
 def lorentzian(grid, center, sigma=0.2, normalize=False, debug: int=0):
     """
-    Evaluate a Lorentzian profile on a grid.
+    Evaluates a Lorentzian profile on a grid.
 
     Parameters:
         grid:                           Evaluation grid.
@@ -91,7 +91,7 @@ def lorentzian(grid, center, sigma=0.2, normalize=False, debug: int=0):
 ######
 def laplacian(grid, center, sigma=0.2, normalize=False, debug: int=0):
     """
-    Evaluate a Laplacian profile on a grid.
+    Evaluates a Laplacian profile on a grid.
 
     Parameters:
         grid:                           Evaluation grid.
@@ -113,7 +113,7 @@ def laplacian(grid, center, sigma=0.2, normalize=False, debug: int=0):
 #################
 def _auto_sigma(values, default=0.2):
     """
-    Estimate a default sigma from the spacing of input values.
+    Estimates a default sigma from the spacing of input values.
 
     Parameters:
         values:                         Input values.
@@ -135,7 +135,7 @@ def _auto_sigma(values, default=0.2):
 ######
 def _resolve_sigma(sigma, values, default=0.2):
     """
-    Resolve a sigma value from explicit input or auto mode.
+    Resolves a sigma value from explicit input or auto mode.
 
     Parameters:
         sigma:                          Requested sigma or `"auto"`.
@@ -155,7 +155,7 @@ def _resolve_sigma(sigma, values, default=0.2):
 ######
 def build_spectrum(xrange, xvalues, yvalues, function: str='gaussian', sigma=0.2, normalize: bool=False, debug: int=0):
     """
-    Build a broadened spectrum from discrete signal points.
+    Builds a broadened spectrum from discrete signal points.
 
     Parameters:
         xrange:                        Evaluation grid.

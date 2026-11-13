@@ -22,7 +22,7 @@
 # ******************************************************************************************
 class ElementData:
     """
-    Store tabulated chemical-element metadata used across SCOPE.
+    Stores tabulated chemical-element metadata used across SCOPE.
 
     Attributes:
         elementnr (dict):               Mapping from symbol to atomic number.
@@ -33,7 +33,7 @@ class ElementData:
         angularmomentum (dict):         Angular-momentum lookup table.
 
     Methods:
-        __init__():                     Load the bundled element tables.
+        __init__():                     Loads the bundled element tables.
     """
 
     def __init__(self):

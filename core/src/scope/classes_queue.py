@@ -7,7 +7,7 @@ from scope.parse_general       import slurm_time_to_minutes
 #############
 class Queue(object):
     """
-    Represent a scheduler queue or partition available to an environment.
+    Represents a scheduler queue or partition available to an environment.
 
     Attributes:
         name (str):                     Normalized queue name.
@@ -18,11 +18,11 @@ class Queue(object):
         commands (dict):                Scheduler commands for this queue.
 
     Methods:
-        set_nodes():                    Discover nodes in the queue.
-        get_overall_usage():            Aggregate queue occupancy data.
-        get_user_running():             Count running jobs and CPUs for the user.
-        get_queue_score():              Score the queue for submission.
-        select_queue():                 Mark the queue as selected.
+        set_nodes():                    Discovers nodes in the queue.
+        get_overall_usage():            Aggregates queue occupancy data.
+        get_user_running():             Counts running jobs and CPUs for the user.
+        get_queue_score():              Scores the queue for submission.
+        select_queue():                 Marks the queue as selected.
     """
     def __init__(self, name: str, _environment: object, avail: str='up', time_limit: str=None, state: str='idle'):
         if avail == "up":  self.available  = True
@@ -237,7 +237,7 @@ class Queue(object):
 ############
 class Node(object):
     """
-    Represent a compute node inside a scheduler queue.
+    Represents a compute node inside a scheduler queue.
 
     Attributes:
         name (str):                     Node name.
@@ -248,9 +248,9 @@ class Node(object):
         free (int):                     Free CPUs.
 
     Methods:
-        set_commands():                 Build node-level scheduler commands.
-        set_occupation():               Store CPU occupancy data.
-        get_overall_usage():            Query the current node state.
+        set_commands():                 Builds node-level scheduler commands.
+        set_occupation():               Stores CPU occupancy data.
+        get_overall_usage():            Queries the current node state.
     """
     def __init__(self, name: str, _queue: object): 
         self.name                = name

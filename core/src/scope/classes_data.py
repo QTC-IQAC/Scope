@@ -7,7 +7,7 @@ from scope import constants
 ##################
 class Collection(object):
     """
-    Group related `Data` objects that share a scanning variable.
+    Groups related `Data` objects that share a scanning variable.
 
     Attributes:
         object_type (str):              Object category (`"collection"`).
@@ -16,14 +16,14 @@ class Collection(object):
         datas (list):                   Stored `Data` objects.
 
     Methods:
-        add_data():                     Append a compatible data point.
-        add_setting():                  Register a setting shared by the collection.
-        check_settings():               Compare the complete recorded calculation settings.
-        get_values():                   Return stored values as an array.
-        get_variables():                Return scanned variables as an array.
-        find_min():                     Retrieve the minimum-value entry.
-        find_max():                     Retrieve the maximum-value entry.
-        convert_to_units():             Convert all entries to new units.
+        add_data():                     Appends a compatible data point.
+        add_setting():                  Registers a setting shared by the collection.
+        check_settings():               Compares the complete recorded calculation settings.
+        get_values():                   Returns stored values as an array.
+        get_variables():                Returns scanned variables as an array.
+        find_min():                     Retrieves the minimum-value entry.
+        find_max():                     Retrieves the maximum-value entry.
+        convert_to_units():             Converts all entries to new units.
     """
     def __init__(self, key: str, variable: str):
         self.object_type    = "collection"
@@ -64,7 +64,7 @@ class Collection(object):
         for data in self.datas: data.add_setting(name, value, overwrite=overwrite)
 
     def check_settings(self, settings: dict) -> bool:
-        """Return whether all recorded settings and all entries match the dictionary.
+        """Returns whether all recorded settings and all entries match the dictionary.
 
         Missing or additional settings return False. Temperature availability is
         checked separately by the caller. This method does not modify results.
@@ -175,7 +175,7 @@ class Collection(object):
 ############
 class Data(object):
     """
-    Represent a single numerical or textual result in SCOPE.
+    Represents a single numerical or textual result in SCOPE.
 
     Attributes:
         object_type (str):              Object category (`"data"`).
@@ -186,13 +186,13 @@ class Data(object):
         subtype (str):                  Broad result type, such as energy or time.
 
     Methods:
-        set_subtype():                  Infer the subtype from units.
-        add_property():                 Attach metadata to the result.
-        add_setting():                  Attach a calculation setting to the result.
-        check_settings():               Compare the complete recorded calculation settings.
-        format():                       Build a formatted string representation.
-        convert_to_units():             Convert supported energy units.
-        print_in_units():               Print the value in alternate units.
+        set_subtype():                  Infers the subtype from units.
+        add_property():                 Attaches metadata to the result.
+        add_setting():                  Attaches a calculation setting to the result.
+        check_settings():               Compares the complete recorded calculation settings.
+        format():                       Builds a formatted string representation.
+        convert_to_units():             Converts supported energy units.
+        print_in_units():               Prints the value in alternate units.
     """
     def __init__(self, key: str, value, units: str, function: str="Unknown", notes=None, debug: str=0):
         self.object_type   = "data"
@@ -233,7 +233,7 @@ class Data(object):
 
     def check_settings(self, settings: dict) -> bool:
         """
-        Return whether external settings (settings) match the current ones in self
+        Returns whether external settings (settings) match the current ones in self
         Missing or additional settings return False; no metadata are changed.
         """
         if not isinstance(settings, dict): raise TypeError("DATA.CHECK_SETTINGS: settings must be a dictionary")

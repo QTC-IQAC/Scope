@@ -17,7 +17,7 @@ from scope_sco.sco_structure    import *
 ########################################
 class System_sco(System):
     """
-    Represent a spin-crossover system built from crystal references.
+    Represents a spin-crossover system built from crystal references.
     Some tasks are specific to Fe-N6-based SCO systems. Generalization is possible but not yet implemented.
 
     Attributes:
@@ -26,10 +26,10 @@ class System_sco(System):
         refcode_wo_digits (str):        Reference code stripped of digits.
 
     Methods:
-        load_single_cell2mol_folder():  Import one cell2mol folder.
-        load_multiple_cell2mol_folders(): Import several cell2mol folders.
-        set_reference_molecs():         Build HS/LS molecular references.
-        set_reference_cells():          Build HS/LS crystal references.
+        load_single_cell2mol_folder():  Imports one cell2mol folder.
+        load_multiple_cell2mol_folders(): Imports several cell2mol folders.
+        set_reference_molecs():         Builds HS/LS molecular references.
+        set_reference_cells():          Builds HS/LS crystal references.
     """
     def __init__(self, refcode: str) -> None:
         System.__init__(self, refcode)
@@ -51,7 +51,7 @@ class System_sco(System):
     ######
     def load_single_cell2mol_folder(self, folder: str, overwrite: bool=False, debug: int=0):
         """
-        Import one cell2mol folder into the current SCO system.
+        Imports one cell2mol folder into the current SCO system.
 
         Parameters:
             folder (str):               Folder containing `.gmol` and `.cif` files.
@@ -247,7 +247,7 @@ class System_sco(System):
 ######################################
 class Cell_sco(Cell):
     """
-    Represent a crystal cell specialized for spin-crossover analysis.
+    Represents a crystal cell specialized for spin-crossover analysis.
     Some tasks are specific to Fe-N6-based SCO Cells. Generalization is possible but not yet implemented.
 
     Attributes:
@@ -257,9 +257,9 @@ class Cell_sco(Cell):
         hs_molar_fraction (float):      High-spin molar fraction.
 
     Methods:
-        get_FeN6_molecules():           Extract FeN6 molecular environments.
-        get_spin_and_phase_data():      Assign phase and HS fraction.
-        get_sco_geom():                 Print SCO geometric descriptors.
+        get_FeN6_molecules():           Extracts FeN6 molecular environments.
+        get_spin_and_phase_data():      Assigns phase and HS fraction.
+        get_sco_geom():                 Prints SCO geometric descriptors.
     """
     def __init__(self, name: str, labels: list, pos: list, cell_vector: list=None, cell_param: list=None) -> None:
         Cell.__init__(self, name, labels, pos, cell_vector, cell_param)

@@ -11,7 +11,7 @@ QE_PP_RELEASES_URL = "https://github.com/QTC-IQAC/Scope/releases/tag/PP_Librarie
 #######################
 def gen_qe_input(comp: object, debug: int=0):
     """
-    Generate a Quantum Espresso input file for a computation.
+    Generates a Quantum Espresso input file for a computation.
 
     Parameters:
         comp (object):    Computation object containing the QC settings, source, and file paths.
@@ -277,15 +277,15 @@ def gen_qe_input(comp: object, debug: int=0):
 
 ###################################################
 def gen_qe_subfile(comp: object, queue: object, module: str, procs: int=1, exe: str="pw.x", version: float=7.0, launcher: str=None, debug: int=0):
-    """Generate a QE script with isolated scratch and optional evolving wf storage.
+    """Generates a QE script with isolated scratch and optional evolving wf storage.
 
     save_wf='job' (also True) reuses data only for continuations. 'workflow'
     allows reuse from the first computation of every participating Job. The
     shared path is checked at runtime; unavailable/incomplete data leaves the
     atomic guess unchanged. Job requisites must enforce execution order.
     Scheduler stdout/stderr use absolute paths in the computation folder.
-    Remove the computation's scratch directory after output and wf copying;
-    retain it and report its path if either copy fails.
+    Removes the computation's scratch directory after output and wf copying;
+    retains it and reports its path if either copy fails.
     """
     import shlex
     wf_prepare, wf_store = gen_qe_wf_blocks(comp, debug=debug)
@@ -383,7 +383,7 @@ fi''', file=sub)
 ## Other Functions ##
 #####################
 def gen_qe_wf_blocks(comp: object, debug: int=0) -> tuple[str, str]:
-    """Return the wf preparation and storage shell blocks for a QE submission.
+    """Returns the wf preparation and storage shell blocks for a QE submission.
 
     Disabled storage returns two empty strings. Job mode prepares a saved wf
     only for continuations; workflow mode also prepares it for initial runs.
@@ -442,7 +442,7 @@ fi'''
     return wf_prepare, wf_store
 
 def remove_qe_pseudopotentials(wf_path: str, debug: int=0) -> None:
-    """Remove pseudopotential copies named in QE output XML from a staged .save folder.
+    """Removes pseudopotential copies named in QE output XML from a staged .save folder.
 
     Only local basenames listed under output/atomic_species are removed, regardless
     of extension. Missing copies are ignored; XML and other files are retained.
@@ -463,13 +463,13 @@ def remove_qe_pseudopotentials(wf_path: str, debug: int=0) -> None:
     if debug > 0: print(f"REMOVE_QE_PSEUDOPOTENTIALS: removed {removed} local copies from {wf_path}")
 
 def check_qe_wf(wf_path: str, debug: int=0) -> bool:
-    """Check the basic completeness of a collected QE .save directory.
+    """Checks the basic completeness of a collected QE .save directory.
 
-    Read data-file-schema.xml and require readable, nonempty density and orbital
+    Reads data-file-schema.xml and requires readable, nonempty density and orbital
     files for every k-point/spin channel, in one consistent .dat or .hdf5 format.
-    Require occup.txt for DFT+U and paw.txt for PAW when identified in the metadata.
+    Requires occup.txt for DFT+U and paw.txt for PAW when identified in the metadata.
     Pseudopotential copies are optional; SCOPE supplies them through pseudo_dir.
-    Legacy/distributed saves are unsupported. Return only a Boolean; explanations
+    Legacy/distributed saves are unsupported. Returns only a Boolean; explanations
     are printed when debug > 0. Files are opened read-only and only one byte of
     each binary file is read. This does not validate binary contents, SCF convergence,
     the electronic state or compatibility with a receiving computation/QE build.
@@ -523,10 +523,10 @@ def check_qe_wf(wf_path: str, debug: int=0) -> bool:
         return False
 
 def prepare_qe_wf(wf_path: str, inp_path: str, debug: int=0) -> bool:
-    """Copy a saved QE wf beside a generated scratch input and enable file initialization.
+    """Copies a saved QE wf beside a generated scratch input and enables file initialization.
 
-    Return True only after copying, checking the copy and replacing the scratch
-    input. On failure retain the original input and return False. Expected input
+    Returns True only after copying, checking the copy and replacing the scratch
+    input. On failure retains the original input and returns False. Expected input
     uses the saved directory's prefix, outdir='./', and SCOPE's atomic defaults.
     Whitespace around assignment signs is allowed and preserved.
     The persistent wf is read-only; the scratch destination must not already exist.
@@ -603,7 +603,7 @@ def get_pp(elem: str, path: str):
 ### Check QE ###
 ################
 def check_qe_launcher(module: str, scheduler: str='slurm', debug: int=0) -> dict:
-    """Inspect QE's executable, MPI libraries, and possible external launchers.
+    """Inspects QE's executable, MPI libraries, and possible external launchers.
 
     Returns:
         Static availability, probe results, MPI clues, launcher candidates, and

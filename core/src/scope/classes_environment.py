@@ -13,7 +13,7 @@ from scope.read_write    import save_to_config, load_config
 ###################
 class Environment(object):
     """
-    Represent the execution environment used by SCOPE.
+    Represents the execution environment used by SCOPE.
 
     The class stores scheduler, queue, software, and path information needed to
     run computations locally or on HPC systems.
@@ -32,15 +32,15 @@ class Environment(object):
         g16_launcher (str):             Gaussian driver command (normally 'g16').
 
     Methods:
-        set_scheduler():                Detect and store the active scheduler.
-        set_commands():                 Build scheduler command templates.
-        set_queues():                   Collect and configure available queues.
-        set_paths():                    Store shared project paths.
+        set_scheduler():                Detects and stores the active scheduler.
+        set_commands():                 Builds scheduler command templates.
+        set_queues():                   Collects and configures available queues.
+        set_paths():                    Stores shared project paths.
         set_software():                 Sets software modules for Gaussian16 and Quantum Espresso 7.0.
-        check_software():               Inspect configured modules without launching computations.
-        get_best_queue():               Select the best queue for submission.
-        get_user_requested():           Summarize requested jobs and CPUs.
-        check_submitted():              Check whether a job is already queued.
+        check_software():               Inspects configured modules without launching computations.
+        get_best_queue():               Selects the best queue for submission.
+        get_user_requested():           Summarizes requested jobs and CPUs.
+        check_submitted():              Checks whether a job is already queued.
     """
     def __init__(self, name: str):
         self.object_type            = "environment"
@@ -54,7 +54,7 @@ class Environment(object):
     ######
     def set_scheduler(self):
         """
-        Detect the scheduler available on the current machine.
+        Detects the scheduler available on the current machine.
 
         Returns:
             str: Detected scheduler (`"sge"`, `"slurm"`, or `"local"`).
@@ -86,7 +86,7 @@ class Environment(object):
     ######
     def set_commands(self):
         """
-        Store the scheduler commands used by this environment.
+        Stores the scheduler commands used by this environment.
         """
         if not hasattr(self,"scheduler"): self.set_scheduler()
         if self.scheduler == "slurm":
@@ -158,7 +158,7 @@ class Environment(object):
     ######
     def read_user_queue_list(self, line, debug: int=0):
         """
-        Select queues from a comma-separated user input string.
+        Selects queues from a comma-separated user input string.
 
         Parameters:
             line (str):                  Comma-separated queue names.
@@ -189,7 +189,7 @@ class Environment(object):
 
     ######
     def read_job_specs(self, content: str, isfile: bool=True, debug: int=0):
-        """Apply an input's resource settings; omitted time_limit resets the queue-limit fallback."""
+        """Applies an input's resource settings; omitted time_limit resets the queue-limit fallback."""
         from scope.classes_input import set_environment_data
         if not hasattr(self,"available_queues"): print("ENV.READ_JOB_SPECS: please run 'user_queue_preferences' first in the environment class"); return None
         local_env = set_environment_data(content, isfile=isfile, debug=debug)
@@ -211,7 +211,7 @@ class Environment(object):
     ######
     def get_mqueues(self, debug: int=0):
         """
-        Retrieve queue objects from the active scheduler.
+        Retrieves queue objects from the active scheduler.
 
         Parameters:
             debug (int):                 Verbosity level.
@@ -466,7 +466,7 @@ class Environment(object):
     ######
     def get_best_queue(self, autoselect: bool=False, debug: int=0):
         """
-        Select the best queue for submission.
+        Selects the best queue for submission.
 
         Parameters:
             autoselect (bool):           Whether to auto-select all available queues.
@@ -780,7 +780,7 @@ class Environment(object):
         save_to_config(data)
 
     def check_software(self, debug: int=0) -> dict:
-        """Run software-specific static checks for each configured non-empty module.
+        """Runs software-specific static checks for each configured non-empty module.
 
         Parameters:
             debug: 1 prints summaries and warnings; higher values expose nested
@@ -895,7 +895,7 @@ class Environment(object):
 @dataclass
 class CommandResult: 
     """
-    Store the outcome of a shell command executed by SCOPE.
+    Stores the outcome of a shell command executed by SCOPE.
 
     Attributes:
         command (str):                  Command string that was executed.
@@ -904,7 +904,7 @@ class CommandResult:
         stderr (str):                   Captured standard error.
 
     Methods:
-        ok:                             Return whether the command succeeded.
+        ok:                             Returns whether the command succeeded.
     """
     command: str
     returncode: int
@@ -974,7 +974,7 @@ def write_test_job(scheduler: str):
 ### Checks ###
 ##############
 def run_module_checks(module: str, commands: dict, timeout: int=10, debug: int=0) -> dict:
-    """Load a module in an isolated Bash login shell and collect static probes.
+    """Loads a module in an isolated Bash login shell and collects static probes.
 
     Parameters:
         module: Module name(s), separated by spaces, as used by module load.

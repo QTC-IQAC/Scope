@@ -6,7 +6,7 @@ from scope_azo.azo_classes import System_azo
 
 def sanitize_smiles(smiles_str: str) -> str:
     """
-    Remove duplicated slash escaping introduced by the shell.
+    Removes duplicated slash escaping introduced by the shell.
 
     Parameters:
         smiles_str (str):              Raw SMILES string.

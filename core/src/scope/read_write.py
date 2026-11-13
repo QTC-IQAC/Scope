@@ -42,7 +42,7 @@ def save_list_as_text(inplist: list, pathfile: str=os.getcwd()+"outfile.txt"):
 
 def read_user_input(message: str, rtext_options: Optional[List[str]] = None, rtype_options: Optional[List[Type]] = None, validator: Optional[Callable[[Any], bool]] = None, default: Any = None, case_insensitive: bool = True, limit_attempts: bool = True, attempts: int = 3, debug: int = 0) -> Any:
     """
-    Read user input with optional validation rules.
+    Reads user input with optional validation rules.
 
     Parameters:
         message (str):                 Prompt shown to the user.
@@ -122,7 +122,7 @@ def read_user_input(message: str, rtext_options: Optional[List[str]] = None, rty
 #################
 def get_config_path(debug: int=0):
     """
-    Return the path to the SCOPE user config file.
+    Returns the path to the SCOPE user config file.
 
     Parameters:
         debug (int):                   Verbosity level.
@@ -203,7 +203,7 @@ def load_binary(pathfile):
     return binary
 
 def save_binary(variable, pathfile):
-    """Serialize to a temporary file and replace pathfile; return whether writing succeeded."""
+    """Serializes to a temporary file and replaces pathfile; returns whether writing succeeded."""
     import tempfile
     # Write to a temporary file first
     dir_name = os.path.dirname(pathfile)
@@ -242,7 +242,7 @@ def read_xyz(xyz_file):
     return labels, coords
 
 def write_xyz(path: str, labels: list, coords: list, charge: int=0, spin: int=1, append: bool=False, overwrite: bool=False):
-    """Write an XYZ structure. Existing files remain unchanged unless append or overwrite is selected."""
+    """Writes an XYZ structure. Existing files remain unchanged unless append or overwrite is selected."""
     assert len(labels) == len(coords)
     if append and overwrite: raise ValueError("WRITE_XYZ: append and overwrite cannot both be True")
     if os.path.isfile(path) and not append and not overwrite:
@@ -438,7 +438,7 @@ def complete_path(text, state):
     return None
 
 def configure_path_completion() -> bool:
-    """Enable interactive path completion when readline is available."""
+    """Enables interactive path completion when readline is available."""
     if readline is None:
         return False
     readline.set_completer_delims(' \t\n;')

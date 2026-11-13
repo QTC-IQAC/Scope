@@ -36,7 +36,7 @@ def get_3D(smiles, debug: int=0):
 ############################
 def eyring_halflife(g_initial: float, g_excited: float, temp: float=298.15, debug: int=0):
     """
-    Compute half-life and rate constant from the Eyring equation.
+    Computes half-life and rate constant from the Eyring equation.
 
     Parameters:
         g_initial (float):             Ground-state free energy in Hartree.
@@ -58,7 +58,7 @@ def eyring_halflife(g_initial: float, g_excited: float, temp: float=298.15, debu
 ######
 def calculate_dG(time: float, temp: float=298.15, debug: int=0): 
     """
-    Estimate a free-energy barrier from a half-life value.
+    Estimates a free-energy barrier from a half-life value.
 
     Parameters:
         time (float):                  Half-life in seconds.
@@ -105,7 +105,7 @@ def show_thermal_data(systems):                                                 
 ######
 def build_pss_spectrum(initial_fraction, initial_spectrum, final_spectrum, debug=0):
     """
-    Build a photostationary-state spectrum from two endpoint spectra.
+    Builds a photostationary-state spectrum from two endpoint spectra.
 
     Parameters:
         initial_fraction (float):      Fraction of the initial isomer.
@@ -121,7 +121,7 @@ def build_pss_spectrum(initial_fraction, initial_spectrum, final_spectrum, debug
 ######
 def wavelength_to_rgb(nm: float):
     """
-    Approximate the RGB color associated with a visible wavelength.
+    Approximates the RGB color associated with a visible wavelength.
 
     Parameters:
         nm (float):                    Wavelength in nanometers.

@@ -4,7 +4,7 @@ import numpy as np
 ####
 def build_graph(adj_matrix, debug: int=0, edge_features: dict=None, **node_features):
     """
-    Build a NetworkX graph from an adjacency matrix and node and edge features.
+    Builds a NetworkX graph from an adjacency matrix and node and edge features.
 
     Parameters:
         adj_matrix:                     Adjacency matrix.
@@ -80,7 +80,7 @@ def get_permutation_from_isomorphism(G1, G2):
 
 ####
 def resistance_matrix(G):
-    """Compute the resistance-distance matrix of a graph."""
+    """Computes the resistance-distance matrix of a graph."""
     L = nx.laplacian_matrix(G).astype(float).toarray()
     L_pinv = np.linalg.pinv(L)  # Moore–Penrose pseudoinverse
     n = L.shape[0]

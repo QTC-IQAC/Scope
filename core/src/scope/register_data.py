@@ -26,9 +26,9 @@ def reg_general(comp: object, debug: int=0):
 
 ###########################################
 def reg_optimization(comp: object, debug: int=0):
-    """Store optimization geometry, available forces and optimization success.
+    """Stores optimization geometry, available forces and optimization success.
 
-    Keep each Computation's forces before discarding its output object. Store
+    Keeps each Computation's forces before discarding its output object. Stores
     forces on the final State when available, in the parser's force units.
     """
     ### 0-In Case Reg_General hasn't been run:
@@ -168,7 +168,7 @@ def reg_excited_states(comp: object, debug: int=0):
 
 
 def reg_findiff(job: object, debug: int=0) -> bool:
-    """Register a complete QE finite-difference set of computations on job.fstate.
+    """Registers a complete QE finite-difference set of computations on job.fstate.
 
     Requires an undisplaced 'ref' SCF and all displacement pairs. The final State
     receives the reference geometry/cell, its SCF energy and forces, 3N-3 VNMs

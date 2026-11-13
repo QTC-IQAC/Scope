@@ -128,9 +128,9 @@ def parse_energy(lines, typ: str='last', debug: int=0):
 ## PARSING ORBITAL ENERGIES ##
 #############################
 def parse_MO_energies_from_step(lines: list, debug: int=0):
-    """Parse molecular-orbital energies from the supplied Gaussian step lines.
+    """Parses molecular-orbital energies from the supplied Gaussian step lines.
 
-    If eigenvalues are printed more than once, retain the last complete set of
+    If eigenvalues are printed more than once, retains the last complete set of
     spin channels. Selecting SCOPE's last complete computation step is the
     caller's responsibility; this function returns energies, not step lines.
 

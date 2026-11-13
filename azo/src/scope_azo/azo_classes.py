@@ -13,7 +13,7 @@ from scope_azo.azo_functions import *
 ############################################
 class System_azo(System):
     """
-    Represent an azo-specific system built around a stereodefined SMILES string.
+    Represents an azo-specific system built around a stereodefined SMILES string.
 
     Attributes:
         object_subtype (str):           System subtype (`"system_azo"`).
@@ -22,11 +22,11 @@ class System_azo(System):
         results (dict):                 System-level results.
 
     Methods:
-        check_smiles():                 Validate and normalize azo stereochemistry.
-        get_dihedral_indices():         Locate key azo atoms from the SMILES string.
-        create_trans():                 Build the trans isomer.
-        create_cis():                   Build the cis isomer.
-        create_ts():                    Build transition-state guesses.
+        check_smiles():                 Validates and normalizes azo stereochemistry.
+        get_dihedral_indices():         Locates key azo atoms from the SMILES string.
+        create_trans():                 Builds the trans isomer.
+        create_cis():                   Builds the cis isomer.
+        create_ts():                    Builds transition-state guesses.
     """
     def __init__(self, name: str, smiles: str, debug: int=0):
         System.__init__(self, name)
@@ -209,9 +209,9 @@ class System_azo(System):
 
         Workflow
         --------
-            - Find or create trans isomer.
-            - Get indices of atoms relevant to dihedral adjustment.
-            - Move the azo group dihedral angle close to the target angle.
+            - Finds or creates the trans isomer.
+            - Gets indices of atoms relevant to dihedral adjustment.
+            - Moves the azo group dihedral angle close to the target angle.
             - If there is steric hindrance, tries to solve it by moving adjacent rings.
             - If steric hindrance cannot be solved, returns None.
             - If it is solved, structure is saved to a Molecule_azo object with an 'initial' State. 
@@ -260,9 +260,9 @@ class System_azo(System):
 
         Workflow
         --------
-        - Find or create trans isomer.
-        - Get indices of atoms relevant to dihedral adjustment.
-        - Move the azo dihedral angle to the target angle.
+        - Finds or creates the trans isomer.
+        - Gets indices of atoms relevant to dihedral adjustment.
+        - Moves the azo dihedral angle to the target angle.
         - If there is steric hindrance, tries to solve it by moving adjacent rings.
         - If steric hindrance cannot be solved, returns None.
         - If it is solved, structure is saved to a Molecule_azo object with an 'initial' State. 
@@ -554,7 +554,7 @@ class System_azo(System):
     #######################
     def get_mets(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, p_sh: float=0.0002, force: bool=False, vib_options: dict=None, debug: int=0):
         '''
-        Find the minimum-energy transition structure (METS) for thermal isomerization (cis-to-trans).
+        Finds the minimum-energy transition structure (METS) for thermal isomerization (cis-to-trans).
 
         This method scans the available sources in the system and builds a list of
         candidate "barrier" structures at the requested temperature:
@@ -577,7 +577,7 @@ class System_azo(System):
         target_state : str, default='opt'      Name of the state to inspect in each source (for example, `'opt'`).
         skip_triplets : bool, default=False    If `True`, triplet minima are ignored and only singlet TS candidates are used.
         p_sh : float, optional                 The probability of surface hopping. The default is 0.0002.
-        force : bool, default=False            Force recomputation of candidate thermal properties.
+        force : bool, default=False            Forces recomputation of candidate thermal properties.
                                                Candidates are always scanned and METS is reselected.
         vib_options : dict, optional           model, FR_cutoff (cm-1), FR_alpha, and imaginary treatment.
         debug : int, default=0                 Verbosity level for diagnostic prints.
@@ -652,11 +652,11 @@ class System_azo(System):
 
     ######
     def get_thermal_stability(self, target_state: str, temp: float=298.15, overwrite: bool=False, vib_options: dict=None, debug: int=0):
-        """Calculate cis/trans thermal stability with consistent vibrational options.
+        """Calculates cis/trans thermal stability with consistent vibrational options.
 
         Parameters:
             vib_options (dict):         model, FR_cutoff, FR_alpha, and imaginary treatment.
-            overwrite (bool):           Force recomputation of contributing thermal results.
+            overwrite (bool):           Forces recomputation of contributing thermal results.
             debug (int):                Verbosity; child functions receive debug - 1.
         """
         # Finds Trans and Target State
@@ -682,11 +682,11 @@ class System_azo(System):
 
     ######
     def get_trans_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, p_sh: float=0.0002, overwrite: bool=False, vib_options: dict=None, debug: int=0):
-        """Calculate thermal half-life with consistent vibrational options.
+        """Calculates thermal half-life with consistent vibrational options.
 
         Parameters:
             vib_options (dict):         model, FR_cutoff, FR_alpha, and imaginary treatment.
-            overwrite (bool):           Force recomputation of contributing thermal results.
+            overwrite (bool):           Forces recomputation of contributing thermal results.
             debug (int):                Verbosity; child functions receive debug - 1.
         """
         from scope.thermodynamics import eyring_equation
@@ -727,11 +727,11 @@ class System_azo(System):
         
     ######
     def get_cis_halflife_time(self, temp: float=298.15, target_state: str='opt', skip_triplets: bool=False, p_sh: float=0.0002, overwrite: bool=False, vib_options: dict=None, debug: int=0):
-        """Calculate thermal half-life with consistent vibrational options.
+        """Calculates thermal half-life with consistent vibrational options.
 
         Parameters:
             vib_options (dict):         model, FR_cutoff, FR_alpha, and imaginary treatment.
-            overwrite (bool):           Force recomputation of contributing thermal results.
+            overwrite (bool):           Forces recomputation of contributing thermal results.
             debug (int):                Verbosity; child functions receive debug - 1.
         """
         from scope.thermodynamics import eyring_equation
@@ -853,7 +853,7 @@ class System_azo(System):
 
     ######
     def plot_energy_profile(self, target_state: str='opt', temperature: float=298.15, vib_options: dict=None, debug: int=0):
-        """Plot effective free energies using common model and imaginary-frequency options."""
+        """Plots effective free energies using common model and imaginary-frequency options."""
         import matplotlib.pyplot as plt
 
         #####################
@@ -947,7 +947,7 @@ class System_azo(System):
 #################
 class PSS(object):
     """
-    Represent a photostationary-state model for an azo system.
+    Represents a photostationary-state model for an azo system.
 
     Attributes:
         system (object):                Associated azo system.
@@ -957,11 +957,11 @@ class PSS(object):
         pss_results (dict):             Cached PSS calculations by wavelength.
 
     Methods:
-        set_thermal_rates():            Store thermal isomerization rates.
-        set_lamp():                     Attach a lamp model.
-        get_photo_rates():              Compute photoisomerization rates.
-        get_pss_ratio():                Compute the trans fraction at PSS.
-        get_pss_spectrum():             Build the PSS spectrum.
+        set_thermal_rates():            Stores thermal isomerization rates.
+        set_lamp():                     Attaches a lamp model.
+        get_photo_rates():              Computes photoisomerization rates.
+        get_pss_ratio():                Computes the trans fraction at PSS.
+        get_pss_spectrum():             Builds the PSS spectrum.
     """
     def __init__(self, system, wl_range, trans_spectrum, cis_spectrum): 
         # Trans and Cis spectra are cross sections
@@ -1170,18 +1170,18 @@ class PSS(object):
 ############################################
 class Molecule_azo(Molecule):
     """
-    Represent an azo molecule with dedicated geometric descriptors.
+    Represents an azo molecule with dedicated geometric descriptors.
 
     Attributes:
         object_subtype (str):           Species subtype (`"molecule_azo"`).
         dihedral_indices (list):        Atom indices defining the azo motif.
 
     Methods:
-        set_dihedral_indices():         Store azo reference indices.
-        get_main_dihedral():            Compute the CNNC dihedral angle.
-        get_geometry_summary():         Summarize the main azo descriptors.
-        set_initial_state():            Create the initial azo state.
-        add_state():                    Add an azo-specific state object.
+        set_dihedral_indices():         Stores azo reference indices.
+        get_main_dihedral():            Computes the CNNC dihedral angle.
+        get_geometry_summary():         Summarizes the main azo descriptors.
+        set_initial_state():            Creates the initial azo state.
+        add_state():                    Adds an azo-specific state object.
     """
     def __init__(self, labels, coord):
         Molecule.__init__(self, labels, coord)
@@ -1282,7 +1282,7 @@ class Molecule_azo(Molecule):
 #########################################
 class State_azo(State):
     """
-    Represent a state associated with an azo molecule.
+    Represents a state associated with an azo molecule.
 
     Attributes:
         object_subtype (str):           State subtype (`"state_azo"`).
@@ -1290,9 +1290,9 @@ class State_azo(State):
         results (dict):                 Registered state results.
 
     Methods:
-        get_main_dihedral():            Compute the CNNC dihedral angle.
-        get_geometry_summary():         Summarize azo geometric descriptors.
-        get_gtot_eff():                 Compute the effective free energy for azo states.
+        get_main_dihedral():            Computes the CNNC dihedral angle.
+        get_geometry_summary():         Summarizes azo geometric descriptors.
+        get_gtot_eff():                 Computes the effective free energy for azo states.
     """
     def __init__(self, _source: object, name: str, debug: int=0):
         State.__init__(self, _source, name, debug=debug)
@@ -1363,7 +1363,7 @@ class State_azo(State):
         ----------
         temp : float, optional         The temperature in Kelvin. The default is 298.15 K.
         p_sh : float, optional         The probability of surface hopping. The default is 0.0002.
-        overwrite : bool, optional     Force recomputation even when settings match.
+        overwrite : bool, optional     Forces recomputation even when settings match.
         vib_options : dict, optional   model ('HO' or 'QRRHO'), FR_cutoff (cm-1), FR_alpha, and imaginary treatment.
                                        Changed settings automatically replace affected results.
         debug : int, optional          The debug level. The default is 0
@@ -1446,7 +1446,7 @@ class State_azo(State):
 ################
 class Lamp:
     """
-    Represent a tabulated irradiation source used in azo PSS calculations.
+    Represents a tabulated irradiation source used in azo PSS calculations.
 
     Attributes:
         name (str):                     Lamp name.
@@ -1457,11 +1457,11 @@ class Lamp:
         power_intensity (float):        Intensity scaling factor.
 
     Methods:
-        read_wl():                      Load available wavelengths.
-        read_fwhm():                    Load or derive FWHM values.
-        read_power():                   Load lamp powers.
-        read_power_intensity():         Load the intensity multiplier.
-        available_lamps():              List bundled lamp definitions.
+        read_wl():                      Loads available wavelengths.
+        read_fwhm():                    Loads or derives FWHM values.
+        read_power():                   Loads lamp powers.
+        read_power_intensity():         Loads the intensity multiplier.
+        available_lamps():              Lists bundled lamp definitions.
     """
     from pathlib import Path
     _LAMP_DATA_DIR = Path(__file__).resolve().parent / "lamp_data" ## Path of where lamp-data files are stored

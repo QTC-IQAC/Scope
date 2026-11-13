@@ -10,7 +10,7 @@ from scope import __version__
 
 class System(object):
     """
-    Represent the top-level container for sources, workflows, and results.
+    Represents the top-level container for sources, workflows, and results.
 
     should_save tracks registered changes and Source/Branch additions. Direct
     attribute edits are not automatically detected; set the flag when needed.
@@ -24,12 +24,12 @@ class System(object):
         should_save (bool):             Tracked changes need saving; cleared by a successful save().
 
     Methods:
-        add_source():                   Add a new source and initialize its state.
-        find_source():                  Locate a source by name.
-        set_main_path():                Build system-specific folder paths.
-        set_paths_from_environment():   Derive paths from an environment object.
-        set_paths_down_hierarchy():     Propagate paths to workflows and computations.
-        save():                         Serialize the system to disk.
+        add_source():                   Adds a new source and initializes its state.
+        find_source():                  Locates a source by name.
+        set_main_path():                Builds system-specific folder paths.
+        set_paths_from_environment():   Derives paths from an environment object.
+        set_paths_down_hierarchy():     Propagates paths to workflows and computations.
+        save():                         Serializes the system to disk.
     """
     def __init__(self, name: str) -> None:
         self.version              = __version__
@@ -85,7 +85,7 @@ class System(object):
 
     ######
     def create_folders(self):
-        """Create the main system folders if they do not exist."""
+        """Creates the main system folders if they do not exist."""
         for path in [self.system_path, self.computations_path]:
             try:
                 os.makedirs(path, exist_ok=True)
@@ -95,7 +95,7 @@ class System(object):
 
     ######
     def save(self, filepath: str=None):
-        """Save the System in disk, clearing should_save only if writing succeeds.
+        """Saves the System in disk, clearing should_save only if writing succeeds.
 
         The saved object also has should_save=False. Failed saves leave the
         in-memory flag True so that unsaved changes remain marked.
@@ -243,7 +243,7 @@ class System(object):
     ######
     def set_paths_from_environment(self, environment: object, create_folders: bool=True, debug: int=0) -> None: 
         """
-        Set system paths from an environment object.
+        Sets system paths from an environment object.
 
         Parameters:
             environment (object):        Environment that provides global paths.
@@ -293,7 +293,7 @@ class System(object):
     ######
     def set_paths_down_hierarchy(self, create_folders: bool=True, debug: int=0) -> None:
         """
-        Propagate system paths to branches, jobs, and computations.
+        Propagates system paths to branches, jobs, and computations.
 
         Parameters:
             create_folders (bool):       Whether to create missing folders.

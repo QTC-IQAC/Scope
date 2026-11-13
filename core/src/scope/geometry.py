@@ -7,7 +7,7 @@ from scope.operations.vecs_and_mats import normalize, determinant
 #################
 def centercoords(coords: list, atom_idx: int):
     """
-    Translate coordinates so a selected atom lies at the origin.
+    Translates coordinates so a selected atom lies at the origin.
 
     Parameters:
         coords (list):                  Cartesian coordinates.
@@ -22,7 +22,7 @@ def centercoords(coords: list, atom_idx: int):
 
 def displace_coords(coords: list, atom_idx: int, point: list=[0,0,0]):
     """
-    Translate coordinates so a selected atom reaches a target point.
+    Translates coordinates so a selected atom reaches a target point.
 
     Parameters:
         coords (list):                  Cartesian coordinates.
@@ -49,7 +49,7 @@ def get_dist(coord1: list, coord2: list) -> float:
 ###########
 def get_angle_vectors(v1, v2, eps: float=1e-8) -> float:
     """
-    Calculate the angle in radians between two vectors.
+    Calculates the angle in radians between two vectors.
 
     Parameters:
         v1 (array-like):                First vector.
@@ -67,7 +67,7 @@ def get_angle_vectors(v1, v2, eps: float=1e-8) -> float:
 
 def get_angle_points(P1, P2, P3, eps: float=1e-8) -> float:
     """
-    Calculate the angle in radians defined by three points.
+    Calculates the angle in radians defined by three points.
 
     Parameters:
         P1 (array-like):                First point.
@@ -85,7 +85,7 @@ def get_angle_points(P1, P2, P3, eps: float=1e-8) -> float:
 
 def get_angle(a1, a2, a3=None, eps: float=1e-8) -> float:
     """
-    Compute an angle from either two vectors or three points.
+    Computes an angle from either two vectors or three points.
 
     Parameters:
         a1:                            First vector or point.
@@ -197,7 +197,7 @@ def set_angle(labels, coord, target_angle: float, atom1: int, atom2: int, atom3:
 ####################
 def get_dihedral(P1, P2, P3, P4, eps: float=1e-8) -> float:
     """
-    Calculate the signed dihedral angle defined by four points.
+    Calculates the signed dihedral angle defined by four points.
 
     Parameters:
         P1:                            First point.
@@ -349,7 +349,7 @@ def set_dihedral(labels: list, coord: list, dih: float, atom1: int, atom2: int, 
 ######
 def solve_dihedral(labels: list, coord: list, at0: int, at1: int, at2: int, at3: int, at4: int, at5: int, adjmat_ref, adjnum_ref, debug: int=0):
     """
-    Adjust adjacent dihedrals to resolve steric clashes after a torsion change.
+    Adjusts adjacent dihedrals to resolve steric clashes after a torsion change.
 
     Parameters:
         labels (list):                  Atomic symbols.
@@ -466,7 +466,7 @@ def solve_dihedral(labels: list, coord: list, at0: int, at1: int, at2: int, at3:
 #########
 def get_planar_distortion(theta: float) -> float:
     """
-    Compute the minimum angular distance to a planar orientation.
+    Computes the minimum angular distance to a planar orientation.
 
     Parameters:
         theta (float | array-like):     Input angle in radians.
@@ -517,7 +517,7 @@ def rot_in_z(theta:float,input_geom:np.ndarray):
 #########
 def put_atoms_on_xy(coord: list, at1: int, at2: int, at3: int, debug=0):
     """
-    Rotate coordinates so one bond lies on the x axis and a third atom lies on the xy plane.
+    Rotates coordinates so one bond lies on the x axis and a third atom lies on the xy plane.
 
     Parameters:
         coord (list):                   Cartesian coordinates.
@@ -562,7 +562,7 @@ def get_unit_cell_volume(a: float, b: float, c: float, alpha: float, beta: float
 ######
 def cellparam_2_cellvec(*args) -> list:
     """
-    Convert unit-cell parameters into Cartesian cell vectors.
+    Converts unit-cell parameters into Cartesian cell vectors.
 
     Parameters:
         *args:                          Either six scalar values or one 6-item sequence.

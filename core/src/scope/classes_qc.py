@@ -11,7 +11,7 @@ elemdatabase = ElementData()
 ######################
 class VNM(object):
     """
-    Represent one vibrational normal mode and its optional displacement vectors.
+    Represents one vibrational normal mode and its optional displacement vectors.
 
     The authoritative mode array has shape `(natoms, 3)`. Its coordinate
     convention is recorded by `is_mass_weighted`; conversion methods can either
@@ -27,12 +27,12 @@ class VNM(object):
         is_mass_weighted (bool):        Whether the stored mode is mass weighted.
 
     Methods:
-        set_mode():                     Store eigenvector data for the mode.
-        mass_weight_mode():             Convert the stored mode to mass-weighted coordinates.
-        unweight_mode():                Convert the stored mode to Cartesian coordinates.
-        get_atomic_participation():     Calculate each atom's contribution to the mode.
-        write_dyn():                    Export a displacement trajectory.
-        overlap():                      Compute overlap with another mode.
+        set_mode():                     Stores eigenvector data for the mode.
+        mass_weight_mode():             Converts the stored mode to mass-weighted coordinates.
+        unweight_mode():                Converts the stored mode to Cartesian coordinates.
+        get_atomic_participation():     Calculates each atom's contribution to the mode.
+        write_dyn():                    Exports a displacement trajectory.
+        overlap():                      Computes overlap with another mode.
     """
     def __init__(self, index: int, freq: float, red_mass: float=1.0, force_cnt: float=0.0, IR_int: float=0.0, sym: str='A'):
         self.object_type      = "vnm"
@@ -47,7 +47,7 @@ class VNM(object):
         self.is_mass_weighted = False
 
     def set_mode(self, atomidxs: list, atnums: list, xs: list, ys: list, zs: list, is_mass_weighted: bool):
-        """Store displacement vectors and their mass-weighting convention.
+        """Stores displacement vectors and their mass-weighting convention.
 
         Parameters:
             atomidxs (list):            Atom identifiers in mode order.
@@ -71,11 +71,11 @@ class VNM(object):
 
     @property
     def mode_format2(self) -> np.ndarray:
-        """Return a flattened view of the authoritative mode array."""
+        """Returns a flattened view of the authoritative mode array."""
         return self.mode.reshape(-1)
 
     def mass_weight_mode(self, permanent: bool=True) -> np.ndarray:
-        """Return the mass-weighted mode, optionally storing the conversion.
+        """Returns the mass-weighted mode, optionally storing the conversion.
 
         Parameters:
             permanent (bool):           Whether to replace `mode` and update its convention.
@@ -93,7 +93,7 @@ class VNM(object):
         return self.mode
 
     def unweight_mode(self, permanent: bool=True) -> np.ndarray:
-        """Return the Cartesian mode, optionally storing the conversion.
+        """Returns the Cartesian mode, optionally storing the conversion.
 
         Parameters:
             permanent (bool):           Whether to replace `mode` and update its convention.
@@ -111,7 +111,7 @@ class VNM(object):
         return self.mode
 
     def get_atomic_participation(self) -> np.ndarray:
-        """Return each atom's normalized contribution to the mode's kinetic-energy norm.
+        """Returns each atom's normalized contribution to the mode's kinetic-energy norm.
 
         Returns:
             np.ndarray: Atomic contributions in mode order, summing to one.
@@ -143,7 +143,7 @@ class VNM(object):
             write_xyz(outfolder+filename, labels, coords, append=True) 
 
     def overlap(self, other: object) -> float:
-        """Return the absolute normalized overlap in mass-weighted coordinates."""
+        """Returns the absolute normalized overlap in mass-weighted coordinates."""
         if not isinstance(other, type(self)):       return None
         if not self.has_mode or not other.has_mode: return None
         from scope.operations.vecs_and_mats import normalize
@@ -220,7 +220,7 @@ def plot_overlap_vnms(vnmsA: object, vnmsB: object):
 ##############################
 class ExcitedState(object):
     """
-    Represent an electronic excited state.
+    Represents an electronic excited state.
 
     Attributes:
         object_type (str):              Object category (`"excited_state"`).
@@ -231,9 +231,9 @@ class ExcitedState(object):
         s2 (float):                     Spin expectation value.
 
     Methods:
-        shift_wavelength():             Shift wavelength and update energy.
-        shift_energy():                 Shift energy and update wavelength.
-        restore():                      Restore original shifted values.
+        shift_wavelength():             Shifts wavelength and update energy.
+        shift_energy():                 Shifts energy and update wavelength.
+        restore():                      Restores original shifted values.
     """
     def __init__(self, index: int, energy: float, wavelength: float, fosc: float, s2: float, debug: int=0) -> None:
         self.object_type       = "excited_state"

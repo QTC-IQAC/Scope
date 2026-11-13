@@ -17,7 +17,7 @@ def interpret_software(name: str):
 #######################
 class Input_data(object):
     """
-    Represent parsed key-value input data from a file or text block.
+    Represents parsed key-value input data from a file or text block.
 
     Attributes:
         object_type (str):              Object category (`"input_data"`).
@@ -25,11 +25,11 @@ class Input_data(object):
         dct (dict):                     Parsed values as a dictionary.
 
     Methods:
-        read():                         Parse raw content into key-value pairs.
-        set():                          Store a dictionary as attributes.
-        _set_attr():                    Convert and assign a parsed value.
-        _add_attr():                    Add a new parsed attribute.
-        _mod_attr():                    Modify an existing parsed attribute.
+        read():                         Parses raw content into key-value pairs.
+        set():                          Stores a dictionary as attributes.
+        _set_attr():                    Converts and assigns a parsed value.
+        _add_attr():                    Adds a new parsed attribute.
+        _mod_attr():                    Modifies an existing parsed attribute.
     """
     def __init__(self, content: str=None, section=None, isfile: bool=True, debug=0):
         
@@ -128,7 +128,7 @@ class Input_data(object):
         return to_print
 
     def __eq__(self, other):
-        """Compare public non-callable attributes, excluding duplicate dct storage.
+        """Compares public non-callable attributes, excluding duplicate dct storage.
 
         Public names may contain underscores and values may be dictionaries.
         NumPy array settings use exact element/shape equality. Section metadata
@@ -161,7 +161,7 @@ class Input_data(object):
 
 #######################
 def fill_environment_data(data: object, debug: int=0):
-    """Fill resource defaults; time_limit optionally overrides SLURM wall time in integer minutes.
+    """Fills resource defaults; time_limit optionally overrides SLURM wall time in integer minutes.
 
     Omitted or None uses the selected queue's limit. Positive integers apply
     to submissions prepared from this input.
@@ -188,7 +188,7 @@ def fill_options_data(data: object, debug: int=0):
     return data
 
 def fill_job_data(data: object, debug: int=0):
-    """Fill Job defaults and check for required attributes. Raises ValueError if required attributes are missing."""
+    """Fills Job defaults and checks for required attributes. Raises ValueError if required attributes are missing."""
     ## Adds defaults to job_data
     if not hasattr(data,"branch"):        raise ValueError("FILL_JOB_DATA: job_data is missing 'branch' input variable")
     if not hasattr(data,"workflow"):      raise ValueError("FILL_JOB_DATA: job_data is missing 'workflow' input variable")
@@ -376,9 +376,9 @@ def interpret_workflow_from_user(sys: object, job_data: object, debug: int=0):
 
     workflow accepts a name/pattern or a list, matched case-insensitively against
     System sources. Shell-style *, ? and [...] patterns are supported; '*' selects
-    all sources. Preserve selector order and source order within each match.
-    Raise ValueError for invalid selectors or any selector matching no source.
-    Return the expanded list without changing job_data; branch membership is irrelevant.
+    all sources. Preserves selector order and source order within each match.
+    Raises ValueError for invalid selectors or any selector matching no source.
+    Returns the expanded list without changing job_data; branch membership is irrelevant.
     """
     if not hasattr(job_data,"workflow"):
         raise ValueError("INTERPRET_WORKFLOW_FROM_USER: job_data is missing 'workflow' input variable")

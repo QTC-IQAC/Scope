@@ -15,7 +15,7 @@ elemdatabase = ElementData()
 ############
 class Atom(object):
     """
-    Represent a single atom in SCOPE.
+    Represents a single atom in SCOPE.
 
     Attributes:
         object_type (str):              Object category (`"atom"`).
@@ -26,11 +26,11 @@ class Atom(object):
         bonds (list):                   Bonds attached to the atom.
 
     Methods:
-        set_charge():                   Store an atomic charge.
-        set_spin():                     Store an atomic spin.
-        add_parent():                   Link the atom to a parent object.
-        set_adjacencies():              Store covalent and metal adjacency data.
-        check_connectivity():           Test connectivity against another atom.
+        set_charge():                   Stores an atomic charge.
+        set_spin():                     Stores an atomic spin.
+        add_parent():                   Links the atom to a parent object.
+        set_adjacencies():              Stores covalent and metal adjacency data.
+        check_connectivity():           Tests connectivity against another atom.
     """
     def __init__(self, label: str, coord: list, frac_coord: list=None, radii: float=None) -> None:
         self.object_type          = "atom"
@@ -382,7 +382,7 @@ class Atom(object):
 ###############
 class Metal(Atom):
     """
-    Represent a metal atom with coordination-sphere helpers.
+    Represents a metal atom with coordination-sphere helpers.
 
     Attributes:
         object_subtype (str):           Atom subtype (`"metal"`).
@@ -390,11 +390,11 @@ class Metal(Atom):
         coord_sphere_formula (str):     Formula of the coordination sphere.
 
     Methods:
-        get_valence_elec():             Estimate valence electrons from oxidation state.
-        get_coord_sphere():             Retrieve atoms bound to the metal.
-        get_coord_sphere_formula():     Summarize the coordination sphere formula.
-        get_connected_groups():         Find ligand groups attached to the metal.
-        get_cshm():                     Compute a continuous shape measure.
+        get_valence_elec():             Estimates valence electrons from oxidation state.
+        get_coord_sphere():             Retrieves atoms bound to the metal.
+        get_coord_sphere_formula():     Summarizes the coordination sphere formula.
+        get_connected_groups():         Finds ligand groups attached to the metal.
+        get_cshm():                     Computes a continuous shape measure.
     """
     def __init__(self, label: str, coord: list, frac_coord: list=None, radii: float=None) -> None:
         Atom.__init__(self, label, coord, frac_coord=frac_coord, radii=radii)
@@ -429,7 +429,7 @@ class Metal(Atom):
 
     ######
     def get_valence_elec (self, m_ox: int):
-        """ Count valence electrons for a given transition metal and metal oxidation state """
+        """ Counts valence electrons for a given transition metal and metal oxidation state """
         v_elec = elemdatabase.valenceelectrons[self.label] - m_ox
         if v_elec >= 0 :  self.valence_elec = v_elec
         else :            self.valence_elec = elemdatabase.elementgroup[self.label] - m_ox
@@ -562,7 +562,7 @@ class Metal(Atom):
 ############
 class Bond(object):
     """
-    Represent a bond between two atoms.
+    Represents a bond between two atoms.
 
     Attributes:
         object_type (str):              Object category (`"bond"`).
@@ -573,7 +573,7 @@ class Bond(object):
         distance (float):               Interatomic distance.
 
     Methods:
-        __repr__():                     Return a formatted description of the bond.
+        __repr__():                     Returns a formatted description of the bond.
     """
     def __init__(self, atom1: object, atom2: object, bond_order: int=1, subtype: str="intraspecie"):
         self.object_type = "bond"
