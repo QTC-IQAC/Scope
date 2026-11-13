@@ -108,11 +108,16 @@ class Input_data(object):
         setattr(self, key, attr)
  
     def __add__(self, other):
+        """Adds missing public settings from other, retaining existing values.
+
+        Mutates and returns self; both + and += use this behavior. Existing
+        None and False values are retained. Setting names may contain
+        underscores; private attributes, methods and dct are excluded.
+        """
         if not isinstance(other, type(self)): return self
         for d in dir(other):
-            if '_' not in d and not callable(getattr(other,d)) and d != "dct":
-                at1 = getattr(other,d)
-                self._add_attr(d,at1)
+            if not d.startswith('_') and d != 'dct' and not callable(getattr(other,d)) and not hasattr(self,d):
+                self._add_attr(d,getattr(other,d))
         return self
 
     def __repr__(self):
@@ -188,7 +193,7 @@ def fill_options_data(data: object, debug: int=0):
     return data
 
 def fill_job_data(data: object, debug: int=0):
-    """Fills Job defaults and checks for required attributes. Raises ValueError if required attributes are missing."""
+    """Fills Job defaults and checks for required attributes."""
     ## Adds defaults to job_data
     if not hasattr(data,"branch"):        raise ValueError("FILL_JOB_DATA: job_data is missing 'branch' input variable")
     if not hasattr(data,"workflow"):      raise ValueError("FILL_JOB_DATA: job_data is missing 'workflow' input variable")
@@ -201,6 +206,11 @@ def fill_job_data(data: object, debug: int=0):
     if not hasattr(data,"constrains"):    data._add_attr("constrains", ['self'])
     if not hasattr(data,"must_be_good"):  data._add_attr("must_be_good", True)
     if not hasattr(data,"save_wf"):       data._add_attr("save_wf", False)
+    if not hasattr(data,"recovery"):      data._add_attr("recovery", "standard")
+
+    if not isinstance(data.recovery,str) or not data.recovery.strip():
+        raise ValueError("FILL_JOB_DATA: recovery must be a nonempty strategy name")
+    data._mod_attr('recovery',data.recovery.strip().lower())
 
     # None also disables storage of the wavefunction. Input_data reads an unquoted None as the string 'none'.
     save_wf = data.save_wf
