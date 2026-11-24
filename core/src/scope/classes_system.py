@@ -30,6 +30,7 @@ class System(object):
         set_paths_from_environment():   Derives paths from an environment object.
         set_paths_down_hierarchy():     Propagates paths to workflows and computations.
         save():                         Serializes the system to disk.
+        clear_status_markers():         Removes workflow status markers from the System folder.
     """
     def __init__(self, name: str) -> None:
         self.version              = __version__
@@ -109,6 +110,20 @@ class System(object):
         except Exception:
             self.should_save = True
             raise
+
+    ######
+    def clear_status_markers(self) -> None:
+        """Removes on-disk status markers for the System and its branches.
+
+        Scans the System folder for TERMINATED, *_FINISHED and *_TERMINATED
+        files, including markers from branches absent from the current System.
+        """
+        from pathlib import Path
+        folder = getattr(self, 'system_path', None)
+        if not folder or not os.path.isdir(folder): return
+        for marker in Path(folder).iterdir():
+            if (marker.name == 'TERMINATED' or marker.name.endswith(('_FINISHED', '_TERMINATED'))) and marker.is_file():
+                marker.unlink(missing_ok=True)
 
     ######
     def find_source(self, name: str, debug: int=0):
@@ -402,7 +417,7 @@ class System(object):
         from scope.classes_specie import Molecule
         from scope.read_write import read_xyz
         file = os.path.basename(filepath)
-        name = file.split('.')[0]
+        name = os.path.splitext(file)[0]
         labels, coord = read_xyz(filepath)
         new_specie = Molecule(labels, coord)
         self.add_source(name, new_specie, overwrite=overwrite)

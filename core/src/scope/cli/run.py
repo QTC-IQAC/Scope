@@ -20,9 +20,9 @@ def env_exists(path):
 
 def run_parser(subparsers):
     parser = subparsers.add_parser("run",help="Run a SCOPE task",description="Run a SCOPE task for a given system")
-    parser.add_argument('-n',       '--env_path',   type=env_exists,   help='Path to the Environment. Script will load Source data in env.sources_path')
-    parser.add_argument('-s',       '--sys_name',   help='Name of the System. SCOPE will search in the stored Environment Paths')
-    parser.add_argument('-i', '-t', '--inp_path', nargs="+", type=path_exists,  help='Path to the Scope Input File(s). If more than one, you can write them in any order')
+    parser.add_argument('-n',       '--env_path', required=True, type=env_exists, help='Path to the Environment. Script will load Source data in env.sources_path')
+    parser.add_argument('-s',       '--sys_name', required=True, help='Name of the System. SCOPE will search in the stored Environment Paths')
+    parser.add_argument('-i', '-t', '--inp_path', required=True, nargs="+", type=path_exists,  help='Path to the Scope Input File(s). If more than one, you can write them in any order')
     parser.add_argument('-q', '--quiet',      help='If true, will not print the progress on screen', action='store_true')
     parser.add_argument('-v', '--verbose',    help='If true, will print extra information on screen', action='store_true')
     parser.add_argument('-e', '--errors',     help='If true, will automatically handle some common errors', action='store_true')

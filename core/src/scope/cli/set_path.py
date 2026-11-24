@@ -13,11 +13,11 @@ def env_exists(path):
         raise ValueError(f'Path {path} is not an Environment binary file!')
 
 def set_path_parser(subparsers):
-    parser = subparsers.add_parser("set_path",help="Sets Current Directory as System Main Path",description="Sets Current Directory as System Main Path")
-    parser.add_argument('-n', '--env_path',   type=env_exists,   help='Path to the Environment. Script will load Source data in env.sources_path')
-    parser.add_argument('-s', '--sys_name',   help="Name of the System. SCOPE will search in the Environment's Systems folder") 
-    parser.add_argument('-q', '--quiet',      help='If true, will not print the progress on screen', action='store_true')
-    parser.add_argument('-v', '--verbose',    help='If true, will print extra information on screen', action='store_true')
+    parser = subparsers.add_parser("set_path", help="Sets Current Directory as System Main Path",description="Sets Current Directory as System Main Path")
+    parser.add_argument('-n', '--env_path', required=True, type=env_exists,   help='Path to the Environment. Script will load Source data in env.sources_path')
+    parser.add_argument('-s', '--sys_name', required=True, help="Name of the System. SCOPE will search in the Environment's Systems folder") 
+    parser.add_argument('-q', '--quiet', help='If true, will not print the progress on screen', action='store_true')
+    parser.add_argument('-v', '--verbose', help='If true, will print extra information on screen', action='store_true')
     parser.set_defaults(func=set_path)
 
 def set_path(args):

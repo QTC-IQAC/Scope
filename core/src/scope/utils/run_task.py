@@ -406,17 +406,18 @@ def verify_paths(global_env: object, sys: object, debug: int=0) -> bool:
 
 ######
 def verify_status(sys_path: str, inp_paths: list, debug: int=0) -> bool:
-    """Checks branch markers and returns True if any requested branch is active."""
+    """Checks each requested branch once and returns True if any is active."""
 
     sys_folder = os.path.dirname(sys_path)
     if debug > 0: print(f"RUN_TASK.VERIFY_STATUS: searching status files in {sys_folder}")
     if debug > 0: print(f"RUN_TASK.VERIFY_STATUS: found {os.listdir(sys_folder)} files in folder")
 
-    ## Collects all branches requested in the different job files
+    ## Collects the distinct branch names in task order
     branch_names = []
     for inp_path in inp_paths:
         job_data = set_job_data(inp_path, section="&job_data", debug=0)
-        branch_names.append(job_data.branch)
+        branch_names.append(job_data.branch.lower().replace(' ','_'))
+    branch_names = list(dict.fromkeys(branch_names))
     if debug > 0: print(f"RUN_TASK.VERIFY_STATUS: found {branch_names=}")
 
     ## Checks Status of all branches
