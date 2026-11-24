@@ -1,5 +1,29 @@
 # Changelog
 
+## 1.0.2
+
+This release includes `scope-qc` 1.0.2, `scope-sco` 1.0.1 and `scope-azo` 1.0.1.
+
+### Vibrations and thermodynamics
+
+- Quantum ESPRESSO finite-difference Jobs now compute Γ-point vibrational modes for a fixed periodic cell. For $N$ atoms, SCOPE uses $6N$ displaced SCFs to construct the Hessian and one undisplaced SCF for the reference energy and forces. The final State stores $3N-3$ frequencies and their mass-weighted mode vectors after removing the three translations. Registration warns when the relative Hessian asymmetry exceeds 1%.
+- States can compute and plot the vibrational density of states (VDOS) from their stored modes. Both VDOS and IR spectra support normalization per formula unit.
+- Replacing a State's vibrational modes refreshes its minimum and transition-state classifications. The electronic spin entropy of a cell now accounts for the multiplicity of each independent molecule and is reported per formula unit.
+
+### Workflows and HPC submission
+
+- The `find_minimum` Job setup pairs geometry optimizations with frequency checks. When imaginary modes remain, the next cycle displaces the optimized geometry along those modes. The search stops when no imaginary modes remain or it reaches `max_steps` (five by default).
+- Workflow inputs accept case-insensitive source-name patterns such as `ref_hs_*`. The experimental `run_task_v2()` provides software-specific recovery strategies, including a three-attempt `diverse` strategy for QE SCF convergence. The CLI continues to use `run_task()`.
+- Gaussian and QE submission scripts on Slurm and SGE can copy partial output back from scratch on a scheduler warning. If an optimization stops during an SCF, SCOPE can continue from the last complete geometry.
+- The task's `&environment` section accepts wall times such as `2d12h30m` and job priorities `normal`, `low` and `lowest`. For queues with an unlimited maximum and no finite default, SCOPE requests 30 days.
+
+### System creation and fixes
+
+- The core, SCO and AZO creation commands support replacing a saved System with `-f` and clear stale branch status markers after a successful save. The core CLI accepts separate System and XYZ source names, including filenames with multiple dots.
+- Fixed branch status reporting and folder creation when `create_folders=False`. Merging input settings now fills missing values and preserves explicitly supplied values, including `False` and `None`.
+
+The release covers 25 implementation commits since 1.0.1. [Full comparison](https://github.com/QTC-IQAC/Scope/compare/a03666b8ec7814ae84d9f8ba0df6af798f7f9c80...a839c2b7d6530db11b4467eea759450f5af4cf9d)
+
 ## [1.0.1][1.0.1]
 
 Changes since `v1.0.0`, covering 43 commits through `823b1ed` (8 November 2026). This update primarily affects `scope-qc`; the add-ons have citation updates but no functional code changes in this range.
