@@ -2,7 +2,7 @@ import os
 from argparse import ArgumentParser
 from scope.classes_environment import Environment
 from scope.read_write import load_binary, clear_screen
-from scope.utils.run_task import run_task
+from scope.run_task import run_task
 
 def path_exists(path):
     if not os.path.exists(path):

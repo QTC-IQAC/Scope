@@ -138,8 +138,7 @@ class Branch(object):
 
         Updates and returns self.status; absent markers mean 'active'.
         """
-        # There is an alternative to this function that does not require loading the system and branch. 
-        # It is in Utils/Run_Job.py as get_status()
+        # scope.run_task.get_status() reads markers before the System is loaded.
         system_path = self._system.system_path
         if   os.path.isfile(f"{system_path}{self.name}_TERMINATED"):     self.status = "terminated"
         elif os.path.isfile(f"{system_path}{self.name}_FINISHED"):       self.status = "finished"
@@ -1564,6 +1563,39 @@ class Computation(object):
         else:                      to_print += f' Has OUTPUT            = NO\n'
         to_print += '\n'
         return to_print
+
+def get_attempt_number(comp: object, origin: str, debug: int=0) -> int:
+    """Returns the next recovery attempt number for an origin in a continuation chain.
+
+    Counts matching origins in comp._job.computations with the same keyword
+    and step and run_number <= comp.run_number. Includes the current
+    Computation when its origin matches. Untagged Computations do not count.
+    This is logical creation order, not submission or execution chronology;
+    resubmitting a Computation does not consume another attempt.
+
+    Parameters:
+        comp (object): Current Computation, attached to its Job.
+        origin (str): Recovery identifier, such as 'g16_ts_recovery_standard'.
+        debug (int): Verbosity level.
+
+    Returns:
+        int: One plus the matching count; 1 identifies the first recovery attempt.
+    """
+    attempt_number = 1
+    for candidate in comp._job.computations:
+        # Computations without origin
+        if getattr(candidate,'origin',None) != origin:
+            continue
+        # Computations with other keywords or step numbers
+        if candidate.keyword != comp.keyword or candidate.step != comp.step:
+            continue
+        # Computations with a later run_number
+        if candidate.run_number > comp.run_number:
+            continue
+        attempt_number += 1
+    if debug > 0: print(f'GET_ATTEMPT_NUMBER: {origin}: next attempt {attempt_number}, step={comp.step}, keyword={comp.keyword!r}')
+    return attempt_number
+
 
 ##############################################################
 ### FILENAME Class to facilitate controling the file names ###

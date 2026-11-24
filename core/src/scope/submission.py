@@ -1,79 +1,4 @@
-#!/usr/bin/env python3
-import sys
-import os
-
-def get_status(sys_path: str, core: str, branch_keyword, debug: int=0):
-    if sys_path[-1] != '/' : sys_path += '/'
-    ##########################################################
-    ## Keep in mind that here, the system is not yet loaded ##
-    ## The status is set based, only, on the files present  ##
-    ##########################################################
-    ## We do not want to load the system to save time       ##
-    ##########################################################
-
-    status = "active"
-
-    ## If system file is not present
-    if not os.path.isfile(sys_path+core+'/'+core+".sys"):
-        if debug > 1: print(f"System file of {core} not found in {sys_path+core+'/'+core+'.sys'}")
-        return "absent"
-
-    ## Otherwise..
-    if os.path.isfile(sys_path+core+'/'+"TERMINATED"):  return "terminated"
-
-    ## If one branch keyword is given
-    if type(branch_keyword) == str:
-        if branch_keyword.lower() == "isolated" and os.path.isfile(sys_path+core+'/'+"ISO_FINISHED"):  return "finished"
-        elif branch_keyword.lower() == "solid" and os.path.isfile(sys_path+core+'/'+"SOLID_FINISHED"): return "finished" 
-
-    ## If more than one branch keyword is given
-    elif type(branch_keyword) == list:
-        sk = []
-        for bk in branch_keyword:
-            if bk.lower() == "isolated":
-                if os.path.isfile(sys_path+core+'/'+"ISO_FINISHED"): sk.append("finished")
-                else:                                                sk.append("active")
-            elif bk.lower() == "solid":
-                if os.path.isfile(sys_path+core+'/'+"SOLID_FINISHED"): sk.append("finished")
-                else:                                                  sk.append("active")
-        if "active" in sk: return "active"
-        else:              return "finished"
-
-    else: print("GET_STATUS: I could not understand branch_keyword:", branch_keyword)
-    return "active"
-
-
-def get_attempt_number(comp: object, origin: str, debug: int=0) -> int:
-    """Returns the next recovery attempt number for an origin in a continuation chain.
-
-    Counts matching origins in comp._job.computations with the same keyword
-    and step and run_number <= comp.run_number. Includes the current
-    Computation when its origin matches. Untagged Computations do not count.
-    This is logical creation order, not submission or execution chronology;
-    resubmitting a Computation does not consume another attempt.
-
-    Parameters:
-        comp (object): Current Computation, attached to its Job.
-        origin (str): Recovery identifier, such as 'g16_ts_recovery_standard'.
-        debug (int): Verbosity level.
-
-    Returns:
-        int: One plus the matching count; 1 identifies the first recovery attempt.
-    """
-    attempt_number = 1
-    for candidate in comp._job.computations:
-        # Computations without origin
-        if getattr(candidate,'origin',None) != origin:
-            continue
-        # Computations with other keywords or step numbers
-        if candidate.keyword != comp.keyword or candidate.step != comp.step:
-            continue
-        # Computations with a latter run_number
-        if candidate.run_number > comp.run_number:
-            continue
-        attempt_number += 1
-    if debug > 0: print(f'GET_ATTEMPT_NUMBER: {origin}: next attempt {attempt_number}, step={comp.step}, keyword={comp.keyword!r}')
-    return attempt_number
+"""Builds scheduler directives and Bash commands for SCOPE submission files."""
 
 
 def _wall_time_seconds(minutes: int | float | str | None) -> int | None:
@@ -97,6 +22,18 @@ def get_slurm_signal_time(time_limit: int | float | str | None, debug: int=0) ->
     seconds = _wall_time_seconds(time_limit)
     if seconds is None or seconds <= 0: return 60
     return min(60,max(10,seconds//10))
+
+
+def gen_job_priority_directive(environment: object) -> str:
+    """Returns a Slurm or SGE submission directive, or an empty string at normal priority."""
+    # Defines the Penalty for low and lowest priority
+    job_priority_penalties = {'normal': 0, 'low': 50, 'lowest': 100}
+
+    penalty = job_priority_penalties[getattr(environment,'job_priority','normal')]
+    if penalty == 0: return ''
+    if environment.scheduler == 'slurm': return f'#SBATCH --nice={penalty}'
+    if environment.scheduler == 'sge':   return f'#$ -p -{penalty}'
+    return ''
 
 
 def gen_slurm_time_directives(queue: object) -> str:

@@ -37,10 +37,10 @@ Its main hierarchy is:
 - Computations represent concrete software runs and their inputs, outputs, and status.
 
 Scope input files describe which actions should be taken on a system.
-The CLI command `scope run` and the underlying `run_task` logic traverse this hierarchy, decide what can be submitted or registered, and advance the workflow incrementally.
+The CLI command `scope run` calls `scope.run_task.run_task()` to register completed computations and submit pending ones. Python callers can also use the alternative runner in `scope.run_task_v2`.
 
 ## Runtime Layer
-The runtime layer describes where and how computations are executed. The `Environment` class manages paths, software configuration, and scheduler-specific settings for HPC usage. `Queue` and `Node` are mainly used for queue selection (if more than one is available) when submitting jobs.
+The runtime layer describes where and how computations are executed. The `Environment` class manages paths, software configuration, and scheduler-specific settings for HPC usage. `Queue` and `Node` are mainly used for queue selection (if more than one is available) when submitting jobs. The Gaussian and Quantum Espresso submission scripts share scheduler directives and Bash commands from `scope.submission`.
 
 During `scope config`, `Environment.check_software()` performs static checks for each configured Gaussian16/QE module in a separate Bash login shell. Software-specific inspection uses `check_g16_launcher()` and `check_qe_launcher()` alongside the input generators, with shared shell inspection in `classes_environment.run_module_checks()`. Reports are stored in `Environment.software_checks` and can be refreshed with `env.check_software(debug=1)`. No jobs or MPI ranks are launched; executable availability and launcher preference are not runtime validation.
 

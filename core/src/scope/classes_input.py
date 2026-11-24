@@ -170,12 +170,17 @@ def check_environment_data(data: object, debug: int=0) -> None:
     """Validates environment settings and stores a supplied time limit in minutes.
 
     Accepted values:
+        - job_priority: 'normal' (scheduler default), 'low' or 'lowest'. Low and lowest request
+          Slurm nice values of 50 and 100, or SGE priorities of -50 and -100, respectively.
         - time_limit: any format accepted by parse_time(), with a minimum of one minute, or None to use the queue limit.
           Bare numbers are minutes. Examples include 30, '1w', '2d12h30m' and '90s'.
 
-    A supplied 'none' selects the queue limit. Raises ValueError for an invalid
-    time limit and leaves the original value in place.
+    A time_limit of 'none' selects the queue limit. Invalid settings raise ValueError.
     """
+    priority = getattr(data,'job_priority','normal')
+    if not isinstance(priority,str) or priority not in ['normal', 'low', 'lowest']:
+        raise ValueError(f"CHECK_ENVIRONMENT_DATA: job_priority must be 'normal', 'low' or 'lowest', got {priority!r}")
+
     value = getattr(data,'time_limit',None)
     if value is None:
         return
@@ -311,6 +316,7 @@ def fill_environment_data(data: object, debug: int=0):
     if not hasattr(data,"max_procs"):         data._add_attr("max_procs",int(320)) 
     if not hasattr(data,"method"):            data._add_attr("method","weighted") 
     if not hasattr(data,"time_limit"):        data._add_attr("time_limit",None)
+    if not hasattr(data,"job_priority"):      data._add_attr("job_priority","normal")
     return data
 
 def fill_options_data(data: object, debug: int=0):

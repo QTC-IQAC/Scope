@@ -42,7 +42,7 @@ Strategies run only when a new continuation is needed;
 existing continuations are reused without calling these functions.
 """
 from copy import deepcopy
-from scope.utils.core_tools import get_attempt_number
+from scope.classes_workflow import get_attempt_number
 
 
 def recover_qe_scf(comp: object, recovery: str='standard', debug: int=0) -> tuple[object | None,str]:

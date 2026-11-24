@@ -166,7 +166,8 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
     SIGKILL cannot be handled.
     """
     import shlex
-    from scope.utils.core_tools import gen_run_block, gen_sge_time_directives, gen_slurm_time_directives
+    from scope.submission import gen_job_priority_directive, gen_run_block, gen_sge_time_directives, gen_slurm_time_directives
+    priority_directive = gen_job_priority_directive(queue._environment)
     warning_signal = 'USR1'
     stderr_path = shlex.quote(os.path.abspath(os.path.join(comp.path, comp.name+'.stderr')))
     stdout_path = shlex.quote(os.path.abspath(os.path.join(comp.path, comp.name+'.stdout')))
@@ -188,6 +189,7 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
             print(f"#SBATCH -e {stderr_path}", file=sub)
             print(f"#SBATCH -o {stdout_path}", file=sub)
             print(f"#SBATCH -p {queue.name}", file=sub)
+            if priority_directive: print(priority_directive, file=sub)
             print(f"#SBATCH --nodes=1", file=sub)
             print(f"#SBATCH --ntasks={procs}", file=sub)
             print(gen_slurm_time_directives(queue), file=sub)
@@ -201,6 +203,7 @@ def gen_g16_subfile(comp: object, queue: object, module: str, procs: int=1, save
             print(f"#$ -o {stdout_path}", file=sub)
             print(f"#$ -e {stderr_path}", file=sub)
             print(f"#$ -q {queue.name}" , file=sub)
+            if priority_directive: print(priority_directive, file=sub)
             print(f"#$ -pe smp {procs}", file=sub)
             print(f"#$ -cwd", file=sub)
             time_directives, warning_signal = gen_sge_time_directives(queue, debug=max(debug-1,0))

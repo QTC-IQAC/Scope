@@ -3,13 +3,15 @@
 Use run_task_v2() explicitly; CLI execution is unchanged. Shared preflight checks
 and native SCOPE registration/submission methods are reused. All continuation
 selection and construction below is independent of Job's continuation setter.
+
+Under Testing
 """
 import os
 
 import numpy as np
 from scope.classes_input import interpret_workflow_from_user, set_input_data
 from scope.read_write import load_binary
-from scope.utils.run_task import verify_files, verify_paths, verify_status
+from scope.run_task import verify_files, verify_paths, verify_status
 
 ########
 def run_task_v2(sys_path: str, inp_paths: list, global_env: str | object, handle_errors: bool=False, debug: int=0) -> str:
